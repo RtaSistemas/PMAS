@@ -3,17 +3,19 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from datetime import date as DateType
 from typing import Annotated, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db, init_db
-from backend.app.models import Collaborator, Cycle, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
 from backend.app.services.ingestion import ingest_file
 
 log = logging.getLogger(__name__)
@@ -61,6 +63,23 @@ def on_startup() -> None:
 DbSession = Annotated[Session, Depends(get_db)]
 
 # ---------------------------------------------------------------------------
+# Pydantic schemas
+# ---------------------------------------------------------------------------
+
+class CycleIn(BaseModel):
+    name: str
+    start_date: DateType
+    end_date: DateType
+
+class ProjectIn(BaseModel):
+    pep_wbs: str
+    name: Optional[str] = None
+    client: Optional[str] = None
+    manager: Optional[str] = None
+    budget_hours: Optional[float] = None
+    status: str = "ativo"
+
+# ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
 
@@ -81,14 +100,23 @@ def upload_timesheet(file: UploadFile, db: DbSession):
 
     return {"status": "ok", **summary}
 
+# ---------------------------------------------------------------------------
+# Cycles — list + CRUD
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Reference data
-# ---------------------------------------------------------------------------
+def _cycle_record_counts(db: Session) -> dict[int, int]:
+    rows = (
+        db.query(TimesheetRecord.cycle_id, func.count(TimesheetRecord.id))
+        .group_by(TimesheetRecord.cycle_id)
+        .all()
+    )
+    return {cycle_id: cnt for cycle_id, cnt in rows}
+
 
 @app.get("/api/cycles", summary="Listar ciclos")
 def list_cycles(db: DbSession):
     cycles = db.query(Cycle).order_by(Cycle.start_date).all()
+    counts = _cycle_record_counts(db)
     return [
         {
             "id": c.id,
@@ -96,10 +124,77 @@ def list_cycles(db: DbSession):
             "start_date": c.start_date.isoformat(),
             "end_date": c.end_date.isoformat(),
             "is_quarantine": c.is_quarantine,
+            "record_count": counts.get(c.id, 0),
         }
         for c in cycles
     ]
 
+
+@app.post("/api/cycles", summary="Criar ciclo", status_code=201)
+def create_cycle(body: CycleIn, db: DbSession):
+    if body.end_date < body.start_date:
+        raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
+    cycle = Cycle(
+        name=body.name,
+        start_date=body.start_date,
+        end_date=body.end_date,
+        is_quarantine=False,
+    )
+    db.add(cycle)
+    db.commit()
+    db.refresh(cycle)
+    return {
+        "id": cycle.id,
+        "name": cycle.name,
+        "start_date": cycle.start_date.isoformat(),
+        "end_date": cycle.end_date.isoformat(),
+        "is_quarantine": cycle.is_quarantine,
+        "record_count": 0,
+    }
+
+
+@app.put("/api/cycles/{cycle_id}", summary="Atualizar ciclo")
+def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
+    cycle = db.get(Cycle, cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
+    if body.end_date < body.start_date:
+        raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
+    cycle.name = body.name
+    cycle.start_date = body.start_date
+    cycle.end_date = body.end_date
+    db.commit()
+    db.refresh(cycle)
+    counts = _cycle_record_counts(db)
+    return {
+        "id": cycle.id,
+        "name": cycle.name,
+        "start_date": cycle.start_date.isoformat(),
+        "end_date": cycle.end_date.isoformat(),
+        "is_quarantine": cycle.is_quarantine,
+        "record_count": counts.get(cycle.id, 0),
+    }
+
+
+@app.delete("/api/cycles/{cycle_id}", summary="Excluir ciclo", status_code=204)
+def delete_cycle(cycle_id: int, db: DbSession):
+    cycle = db.get(Cycle, cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
+    count = db.query(func.count(TimesheetRecord.id)).filter(
+        TimesheetRecord.cycle_id == cycle_id
+    ).scalar()
+    if count:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ciclo possui {count} registro(s). Remova os registros antes de excluir o ciclo.",
+        )
+    db.delete(cycle)
+    db.commit()
+
+# ---------------------------------------------------------------------------
+# Reference data
+# ---------------------------------------------------------------------------
 
 @app.get("/api/collaborators", summary="Listar colaboradores")
 def list_collaborators(
@@ -156,6 +251,63 @@ def list_peps(
 
     return sorted(grouped.values(), key=lambda x: x["total_records"], reverse=True)
 
+# ---------------------------------------------------------------------------
+# Projects — CRUD
+# ---------------------------------------------------------------------------
+
+def _project_to_dict(p: Project) -> dict:
+    return {
+        "id": p.id,
+        "pep_wbs": p.pep_wbs,
+        "name": p.name,
+        "client": p.client,
+        "manager": p.manager,
+        "budget_hours": p.budget_hours,
+        "status": p.status,
+    }
+
+
+@app.get("/api/projects", summary="Listar projetos")
+def list_projects(db: DbSession):
+    projects = db.query(Project).order_by(Project.pep_wbs).all()
+    return [_project_to_dict(p) for p in projects]
+
+
+@app.post("/api/projects", summary="Criar projeto", status_code=201)
+def create_project(body: ProjectIn, db: DbSession):
+    if db.query(Project).filter(Project.pep_wbs == body.pep_wbs).first():
+        raise HTTPException(status_code=409, detail="Já existe um projeto com esse código PEP.")
+    project = Project(**body.model_dump())
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return _project_to_dict(project)
+
+
+@app.put("/api/projects/{project_id}", summary="Atualizar projeto")
+def update_project(project_id: int, body: ProjectIn, db: DbSession):
+    project = db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    conflict = db.query(Project).filter(
+        Project.pep_wbs == body.pep_wbs, Project.id != project_id
+    ).first()
+    if conflict:
+        raise HTTPException(status_code=409, detail="Já existe outro projeto com esse código PEP.")
+    for field, value in body.model_dump().items():
+        setattr(project, field, value)
+    db.commit()
+    db.refresh(project)
+    return _project_to_dict(project)
+
+
+@app.delete("/api/projects/{project_id}", summary="Excluir projeto", status_code=204)
+def delete_project(project_id: int, db: DbSession):
+    project = db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    db.delete(project)
+    db.commit()
 
 # ---------------------------------------------------------------------------
 # Dashboard (with filters)
@@ -168,7 +320,6 @@ def get_dashboard_all(
     pep_description: List[str] = Query(default=[]),
     collaborator_id: List[int] = Query(default=[]),
 ):
-    """Agrega horas de todos os ciclos, com filtros opcionais de PEP e colaborador."""
     q = (
         db.query(
             Collaborator.id.label("collaborator_id"),
@@ -213,19 +364,9 @@ def get_dashboard_all(
     ]
 
     return {
-        "cycle": {
-            "id":            None,
-            "name":          "Toda a base",
-            "start_date":    None,
-            "end_date":      None,
-            "is_quarantine": False,
-        },
-        "filters": {
-            "pep_codes":        pep_code,
-            "pep_descriptions": pep_description,
-            "collaborator_ids": collaborator_id,
-        },
-        "data":      chart_data,
+        "cycle": {"id": None, "name": "Toda a base", "start_date": None, "end_date": None, "is_quarantine": False},
+        "filters": {"pep_codes": pep_code, "pep_descriptions": pep_description, "collaborator_ids": collaborator_id},
+        "data": chart_data,
         "breakdown": [],
     }
 
@@ -283,16 +424,16 @@ def get_dashboard(
     )
     breakdown = []
     for r in rows:
-        per_collab[r.collaborator]["normal_hours"] += r.normal_hours or 0.0
-        per_collab[r.collaborator]["extra_hours"]  += r.extra_hours or 0.0
+        per_collab[r.collaborator]["normal_hours"]  += r.normal_hours or 0.0
+        per_collab[r.collaborator]["extra_hours"]   += r.extra_hours or 0.0
         per_collab[r.collaborator]["standby_hours"] += r.standby_hours or 0.0
         breakdown.append({
-            "collaborator":    r.collaborator,
-            "pep_code":        r.pep_wbs,
+            "collaborator": r.collaborator,
+            "pep_code": r.pep_wbs,
             "pep_description": r.pep_description,
-            "normal_hours":    r.normal_hours or 0.0,
-            "extra_hours":     r.extra_hours or 0.0,
-            "standby_hours":   r.standby_hours or 0.0,
+            "normal_hours": r.normal_hours or 0.0,
+            "extra_hours": r.extra_hours or 0.0,
+            "standby_hours": r.standby_hours or 0.0,
         })
 
     chart_data = [
@@ -305,17 +446,17 @@ def get_dashboard(
 
     return {
         "cycle": {
-            "id":           cycle.id,
-            "name":         cycle.name,
-            "start_date":   cycle.start_date.isoformat(),
-            "end_date":     cycle.end_date.isoformat(),
+            "id": cycle.id,
+            "name": cycle.name,
+            "start_date": cycle.start_date.isoformat(),
+            "end_date": cycle.end_date.isoformat(),
             "is_quarantine": cycle.is_quarantine,
         },
         "filters": {
-            "pep_codes":        pep_code,
+            "pep_codes": pep_code,
             "pep_descriptions": pep_description,
             "collaborator_ids": collaborator_id,
         },
-        "data":      chart_data,
+        "data": chart_data,
         "breakdown": breakdown,
     }

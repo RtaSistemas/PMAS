@@ -43,8 +43,8 @@ class TimesheetRecord(Base):
     collaborator_id = Column(Integer, ForeignKey("collaborator.id"), nullable=False)
     cycle_id = Column(Integer, ForeignKey("cycle.id"), nullable=False)
     record_date = Column(Date, nullable=False)
-    pep_wbs = Column(String, nullable=True, index=True)          # Código PEP (ex: 60OP-03333)
-    pep_description = Column(String, nullable=True, index=True)  # PEP descritivo (ex: COPEL-D | OMS)
+    pep_wbs = Column(String, nullable=True, index=True)
+    pep_description = Column(String, nullable=True, index=True)
     normal_hours = Column(Float, default=0.0, nullable=False)
     extra_hours = Column(Float, default=0.0, nullable=False)
     standby_hours = Column(Float, default=0.0, nullable=False)
@@ -58,3 +58,16 @@ Index(
     TimesheetRecord.cycle_id,
     TimesheetRecord.collaborator_id,
 )
+
+
+class Project(Base):
+    __tablename__ = "project"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pep_wbs = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=True)
+    client = Column(String, nullable=True)
+    manager = Column(String, nullable=True)
+    budget_hours = Column(Float, nullable=True)
+    # ativo | encerrado | suspenso
+    status = Column(String, default="ativo", nullable=False)
