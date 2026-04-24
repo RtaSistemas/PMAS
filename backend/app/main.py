@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -44,6 +45,11 @@ def _frontend_dir() -> str:
 
 
 app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="frontend")
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/frontend/index.html")
 
 
 @app.on_event("startup")
