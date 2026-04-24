@@ -1,0 +1,57 @@
+name: Release
+
+# Triggered when a version tag is pushed (e.g. v1.0.0, v1.2.3-rc1).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build pmas-linux-x64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies and PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt openpyxl pyinstaller
+
+      - name: Build standalone executable
+        run: |
+          pyinstaller \
+            --onefile \
+            --strip \
+            --name pmas-linux-x64 \
+            --add-data "frontend:frontend" \
+            --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops \
+            --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols \
+            --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto \
+            --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto \
+            --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on \
+            --hidden-import fastapi \
+            --hidden-import sqlalchemy.dialects.sqlite \
+            --hidden-import openpyxl \
+            run.py
+
+      - name: Upload executable to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/pmas-linux-x64
