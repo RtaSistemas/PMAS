@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from typing import Annotated, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -32,6 +35,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _frontend_dir() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.join(sys._MEIPASS, "frontend")
+    return os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+
+
+app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="frontend")
 
 
 @app.on_event("startup")

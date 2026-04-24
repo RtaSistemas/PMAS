@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+import os
+import sys
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./pmas.db"
+
+def _db_path() -> str:
+    # When frozen (PyInstaller), store next to the executable so the file persists.
+    # In development, use the project root (same original behaviour).
+    if getattr(sys, "frozen", False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, "pmas.db")
+
+
+DATABASE_URL = f"sqlite:///{_db_path()}"
 
 engine = create_engine(
     DATABASE_URL,
