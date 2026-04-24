@@ -253,20 +253,40 @@ let _chartSeq = 0;
 
 function addChartPanel(payload) {
   const id = `chart-${++_chartSeq}`;
+  const budgetData = (payload.budget_vs_actual || []).filter(d => d.budget_hours > 0);
   const panel = document.createElement('div'); panel.className = 'chart-panel card';
   const header = document.createElement('div'); header.className = 'panel-header';
   const titleEl = document.createElement('div'); titleEl.className = 'panel-title'; titleEl.textContent = buildPanelTitle(payload);
   const closeBtn = document.createElement('button'); closeBtn.className = 'panel-close'; closeBtn.title = 'Fechar'; closeBtn.textContent = '×';
   header.appendChild(titleEl); header.appendChild(closeBtn); panel.appendChild(header);
-  panel.appendChild(buildStatsRow(payload.data));
+  panel.appendChild(buildStatsRow(payload.data, budgetData));
   const chartDiv = document.createElement('div'); chartDiv.id = id;
   chartDiv.style.cssText = `width:100%;height:${calcHeight(payload.data.length)}px`;
   panel.appendChild(chartDiv);
+  let budgetDiv = null;
+  if (budgetData.length > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid #334155;margin:1.25rem 0 0.75rem';
+    const budgetLbl = document.createElement('div');
+    budgetLbl.style.cssText = 'font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5rem';
+    budgetLbl.textContent = 'Orçado vs. Realizado por PEP';
+    budgetDiv = document.createElement('div');
+    budgetDiv.style.cssText = `width:100%;height:${Math.max(220, budgetData.length * 56 + 80)}px`;
+    panel.appendChild(sep); panel.appendChild(budgetLbl); panel.appendChild(budgetDiv);
+  }
   document.getElementById('chartsContainer').prepend(panel);
+  const toDispose = []; const toUnlisten = [];
   const instance = echarts.init(chartDiv, 'dark');
   instance.setOption(buildChartOption(payload));
   const onResize = () => instance.resize(); window.addEventListener('resize', onResize);
-  closeBtn.addEventListener('click', () => { window.removeEventListener('resize', onResize); instance.dispose(); panel.remove(); });
+  toDispose.push(instance); toUnlisten.push(onResize);
+  if (budgetDiv) {
+    const bInst = echarts.init(budgetDiv, 'dark');
+    bInst.setOption(buildBudgetChartOption(budgetData));
+    const onBResize = () => bInst.resize(); window.addEventListener('resize', onBResize);
+    toDispose.push(bInst); toUnlisten.push(onBResize);
+  }
+  closeBtn.addEventListener('click', () => { toUnlisten.forEach(fn => window.removeEventListener('resize', fn)); toDispose.forEach(inst => inst.dispose()); panel.remove(); });
 }
 
 function buildPanelTitle(payload) {
@@ -276,18 +296,29 @@ function buildPanelTitle(payload) {
   return t;
 }
 
-function buildStatsRow(data) {
+function buildStatsRow(data, budgetData = []) {
   let normal = 0, extra = 0, standby = 0;
   data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
   const total = normal + extra + standby;
   const row = document.createElement('div'); row.className = 'stats-row';
-  [
+  const cards = [
     { val: fmt(normal),  lbl: 'Horas Normais', cls: 'blue' },
     { val: fmt(extra),   lbl: 'Horas Extras',  cls: 'amber' },
     { val: fmt(standby), lbl: 'Sobreaviso',    cls: 'violet' },
     { val: fmt(total),   lbl: 'Total',         cls: 'green' },
     { val: data.length,  lbl: 'Colaboradores', cls: 'neutral' },
-  ].forEach(({ val, lbl, cls }) => {
+  ];
+  if (budgetData.length > 0) {
+    const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
+    const totalActual = budgetData.reduce((s, d) => s + d.actual_hours, 0);
+    const pct = totalBudget > 0 ? (totalActual / totalBudget * 100).toFixed(1) : '—';
+    const over = totalBudget > 0 && totalActual > totalBudget;
+    cards.push(
+      { val: fmt(totalBudget), lbl: 'Orçado (PEPs c/ budget)', cls: 'neutral' },
+      { val: `${pct}%`,        lbl: 'Realizado vs Orçado',    cls: over ? 'red' : 'green' },
+    );
+  }
+  cards.forEach(({ val, lbl, cls }) => {
     const card = document.createElement('div'); card.className = `stat-card ${cls}`;
     card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
@@ -296,6 +327,42 @@ function buildStatsRow(data) {
 }
 
 function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
+
+function buildBudgetChartOption(budgetData) {
+  const labels  = budgetData.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 30)}` : ''));
+  const budgets = budgetData.map(d => +(d.budget_hours.toFixed(2)));
+  const actuals = budgetData.map((d, i) => ({
+    value: +(d.actual_hours.toFixed(2)),
+    itemStyle: { color: d.actual_hours > budgets[i] ? '#f87171' : '#34d399' },
+  }));
+  return {
+    backgroundColor: 'transparent',
+    legend: { data: ['Orçado', 'Realizado'], top: 8, left: 'center', textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10 },
+    grid: { top: 44, right: '3%', bottom: 28, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        const bVal = params.find(p => p.seriesName === 'Orçado')?.value ?? 0;
+        const aVal = params.find(p => p.seriesName === 'Realizado')?.value ?? 0;
+        const pct  = bVal > 0 ? ` (${(aVal / bVal * 100).toFixed(1)}%)` : '';
+        let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue.replace('\n', ' — ')}</div>`;
+        params.forEach(p => {
+          const extra = p.seriesName === 'Realizado' ? pct : '';
+          html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b>${extra}</div>`;
+        });
+        if (bVal > 0 && aVal > bVal) html += `<div style="color:#f87171;font-size:11px;margin-top:4px">⚠ Acima do orçado</div>`;
+        return html;
+      },
+    },
+    xAxis: { type: 'value', name: 'Horas', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    yAxis: { type: 'category', data: labels, axisTick: { show: false }, axisLabel: { color: '#e2e8f0', fontSize: 10, lineHeight: 16 } },
+    series: [
+      { name: 'Orçado',    type: 'bar', data: budgets, itemStyle: { color: '#22d3ee' }, barMaxWidth: 28, barGap: '10%' },
+      { name: 'Realizado', type: 'bar', data: actuals,                                  barMaxWidth: 28, barGap: '10%' },
+    ],
+  };
+}
 
 function buildChartOption(payload) {
   const { cycle, data } = payload; const MAX = 40;

@@ -267,6 +267,59 @@ def _project_to_dict(p: Project) -> dict:
     }
 
 
+def _compute_budget_vs_actual(
+    db: Session,
+    pep_codes: List[str],
+    cycle_id: Optional[int] = None,
+    collaborator_ids: Optional[List[int]] = None,
+) -> list:
+    if pep_codes:
+        projects = (
+            db.query(Project)
+            .filter(Project.pep_wbs.in_(pep_codes), Project.budget_hours.isnot(None))
+            .all()
+        )
+    else:
+        projects = db.query(Project).filter(Project.budget_hours.isnot(None)).all()
+
+    if not projects:
+        return []
+
+    budget_peps = [p.pep_wbs for p in projects]
+    q = (
+        db.query(
+            TimesheetRecord.pep_wbs,
+            func.sum(
+                TimesheetRecord.normal_hours + TimesheetRecord.extra_hours + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+        )
+        .filter(TimesheetRecord.pep_wbs.in_(budget_peps))
+    )
+    if cycle_id is not None:
+        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+    if collaborator_ids:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_ids))
+
+    actual_by_pep = {
+        r.pep_wbs: r.total_hours or 0.0
+        for r in q.group_by(TimesheetRecord.pep_wbs).all()
+    }
+
+    return sorted(
+        [
+            {
+                "pep_wbs": p.pep_wbs,
+                "name": p.name,
+                "budget_hours": p.budget_hours,
+                "actual_hours": actual_by_pep.get(p.pep_wbs, 0.0),
+            }
+            for p in projects
+        ],
+        key=lambda x: x["budget_hours"],
+        reverse=True,
+    )
+
+
 @app.get("/api/projects", summary="Listar projetos")
 def list_projects(db: DbSession):
     projects = db.query(Project).order_by(Project.pep_wbs).all()
@@ -363,11 +416,13 @@ def get_dashboard_all(
         )
     ]
 
+    budget_vs_actual = _compute_budget_vs_actual(db, pep_code, None, collaborator_id)
     return {
         "cycle": {"id": None, "name": "Toda a base", "start_date": None, "end_date": None, "is_quarantine": False},
         "filters": {"pep_codes": pep_code, "pep_descriptions": pep_description, "collaborator_ids": collaborator_id},
         "data": chart_data,
         "breakdown": [],
+        "budget_vs_actual": budget_vs_actual,
     }
 
 
@@ -444,6 +499,7 @@ def get_dashboard(
         )
     ]
 
+    budget_vs_actual = _compute_budget_vs_actual(db, pep_code, cycle_id, collaborator_id)
     return {
         "cycle": {
             "id": cycle.id,
@@ -459,4 +515,5 @@ def get_dashboard(
         },
         "data": chart_data,
         "breakdown": breakdown,
+        "budget_vs_actual": budget_vs_actual,
     }
