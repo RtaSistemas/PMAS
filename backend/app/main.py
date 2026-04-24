@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -104,20 +104,19 @@ def list_cycles(db: DbSession):
 @app.get("/api/collaborators", summary="Listar colaboradores")
 def list_collaborators(
     db: DbSession,
-    cycle_id: Optional[int] = Query(None, description="Filtrar por ciclo"),
-    pep_code: Optional[str] = Query(None, description="Filtrar por Código PEP"),
-    pep_description: Optional[str] = Query(None, description="Filtrar por descrição de PEP"),
+    cycle_id: List[int] = Query(default=[]),
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
 ):
-    """Returns collaborators, optionally filtered so the dropdown stays contextual."""
     q = db.query(Collaborator.id, Collaborator.name).join(
         TimesheetRecord, TimesheetRecord.collaborator_id == Collaborator.id
     )
     if cycle_id:
-        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
     if pep_code:
-        q = q.filter(TimesheetRecord.pep_wbs == pep_code)
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
     if pep_description:
-        q = q.filter(TimesheetRecord.pep_description == pep_description)
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
 
     rows = q.distinct().order_by(Collaborator.name).all()
     return [{"id": r.id, "name": r.name} for r in rows]
@@ -126,22 +125,18 @@ def list_collaborators(
 @app.get("/api/peps", summary="Listar PEPs únicos")
 def list_peps(
     db: DbSession,
-    cycle_id: Optional[int] = Query(None, description="Filtrar por ciclo"),
-    collaborator_id: Optional[int] = Query(None, description="Filtrar por colaborador"),
+    cycle_id: List[int] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
 ):
-    """
-    Returns unique PEP entries (code + description) so the frontend can
-    populate both filter dropdowns. Descriptions are grouped under their code.
-    """
     q = db.query(
         TimesheetRecord.pep_wbs,
         TimesheetRecord.pep_description,
         func.count().label("n"),
     )
     if cycle_id:
-        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
     if collaborator_id:
-        q = q.filter(TimesheetRecord.collaborator_id == collaborator_id)
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
 
     rows = (
         q.filter(TimesheetRecord.pep_wbs.isnot(None))
@@ -150,7 +145,6 @@ def list_peps(
         .all()
     )
 
-    # Group descriptions under their code
     from collections import defaultdict
     grouped: dict[str, dict] = defaultdict(lambda: {"code": "", "descriptions": [], "total_records": 0})
     for r in rows:
@@ -171,15 +165,10 @@ def list_peps(
 def get_dashboard(
     cycle_id: int,
     db: DbSession,
-    pep_code: Optional[str] = Query(None, description="Filtrar por Código PEP (ex: 60OP-03333)"),
-    pep_description: Optional[str] = Query(None, description="Filtrar por descrição de PEP"),
-    collaborator_id: Optional[int] = Query(None, description="Filtrar por ID de colaborador"),
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
 ):
-    """
-    Aggregated hours per collaborator for the requested cycle.
-    All filters are optional and combinable.
-    SQL GROUP BY runs server-side to minimise network payload.
-    """
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -199,13 +188,12 @@ def get_dashboard(
     )
 
     if pep_code:
-        q = q.filter(TimesheetRecord.pep_wbs == pep_code)
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
     if pep_description:
-        q = q.filter(TimesheetRecord.pep_description == pep_description)
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
     if collaborator_id:
-        q = q.filter(TimesheetRecord.collaborator_id == collaborator_id)
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
 
-    # Group by collaborator + pep so multiple pep_descriptions stay separate when not filtered
     group_by_pep = not pep_description
     if group_by_pep:
         rows = (
@@ -220,7 +208,6 @@ def get_dashboard(
             .all()
         )
 
-    # Aggregate per collaborator for the chart (sum across pep_descriptions)
     from collections import defaultdict
     per_collab: dict[str, dict] = defaultdict(
         lambda: {"normal_hours": 0.0, "extra_hours": 0.0, "standby_hours": 0.0}
@@ -228,38 +215,38 @@ def get_dashboard(
     breakdown = []
     for r in rows:
         per_collab[r.collaborator]["normal_hours"] += r.normal_hours or 0.0
-        per_collab[r.collaborator]["extra_hours"] += r.extra_hours or 0.0
+        per_collab[r.collaborator]["extra_hours"]  += r.extra_hours or 0.0
         per_collab[r.collaborator]["standby_hours"] += r.standby_hours or 0.0
         breakdown.append({
-            "collaborator": r.collaborator,
-            "pep_code": r.pep_wbs,
+            "collaborator":    r.collaborator,
+            "pep_code":        r.pep_wbs,
             "pep_description": r.pep_description,
-            "normal_hours": r.normal_hours or 0.0,
-            "extra_hours": r.extra_hours or 0.0,
-            "standby_hours": r.standby_hours or 0.0,
+            "normal_hours":    r.normal_hours or 0.0,
+            "extra_hours":     r.extra_hours or 0.0,
+            "standby_hours":   r.standby_hours or 0.0,
         })
 
     chart_data = [
-        {
-            "collaborator": name,
-            **hours,
-        }
-        for name, hours in sorted(per_collab.items(), key=lambda x: -(x[1]["normal_hours"] + x[1]["extra_hours"] + x[1]["standby_hours"]))
+        {"collaborator": name, **hours}
+        for name, hours in sorted(
+            per_collab.items(),
+            key=lambda x: -(x[1]["normal_hours"] + x[1]["extra_hours"] + x[1]["standby_hours"])
+        )
     ]
 
     return {
         "cycle": {
-            "id": cycle.id,
-            "name": cycle.name,
-            "start_date": cycle.start_date.isoformat(),
-            "end_date": cycle.end_date.isoformat(),
+            "id":           cycle.id,
+            "name":         cycle.name,
+            "start_date":   cycle.start_date.isoformat(),
+            "end_date":     cycle.end_date.isoformat(),
             "is_quarantine": cycle.is_quarantine,
         },
         "filters": {
-            "pep_code": pep_code,
-            "pep_description": pep_description,
-            "collaborator_id": collaborator_id,
+            "pep_codes":        pep_code,
+            "pep_descriptions": pep_description,
+            "collaborator_ids": collaborator_id,
         },
-        "data": chart_data,
+        "data":      chart_data,
         "breakdown": breakdown,
     }
