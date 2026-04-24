@@ -16,20 +16,26 @@ _COL_DATE = "Data"
 _COL_HOURS = "Horas totais (decimal)"
 _COL_EXTRA = "Hora extra"
 _COL_STANDBY = "Hora sobreaviso"
-# "Código PEP" = machine code; "PEP" = human-readable project name
 _COL_PEP_CODE = "Código PEP"
 _COL_PEP_DESC = "PEP"
 
-# The column "Ciclo" is intentionally ignored per the Golden Rule.
-
 
 def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
-    """
-    Parse a timesheet file (CSV or XLSX), resolve collaborators and cycles,
-    and persist TimesheetRecord rows.  Returns a summary dict with counts.
-    """
     df = _load_dataframe(file_bytes, filename)
+
+    # Load all existing dedup keys once to avoid per-row queries
+    existing_keys: set[tuple] = set(
+        db.query(
+            TimesheetRecord.collaborator_id,
+            TimesheetRecord.cycle_id,
+            TimesheetRecord.record_date,
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+        ).all()
+    )
+
     inserted = 0
+    skipped = 0
     quarantine_cycles_created = 0
 
     for _, row in df.iterrows():
@@ -52,6 +58,12 @@ def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
         pep_code = _str_or_none(row.get(_COL_PEP_CODE))
         pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
 
+        key = (collab.id, cycle.id, record_date, pep_code, pep_desc)
+        if key in existing_keys:
+            skipped += 1
+            continue
+
+        existing_keys.add(key)
         db.add(TimesheetRecord(
             collaborator_id=collab.id,
             cycle_id=cycle.id,
@@ -66,12 +78,12 @@ def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
 
     db.commit()
     log.info(
-        "Ingestão concluída: %d registros inseridos, %d ciclos de quarentena criados.",
-        inserted,
-        quarantine_cycles_created,
+        "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, %d ciclos de quarentena.",
+        inserted, skipped, quarantine_cycles_created,
     )
     return {
         "records_inserted": inserted,
+        "records_skipped": skipped,
         "quarantine_cycles_created": quarantine_cycles_created,
     }
 
