@@ -161,6 +161,75 @@ def list_peps(
 # Dashboard (with filters)
 # ---------------------------------------------------------------------------
 
+@app.get("/api/dashboard", summary="Dashboard sem filtro de ciclo — toda a base")
+def get_dashboard_all(
+    db: DbSession,
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+):
+    """Agrega horas de todos os ciclos, com filtros opcionais de PEP e colaborador."""
+    q = (
+        db.query(
+            Collaborator.id.label("collaborator_id"),
+            Collaborator.name.label("collaborator"),
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+    )
+
+    if pep_code:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+
+    rows = (
+        q.group_by(TimesheetRecord.collaborator_id)
+        .order_by(Collaborator.name)
+        .all()
+    )
+
+    from collections import defaultdict
+    per_collab: dict[str, dict] = defaultdict(
+        lambda: {"normal_hours": 0.0, "extra_hours": 0.0, "standby_hours": 0.0}
+    )
+    for r in rows:
+        per_collab[r.collaborator]["normal_hours"]  += r.normal_hours or 0.0
+        per_collab[r.collaborator]["extra_hours"]   += r.extra_hours or 0.0
+        per_collab[r.collaborator]["standby_hours"] += r.standby_hours or 0.0
+
+    chart_data = [
+        {"collaborator": name, **hours}
+        for name, hours in sorted(
+            per_collab.items(),
+            key=lambda x: -(x[1]["normal_hours"] + x[1]["extra_hours"] + x[1]["standby_hours"])
+        )
+    ]
+
+    return {
+        "cycle": {
+            "id":            None,
+            "name":          "Toda a base",
+            "start_date":    None,
+            "end_date":      None,
+            "is_quarantine": False,
+        },
+        "filters": {
+            "pep_codes":        pep_code,
+            "pep_descriptions": pep_description,
+            "collaborator_ids": collaborator_id,
+        },
+        "data":      chart_data,
+        "breakdown": [],
+    }
+
+
 @app.get("/api/dashboard/{cycle_id}", summary="Dashboard de horas por ciclo")
 def get_dashboard(
     cycle_id: int,
