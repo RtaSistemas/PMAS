@@ -40,7 +40,7 @@
     main {
       flex: 1;
       padding: 2rem;
-      max-width: 1200px;
+      max-width: 1400px;
       width: 100%;
       margin: 0 auto;
       display: flex;
@@ -54,7 +54,7 @@
       border-radius: 0.75rem;
       padding: 1.5rem;
     }
-    .card h2 {
+    .card > h2 {
       font-size: 0.8rem;
       font-weight: 600;
       color: #64748b;
@@ -63,21 +63,46 @@
       letter-spacing: 0.07em;
     }
 
-    /* Upload */
+    /* ------------------------------------------------------------------ */
+    /* Upload zone                                                          */
+    /* ------------------------------------------------------------------ */
     .upload-zone {
       border: 2px dashed #475569;
       border-radius: 0.5rem;
       padding: 2rem;
-      text-align: center;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-align: center;
+      min-height: 130px;
     }
     .upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.05); }
     .upload-zone input[type="file"] { display: none; }
-    .upload-zone p { color: #64748b; font-size: 0.875rem; margin-top: 0.4rem; }
-    .upload-zone .icon { font-size: 2rem; }
+    .upload-zone .upload-icon { font-size: 2.5rem; line-height: 1; }
+    .upload-zone strong { font-size: 0.925rem; color: #e2e8f0; }
+    .upload-zone p { color: #64748b; font-size: 0.8rem; }
 
-    /* Filter grid */
+    /* ------------------------------------------------------------------ */
+    /* Notification                                                         */
+    /* ------------------------------------------------------------------ */
+    #notification {
+      padding: 0.75rem 1rem;
+      border-radius: 0.4rem;
+      font-size: 0.875rem;
+      display: none;
+      margin-top: 0.75rem;
+    }
+    #notification.success { background: rgba(34,197,94,0.15);  border: 1px solid #16a34a; color: #4ade80; }
+    #notification.error   { background: rgba(239,68,68,0.15);  border: 1px solid #dc2626; color: #f87171; }
+    #notification.info    { background: rgba(59,130,246,0.15); border: 1px solid #2563eb; color: #93c5fd; }
+
+    /* ------------------------------------------------------------------ */
+    /* Filter grid                                                          */
+    /* ------------------------------------------------------------------ */
     .filter-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -87,90 +112,163 @@
     .field { display: flex; flex-direction: column; gap: 0.35rem; }
     .field label { font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
 
-    select, button {
+    .btn-group { flex-direction: row; gap: 0.5rem; align-items: flex-end; }
+
+    button.primary, button.secondary {
       height: 2.4rem;
       border-radius: 0.4rem;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #e2e8f0;
       font-size: 0.875rem;
-      padding: 0 0.75rem;
+      padding: 0 1.25rem;
       cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+      border: 1px solid transparent;
     }
-    select { width: 100%; }
-    button {
+    button.primary {
       background: #3b82f6;
       border-color: #3b82f6;
-      font-weight: 600;
-      padding: 0 1.25rem;
-      white-space: nowrap;
-      transition: background 0.15s;
+      color: #fff;
     }
-    button:hover:not(:disabled) { background: #2563eb; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary:hover:not(:disabled) { background: #2563eb; border-color: #2563eb; }
+    button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
     button.secondary {
       background: transparent;
       border-color: #475569;
       color: #94a3b8;
     }
-    button.secondary:hover:not(:disabled) { border-color: #94a3b8; color: #e2e8f0; background: transparent; }
+    button.secondary:hover { border-color: #94a3b8; color: #e2e8f0; }
 
-    /* Active filters pills */
-    #activePills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: rgba(59,130,246,0.15);
-      border: 1px solid #3b82f6;
-      color: #93c5fd;
-      font-size: 0.75rem;
-      padding: 0.2rem 0.6rem;
-      border-radius: 9999px;
-    }
-    .pill button {
-      all: unset;
-      cursor: pointer;
-      color: #93c5fd;
-      font-size: 0.85rem;
-      line-height: 1;
-    }
-    .pill button:hover { color: #fff; }
+    /* ------------------------------------------------------------------ */
+    /* Multi-select component                                               */
+    /* ------------------------------------------------------------------ */
+    .ms-root { position: relative; width: 100%; }
 
-    /* Notification */
-    #notification {
-      padding: 0.75rem 1rem;
+    .ms-toggle {
+      width: 100%;
+      height: 2.4rem;
       border-radius: 0.4rem;
-      font-size: 0.875rem;
-      display: none;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #4b5563;
+      font-size: 0.8125rem;
+      padding: 0 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+      text-align: left;
+      transition: border-color 0.15s;
     }
-    #notification.success { background: rgba(34,197,94,0.15); border: 1px solid #16a34a; color: #4ade80; }
-    #notification.error   { background: rgba(239,68,68,0.15);  border: 1px solid #dc2626; color: #f87171; }
-    #notification.info    { background: rgba(59,130,246,0.15); border: 1px solid #2563eb; color: #93c5fd; }
+    .ms-toggle:hover { border-color: #64748b; }
+    .ms-toggle.has-value { color: #e2e8f0; }
+    .ms-toggle .ms-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .ms-toggle .ms-arrow { flex-shrink: 0; font-size: 0.7rem; color: #64748b; }
 
-    /* Stats row */
-    #statsRow {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    .ms-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 0.4rem;
+      max-height: 260px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+
+    .ms-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      user-select: none;
+      line-height: 1.4;
+    }
+    .ms-option:hover { background: rgba(59,130,246,0.15); }
+    .ms-option.ms-all {
+      font-weight: 600;
+      color: #94a3b8;
+      border-bottom: 1px solid #334155;
+      font-size: 0.75rem;
+    }
+    .ms-option input[type="checkbox"] {
+      accent-color: #3b82f6;
+      flex-shrink: 0;
+      width: 13px;
+      height: 13px;
+      cursor: pointer;
+    }
+    .ms-empty {
+      padding: 0.75rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Charts container + panel                                             */
+    /* ------------------------------------------------------------------ */
+    #chartsContainer { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .chart-panel { padding: 1.25rem 1.5rem 1.5rem; }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
       gap: 1rem;
-      display: none;
+    }
+    .panel-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      flex: 1;
+    }
+    .panel-close {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid #334155;
+      color: #64748b;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0.2rem 0.55rem;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .panel-close:hover { color: #f87171; border-color: #f87171; background: rgba(239,68,68,0.08); }
+
+    /* Stats row inside each panel */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
     }
     .stat-card {
       background: #0f172a;
       border: 1px solid #334155;
       border-radius: 0.5rem;
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       text-align: center;
     }
-    .stat-card .val { font-size: 1.6rem; font-weight: 700; }
-    .stat-card .lbl { font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-top: 0.2rem; }
-    .stat-card.blue .val  { color: #3b82f6; }
-    .stat-card.amber .val { color: #f59e0b; }
-    .stat-card.violet .val{ color: #8b5cf6; }
-    .stat-card.green .val { color: #22c55e; }
-
-    /* Chart */
-    #chart { width: 100%; height: 520px; }
+    .stat-card .val { font-size: 1.4rem; font-weight: 700; }
+    .stat-card .lbl { font-size: 0.68rem; color: #64748b; text-transform: uppercase; margin-top: 0.15rem; letter-spacing: 0.04em; }
+    .stat-card.blue .val   { color: #3b82f6; }
+    .stat-card.amber .val  { color: #f59e0b; }
+    .stat-card.violet .val { color: #8b5cf6; }
+    .stat-card.green .val  { color: #22c55e; }
+    .stat-card.neutral .val{ color: #e2e8f0; }
   </style>
 </head>
 <body>
@@ -187,11 +285,11 @@
     <h2>Importar Timesheet</h2>
     <label class="upload-zone" id="uploadZone">
       <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" />
-      <div class="icon">📂</div>
+      <div class="upload-icon">📂</div>
       <strong>Clique para selecionar CSV ou XLSX</strong>
       <p>ou arraste e solte aqui</p>
     </label>
-    <div id="notification" style="margin-top:0.75rem;"></div>
+    <div id="notification"></div>
   </div>
 
   <!-- Filters -->
@@ -199,66 +297,30 @@
     <h2>Filtros</h2>
     <div class="filter-grid">
       <div class="field">
-        <label for="cycleSelect">Ciclo *</label>
-        <select id="cycleSelect">
-          <option value="">— Selecione um ciclo —</option>
-        </select>
+        <label>Ciclo *</label>
+        <div id="cycleMs"></div>
       </div>
       <div class="field">
-        <label for="pepSelect">PEP (Código)</label>
-        <select id="pepSelect">
-          <option value="">— Todos os PEPs —</option>
-        </select>
+        <label>PEP (Código)</label>
+        <div id="pepMs"></div>
       </div>
       <div class="field">
-        <label for="pepDescSelect">PEP (Descrição)</label>
-        <select id="pepDescSelect">
-          <option value="">— Todas as descrições —</option>
-        </select>
+        <label>PEP (Descrição)</label>
+        <div id="pepDescMs"></div>
       </div>
       <div class="field">
-        <label for="collaboratorSelect">Colaborador</label>
-        <select id="collaboratorSelect">
-          <option value="">— Todos —</option>
-        </select>
+        <label>Colaborador</label>
+        <div id="collaboratorMs"></div>
       </div>
-      <div class="field" style="flex-direction:row; gap:0.5rem; align-items:flex-end;">
-        <button id="loadBtn" disabled>Carregar</button>
+      <div class="field btn-group">
+        <button id="loadBtn" class="primary" disabled>Carregar</button>
         <button id="clearBtn" class="secondary">Limpar</button>
       </div>
     </div>
-    <div id="activePills" style="margin-top:0.75rem;"></div>
   </div>
 
-  <!-- Stats -->
-  <div id="statsRow">
-    <div class="stat-card blue">
-      <div class="val" id="statNormal">—</div>
-      <div class="lbl">Horas Normais</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="val" id="statExtra">—</div>
-      <div class="lbl">Horas Extras</div>
-    </div>
-    <div class="stat-card violet">
-      <div class="val" id="statStandby">—</div>
-      <div class="lbl">Sobreaviso</div>
-    </div>
-    <div class="stat-card green">
-      <div class="val" id="statTotal">—</div>
-      <div class="lbl">Total</div>
-    </div>
-    <div class="stat-card" style="border-color:#334155;">
-      <div class="val" id="statCollabs" style="color:#e2e8f0;">—</div>
-      <div class="lbl">Colaboradores</div>
-    </div>
-  </div>
-
-  <!-- Chart -->
-  <div class="card">
-    <h2 id="chartTitle">Distribuição de Horas por Colaborador</h2>
-    <div id="chart"></div>
-  </div>
+  <!-- Charts are appended here dynamically -->
+  <div id="chartsContainer"></div>
 
 </main>
 

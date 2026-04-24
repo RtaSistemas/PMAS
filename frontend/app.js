@@ -1,361 +1,539 @@
-/* PMAS — Frontend App (Vanilla JS + Apache ECharts) */
+/* PMAS — Frontend App */
 
-const API = "";
+// ---------------------------------------------------------------------------
+// MultiSelect component
+// ---------------------------------------------------------------------------
+class MultiSelect {
+  constructor(el, placeholder, onChange) {
+    this.el = el;
+    this.placeholder = placeholder;
+    this.onChange = onChange;
+    this.items = [];
+    this.selected = new Set();
+    this._build();
+  }
+
+  _build() {
+    this.el.classList.add('ms-root');
+
+    this.btn = document.createElement('button');
+    this.btn.type = 'button';
+    this.btn.className = 'ms-toggle';
+    this.btn.innerHTML = `<span class="ms-label"></span><span class="ms-arrow">▾</span>`;
+
+    this.panel = document.createElement('div');
+    this.panel.className = 'ms-dropdown';
+    this.panel.hidden = true;
+
+    this.el.appendChild(this.btn);
+    this.el.appendChild(this.panel);
+
+    this.btn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.panel.hidden = !this.panel.hidden;
+    });
+    document.addEventListener('click', e => {
+      if (!this.el.contains(e.target)) this.panel.hidden = true;
+    });
+
+    this._updateBtn();
+  }
+
+  setItems(items, preserve = false) {
+    this.items = items;
+    if (!preserve) {
+      this.selected.clear();
+    } else {
+      const valid = new Set(items.map(i => String(i.value)));
+      for (const v of [...this.selected]) {
+        if (!valid.has(v)) this.selected.delete(v);
+      }
+    }
+    this._renderPanel();
+    this._updateBtn();
+  }
+
+  getValues() { return [...this.selected]; }
+
+  clear() {
+    this.selected.clear();
+    this._renderPanel();
+    this._updateBtn();
+  }
+
+  _updateBtn() {
+    const lbl = this.btn.querySelector('.ms-label');
+    if (this.selected.size === 0) {
+      lbl.textContent = this.placeholder;
+      this.btn.classList.remove('has-value');
+    } else if (this.selected.size === 1) {
+      const v = [...this.selected][0];
+      const item = this.items.find(i => String(i.value) === v);
+      lbl.textContent = item ? item.label : v;
+      this.btn.classList.add('has-value');
+    } else {
+      lbl.textContent = `${this.selected.size} selecionados`;
+      this.btn.classList.add('has-value');
+    }
+  }
+
+  _renderPanel() {
+    this.panel.innerHTML = '';
+
+    if (this.items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'ms-empty';
+      empty.textContent = 'Sem opções disponíveis';
+      this.panel.appendChild(empty);
+      return;
+    }
+
+    // "Select all" row
+    const allLbl = this._makeRow('__all__', 'Selecionar todos', true);
+    const allChk = allLbl.querySelector('input');
+    allChk.checked = this.selected.size === this.items.length && this.items.length > 0;
+    allChk.indeterminate = this.selected.size > 0 && this.selected.size < this.items.length;
+    allChk.addEventListener('change', e => {
+      e.stopPropagation();
+      if (allChk.checked) this.items.forEach(i => this.selected.add(String(i.value)));
+      else this.selected.clear();
+      this._renderPanel();
+      this._updateBtn();
+      this.onChange?.();
+    });
+    this.panel.appendChild(allLbl);
+
+    this.items.forEach(item => {
+      const lbl = this._makeRow(item.value, item.label, false);
+      const chk = lbl.querySelector('input');
+      chk.checked = this.selected.has(String(item.value));
+      chk.addEventListener('change', e => {
+        e.stopPropagation();
+        if (chk.checked) this.selected.add(String(item.value));
+        else this.selected.delete(String(item.value));
+        this._renderPanel();
+        this._updateBtn();
+        this.onChange?.();
+      });
+      this.panel.appendChild(lbl);
+    });
+  }
+
+  _makeRow(value, label, isAll) {
+    const lbl = document.createElement('label');
+    lbl.className = 'ms-option' + (isAll ? ' ms-all' : '');
+    lbl.addEventListener('click', e => e.stopPropagation());
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.value = value;
+    const span = document.createElement('span');
+    span.textContent = label;
+    lbl.appendChild(chk);
+    lbl.appendChild(span);
+    return lbl;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // DOM refs
 // ---------------------------------------------------------------------------
-const csvInput          = document.getElementById("csvInput");
-const uploadZone        = document.getElementById("uploadZone");
-const notification      = document.getElementById("notification");
-const cycleSelect       = document.getElementById("cycleSelect");
-const pepSelect         = document.getElementById("pepSelect");
-const pepDescSelect     = document.getElementById("pepDescSelect");
-const collaboratorSelect= document.getElementById("collaboratorSelect");
-const loadBtn           = document.getElementById("loadBtn");
-const clearBtn          = document.getElementById("clearBtn");
-const activePills       = document.getElementById("activePills");
-const statsRow          = document.getElementById("statsRow");
-const chartTitle        = document.getElementById("chartTitle");
+const csvInput   = document.getElementById('csvInput');
+const uploadZone = document.getElementById('uploadZone');
+const loadBtn    = document.getElementById('loadBtn');
+const clearBtn   = document.getElementById('clearBtn');
 
-const chart = echarts.init(document.getElementById("chart"), "dark");
+const cycleMs      = new MultiSelect(document.getElementById('cycleMs'),       '— Selecione ciclo(s) —',      onCycleChange);
+const pepMs        = new MultiSelect(document.getElementById('pepMs'),          '— Todos os PEPs —',           onPepChange);
+const pepDescMs    = new MultiSelect(document.getElementById('pepDescMs'),      '— Todas as descrições —',     onPepDescChange);
+const collaboratorMs = new MultiSelect(document.getElementById('collaboratorMs'), '— Todos —',                 onCollabChange);
 
-// In-memory pep data for cross-filtering descriptions
-let pepData = [];
+let pepDataCache = {};   // code → {code, descriptions, total_records}
 
 // ---------------------------------------------------------------------------
-// Notification
+// Cascading dropdowns
 // ---------------------------------------------------------------------------
-function notify(msg, type = "info") {
-  notification.textContent = msg;
-  notification.className = type;
-  notification.style.display = "block";
-  if (type === "success") setTimeout(() => { notification.style.display = "none"; }, 6000);
+async function onCycleChange() {
+  updateLoadBtn();
+  await Promise.all([refreshPeps(), refreshCollaborators()]);
+}
+
+async function onPepChange() {
+  refreshPepDescriptions();
+  await refreshCollaborators();
+}
+
+async function onPepDescChange() {
+  await refreshCollaborators();
+}
+
+async function onCollabChange() {
+  await refreshPeps();
+}
+
+function updateLoadBtn() {
+  loadBtn.disabled = cycleMs.getValues().length === 0;
+}
+
+async function loadCycles() {
+  try {
+    const list = await apiFetch('/api/cycles');
+    cycleMs.setItems(
+      list.map(c => ({ value: String(c.id), label: c.name + (c.is_quarantine ? ' ⚠' : '') })),
+      true
+    );
+    updateLoadBtn();
+  } catch (err) {
+    notify(`Erro ao carregar ciclos: ${err.message}`, 'error');
+  }
+}
+
+async function refreshPeps() {
+  const params = new URLSearchParams();
+  cycleMs.getValues().forEach(id => params.append('cycle_id', id));
+  collaboratorMs.getValues().forEach(id => params.append('collaborator_id', id));
+
+  try {
+    const data = await apiFetch(`/api/peps?${params}`);
+    pepDataCache = {};
+    data.forEach(p => { pepDataCache[p.code] = p; });
+    pepMs.setItems(
+      data.map(p => ({ value: p.code, label: `${p.code}  (${p.total_records} reg.)` })),
+      true
+    );
+    refreshPepDescriptions();
+  } catch (err) {
+    notify(`Erro ao carregar PEPs: ${err.message}`, 'error');
+  }
+}
+
+function refreshPepDescriptions() {
+  const selected = pepMs.getValues();
+  const source = selected.length > 0
+    ? selected.map(c => pepDataCache[c]).filter(Boolean)
+    : Object.values(pepDataCache);
+
+  const descs = [...new Set(source.flatMap(p => p.descriptions))].sort();
+  pepDescMs.setItems(descs.map(d => ({ value: d, label: d })), true);
+}
+
+async function refreshCollaborators() {
+  const params = new URLSearchParams();
+  cycleMs.getValues().forEach(id => params.append('cycle_id', id));
+  pepMs.getValues().forEach(c => params.append('pep_code', c));
+  pepDescMs.getValues().forEach(d => params.append('pep_description', d));
+
+  try {
+    const list = await apiFetch(`/api/collaborators?${params}`);
+    collaboratorMs.setItems(
+      list.map(c => ({ value: String(c.id), label: c.name })),
+      true
+    );
+  } catch (err) {
+    notify(`Erro ao carregar colaboradores: ${err.message}`, 'error');
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
-csvInput.addEventListener("change", async () => {
+csvInput.addEventListener('change', async () => {
   const file = csvInput.files[0];
   if (!file) return;
-  notify(`Enviando "${file.name}"…`, "info");
+  notify(`Enviando "${file.name}"…`, 'info');
 
   const form = new FormData();
-  form.append("file", file);
+  form.append('file', file);
   try {
-    const res  = await fetch(`${API}/api/upload-timesheet`, { method: "POST", body: form });
+    const res  = await fetch('/api/upload-timesheet', { method: 'POST', body: form });
     const json = await res.json();
-    if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, "error"); return; }
+    if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
 
-    let msg = `✔ ${json.records_inserted.toLocaleString("pt-BR")} registro(s) importado(s).`;
+    let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
     if (json.quarantine_cycles_created > 0)
       msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s) para datas órfãs.`;
 
-    notify(msg, json.quarantine_cycles_created > 0 ? "info" : "success");
+    notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
     await loadCycles();
   } catch (err) {
-    notify(`Falha na conexão: ${err.message}`, "error");
+    notify(`Falha na conexão: ${err.message}`, 'error');
   }
 });
 
-uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.style.borderColor = "#3b82f6"; });
-uploadZone.addEventListener("dragleave", () => { uploadZone.style.borderColor = ""; });
-uploadZone.addEventListener("drop", (e) => {
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = '#3b82f6'; });
+uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+uploadZone.addEventListener('drop', e => {
   e.preventDefault();
-  uploadZone.style.borderColor = "";
+  uploadZone.style.borderColor = '';
   const file = e.dataTransfer.files[0];
   if (file) {
     const dt = new DataTransfer();
     dt.items.add(file);
     csvInput.files = dt.files;
-    csvInput.dispatchEvent(new Event("change"));
+    csvInput.dispatchEvent(new Event('change'));
   }
 });
 
 // ---------------------------------------------------------------------------
-// Load reference data
+// Load dashboard — one chart per selected cycle
 // ---------------------------------------------------------------------------
-async function loadCycles() {
-  try {
-    const list = await (await fetch(`${API}/api/cycles`)).json();
-    const prev = cycleSelect.value;
-    cycleSelect.innerHTML = '<option value="">— Selecione um ciclo —</option>';
-    list.forEach((c) => {
-      const opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = c.name + (c.is_quarantine ? " ⚠" : "");
-      if (c.is_quarantine) opt.style.color = "#fbbf24";
-      cycleSelect.appendChild(opt);
-    });
-    if (prev && [...cycleSelect.options].some((o) => o.value === prev)) cycleSelect.value = prev;
-    updateLoadBtn();
-  } catch (err) {
-    notify(`Erro ao carregar ciclos: ${err.message}`, "error");
-  }
-}
-
-async function loadPeps() {
-  const cycleId = cycleSelect.value;
-  const collabId = collaboratorSelect.value;
-
-  const params = new URLSearchParams();
-  if (cycleId)  params.set("cycle_id",        cycleId);
-  if (collabId) params.set("collaborator_id",  collabId);
-
-  try {
-    pepData = await (await fetch(`${API}/api/peps?${params}`)).json();
-
-    const prevCode = pepSelect.value;
-    const prevDesc = pepDescSelect.value;
-
-    pepSelect.innerHTML = '<option value="">— Todos os PEPs —</option>';
-    pepDescSelect.innerHTML = '<option value="">— Todas as descrições —</option>';
-
-    pepData.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.code;
-      opt.textContent = `${p.code}  (${p.total_records} reg.)`;
-      pepSelect.appendChild(opt);
-    });
-
-    if (prevCode && [...pepSelect.options].some((o) => o.value === prevCode)) {
-      pepSelect.value = prevCode;
-      populatePepDescriptions(prevCode);
-    }
-    if (prevDesc && [...pepDescSelect.options].some((o) => o.value === prevDesc))
-      pepDescSelect.value = prevDesc;
-
-  } catch (err) {
-    notify(`Erro ao carregar PEPs: ${err.message}`, "error");
-  }
-}
-
-function populatePepDescriptions(code) {
-  const entry = pepData.find((p) => p.code === code);
-  const prevDesc = pepDescSelect.value;
-  pepDescSelect.innerHTML = '<option value="">— Todas as descrições —</option>';
-  if (entry) {
-    entry.descriptions.forEach((d) => {
-      const opt = document.createElement("option");
-      opt.value = d;
-      opt.textContent = d;
-      pepDescSelect.appendChild(opt);
-    });
-  }
-  if (prevDesc && [...pepDescSelect.options].some((o) => o.value === prevDesc))
-    pepDescSelect.value = prevDesc;
-}
-
-async function loadCollaborators() {
-  const cycleId  = cycleSelect.value;
-  const pepCode  = pepSelect.value;
-  const pepDesc  = pepDescSelect.value;
-
-  const params = new URLSearchParams();
-  if (cycleId)  params.set("cycle_id",         cycleId);
-  if (pepCode)  params.set("pep_code",          pepCode);
-  if (pepDesc)  params.set("pep_description",   pepDesc);
-
-  try {
-    const prev = collaboratorSelect.value;
-    const list = await (await fetch(`${API}/api/collaborators?${params}`)).json();
-    collaboratorSelect.innerHTML = '<option value="">— Todos —</option>';
-    list.forEach((c) => {
-      const opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = c.name;
-      collaboratorSelect.appendChild(opt);
-    });
-    if (prev && [...collaboratorSelect.options].some((o) => o.value === prev))
-      collaboratorSelect.value = prev;
-  } catch (err) {
-    notify(`Erro ao carregar colaboradores: ${err.message}`, "error");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Event wiring — cascading dropdowns
-// ---------------------------------------------------------------------------
-cycleSelect.addEventListener("change", async () => {
-  updateLoadBtn();
-  await Promise.all([loadPeps(), loadCollaborators()]);
-});
-
-pepSelect.addEventListener("change", () => {
-  populatePepDescriptions(pepSelect.value);
-  loadCollaborators();
-});
-
-pepDescSelect.addEventListener("change", () => {
-  loadCollaborators();
-});
-
-collaboratorSelect.addEventListener("change", () => {
-  loadPeps();
-});
-
-function updateLoadBtn() {
-  loadBtn.disabled = !cycleSelect.value;
-}
-
-// ---------------------------------------------------------------------------
-// Load dashboard
-// ---------------------------------------------------------------------------
-loadBtn.addEventListener("click", async () => {
-  const cycleId  = cycleSelect.value;
-  if (!cycleId) return;
-
-  const pepCode  = pepSelect.value;
-  const pepDesc  = pepDescSelect.value;
-  const collabId = collaboratorSelect.value;
-
-  const params = new URLSearchParams();
-  if (pepCode)  params.set("pep_code",        pepCode);
-  if (pepDesc)  params.set("pep_description", pepDesc);
-  if (collabId) params.set("collaborator_id", collabId);
+loadBtn.addEventListener('click', async () => {
+  const cycleIds = cycleMs.getValues();
+  if (!cycleIds.length) return;
 
   loadBtn.disabled = true;
-  loadBtn.textContent = "Carregando…";
+  loadBtn.textContent = 'Carregando…';
 
   try {
-    const res  = await fetch(`${API}/api/dashboard/${cycleId}?${params}`);
-    const json = await res.json();
-    if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, "error"); return; }
-    renderDashboard(json);
-    renderPills(json);
-  } catch (err) {
-    notify(`Falha ao carregar dashboard: ${err.message}`, "error");
+    for (const cycleId of cycleIds) {
+      const params = new URLSearchParams();
+      pepMs.getValues().forEach(c => params.append('pep_code', c));
+      pepDescMs.getValues().forEach(d => params.append('pep_description', d));
+      collaboratorMs.getValues().forEach(id => params.append('collaborator_id', id));
+
+      try {
+        const json = await apiFetch(`/api/dashboard/${cycleId}?${params}`);
+        addChartPanel(json);
+      } catch (err) {
+        notify(`Erro no ciclo ${cycleId}: ${err.message}`, 'error');
+      }
+    }
   } finally {
-    loadBtn.disabled = false;
-    loadBtn.textContent = "Carregar";
+    loadBtn.disabled = cycleMs.getValues().length === 0;
+    loadBtn.textContent = 'Carregar';
   }
 });
 
-clearBtn.addEventListener("click", () => {
-  pepSelect.value = "";
-  pepDescSelect.value = "";
-  collaboratorSelect.value = "";
-  activePills.innerHTML = "";
-  populatePepDescriptions("");
-  loadCollaborators();
+clearBtn.addEventListener('click', () => {
+  pepMs.clear();
+  pepDescMs.clear();
+  collaboratorMs.clear();
+  refreshPepDescriptions();
+  refreshCollaborators();
 });
 
 // ---------------------------------------------------------------------------
-// Active filter pills
+// Chart panels
 // ---------------------------------------------------------------------------
-function renderPills(payload) {
-  activePills.innerHTML = "";
-  const f = payload.filters;
+let _chartSeq = 0;
 
-  const add = (label, clearFn) => {
-    const pill = document.createElement("div");
-    pill.className = "pill";
-    pill.innerHTML = `${label} <button title="Remover filtro">×</button>`;
-    pill.querySelector("button").onclick = () => { clearFn(); loadBtn.click(); };
-    activePills.appendChild(pill);
-  };
+function addChartPanel(payload) {
+  const id = `chart-${++_chartSeq}`;
 
-  if (f.pep_code)        add(`PEP: ${f.pep_code}`,           () => { pepSelect.value = ""; populatePepDescriptions(""); });
-  if (f.pep_description) add(`Desc: ${f.pep_description}`,   () => { pepDescSelect.value = ""; });
-  if (f.collaborator_id) {
-    const name = collaboratorSelect.options[collaboratorSelect.selectedIndex]?.text || f.collaborator_id;
-    add(`Colaborador: ${name}`, () => { collaboratorSelect.value = ""; });
-  }
-}
+  const panel = document.createElement('div');
+  panel.className = 'chart-panel card';
 
-// ---------------------------------------------------------------------------
-// Render
-// ---------------------------------------------------------------------------
-function renderDashboard(payload) {
-  const { cycle, data } = payload;
+  // Header
+  const header = document.createElement('div');
+  header.className = 'panel-header';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'panel-title';
+  titleEl.textContent = buildPanelTitle(payload);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'panel-close';
+  closeBtn.title = 'Fechar gráfico';
+  closeBtn.textContent = '×';
+
+  header.appendChild(titleEl);
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
 
   // Stats
-  let totalNormal = 0, totalExtra = 0, totalStandby = 0;
-  data.forEach((r) => { totalNormal += r.normal_hours; totalExtra += r.extra_hours; totalStandby += r.standby_hours; });
-  const grandTotal = totalNormal + totalExtra + totalStandby;
+  panel.appendChild(buildStatsRow(payload.data));
 
-  document.getElementById("statNormal").textContent  = fmt(totalNormal);
-  document.getElementById("statExtra").textContent   = fmt(totalExtra);
-  document.getElementById("statStandby").textContent = fmt(totalStandby);
-  document.getElementById("statTotal").textContent   = fmt(grandTotal);
-  document.getElementById("statCollabs").textContent = data.length;
-  statsRow.style.display = "grid";
+  // Chart
+  const chartDiv = document.createElement('div');
+  chartDiv.id = id;
+  const h = calcHeight(payload.data.length);
+  chartDiv.style.cssText = `width:100%;height:${h}px`;
+  panel.appendChild(chartDiv);
 
-  // Chart title
-  const filters = payload.filters;
-  let sub = cycle.name;
-  if (filters.pep_code)        sub += `  |  PEP: ${filters.pep_code}`;
-  if (filters.pep_description) sub += `  →  ${filters.pep_description}`;
-  chartTitle.textContent = sub;
+  document.getElementById('chartsContainer').prepend(panel);
 
-  // ECharts
-  const collaborators = data.map((r) => r.collaborator);
-  const normalH   = data.map((r) => r.normal_hours);
-  const extraH    = data.map((r) => r.extra_hours);
-  const standbyH  = data.map((r) => r.standby_hours);
+  const instance = echarts.init(chartDiv, 'dark');
+  instance.setOption(buildChartOption(payload));
 
-  const maxItems = 40;
-  const truncated = collaborators.length > maxItems;
-  const colSlice  = truncated ? collaborators.slice(0, maxItems) : collaborators;
+  const onResize = () => instance.resize();
+  window.addEventListener('resize', onResize);
 
-  const option = {
-    backgroundColor: "transparent",
+  closeBtn.addEventListener('click', () => {
+    window.removeEventListener('resize', onResize);
+    instance.dispose();
+    panel.remove();
+  });
+}
+
+function buildPanelTitle(payload) {
+  const { cycle, filters } = payload;
+  let t = cycle.name;
+  if (filters.pep_codes?.length)        t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
+  if (filters.pep_descriptions?.length) t += `  →  ${filters.pep_descriptions.join(', ')}`;
+  return t;
+}
+
+function buildStatsRow(data) {
+  let normal = 0, extra = 0, standby = 0;
+  data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
+  const total = normal + extra + standby;
+
+  const row = document.createElement('div');
+  row.className = 'stats-row';
+
+  [
+    { val: fmt(normal),  lbl: 'Horas Normais', cls: 'blue' },
+    { val: fmt(extra),   lbl: 'Horas Extras',  cls: 'amber' },
+    { val: fmt(standby), lbl: 'Sobreaviso',    cls: 'violet' },
+    { val: fmt(total),   lbl: 'Total',         cls: 'green' },
+    { val: data.length,  lbl: 'Colaboradores', cls: 'neutral' },
+  ].forEach(({ val, lbl, cls }) => {
+    const card = document.createElement('div');
+    card.className = `stat-card ${cls}`;
+    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    row.appendChild(card);
+  });
+
+  return row;
+}
+
+function calcHeight(count) {
+  // Each row needs ~52px to fit 2-line label (name + hours breakdown)
+  return Math.max(420, Math.min(count, 40) * 52 + 120);
+}
+
+function buildChartOption(payload) {
+  const { cycle, data } = payload;
+  const MAX = 40;
+  const slice = data.length > MAX ? data.slice(0, MAX) : data;
+
+  // Build lookup for y-axis label formatter
+  const byName = {};
+  data.forEach(d => { byName[d.collaborator] = d; });
+
+  const categories = slice.map(r => r.collaborator);
+  const normalH  = slice.map(r => +r.normal_hours.toFixed(2));
+  const extraH   = slice.map(r => +r.extra_hours.toFixed(2));
+  const standbyH = slice.map(r => +r.standby_hours.toFixed(2));
+
+  const truncNote = data.length > MAX ? `   (top ${MAX} de ${data.length})` : '';
+
+  return {
+    backgroundColor: 'transparent',
+
+    title: {
+      text: cycle.is_quarantine ? `${cycle.name}  ⚠ QUARENTENA` : cycle.name,
+      subtext: `${cycle.start_date}  →  ${cycle.end_date}${truncNote}`,
+      left: 'center',
+      top: 4,
+      textStyle:    { color: '#f1f5f9', fontSize: 13, fontWeight: 600 },
+      subtextStyle: { color: '#64748b', fontSize: 11 },
+    },
+
+    legend: {
+      data: ['Horas Normais', 'Horas Extras', 'Sobreaviso'],
+      top: 52,
+      left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24,
+      itemWidth: 14,
+      itemHeight: 10,
+    },
+
+    grid: {
+      top: 96,
+      right: '3%',
+      bottom: 28,
+      left: '2%',
+      containLabel: true,
+    },
+
     tooltip: {
-      trigger: "axis",
-      axisPointer: { type: "shadow" },
-      formatter: (params) => {
-        let html = `<strong>${params[0].axisValue}</strong><br/>`;
-        params.forEach((p) => {
-          if (p.value > 0)
-            html += `${p.marker} ${p.seriesName}: <strong>${p.value.toFixed(2)}h</strong><br/>`;
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: '#1e293b',
+      borderColor: '#475569',
+      textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue}</div>`;
+        let total = 0;
+        params.forEach(p => {
+          if (p.value > 0) {
+            html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(2)}h</b></div>`;
+            total += p.value;
+          }
         });
+        if (params.length > 1)
+          html += `<div style="margin-top:4px;border-top:1px solid #475569;padding-top:4px">Total: <b>${total.toFixed(2)}h</b></div>`;
         return html;
       },
     },
-    legend: {
-      data: ["Horas Normais", "Horas Extras", "Sobreaviso"],
-      textStyle: { color: "#cbd5e1" },
-      top: 0,
-    },
-    grid: { left: "28%", right: "6%", top: "10%", bottom: "5%", containLabel: false },
-    xAxis: {
-      type: "value",
-      name: "Horas",
-      nameTextStyle: { color: "#94a3b8" },
-      axisLabel: { color: "#94a3b8", formatter: (v) => `${v}h` },
-      splitLine: { lineStyle: { color: "#1e293b" } },
-    },
-    yAxis: {
-      type: "category",
-      data: colSlice,
-      axisLabel: { color: "#e2e8f0", fontSize: 11, overflow: "truncate", width: 200 },
-      axisTick: { show: false },
-    },
-    series: [
-      { name: "Horas Normais", type: "bar", stack: "total", data: truncated ? normalH.slice(0, maxItems)  : normalH,  itemStyle: { color: "#3b82f6" } },
-      { name: "Horas Extras",  type: "bar", stack: "total", data: truncated ? extraH.slice(0, maxItems)   : extraH,   itemStyle: { color: "#f59e0b" } },
-      { name: "Sobreaviso",    type: "bar", stack: "total", data: truncated ? standbyH.slice(0, maxItems) : standbyH, itemStyle: { color: "#8b5cf6" } },
-    ],
-    title: {
-      text: cycle.is_quarantine ? `${cycle.name}  ⚠ QUARENTENA` : cycle.name,
-      subtext: `${cycle.start_date}  →  ${cycle.end_date}${truncated ? `   (top ${maxItems} de ${collaborators.length})` : ""}`,
-      textStyle: { color: "#f1f5f9", fontSize: 13 },
-      subtextStyle: { color: "#64748b" },
-      left: "center",
-    },
-  };
 
-  chart.setOption(option, { notMerge: true });
+    xAxis: {
+      type: 'value',
+      name: 'Horas',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
+
+    yAxis: {
+      type: 'category',
+      data: categories,
+      axisTick: { show: false },
+      axisLabel: {
+        fontSize: 10,
+        lineHeight: 16,
+        formatter: name => {
+          const d = byName[name];
+          if (!d) return name;
+          const t = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
+          const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
+          return (
+            `{nm|${nm}}\n` +
+            `{hr|N: ${d.normal_hours.toFixed(1)}h  ` +
+            `E: ${d.extra_hours.toFixed(1)}h  ` +
+            `S: ${d.standby_hours.toFixed(1)}h  ` +
+            `T: ${t}h}`
+          );
+        },
+        rich: {
+          nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
+          hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
+        },
+      },
+    },
+
+    series: [
+      { name: 'Horas Normais', type: 'bar', stack: 'total', data: normalH,  itemStyle: { color: '#3b82f6' }, barMaxWidth: 32 },
+      { name: 'Horas Extras',  type: 'bar', stack: 'total', data: extraH,   itemStyle: { color: '#f59e0b' }, barMaxWidth: 32 },
+      { name: 'Sobreaviso',    type: 'bar', stack: 'total', data: standbyH, itemStyle: { color: '#8b5cf6' }, barMaxWidth: 32 },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+async function apiFetch(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+function notify(msg, type = 'info') {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
 function fmt(h) {
-  return h >= 1000
-    ? (h / 1000).toFixed(1) + "k"
-    : h.toFixed(1);
+  return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : h.toFixed(1);
 }
-
-window.addEventListener("resize", () => chart.resize());
 
 // ---------------------------------------------------------------------------
 // Init
