@@ -1,6 +1,6 @@
 /* PMAS — Frontend App (Vanilla JS + Apache ECharts) */
 
-const API = "http://127.0.0.1:8000";
+const API = "";
 
 // ---------------------------------------------------------------------------
 // DOM refs
