@@ -11,8 +11,22 @@ permissions:
 
 jobs:
   build:
-    name: Build pmas-linux-x64
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.artifact_name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: pmas-linux-x64
+            artifact_path: dist/pmas-linux-x64
+            extra_flags: --strip
+
+          - os: windows-latest
+            artifact_name: pmas-windows-x64.exe
+            artifact_path: dist/pmas-windows-x64.exe
+            extra_flags: ""
 
     steps:
       - name: Checkout repository
@@ -29,7 +43,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      - name: Build standalone executable
+      - name: Build standalone executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           pyinstaller \
             --onefile \
@@ -54,7 +69,32 @@ jobs:
             --collect-all openpyxl \
             run.py
 
+      - name: Build standalone executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pyinstaller `
+            --onefile `
+            --name pmas-windows-x64 `
+            --add-data "frontend;frontend" `
+            --hidden-import uvicorn.logging `
+            --hidden-import uvicorn.loops `
+            --hidden-import uvicorn.loops.auto `
+            --hidden-import uvicorn.protocols `
+            --hidden-import uvicorn.protocols.http `
+            --hidden-import uvicorn.protocols.http.auto `
+            --hidden-import uvicorn.protocols.websockets `
+            --hidden-import uvicorn.protocols.websockets.auto `
+            --hidden-import uvicorn.lifespan `
+            --hidden-import uvicorn.lifespan.on `
+            --hidden-import fastapi `
+            --hidden-import sqlalchemy.dialects.sqlite `
+            --hidden-import multipart `
+            --hidden-import anyio `
+            --hidden-import h11 `
+            --collect-all openpyxl `
+            run.py
+
       - name: Upload executable to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/pmas-linux-x64
+          files: ${{ matrix.artifact_path }}

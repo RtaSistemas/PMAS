@@ -158,20 +158,27 @@ async function onCycleChange() {
 }
 
 async function onPepChange() {
+  updateLoadBtn();
   refreshPepDescriptions();
   await refreshCollaborators();
 }
 
 async function onPepDescChange() {
+  updateLoadBtn();
   await refreshCollaborators();
 }
 
 async function onCollabChange() {
+  updateLoadBtn();
   await refreshPeps();
 }
 
 function updateLoadBtn() {
-  loadBtn.disabled = cycleMs.getValues().length === 0;
+  const hasFilter = cycleMs.getValues().length > 0 ||
+                    pepMs.getValues().length > 0 ||
+                    pepDescMs.getValues().length > 0 ||
+                    collaboratorMs.getValues().length > 0;
+  loadBtn.disabled = !hasFilter;
 }
 
 async function loadCycles() {
@@ -274,31 +281,49 @@ uploadZone.addEventListener('drop', e => {
 });
 
 // ---------------------------------------------------------------------------
-// Load dashboard — one chart per selected cycle
+// Load dashboard — one chart per selected cycle (or whole base if no cycle)
 // ---------------------------------------------------------------------------
 loadBtn.addEventListener('click', async () => {
-  const cycleIds = cycleMs.getValues();
-  if (!cycleIds.length) return;
+  const cycleIds   = cycleMs.getValues();
+  const pepCodes   = pepMs.getValues();
+  const pepDescs   = pepDescMs.getValues();
+  const collabIds  = collaboratorMs.getValues();
+
+  const hasAny = cycleIds.length || pepCodes.length || pepDescs.length || collabIds.length;
+  if (!hasAny) return;
 
   loadBtn.disabled = true;
   loadBtn.textContent = 'Carregando…';
 
-  try {
-    for (const cycleId of cycleIds) {
-      const params = new URLSearchParams();
-      pepMs.getValues().forEach(c => params.append('pep_code', c));
-      pepDescMs.getValues().forEach(d => params.append('pep_description', d));
-      collaboratorMs.getValues().forEach(id => params.append('collaborator_id', id));
+  const buildParams = () => {
+    const p = new URLSearchParams();
+    pepCodes.forEach(c  => p.append('pep_code', c));
+    pepDescs.forEach(d  => p.append('pep_description', d));
+    collabIds.forEach(id => p.append('collaborator_id', id));
+    return p;
+  };
 
+  try {
+    if (cycleIds.length === 0) {
+      // No cycle selected — use the whole database with the active filters
       try {
-        const json = await apiFetch(`/api/dashboard/${cycleId}?${params}`);
+        const json = await apiFetch(`/api/dashboard?${buildParams()}`);
         addChartPanel(json);
       } catch (err) {
-        notify(`Erro no ciclo ${cycleId}: ${err.message}`, 'error');
+        notify(`Erro: ${err.message}`, 'error');
+      }
+    } else {
+      for (const cycleId of cycleIds) {
+        try {
+          const json = await apiFetch(`/api/dashboard/${cycleId}?${buildParams()}`);
+          addChartPanel(json);
+        } catch (err) {
+          notify(`Erro no ciclo ${cycleId}: ${err.message}`, 'error');
+        }
       }
     }
   } finally {
-    loadBtn.disabled = cycleMs.getValues().length === 0;
+    updateLoadBtn();
     loadBtn.textContent = 'Carregar';
   }
 });
@@ -307,6 +332,7 @@ clearBtn.addEventListener('click', () => {
   pepMs.clear();
   pepDescMs.clear();
   collaboratorMs.clear();
+  updateLoadBtn();
   refreshPepDescriptions();
   refreshCollaborators();
 });
@@ -422,7 +448,7 @@ function buildChartOption(payload) {
 
     title: {
       text: cycle.is_quarantine ? `${cycle.name}  ⚠ QUARENTENA` : cycle.name,
-      subtext: `${cycle.start_date}  →  ${cycle.end_date}${truncNote}`,
+      subtext: cycle.start_date ? `${cycle.start_date}  →  ${cycle.end_date}${truncNote}` : truncNote.trim(),
       left: 'center',
       top: 4,
       textStyle:    { color: '#f1f5f9', fontSize: 13, fontWeight: 600 },
