@@ -4,45 +4,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**PMAS** (Project Management Assistant System) is a timesheet management and analytics dashboard. It allows project managers to upload CSV/XLSX timesheet exports and visualize employee work hours aggregated by project codes (PEPs/WBS).
+**PMAS** (Project Management Assistant System) is a timesheet management and analytics dashboard. Project managers upload CSV/XLSX timesheet exports and visualize employee work hours through three analytics views: Team Effort, Portfolio Health, and Trends.
 
-**Stack:** Python 3 + FastAPI backend, Vanilla JS + Apache ECharts frontend, SQLite database. The UI is fully in Portuguese (pt-BR).
+**Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
 ## Running the Project
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Start the dev server (http://127.0.0.1:8000)
 python -m uvicorn backend.app.main:app --reload
 ```
 
-Access the app at `http://127.0.0.1:8000/frontend/index.html`. There is no build step — the frontend is plain HTML + JS.
+Access the app at `http://127.0.0.1:8000`. No build step — the frontend is plain HTML + JS served as static files.
 
-No test suite or linting configuration exists in this project.
+## Running Tests
+
+```bash
+pip install pytest httpx
+pytest tests/ -v
+```
+
+91 tests across 6 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Architecture
 
 ### Backend (`backend/app/`)
 
-- **`main.py`** — FastAPI app with all route definitions. Handles CORS for localhost, mounts static frontend files, and exposes the REST API under `/api/`.
-- **`models.py`** — Three SQLAlchemy ORM models: `Collaborator`, `Cycle`, and `TimesheetRecord`. `TimesheetRecord` is the core entity linking collaborators, billing cycles, and PEP codes with three hour types (`normal_hours`, `extra_hours`, `standby_hours`).
-- **`database.py`** — SQLite configuration (`pmas.db` in the project root). Uses `get_db()` as a FastAPI dependency for session injection. DB is auto-initialized on startup via `init_db()`.
-- **`services/ingestion.py`** — Parses uploaded CSV/XLSX files using pandas. Dynamically creates `Collaborator` and `Cycle` records as needed. Creates "Quarantine" cycles for dates that fall outside any registered cycle (preserving all data).
+- **`main.py`** — Slim FastAPI app (~80 lines): CORS middleware, `include_router` for the 5 router modules, static file mount, root redirect, startup hook (`init_db`), and the upload endpoint.
+- **`models.py`** — Four SQLAlchemy ORM models:
+  - `Collaborator` — unique name, linked to records
+  - `Cycle` — billing period with `start_date`, `end_date`, `is_quarantine` flag
+  - `TimesheetRecord` — core entity linking collaborator + cycle + PEP + 4 hour fields (`normal_hours`, `extra_hours`, `standby_hours`, `cost_per_hour`)
+  - `Project` — PEP registry with `budget_hours` for EVM tracking
+- **`schemas.py`** — Pydantic input models: `CycleIn`, `ProjectIn`.
+- **`database.py`** — SQLite engine, `get_db()` dependency, `init_db()` (runs `create_all` + `_migrate_columns`). `_migrate_columns()` applies `ALTER TABLE` for columns added after the initial schema, so existing `pmas.db` files are upgraded safely on startup.
+- **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Auto-creates `Collaborator` and `Cycle` records. Creates quarantine cycles for dates outside any registered cycle. Deduplicates in-batch and across calls.
+
+### Backend Routers (`backend/app/routers/`)
+
+| File | Prefix | Responsibility |
+|---|---|---|
+| `cycles.py` | `/api/cycles` | CRUD for billing cycles |
+| `projects.py` | `/api/projects` | CRUD for projects/PEPs |
+| `dashboard.py` | `/api/dashboard` | Hour aggregation by collaborator |
+| `reference.py` | `/api` | `/collaborators` and `/peps` for cascading filters |
+| `analytics.py` | `/api` | `/portfolio-health` and `/trends` for analytics tabs |
 
 ### Frontend (`frontend/`)
 
-- **`app.js`** — All client logic. Fetches data from `http://127.0.0.1:8000` (hardcoded). Implements cascading dropdowns (cycle → PEP code → PEP description → collaborator) with in-memory caching of PEP data. Renders an ECharts horizontal stacked bar chart (capped at 40 collaborators).
-- **`index.html`** — Static HTML with embedded CSS. Dark theme using a slate/blue palette.
+- **`index.html`** — Three top-level tabs (Dashboard, Ciclos, Projetos). Dashboard contains a shared filter card and three analytics sub-tabs.
+- **`style.css`** — Dark slate/blue theme. Includes styles for analytics sub-tabs, treemap legend, bullet chart thresholds, and empty states.
+- **`multiselect.js`** — Self-contained `MultiSelect` component (cascading dropdowns).
+- **`app.js`** — All client logic:
+  - ECharts instance registry with `dispose()` on sub-tab switch and `ResizeObserver` for responsiveness
+  - Three render functions: `_renderEffortTab()`, `_renderPortfolioTab()`, `_renderTrendsTab()`
+  - Chart option builders: effort bars, budget comparison, treemap, bullet chart, trends line
+  - Cycles and Projects CRUD (modals)
+  - Upload and filter cascade logic
 
 ### Data Flow
 
-1. User uploads a CSV/XLSX → `POST /api/upload-timesheet` → `ingest_file()` parses with pandas → creates/finds `Collaborator` + `Cycle` rows → inserts `TimesheetRecord` rows.
-2. On dashboard load, the browser calls `/api/dashboard/{cycle_id}` (with optional filters) → SQL GROUP BY aggregates hours per collaborator/PEP → browser renders the chart.
+1. **Upload:** `POST /api/upload-timesheet` → `ingest_file()` → creates `Collaborator` + `Cycle` rows → inserts `TimesheetRecord` rows.
+2. **Esforço da Equipe:** `/api/dashboard[/{cycle_id}]` → `GROUP BY collaborator` → horizontal stacked/grouped bar chart.
+3. **Saúde do Portfólio:** `/api/portfolio-health` → `GROUP BY pep_wbs` → joined with `Project` → Treemap + Bullet Chart.
+4. **Tendências:** `/api/trends` → `GROUP BY cycle` ordered by `start_date` (quarantine excluded) → Line chart.
 
 ### Key Behaviors
 
-- **PEP dual representation:** Each record stores both `pep_wbs` (machine code, e.g. `60OP-03333`) and `pep_description` (human label, e.g. `COPEL-D | OMS`). Filters can be applied on either independently.
-- **Quarantine cycles:** When ingested dates fall outside any existing cycle, a quarantine cycle is auto-created for that month so no data is silently dropped.
+- **PEP dual representation:** Each record stores `pep_wbs` (machine code) and `pep_description` (human label). Filters apply on either independently.
+- **Quarantine cycles:** Dates outside any registered cycle auto-create a quarantine cycle — no data is silently dropped. Quarantine cycles are excluded from the Trends chart.
+- **`cost_per_hour` placeholder:** Set to `0.0` on ingestion. Reserved for a future RateCard module that will freeze hourly costs at ingestion time for EVM financial tracking.
+- **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for any new columns so that production databases are upgraded non-destructively.
+- **ECharts management:** Charts are initialized only after their container is visible. `dispose()` is called when leaving a sub-tab. A single `ResizeObserver` on `<main>` handles all resize events.
 - **Expected CSV columns:** `Colaborador`, `Data`, `Horas totais (decimal)` (required); `Hora extra`, `Hora sobreaviso`, `Código PEP`, `PEP` (optional).
