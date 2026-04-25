@@ -1,0 +1,205 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Annotated, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from backend.app.database import get_db
+from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
+
+router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+DbSession = Annotated[Session, Depends(get_db)]
+
+
+def _compute_budget_vs_actual(
+    db: Session,
+    pep_codes: List[str],
+    cycle_id: Optional[int] = None,
+    collaborator_ids: Optional[List[int]] = None,
+) -> list:
+    if pep_codes:
+        projects = (
+            db.query(Project)
+            .filter(Project.pep_wbs.in_(pep_codes), Project.budget_hours.isnot(None))
+            .all()
+        )
+    else:
+        projects = db.query(Project).filter(Project.budget_hours.isnot(None)).all()
+
+    if not projects:
+        return []
+
+    budget_peps = [p.pep_wbs for p in projects]
+    q = (
+        db.query(
+            TimesheetRecord.pep_wbs,
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+        )
+        .filter(TimesheetRecord.pep_wbs.in_(budget_peps))
+    )
+    if cycle_id is not None:
+        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+    if collaborator_ids:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_ids))
+
+    actual_by_pep = {
+        r.pep_wbs: r.total_hours or 0.0
+        for r in q.group_by(TimesheetRecord.pep_wbs).all()
+    }
+
+    return sorted(
+        [
+            {
+                "pep_wbs": p.pep_wbs,
+                "name": p.name,
+                "budget_hours": p.budget_hours,
+                "actual_hours": actual_by_pep.get(p.pep_wbs, 0.0),
+            }
+            for p in projects
+        ],
+        key=lambda x: x["budget_hours"],
+        reverse=True,
+    )
+
+
+def _aggregate_hours(rows) -> tuple[dict, list]:
+    """Returns (per_collaborator_totals, breakdown_list)."""
+    per_collab: dict[str, dict] = defaultdict(
+        lambda: {"normal_hours": 0.0, "extra_hours": 0.0, "standby_hours": 0.0}
+    )
+    breakdown = []
+    for r in rows:
+        per_collab[r.collaborator]["normal_hours"] += r.normal_hours or 0.0
+        per_collab[r.collaborator]["extra_hours"] += r.extra_hours or 0.0
+        per_collab[r.collaborator]["standby_hours"] += r.standby_hours or 0.0
+        breakdown.append(
+            {
+                "collaborator": r.collaborator,
+                "pep_code": r.pep_wbs,
+                "pep_description": r.pep_description,
+                "normal_hours": r.normal_hours or 0.0,
+                "extra_hours": r.extra_hours or 0.0,
+                "standby_hours": r.standby_hours or 0.0,
+            }
+        )
+    chart_data = [
+        {"collaborator": name, **hours}
+        for name, hours in sorted(
+            per_collab.items(),
+            key=lambda x: -(
+                x[1]["normal_hours"] + x[1]["extra_hours"] + x[1]["standby_hours"]
+            ),
+        )
+    ]
+    return chart_data, breakdown
+
+
+def _base_query(db: Session):
+    return db.query(
+        Collaborator.id.label("collaborator_id"),
+        Collaborator.name.label("collaborator"),
+        TimesheetRecord.pep_wbs,
+        TimesheetRecord.pep_description,
+        func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+        func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+        func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+    ).join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+
+
+@router.get("", summary="Dashboard sem filtro de ciclo — toda a base")
+def get_dashboard_all(
+    db: DbSession,
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+):
+    q = _base_query(db)
+    if pep_code:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+
+    rows = q.group_by(TimesheetRecord.collaborator_id).order_by(Collaborator.name).all()
+    chart_data, _ = _aggregate_hours(rows)
+
+    return {
+        "cycle": {
+            "id": None,
+            "name": "Toda a base",
+            "start_date": None,
+            "end_date": None,
+            "is_quarantine": False,
+        },
+        "filters": {
+            "pep_codes": pep_code,
+            "pep_descriptions": pep_description,
+            "collaborator_ids": collaborator_id,
+        },
+        "data": chart_data,
+        "breakdown": [],
+        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, None, collaborator_id),
+    }
+
+
+@router.get("/{cycle_id}", summary="Dashboard de horas por ciclo")
+def get_dashboard(
+    cycle_id: int,
+    db: DbSession,
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+):
+    cycle = db.get(Cycle, cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
+
+    q = _base_query(db).filter(TimesheetRecord.cycle_id == cycle_id)
+    if pep_code:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+
+    if not pep_description:
+        rows = (
+            q.group_by(TimesheetRecord.collaborator_id, TimesheetRecord.pep_description)
+            .order_by(Collaborator.name, TimesheetRecord.pep_description)
+            .all()
+        )
+    else:
+        rows = (
+            q.group_by(TimesheetRecord.collaborator_id)
+            .order_by(Collaborator.name)
+            .all()
+        )
+
+    chart_data, breakdown = _aggregate_hours(rows)
+
+    return {
+        "cycle": {
+            "id": cycle.id,
+            "name": cycle.name,
+            "start_date": cycle.start_date.isoformat(),
+            "end_date": cycle.end_date.isoformat(),
+            "is_quarantine": cycle.is_quarantine,
+        },
+        "filters": {
+            "pep_codes": pep_code,
+            "pep_descriptions": pep_description,
+            "collaborator_ids": collaborator_id,
+        },
+        "data": chart_data,
+        "breakdown": breakdown,
+        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, cycle_id, collaborator_id),
+    }
