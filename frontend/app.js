@@ -1,9 +1,9 @@
 /* PMAS — Frontend App */
 
 // ---------------------------------------------------------------------------
-// Tab navigation
+// Top-level tab navigation
 // ---------------------------------------------------------------------------
-const tabBtns = document.querySelectorAll('.tab-btn');
+const tabBtns     = document.querySelectorAll('.tab-btn');
 const tabSections = document.querySelectorAll('.tab-section');
 
 tabBtns.forEach(btn => {
@@ -19,7 +19,72 @@ tabBtns.forEach(btn => {
 });
 
 // ---------------------------------------------------------------------------
-// Dashboard — DOM refs and multi-select
+// Analytics sub-tab navigation + ECharts instance registry
+// ---------------------------------------------------------------------------
+
+// Chart instance registry — keyed by DOM element id
+const _charts = {};
+
+// Which chart IDs belong to each sub-tab (to dispose on leave)
+const CHARTS_PER_TAB = {
+  effort:    ['effortChart', 'budgetChart'],
+  portfolio: ['treemapChart', 'bulletChart'],
+  trends:    ['trendsChart'],
+};
+
+function _disposeTabCharts(tabId) {
+  (CHARTS_PER_TAB[tabId] || []).forEach(id => {
+    if (_charts[id] && !_charts[id].isDisposed()) {
+      _charts[id].dispose();
+    }
+    delete _charts[id];
+  });
+}
+
+function _getOrCreateChart(id) {
+  if (!_charts[id] || _charts[id].isDisposed()) {
+    _charts[id] = echarts.init(document.getElementById(id), 'dark');
+  }
+  return _charts[id];
+}
+
+// ResizeObserver — resize all live charts when container changes
+const _ro = new ResizeObserver(() => {
+  Object.values(_charts).forEach(c => { try { if (!c.isDisposed()) c.resize(); } catch (_) {} });
+});
+_ro.observe(document.querySelector('main'));
+
+// Sub-tab state
+let _activeATab = 'effort';
+let _stackMode  = true;   // true = stacked, false = grouped
+
+const atabBtns     = document.querySelectorAll('.atab-btn');
+const atabSections = document.querySelectorAll('.atab-section');
+
+atabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    _disposeTabCharts(_activeATab);
+    atabBtns.forEach(b => b.classList.remove('active'));
+    atabSections.forEach(s => s.hidden = true);
+    btn.classList.add('active');
+    _activeATab = btn.dataset.atab;
+    document.getElementById(`atab-${_activeATab}`).hidden = false;
+    _renderActiveTab();
+  });
+});
+
+document.getElementById('stackToggleBtn').addEventListener('click', () => {
+  _stackMode = !_stackMode;
+  document.getElementById('stackToggleBtn').textContent =
+    _stackMode ? 'Vista: Empilhada' : 'Vista: Agrupada';
+  const ch = _charts['effortChart'];
+  if (ch && !ch.isDisposed()) {
+    ch.setOption(_buildEffortSeriesOnly(_stackMode), false);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard — DOM refs and multi-selects
 // ---------------------------------------------------------------------------
 const csvInput   = document.getElementById('csvInput');
 const uploadZone = document.getElementById('uploadZone');
@@ -33,56 +98,54 @@ const collaboratorMs = new MultiSelect(document.getElementById('collaboratorMs')
 
 let pepDataCache = {};
 
-// ---------------------------------------------------------------------------
-// Cascading dropdowns
-// ---------------------------------------------------------------------------
-async function onCycleChange()    { updateLoadBtn(); await Promise.all([refreshPeps(), refreshCollaborators()]); }
-async function onPepChange()      { updateLoadBtn(); refreshPepDescriptions(); await refreshCollaborators(); }
-async function onPepDescChange()  { updateLoadBtn(); await refreshCollaborators(); }
-async function onCollabChange()   { updateLoadBtn(); await refreshPeps(); }
+async function onCycleChange()    { await Promise.all([refreshPeps(), refreshCollaborators()]); }
+async function onPepChange()      { refreshPepDescriptions(); await refreshCollaborators(); }
+async function onPepDescChange()  { await refreshCollaborators(); }
+async function onCollabChange()   { await refreshPeps(); }
 
-function updateLoadBtn() {
-  loadBtn.disabled = !(cycleMs.getValues().length || pepMs.getValues().length ||
-                        pepDescMs.getValues().length || collaboratorMs.getValues().length);
-}
-
+// ---------------------------------------------------------------------------
+// Filter cascade helpers
+// ---------------------------------------------------------------------------
 async function loadDashboardCycles() {
   try {
-    const list = await apiFetch('/api/cycles');
-    cycleMs.setItems(list.map(c => ({ value: String(c.id), label: c.name + (c.is_quarantine ? ' ⚠' : '') })), true);
-    updateLoadBtn();
-  } catch (err) { notify(`Erro ao carregar ciclos: ${err.message}`, 'error'); }
+    const cycles = await apiFetch('/api/cycles');
+    cycleMs.setItems(cycles.map(c => ({ value: c.id, label: c.name })));
+  } catch (e) { notify(`Erro ao carregar ciclos: ${e.message}`, 'error'); }
 }
 
 async function refreshPeps() {
-  const params = new URLSearchParams();
-  cycleMs.getValues().forEach(id => params.append('cycle_id', id));
-  collaboratorMs.getValues().forEach(id => params.append('collaborator_id', id));
+  const cycleIds  = cycleMs.getValues();
+  const collabIds = collaboratorMs.getValues();
+  const p = new URLSearchParams();
+  cycleIds.forEach(id  => p.append('cycle_id', id));
+  collabIds.forEach(id => p.append('collaborator_id', id));
   try {
-    const data = await apiFetch(`/api/peps?${params}`);
+    const peps = await apiFetch(`/api/peps?${p}`);
     pepDataCache = {};
-    data.forEach(p => { pepDataCache[p.code] = p; });
-    pepMs.setItems(data.map(p => ({ value: p.code, label: `${p.code}  (${p.total_records} reg.)` })), true);
+    peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
+    pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (err) { notify(`Erro ao carregar PEPs: ${err.message}`, 'error'); }
+  } catch (_) {}
 }
 
 function refreshPepDescriptions() {
-  const sel = pepMs.getValues();
-  const src = sel.length > 0 ? sel.map(c => pepDataCache[c]).filter(Boolean) : Object.values(pepDataCache);
-  const descs = [...new Set(src.flatMap(p => p.descriptions))].sort();
+  const selected = pepMs.getValues();
+  const descs = [...new Set(selected.flatMap(code => pepDataCache[code] || []))];
   pepDescMs.setItems(descs.map(d => ({ value: d, label: d })), true);
 }
 
 async function refreshCollaborators() {
-  const params = new URLSearchParams();
-  cycleMs.getValues().forEach(id => params.append('cycle_id', id));
-  pepMs.getValues().forEach(c  => params.append('pep_code', c));
-  pepDescMs.getValues().forEach(d => params.append('pep_description', d));
+  const cycleIds = cycleMs.getValues();
+  const pepCodes = pepMs.getValues();
+  const pepDescs = pepDescMs.getValues();
+  const p = new URLSearchParams();
+  cycleIds.forEach(id => p.append('cycle_id', id));
+  pepCodes.forEach(c  => p.append('pep_code', c));
+  pepDescs.forEach(d  => p.append('pep_description', d));
   try {
-    const list = await apiFetch(`/api/collaborators?${params}`);
-    collaboratorMs.setItems(list.map(c => ({ value: String(c.id), label: c.name })), true);
-  } catch (err) { notify(`Erro ao carregar colaboradores: ${err.message}`, 'error'); }
+    const collabs = await apiFetch(`/api/collaborators?${p}`);
+    collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
+  } catch (_) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -97,10 +160,11 @@ csvInput.addEventListener('change', async () => {
     const json = await res.json();
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
     let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
-    if (json.records_skipped > 0) msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
+    if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
     if (json.quarantine_cycles_created > 0) msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s).`;
     notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
     await loadDashboardCycles();
+    _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
 });
 
@@ -113,126 +177,254 @@ uploadZone.addEventListener('drop', e => {
 });
 
 // ---------------------------------------------------------------------------
-// Load dashboard
+// Load button
 // ---------------------------------------------------------------------------
-loadBtn.addEventListener('click', async () => {
+loadBtn.addEventListener('click', () => _renderActiveTab());
+
+clearBtn.addEventListener('click', () => {
+  cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
+  pepDataCache = {};
+  _disposeTabCharts('effort');
+  _disposeTabCharts('portfolio');
+  _disposeTabCharts('trends');
+  document.getElementById('effortStats').innerHTML = '';
+  document.getElementById('budgetPanel').hidden  = true;
+  document.getElementById('bulletPanel').hidden  = true;
+  _showEmpty('effortEmpty',    false);
+  _showEmpty('portfolioEmpty', false);
+  _showEmpty('trendsEmpty',    false);
+});
+
+// ---------------------------------------------------------------------------
+// Analytics — render dispatcher
+// ---------------------------------------------------------------------------
+async function _renderActiveTab() {
+  if (_activeATab === 'effort')    await _renderEffortTab();
+  if (_activeATab === 'portfolio') await _renderPortfolioTab();
+  if (_activeATab === 'trends')    await _renderTrendsTab();
+}
+
+function _showEmpty(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.hidden = !show;
+}
+
+// ---------------------------------------------------------------------------
+// Esforço da Equipe
+// ---------------------------------------------------------------------------
+async function _renderEffortTab() {
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
   const collabIds = collaboratorMs.getValues();
-  if (!(cycleIds.length || pepCodes.length || pepDescs.length || collabIds.length)) return;
 
-  loadBtn.disabled = true; loadBtn.textContent = 'Carregando…';
-
-  const buildParams = () => {
-    const p = new URLSearchParams();
-    pepCodes.forEach(c  => p.append('pep_code', c));
-    pepDescs.forEach(d  => p.append('pep_description', d));
-    collabIds.forEach(id => p.append('collaborator_id', id));
-    return p;
-  };
+  const p = new URLSearchParams();
+  pepCodes.forEach(c  => p.append('pep_code', c));
+  pepDescs.forEach(d  => p.append('pep_description', d));
+  collabIds.forEach(id => p.append('collaborator_id', id));
 
   try {
+    let payload;
     if (cycleIds.length === 0) {
-      try { addChartPanel(await apiFetch(`/api/dashboard?${buildParams()}`)); }
-      catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+      payload = await apiFetch(`/api/dashboard?${p}`);
     } else {
-      for (const cycleId of cycleIds) {
-        try { addChartPanel(await apiFetch(`/api/dashboard/${cycleId}?${buildParams()}`)); }
-        catch (err) { notify(`Erro no ciclo ${cycleId}: ${err.message}`, 'error'); }
-      }
+      payload = await apiFetch(`/api/dashboard/${cycleIds[0]}?${p}`);
     }
-  } finally { updateLoadBtn(); loadBtn.textContent = 'Carregar'; }
-});
 
-clearBtn.addEventListener('click', () => {
-  pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
-  updateLoadBtn(); refreshPepDescriptions(); refreshCollaborators();
-});
+    const data = payload.data || [];
+    const bva  = (payload.budget_vs_actual || []).filter(d => d.budget_hours > 0);
+
+    // Stats row
+    document.getElementById('effortStats').innerHTML = '';
+    document.getElementById('effortStats').appendChild(_buildStatsRow(data, bva));
+
+    // Title
+    document.getElementById('effortTitle').textContent = _buildEffortTitle(payload, cycleIds.length);
+
+    if (data.length === 0) {
+      _showEmpty('effortEmpty', true);
+      _disposeTabCharts('effort');
+      document.getElementById('budgetPanel').hidden = true;
+      return;
+    }
+    _showEmpty('effortEmpty', false);
+
+    // Effort chart
+    const h = calcHeight(data.length);
+    document.getElementById('effortChart').style.height = `${h}px`;
+    const ch = _getOrCreateChart('effortChart');
+    ch.setOption(_buildEffortOption(data, _stackMode), true);
+    ch.resize();
+
+    // Budget chart
+    if (bva.length > 0) {
+      document.getElementById('budgetPanel').hidden = false;
+      document.getElementById('budgetChart').style.height =
+        `${Math.max(220, bva.length * 56 + 80)}px`;
+      const bch = _getOrCreateChart('budgetChart');
+      bch.setOption(_buildBudgetOption(bva), true);
+      bch.resize();
+    } else {
+      document.getElementById('budgetPanel').hidden = true;
+    }
+  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+}
 
 // ---------------------------------------------------------------------------
-// Chart panels
+// Saúde do Portfólio
 // ---------------------------------------------------------------------------
-let _chartSeq = 0;
+async function _renderPortfolioTab() {
+  const cycleIds = cycleMs.getValues();
+  const pepCodes = pepMs.getValues();
+  const p = new URLSearchParams();
+  if (cycleIds.length > 0) p.set('cycle_id', cycleIds[0]);
+  pepCodes.forEach(c => p.append('pep_wbs', c));
 
-function addChartPanel(payload) {
-  const id = `chart-${++_chartSeq}`;
-  const budgetData = (payload.budget_vs_actual || []).filter(d => d.budget_hours > 0);
-  const panel = document.createElement('div'); panel.className = 'chart-panel card';
-  const header = document.createElement('div'); header.className = 'panel-header';
-  const titleEl = document.createElement('div'); titleEl.className = 'panel-title'; titleEl.textContent = buildPanelTitle(payload);
-  const closeBtn = document.createElement('button'); closeBtn.className = 'panel-close'; closeBtn.title = 'Fechar'; closeBtn.textContent = '×';
-  header.appendChild(titleEl); header.appendChild(closeBtn); panel.appendChild(header);
-  panel.appendChild(buildStatsRow(payload.data, budgetData));
-  const chartDiv = document.createElement('div'); chartDiv.id = id;
-  chartDiv.style.cssText = `width:100%;height:${calcHeight(payload.data.length)}px`;
-  panel.appendChild(chartDiv);
-  let budgetDiv = null;
-  if (budgetData.length > 0) {
-    const sep = document.createElement('div');
-    sep.style.cssText = 'border-top:1px solid #334155;margin:1.25rem 0 0.75rem';
-    const budgetLbl = document.createElement('div');
-    budgetLbl.style.cssText = 'font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5rem';
-    budgetLbl.textContent = 'Orçado vs. Realizado por PEP';
-    budgetDiv = document.createElement('div');
-    budgetDiv.style.cssText = `width:100%;height:${Math.max(220, budgetData.length * 56 + 80)}px`;
-    panel.appendChild(sep); panel.appendChild(budgetLbl); panel.appendChild(budgetDiv);
-  }
-  document.getElementById('chartsContainer').prepend(panel);
-  const toDispose = []; const toUnlisten = [];
-  const instance = echarts.init(chartDiv, 'dark');
-  instance.setOption(buildChartOption(payload));
-  const onResize = () => instance.resize(); window.addEventListener('resize', onResize);
-  toDispose.push(instance); toUnlisten.push(onResize);
-  if (budgetDiv) {
-    const bInst = echarts.init(budgetDiv, 'dark');
-    bInst.setOption(buildBudgetChartOption(budgetData));
-    const onBResize = () => bInst.resize(); window.addEventListener('resize', onBResize);
-    toDispose.push(bInst); toUnlisten.push(onBResize);
-  }
-  closeBtn.addEventListener('click', () => { toUnlisten.forEach(fn => window.removeEventListener('resize', fn)); toDispose.forEach(inst => inst.dispose()); panel.remove(); });
+  try {
+    const health = await apiFetch(`/api/portfolio-health?${p}`);
+
+    if (!health.length) {
+      _showEmpty('portfolioEmpty', true);
+      _disposeTabCharts('portfolio');
+      document.getElementById('bulletPanel').hidden = true;
+      return;
+    }
+    _showEmpty('portfolioEmpty', false);
+
+    // Treemap
+    const tm = _getOrCreateChart('treemapChart');
+    tm.setOption(_buildTreemapOption(health), true);
+    tm.resize();
+
+    // Bullet chart — only for PEPs with registered budget
+    const withBudget = health.filter(d => d.budget_hours != null);
+    if (withBudget.length > 0) {
+      document.getElementById('bulletPanel').hidden = false;
+      document.getElementById('bulletChart').style.height =
+        `${Math.max(220, withBudget.length * 60 + 80)}px`;
+      const bc = _getOrCreateChart('bulletChart');
+      bc.setOption(_buildBulletOption(withBudget), true);
+      bc.resize();
+    } else {
+      document.getElementById('bulletPanel').hidden = true;
+    }
+  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
-function buildPanelTitle(payload) {
-  const { cycle, filters } = payload; let t = cycle.name;
-  if (filters.pep_codes?.length)        t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
-  if (filters.pep_descriptions?.length) t += `  →  ${filters.pep_descriptions.join(', ')}`;
-  return t;
+// ---------------------------------------------------------------------------
+// Tendências
+// ---------------------------------------------------------------------------
+async function _renderTrendsTab() {
+  const pepCodes = pepMs.getValues();
+  const p = new URLSearchParams();
+  pepCodes.forEach(c => p.append('pep_wbs', c));
+
+  try {
+    const trends = await apiFetch(`/api/trends?${p}`);
+
+    if (!trends.length) {
+      _showEmpty('trendsEmpty', true);
+      _disposeTabCharts('trends');
+      return;
+    }
+    _showEmpty('trendsEmpty', false);
+
+    const tc = _getOrCreateChart('trendsChart');
+    tc.setOption(_buildTrendsOption(trends), true);
+    tc.resize();
+  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
-function buildStatsRow(data, budgetData = []) {
-  let normal = 0, extra = 0, standby = 0;
-  data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
-  const total = normal + extra + standby;
-  const row = document.createElement('div'); row.className = 'stats-row';
-  const cards = [
-    { val: fmt(normal),  lbl: 'Horas Normais', cls: 'blue' },
-    { val: fmt(extra),   lbl: 'Horas Extras',  cls: 'amber' },
-    { val: fmt(standby), lbl: 'Sobreaviso',    cls: 'violet' },
-    { val: fmt(total),   lbl: 'Total',         cls: 'green' },
-    { val: data.length,  lbl: 'Colaboradores', cls: 'neutral' },
-  ];
-  if (budgetData.length > 0) {
-    const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
-    const totalActual = budgetData.reduce((s, d) => s + d.actual_hours, 0);
-    const pct = totalBudget > 0 ? (totalActual / totalBudget * 100).toFixed(1) : '—';
-    const over = totalBudget > 0 && totalActual > totalBudget;
-    cards.push(
-      { val: fmt(totalBudget), lbl: 'Orçado (PEPs c/ budget)', cls: 'neutral' },
-      { val: `${pct}%`,        lbl: 'Realizado vs Orçado',    cls: over ? 'red' : 'green' },
-    );
-  }
-  cards.forEach(({ val, lbl, cls }) => {
-    const card = document.createElement('div'); card.className = `stat-card ${cls}`;
-    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
-    row.appendChild(card);
-  });
-  return row;
-}
+// ---------------------------------------------------------------------------
+// Chart option builders
+// ---------------------------------------------------------------------------
 
 function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
 
-function buildBudgetChartOption(budgetData) {
+function _buildEffortTitle(payload, cycleCount) {
+  const { cycle, filters } = payload;
+  let t = cycleCount > 1 ? `${cycle.name} (+${cycleCount - 1} ciclo(s))` : cycle.name;
+  if (filters.pep_codes?.length) t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
+  return t;
+}
+
+function _buildEffortOption(data, stacked) {
+  const MAX   = 40;
+  const slice = data.length > MAX ? data.slice(0, MAX) : data;
+  const stack = stacked ? 'total' : undefined;
+  const byName = Object.fromEntries(data.map(d => [d.collaborator, d]));
+  const truncNote = data.length > MAX ? `  (top ${MAX} de ${data.length})` : '';
+
+  return {
+    backgroundColor: 'transparent',
+    title: {
+      subtext: truncNote.trim(),
+      left: 'center', top: 4,
+      subtextStyle: { color: '#64748b', fontSize: 11 },
+    },
+    legend: {
+      data: ['Horas Normais', 'Horas Extras', 'Sobreaviso'],
+      top: 8, left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24, itemWidth: 14, itemHeight: 10,
+    },
+    grid: { top: 44, right: '3%', bottom: 28, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue}</div>`;
+        let total = 0;
+        params.forEach(p => { if (p.value > 0) { html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(2)}h</b></div>`; total += p.value; } });
+        if (params.length > 1) html += `<div style="margin-top:4px;border-top:1px solid #475569;padding-top:4px">Total: <b>${total.toFixed(2)}h</b></div>`;
+        return html;
+      },
+    },
+    xAxis: {
+      type: 'value', name: 'Horas',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
+    yAxis: {
+      type: 'category',
+      data: slice.map(r => r.collaborator),
+      axisTick: { show: false },
+      axisLabel: {
+        fontSize: 10, lineHeight: 16,
+        formatter: name => {
+          const d = byName[name]; if (!d) return name;
+          const t = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
+          const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
+          return `{nm|${nm}}\n{hr|N: ${d.normal_hours.toFixed(1)}h  E: ${d.extra_hours.toFixed(1)}h  S: ${d.standby_hours.toFixed(1)}h  T: ${t}h}`;
+        },
+        rich: {
+          nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
+          hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
+        },
+      },
+    },
+    series: [
+      { name: 'Horas Normais', type: 'bar', stack, data: slice.map(r => +r.normal_hours.toFixed(2)),  itemStyle: { color: '#3b82f6' }, barMaxWidth: 32 },
+      { name: 'Horas Extras',  type: 'bar', stack, data: slice.map(r => +r.extra_hours.toFixed(2)),   itemStyle: { color: '#f59e0b' }, barMaxWidth: 32 },
+      { name: 'Sobreaviso',    type: 'bar', stack, data: slice.map(r => +r.standby_hours.toFixed(2)), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 32 },
+    ],
+  };
+}
+
+// Only update the stack property — avoids full re-render flicker
+function _buildEffortSeriesOnly(stacked) {
+  const stack = stacked ? 'total' : undefined;
+  return {
+    series: [
+      { name: 'Horas Normais', stack },
+      { name: 'Horas Extras',  stack },
+      { name: 'Sobreaviso',    stack },
+    ],
+  };
+}
+
+function _buildBudgetOption(budgetData) {
   const labels  = budgetData.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 30)}` : ''));
   const budgets = budgetData.map(d => +(d.budget_hours.toFixed(2)));
   const actuals = budgetData.map((d, i) => ({
@@ -241,7 +433,10 @@ function buildBudgetChartOption(budgetData) {
   }));
   return {
     backgroundColor: 'transparent',
-    legend: { data: ['Orçado', 'Realizado'], top: 8, left: 'center', textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10 },
+    legend: {
+      data: ['Orçado', 'Realizado'], top: 8, left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10,
+    },
     grid: { top: 44, right: '3%', bottom: 28, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'shadow' },
@@ -268,53 +463,223 @@ function buildBudgetChartOption(budgetData) {
   };
 }
 
-function buildChartOption(payload) {
-  const { cycle, data } = payload; const MAX = 40;
-  const slice = data.length > MAX ? data.slice(0, MAX) : data;
-  const byName = {}; data.forEach(d => { byName[d.collaborator] = d; });
-  const truncNote = data.length > MAX ? `   (top ${MAX} de ${data.length})` : '';
+function _buildTreemapOption(health) {
   return {
     backgroundColor: 'transparent',
-    title: {
-      text: cycle.is_quarantine ? `${cycle.name}  ⚠ QUARENTENA` : cycle.name,
-      subtext: cycle.start_date ? `${cycle.start_date}  →  ${cycle.end_date}${truncNote}` : truncNote.trim(),
-      left: 'center', top: 4,
-      textStyle: { color: '#f1f5f9', fontSize: 13, fontWeight: 600 },
-      subtextStyle: { color: '#64748b', fontSize: 11 },
-    },
-    legend: { data: ['Horas Normais', 'Horas Extras', 'Sobreaviso'], top: 52, left: 'center', textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10 },
-    grid: { top: 96, right: '3%', bottom: 28, left: '2%', containLabel: true },
     tooltip: {
-      trigger: 'axis', axisPointer: { type: 'shadow' },
+      trigger: 'item',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue}</div>`;
-        let total = 0;
-        params.forEach(p => { if (p.value > 0) { html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(2)}h</b></div>`; total += p.value; } });
-        if (params.length > 1) html += `<div style="margin-top:4px;border-top:1px solid #475569;padding-top:4px">Total: <b>${total.toFixed(2)}h</b></div>`;
+        const d = health.find(x => x.pep_wbs === params.name);
+        if (!d) return params.name;
+        let html = `<b>${d.pep_wbs}</b>`;
+        if (d.pep_description) html += `<br><span style="color:#94a3b8">${d.pep_description}</span>`;
+        if (d.name)            html += `<br>Projeto: ${d.name}`;
+        html += `<br>Consumido: <b>${d.consumed_hours.toFixed(1)}h</b>`;
+        if (d.budget_hours != null) {
+          const pct = (d.consumed_hours / d.budget_hours * 100).toFixed(1);
+          html += `<br>Budget: ${d.budget_hours.toFixed(1)}h (${pct}% utilizado)`;
+        }
+        if (!d.is_registered) html += `<br><span style="color:#f59e0b">⚠ PEP não cadastrado</span>`;
         return html;
       },
     },
-    xAxis: { type: 'value', name: 'Horas', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` }, splitLine: { lineStyle: { color: '#1e293b' } } },
-    yAxis: {
-      type: 'category', data: slice.map(r => r.collaborator), axisTick: { show: false },
-      axisLabel: {
-        fontSize: 10, lineHeight: 16,
-        formatter: name => {
-          const d = byName[name]; if (!d) return name;
-          const t = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-          const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
-          return `{nm|${nm}}\n{hr|N: ${d.normal_hours.toFixed(1)}h  E: ${d.extra_hours.toFixed(1)}h  S: ${d.standby_hours.toFixed(1)}h  T: ${t}h}`;
+    series: [{
+      type: 'treemap',
+      roam: false,
+      width: '100%',
+      height: '100%',
+      breadcrumb: { show: false },
+      label: {
+        show: true, fontSize: 11, color: '#f1f5f9',
+        formatter: params => {
+          const d = health.find(x => x.pep_wbs === params.name);
+          const h  = d ? d.consumed_hours.toFixed(0) + 'h' : '';
+          const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
+          return `${nm}\n${h}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
-        rich: { nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 }, hr: { color: '#64748b', fontSize: 9, lineHeight: 14 } },
+      },
+      itemStyle: { gapWidth: 2, borderRadius: 4 },
+      levels: [{
+        itemStyle: { borderWidth: 0, gapWidth: 4 },
+        upperLabel: { show: false },
+      }],
+      data: health.map(d => ({
+        name: d.pep_wbs,
+        value: d.consumed_hours,
+        itemStyle: {
+          color: !d.is_registered
+            ? '#475569'
+            : d.budget_hours != null && d.consumed_hours >= d.budget_hours
+              ? 'rgba(248,113,113,0.75)'
+              : 'rgba(59,130,246,0.75)',
+          borderColor: '#0f172a',
+        },
+      })),
+    }],
+  };
+}
+
+function _buildBulletOption(withBudget) {
+  const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
+  const budgets = withBudget.map(d => d.budget_hours || 0);
+  const actuals = withBudget.map((d, i) => {
+    const pct = budgets[i] > 0 ? d.consumed_hours / budgets[i] : 0;
+    const color = pct >= 1.0 ? '#f87171' : pct >= 0.75 ? '#f59e0b' : '#3b82f6';
+    return { value: +(d.consumed_hours.toFixed(2)), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
+  });
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 16, right: '10%', bottom: 16, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'none' },
+      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        const b = budgets[params[0].dataIndex];
+        const a = params.find(p => p.seriesName === 'Realizado')?.value ?? 0;
+        const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
+        let html = `<b>${params[0].axisValue.replace('\n', ' ')}</b><br>`;
+        html += `Orçado: <b>${b.toFixed(1)}h</b><br>Realizado: <b>${a.toFixed(1)}h</b><br>`;
+        html += `Utilização: <b>${pct}</b>`;
+        if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ Acima do orçado</span>`;
+        return html;
       },
     },
+    xAxis: {
+      type: 'value',
+      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#334155' } },
+    },
+    yAxis: {
+      type: 'category', data: labels,
+      axisTick: { show: false },
+      axisLabel: { color: '#e2e8f0', fontSize: 10, lineHeight: 16 },
+    },
     series: [
-      { name: 'Horas Normais', type: 'bar', stack: 'total', data: slice.map(r => +r.normal_hours.toFixed(2)),  itemStyle: { color: '#3b82f6' }, barMaxWidth: 32 },
-      { name: 'Horas Extras',  type: 'bar', stack: 'total', data: slice.map(r => +r.extra_hours.toFixed(2)),   itemStyle: { color: '#f59e0b' }, barMaxWidth: 32 },
-      { name: 'Sobreaviso',    type: 'bar', stack: 'total', data: slice.map(r => +r.standby_hours.toFixed(2)), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 32 },
+      {
+        name: 'Budget',
+        type: 'bar',
+        barMaxWidth: 48,
+        barGap: '-100%',
+        z: 1,
+        data: budgets.map(b => ({
+          value: b,
+          itemStyle: {
+            color: 'rgba(148,163,184,0.18)',
+            borderColor: 'rgba(148,163,184,0.35)',
+            borderWidth: 1,
+            borderRadius: [0, 3, 3, 0],
+          },
+        })),
+      },
+      {
+        name: 'Realizado',
+        type: 'bar',
+        barMaxWidth: 28,
+        barGap: '-100%',
+        z: 2,
+        data: actuals,
+        label: {
+          show: true,
+          position: 'right',
+          fontSize: 10,
+          color: '#e2e8f0',
+          formatter: params => {
+            const b = budgets[params.dataIndex];
+            return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
+          },
+        },
+      },
     ],
   };
+}
+
+function _buildTrendsOption(trends) {
+  const cats    = trends.map(d => d.cycle_name);
+  const normals = trends.map(d => +d.normal_hours.toFixed(2));
+  const extras  = trends.map(d => +d.extra_hours.toFixed(2));
+  return {
+    backgroundColor: 'transparent',
+    legend: {
+      data: ['Horas Normais', 'Horas Extras'],
+      top: 8, left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24, itemWidth: 18, itemHeight: 10,
+    },
+    grid: { top: 44, right: '3%', bottom: 48, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        let html = `<b>${params[0].axisValue}</b><br>`;
+        let total = 0;
+        params.forEach(p => { html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`; total += p.value; });
+        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total: <b>${total.toFixed(1)}h</b></div>`;
+        return html;
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: cats,
+      axisLabel: { color: '#94a3b8', rotate: cats.length > 6 ? 30 : 0, fontSize: 11 },
+      axisTick: { alignWithLabel: true },
+    },
+    yAxis: {
+      type: 'value', name: 'Horas',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#334155' } },
+    },
+    series: [
+      {
+        name: 'Horas Normais', type: 'line',
+        data: normals, smooth: true, symbol: 'circle', symbolSize: 7,
+        lineStyle: { color: '#3b82f6', width: 2.5 },
+        itemStyle: { color: '#3b82f6' },
+        areaStyle: { color: 'rgba(59,130,246,0.12)' },
+      },
+      {
+        name: 'Horas Extras', type: 'line',
+        data: extras, smooth: true, symbol: 'circle', symbolSize: 7,
+        lineStyle: { color: '#f59e0b', width: 2.5 },
+        itemStyle: { color: '#f59e0b' },
+        areaStyle: { color: 'rgba(245,158,11,0.10)' },
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Stats row (effort tab)
+// ---------------------------------------------------------------------------
+function _buildStatsRow(data, budgetData = []) {
+  let normal = 0, extra = 0, standby = 0;
+  data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
+  const total = normal + extra + standby;
+  const row   = document.createElement('div'); row.className = 'stats-row';
+  const cards = [
+    { val: fmt(normal),  lbl: 'Horas Normais', cls: 'blue'    },
+    { val: fmt(extra),   lbl: 'Horas Extras',  cls: 'amber'   },
+    { val: fmt(standby), lbl: 'Sobreaviso',    cls: 'violet'  },
+    { val: fmt(total),   lbl: 'Total',         cls: 'green'   },
+    { val: data.length,  lbl: 'Colaboradores', cls: 'neutral' },
+  ];
+  if (budgetData.length > 0) {
+    const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
+    const totalActual = budgetData.reduce((s, d) => s + d.actual_hours, 0);
+    const pct  = totalBudget > 0 ? (totalActual / totalBudget * 100).toFixed(1) : '—';
+    const over = totalBudget > 0 && totalActual > totalBudget;
+    cards.push(
+      { val: fmt(totalBudget), lbl: 'Orçado (PEPs c/ budget)', cls: 'neutral' },
+      { val: `${pct}%`,        lbl: 'Realizado vs Orçado',    cls: over ? 'red' : 'green' },
+    );
+  }
+  cards.forEach(({ val, lbl, cls }) => {
+    const card = document.createElement('div'); card.className = `stat-card ${cls}`;
+    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    row.appendChild(card);
+  });
+  return row;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,11 +688,13 @@ function buildChartOption(payload) {
 let _cycleEditId = null;
 
 async function loadCyclesTable() {
-  const tbody = document.getElementById('cyclesBody');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr>';
   try {
     const cycles = await apiFetch('/api/cycles');
-    if (!cycles.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo cadastrado.</td></tr>'; return; }
+    const tbody  = document.getElementById('cyclesBody');
+    if (!cycles.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo cadastrado.</td></tr>';
+      return;
+    }
     tbody.innerHTML = cycles.map(c => `
       <tr>
         <td>${escHtml(c.name)}</td>
@@ -337,60 +704,66 @@ async function loadCyclesTable() {
         <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
         <td><div class="actions">
           <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id},'${escHtml(c.name)}',${c.record_count})">Excluir</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, '${escHtml(c.name)}', ${c.record_count})">Excluir</button>
         </div></td>
       </tr>`).join('');
-  } catch (err) { tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;padding:1rem">${err.message}</td></tr>`; }
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 function openCycleModal(id = null) {
   _cycleEditId = id;
+  document.getElementById('cycleModalTitle').textContent = id ? 'Editar Ciclo' : 'Novo Ciclo';
   document.getElementById('cycleError').textContent = '';
-  if (id === null) {
-    document.getElementById('cycleModalTitle').textContent = 'Novo Ciclo';
-    document.getElementById('cycleNameInput').value = '';
-    document.getElementById('cycleStartInput').value = '';
-    document.getElementById('cycleEndInput').value = '';
-  } else {
+  if (id) {
     apiFetch('/api/cycles').then(cycles => {
       const c = cycles.find(x => x.id === id); if (!c) return;
-      document.getElementById('cycleModalTitle').textContent = 'Editar Ciclo';
       document.getElementById('cycleNameInput').value  = c.name;
       document.getElementById('cycleStartInput').value = c.start_date;
       document.getElementById('cycleEndInput').value   = c.end_date;
     });
+  } else {
+    document.getElementById('cycleNameInput').value  = '';
+    document.getElementById('cycleStartInput').value = '';
+    document.getElementById('cycleEndInput').value   = '';
   }
   document.getElementById('cycleModal').hidden = false;
 }
 
 function closeCycleModal() { document.getElementById('cycleModal').hidden = true; }
 
-document.getElementById('cycleModalClose').addEventListener('click', closeCycleModal);
-document.getElementById('cycleCancelBtn').addEventListener('click', closeCycleModal);
-document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
-
 document.getElementById('cycleSaveBtn').addEventListener('click', async () => {
-  const name  = document.getElementById('cycleNameInput').value.trim();
-  const start = document.getElementById('cycleStartInput').value;
-  const end   = document.getElementById('cycleEndInput').value;
-  const errEl = document.getElementById('cycleError');
-  errEl.textContent = '';
-  if (!name || !start || !end) { errEl.textContent = 'Preencha todos os campos obrigatórios.'; return; }
+  const body = {
+    name:       document.getElementById('cycleNameInput').value.trim(),
+    start_date: document.getElementById('cycleStartInput').value,
+    end_date:   document.getElementById('cycleEndInput').value,
+  };
+  if (!body.name || !body.start_date || !body.end_date) {
+    document.getElementById('cycleError').textContent = 'Preencha todos os campos obrigatórios.';
+    return;
+  }
   try {
-    const url = _cycleEditId ? `/api/cycles/${_cycleEditId}` : '/api/cycles';
-    const method = _cycleEditId ? 'PUT' : 'POST';
-    await apiFetchJSON(url, method, { name, start_date: start, end_date: end });
+    if (_cycleEditId) {
+      await apiFetchJSON(`/api/cycles/${_cycleEditId}`, 'PUT', body);
+    } else {
+      await apiFetchJSON('/api/cycles', 'POST', body);
+    }
     closeCycleModal();
-    await loadCyclesTable();
-    await loadDashboardCycles();
-  } catch (err) { errEl.textContent = err.message; }
+    loadCyclesTable();
+    loadDashboardCycles();
+  } catch (e) {
+    document.getElementById('cycleError').textContent = e.message;
+  }
 });
 
+document.getElementById('cycleCancelBtn').addEventListener('click', closeCycleModal);
+document.getElementById('cycleModalClose').addEventListener('click', closeCycleModal);
+document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
+
 async function deleteCycle(id, name, count) {
-  if (count > 0) { alert(`O ciclo "${name}" possui ${count.toLocaleString('pt-BR')} registro(s) e não pode ser excluído.`); return; }
+  if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
   if (!confirm(`Excluir o ciclo "${name}"?`)) return;
-  try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); await loadCyclesTable(); await loadDashboardCycles(); }
-  catch (err) { alert(`Erro: ${err.message}`); }
+  try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
+  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -399,119 +772,127 @@ async function deleteCycle(id, name, count) {
 let _projectEditId = null;
 
 async function loadProjectsTable() {
-  const tbody = document.getElementById('projectsBody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr>';
   try {
     const projects = await apiFetch('/api/projects');
-    if (!projects.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum projeto cadastrado.</td></tr>'; return; }
+    const tbody    = document.getElementById('projectsBody');
+    if (!projects.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum projeto cadastrado.</td></tr>';
+      return;
+    }
     tbody.innerHTML = projects.map(p => `
       <tr>
-        <td><code style="color:#93c5fd;font-size:0.85rem">${escHtml(p.pep_wbs)}</code></td>
+        <td><code>${escHtml(p.pep_wbs)}</code></td>
         <td>${escHtml(p.name || '—')}</td>
         <td>${escHtml(p.client || '—')}</td>
         <td>${escHtml(p.manager || '—')}</td>
-        <td style="text-align:right">${p.budget_hours != null ? p.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</td>
-        <td><span class="badge-status ${p.status}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></td>
+        <td style="text-align:right">${p.budget_hours != null ? p.budget_hours.toLocaleString('pt-BR') : '—'}</td>
+        <td><span class="badge-status ${p.status}">${p.status}</span></td>
         <td><div class="actions">
           <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id},'${escHtml(p.pep_wbs)}')">Excluir</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${escHtml(p.pep_wbs)}')">Excluir</button>
         </div></td>
       </tr>`).join('');
-  } catch (err) { tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;padding:1rem">${err.message}</td></tr>`; }
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 function openProjectModal(id = null) {
   _projectEditId = id;
+  document.getElementById('projectModalTitle').textContent = id ? 'Editar Projeto' : 'Novo Projeto';
   document.getElementById('projectError').textContent = '';
-  if (id === null) {
-    document.getElementById('projectModalTitle').textContent = 'Novo Projeto';
-    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('projectStatusInput').value = 'ativo';
-  } else {
+  if (id) {
     apiFetch('/api/projects').then(projects => {
       const p = projects.find(x => x.id === id); if (!p) return;
-      document.getElementById('projectModalTitle').textContent = 'Editar Projeto';
-      document.getElementById('projectPepInput').value     = p.pep_wbs;
-      document.getElementById('projectNameInput').value    = p.name || '';
-      document.getElementById('projectClientInput').value  = p.client || '';
-      document.getElementById('projectManagerInput').value = p.manager || '';
-      document.getElementById('projectBudgetInput').value  = p.budget_hours ?? '';
-      document.getElementById('projectStatusInput').value  = p.status;
+      document.getElementById('projectPepInput').value    = p.pep_wbs;
+      document.getElementById('projectNameInput').value   = p.name    || '';
+      document.getElementById('projectClientInput').value = p.client  || '';
+      document.getElementById('projectManagerInput').value= p.manager || '';
+      document.getElementById('projectBudgetInput').value = p.budget_hours ?? '';
+      document.getElementById('projectStatusInput').value = p.status;
     });
+  } else {
+    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('projectStatusInput').value = 'ativo';
   }
   document.getElementById('projectModal').hidden = false;
 }
 
 function closeProjectModal() { document.getElementById('projectModal').hidden = true; }
 
-document.getElementById('projectModalClose').addEventListener('click', closeProjectModal);
-document.getElementById('projectCancelBtn').addEventListener('click', closeProjectModal);
-document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
-
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
-  const pep     = document.getElementById('projectPepInput').value.trim();
-  const errEl   = document.getElementById('projectError');
-  errEl.textContent = '';
-  if (!pep) { errEl.textContent = 'Código PEP é obrigatório.'; return; }
+  const pep = document.getElementById('projectPepInput').value.trim();
+  if (!pep) { document.getElementById('projectError').textContent = 'Código PEP é obrigatório.'; return; }
   const budget = document.getElementById('projectBudgetInput').value;
   const body = {
     pep_wbs:      pep,
-    name:         document.getElementById('projectNameInput').value.trim() || null,
-    client:       document.getElementById('projectClientInput').value.trim() || null,
+    name:         document.getElementById('projectNameInput').value.trim()    || null,
+    client:       document.getElementById('projectClientInput').value.trim()  || null,
     manager:      document.getElementById('projectManagerInput').value.trim() || null,
     budget_hours: budget !== '' ? parseFloat(budget) : null,
     status:       document.getElementById('projectStatusInput').value,
   };
   try {
-    const url = _projectEditId ? `/api/projects/${_projectEditId}` : '/api/projects';
-    const method = _projectEditId ? 'PUT' : 'POST';
-    await apiFetchJSON(url, method, body);
-    closeProjectModal(); await loadProjectsTable();
-  } catch (err) { errEl.textContent = err.message; }
+    if (_projectEditId) {
+      await apiFetchJSON(`/api/projects/${_projectEditId}`, 'PUT', body);
+    } else {
+      await apiFetchJSON('/api/projects', 'POST', body);
+    }
+    closeProjectModal();
+    loadProjectsTable();
+  } catch (e) {
+    document.getElementById('projectError').textContent = e.message;
+  }
 });
+
+document.getElementById('projectCancelBtn').addEventListener('click', closeProjectModal);
+document.getElementById('projectModalClose').addEventListener('click', closeProjectModal);
+document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
 
 async function deleteProject(id, pep) {
   if (!confirm(`Excluir o projeto "${pep}"?`)) return;
-  try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); await loadProjectsTable(); }
-  catch (err) { alert(`Erro: ${err.message}`); }
+  try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
+  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
-// Close modals clicking backdrop
-document.getElementById('cycleModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCycleModal(); });
-document.getElementById('projectModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeProjectModal(); });
-
 // ---------------------------------------------------------------------------
-// Helpers
+// Utilities
 // ---------------------------------------------------------------------------
 async function apiFetch(url) {
   const res = await fetch(url);
-  if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.detail ?? res.statusText); }
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.detail ?? res.statusText);
+  }
   return res.json();
 }
 
 async function apiFetchJSON(url, method, body) {
-  const opts = { method, headers: {} };
-  if (body && method !== 'DELETE') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const res = await fetch(url, opts);
-  if (res.status === 204) return null;
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.detail ?? res.statusText);
-  return json;
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.detail ?? res.statusText);
+  }
+  return res.status === 204 ? null : res.json();
 }
 
 function notify(msg, type = 'info') {
   const el = document.getElementById('notification');
   el.textContent = msg; el.className = type; el.style.display = 'block';
-  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 6000);
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
-function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : h.toFixed(1); }
+function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : Number(h).toFixed(1); }
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ---------------------------------------------------------------------------
-// Init
+// Boot
 // ---------------------------------------------------------------------------
 loadDashboardCycles();
+_renderActiveTab();

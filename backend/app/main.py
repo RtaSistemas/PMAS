@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db, init_db
-from backend.app.routers import cycles, dashboard, projects, reference
+from backend.app.routers import analytics, cycles, dashboard, projects, reference
 from backend.app.services.ingestion import ingest_file
 
 log = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ app.include_router(cycles.router)
 app.include_router(projects.router)
 app.include_router(dashboard.router)
 app.include_router(reference.router)
+app.include_router(analytics.router)
 
 
 def _frontend_dir() -> str:

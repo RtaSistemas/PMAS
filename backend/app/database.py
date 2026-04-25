@@ -40,3 +40,20 @@ def get_db():
 def init_db() -> None:
     from backend.app import models  # noqa: F401 — ensures tables are registered
     Base.metadata.create_all(bind=engine)
+    _migrate_columns()
+
+
+def _migrate_columns() -> None:
+    """Add columns introduced after the initial schema without dropping data."""
+    from sqlalchemy import text
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("PRAGMA table_info(timesheet_record)"))
+            existing = {row[1] for row in result}
+            if "cost_per_hour" not in existing:
+                conn.execute(text(
+                    "ALTER TABLE timesheet_record"
+                    " ADD COLUMN cost_per_hour FLOAT NOT NULL DEFAULT 0.0"
+                ))
+    except Exception:
+        pass  # table not yet created; create_all handles that
