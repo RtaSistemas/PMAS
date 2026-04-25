@@ -73,6 +73,7 @@ def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
             normal_hours=normal_h,
             extra_hours=extra_h,
             standby_hours=standby_h,
+            cost_per_hour=0.0,
         ))
         inserted += 1
 

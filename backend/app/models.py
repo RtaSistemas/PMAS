@@ -48,6 +48,7 @@ class TimesheetRecord(Base):
     normal_hours = Column(Float, default=0.0, nullable=False)
     extra_hours = Column(Float, default=0.0, nullable=False)
     standby_hours = Column(Float, default=0.0, nullable=False)
+    cost_per_hour = Column(Float, default=0.0, nullable=False)
 
     collaborator = relationship("Collaborator", back_populates="records")
     cycle = relationship("Cycle", back_populates="records")

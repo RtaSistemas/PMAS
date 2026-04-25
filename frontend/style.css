@@ -176,12 +176,53 @@ main {
 .ms-empty { padding: 0.75rem; text-align: center; color: #64748b; font-size: 0.8rem; }
 
 /* ------------------------------------------------------------------ */
+/* Analytics sub-tabs                                                   */
+/* ------------------------------------------------------------------ */
+.analytics-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid #334155;
+  background: #162032;
+  border-radius: 0.5rem 0.5rem 0 0;
+  padding: 0 0.25rem;
+}
+.atab-btn {
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b; font-size: 0.82rem; font-weight: 500;
+  padding: 0.6rem 1.1rem; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+}
+.atab-btn:hover { color: #cbd5e1; }
+.atab-btn.active { color: #e2e8f0; border-bottom-color: #38bdf8; }
+
+.atab-section { display: flex; flex-direction: column; gap: 1.5rem; }
+.atab-section[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ */
 /* Charts container + panel                                             */
 /* ------------------------------------------------------------------ */
-#chartsContainer { display: flex; flex-direction: column; gap: 1.5rem; }
 .chart-panel { padding: 1.25rem 1.5rem 1.5rem; }
-.panel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
+.panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;
+}
 .panel-title { font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; flex: 1; }
+.panel-note  { font-size: 0.72rem; color: #475569; }
+
+.chart-empty {
+  padding: 2.5rem 1rem; text-align: center; color: #475569;
+  font-size: 0.85rem; line-height: 1.6;
+}
+
+/* Threshold legend dots (bullet chart) */
+.threshold-dot {
+  display: inline-block; width: 9px; height: 9px;
+  border-radius: 50%; margin-right: 3px; vertical-align: middle;
+}
+.threshold-dot.blue  { background: #3b82f6; }
+.threshold-dot.amber { background: #f59e0b; }
+.threshold-dot.red   { background: #f87171; }
+
 .panel-close {
   flex-shrink: 0; background: transparent; border: 1px solid #334155;
   color: #64748b; font-size: 1rem; line-height: 1; padding: 0.2rem 0.55rem;
@@ -189,7 +230,7 @@ main {
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .panel-close:hover { color: #f87171; border-color: #f87171; background: rgba(239,68,68,0.08); }
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; }
 .stat-card { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; text-align: center; }
 .stat-card .val { font-size: 1.4rem; font-weight: 700; }
 .stat-card .lbl { font-size: 0.68rem; color: #64748b; text-transform: uppercase; margin-top: 0.15rem; letter-spacing: 0.04em; }

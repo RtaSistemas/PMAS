@@ -46,13 +46,80 @@
         <div class="field"><label>PEP (Descrição)</label><div id="pepDescMs"></div></div>
         <div class="field"><label>Colaborador</label><div id="collaboratorMs"></div></div>
         <div class="field btn-group">
-          <button id="loadBtn" class="btn btn-primary" disabled>Carregar</button>
+          <button id="loadBtn" class="btn btn-primary">Carregar</button>
           <button id="clearBtn" class="btn btn-secondary">Limpar</button>
         </div>
       </div>
     </div>
 
-    <div id="chartsContainer"></div>
+    <!-- Analytics sub-tab navigation -->
+    <nav class="analytics-tabs">
+      <button class="atab-btn active" data-atab="effort">Esforço da Equipe</button>
+      <button class="atab-btn" data-atab="portfolio">Saúde do Portfólio</button>
+      <button class="atab-btn" data-atab="trends">Tendências</button>
+    </nav>
+
+    <!-- ============================================================ -->
+    <!-- Sub-tab: Esforço da Equipe                                   -->
+    <!-- ============================================================ -->
+    <div id="atab-effort" class="atab-section">
+      <div id="effortStats"></div>
+      <div class="card chart-panel" id="effortPanel">
+        <div class="panel-header">
+          <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
+          <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
+        </div>
+        <div id="effortEmpty" class="chart-empty" hidden>
+          Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
+        </div>
+        <div id="effortChart" style="width:100%;height:500px"></div>
+      </div>
+      <div class="card chart-panel" id="budgetPanel" hidden>
+        <div class="panel-title">Orçado vs. Realizado por PEP</div>
+        <div id="budgetChart" style="width:100%;height:300px"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Sub-tab: Saúde do Portfólio                                  -->
+    <!-- ============================================================ -->
+    <div id="atab-portfolio" class="atab-section" hidden>
+      <div class="card chart-panel">
+        <div class="panel-header">
+          <span class="panel-title">Distribuição de Horas por PEP (Treemap)</span>
+          <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
+        </div>
+        <div id="portfolioEmpty" class="chart-empty" hidden>
+          Nenhum dado de horas encontrado para os filtros selecionados.
+        </div>
+        <div id="treemapChart" style="width:100%;height:440px"></div>
+      </div>
+      <div class="card chart-panel" id="bulletPanel" hidden>
+        <div class="panel-title">Orçado vs. Realizado — Bullet Chart</div>
+        <div class="panel-note" style="margin-bottom:0.75rem">
+          <span class="threshold-dot blue"></span> &lt; 75%&nbsp;
+          <span class="threshold-dot amber"></span> 75–99%&nbsp;
+          <span class="threshold-dot red"></span> ≥ 100%
+        </div>
+        <div id="bulletChart" style="width:100%;height:300px"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Sub-tab: Tendências                                          -->
+    <!-- ============================================================ -->
+    <div id="atab-trends" class="atab-section" hidden>
+      <div class="card chart-panel">
+        <div class="panel-header">
+          <span class="panel-title">Queima de Horas por Ciclo</span>
+          <span class="panel-note">Ciclos de quarentena excluídos · filtre por PEP para isolar projetos</span>
+        </div>
+        <div id="trendsEmpty" class="chart-empty" hidden>
+          Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
+        </div>
+        <div id="trendsChart" style="width:100%;height:440px"></div>
+      </div>
+    </div>
 
   </section>
 
