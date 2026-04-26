@@ -686,28 +686,33 @@ function _buildStatsRow(data, budgetData = []) {
 // Cycles management
 // ---------------------------------------------------------------------------
 let _cycleEditId = null;
+let _allCycles   = [];
 
 async function loadCyclesTable() {
   try {
-    const cycles = await apiFetch('/api/cycles');
-    const tbody  = document.getElementById('cyclesBody');
-    if (!cycles.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo cadastrado.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = cycles.map(c => `
-      <tr>
-        <td>${escHtml(c.name)}</td>
-        <td>${c.start_date}</td>
-        <td>${c.end_date}</td>
-        <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? 'Quarentena' : 'Regular'}</span></td>
-        <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
-        <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, '${escHtml(c.name)}', ${c.record_count})">Excluir</button>
-        </div></td>
-      </tr>`).join('');
+    _allCycles = await apiFetch('/api/cycles');
+    _renderCyclesTable(_allCycles);
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderCyclesTable(cycles) {
+  const tbody = document.getElementById('cyclesBody');
+  if (!cycles.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = cycles.map(c => `
+    <tr>
+      <td>${escHtml(c.name)}</td>
+      <td>${c.start_date}</td>
+      <td>${c.end_date}</td>
+      <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? 'Quarentena' : 'Regular'}</span></td>
+      <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, '${escHtml(c.name)}', ${c.record_count})">Excluir</button>
+      </div></td>
+    </tr>`).join('');
 }
 
 function openCycleModal(id = null) {
@@ -715,12 +720,12 @@ function openCycleModal(id = null) {
   document.getElementById('cycleModalTitle').textContent = id ? 'Editar Ciclo' : 'Novo Ciclo';
   document.getElementById('cycleError').textContent = '';
   if (id) {
-    apiFetch('/api/cycles').then(cycles => {
-      const c = cycles.find(x => x.id === id); if (!c) return;
+    const c = _allCycles.find(x => x.id === id);
+    if (c) {
       document.getElementById('cycleNameInput').value  = c.name;
       document.getElementById('cycleStartInput').value = c.start_date;
       document.getElementById('cycleEndInput').value   = c.end_date;
-    });
+    }
   } else {
     document.getElementById('cycleNameInput').value  = '';
     document.getElementById('cycleStartInput').value = '';
@@ -759,6 +764,11 @@ document.getElementById('cycleCancelBtn').addEventListener('click', closeCycleMo
 document.getElementById('cycleModalClose').addEventListener('click', closeCycleModal);
 document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
 
+document.getElementById('cycleSearch').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  _renderCyclesTable(q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles);
+});
+
 async function deleteCycle(id, name, count) {
   if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
   if (!confirm(`Excluir o ciclo "${name}"?`)) return;
@@ -769,30 +779,52 @@ async function deleteCycle(id, name, count) {
 // ---------------------------------------------------------------------------
 // Projects management
 // ---------------------------------------------------------------------------
-let _projectEditId = null;
+let _projectEditId  = null;
+let _allProjects    = [];
+let _consumedByPep  = {};
 
 async function loadProjectsTable() {
   try {
-    const projects = await apiFetch('/api/projects');
-    const tbody    = document.getElementById('projectsBody');
-    if (!projects.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum projeto cadastrado.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = projects.map(p => `
-      <tr>
-        <td><code>${escHtml(p.pep_wbs)}</code></td>
-        <td>${escHtml(p.name || '—')}</td>
-        <td>${escHtml(p.client || '—')}</td>
-        <td>${escHtml(p.manager || '—')}</td>
-        <td style="text-align:right">${p.budget_hours != null ? p.budget_hours.toLocaleString('pt-BR') : '—'}</td>
-        <td><span class="badge-status ${p.status}">${p.status}</span></td>
-        <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${escHtml(p.pep_wbs)}')">Excluir</button>
-        </div></td>
-      </tr>`).join('');
+    const [projects, health] = await Promise.all([
+      apiFetch('/api/projects'),
+      apiFetch('/api/portfolio-health').catch(() => []),
+    ]);
+    _allProjects   = projects;
+    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.consumed_hours]));
+    _renderProjectsTable(projects);
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _buildBudgetCell(p) {
+  if (p.budget_hours == null) return '—';
+  const consumed = _consumedByPep[p.pep_wbs];
+  const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
+  if (!consumed) return budgetStr;
+  const pct = consumed / p.budget_hours;
+  if (pct >= 1.0) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">Estourado</span>`;
+  if (pct >= 0.9) return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">Atenção ≥90%</span>`;
+  return budgetStr;
+}
+
+function _renderProjectsTable(projects) {
+  const tbody = document.getElementById('projectsBody');
+  if (!projects.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum projeto encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = projects.map(p => `
+    <tr>
+      <td><code>${escHtml(p.pep_wbs)}</code></td>
+      <td>${escHtml(p.name || '—')}</td>
+      <td>${escHtml(p.client || '—')}</td>
+      <td>${escHtml(p.manager || '—')}</td>
+      <td style="text-align:right">${_buildBudgetCell(p)}</td>
+      <td><span class="badge-status ${p.status}">${p.status}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${escHtml(p.pep_wbs)}')">Excluir</button>
+      </div></td>
+    </tr>`).join('');
 }
 
 function openProjectModal(id = null) {
@@ -800,18 +832,18 @@ function openProjectModal(id = null) {
   document.getElementById('projectModalTitle').textContent = id ? 'Editar Projeto' : 'Novo Projeto';
   document.getElementById('projectError').textContent = '';
   if (id) {
-    apiFetch('/api/projects').then(projects => {
-      const p = projects.find(x => x.id === id); if (!p) return;
-      document.getElementById('projectPepInput').value    = p.pep_wbs;
-      document.getElementById('projectNameInput').value   = p.name    || '';
-      document.getElementById('projectClientInput').value = p.client  || '';
-      document.getElementById('projectManagerInput').value= p.manager || '';
-      document.getElementById('projectBudgetInput').value = p.budget_hours ?? '';
-      document.getElementById('projectStatusInput').value = p.status;
-    });
+    const p = _allProjects.find(x => x.id === id);
+    if (p) {
+      document.getElementById('projectPepInput').value     = p.pep_wbs;
+      document.getElementById('projectNameInput').value    = p.name    || '';
+      document.getElementById('projectClientInput').value  = p.client  || '';
+      document.getElementById('projectManagerInput').value = p.manager || '';
+      document.getElementById('projectBudgetInput').value  = p.budget_hours ?? '';
+      document.getElementById('projectStatusInput').value  = p.status;
+    }
   } else {
     ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput']
-      .forEach(id => { document.getElementById(id).value = ''; });
+      .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
   document.getElementById('projectModal').hidden = false;
@@ -847,6 +879,15 @@ document.getElementById('projectSaveBtn').addEventListener('click', async () => 
 document.getElementById('projectCancelBtn').addEventListener('click', closeProjectModal);
 document.getElementById('projectModalClose').addEventListener('click', closeProjectModal);
 document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
+
+document.getElementById('projectSearch').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  _renderProjectsTable(q ? _allProjects.filter(p =>
+    (p.pep_wbs || '').toLowerCase().includes(q) ||
+    (p.name    || '').toLowerCase().includes(q) ||
+    (p.client  || '').toLowerCase().includes(q)
+  ) : _allProjects);
+});
 
 async function deleteProject(id, pep) {
   if (!confirm(`Excluir o projeto "${pep}"?`)) return;

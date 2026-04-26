@@ -242,6 +242,27 @@ main {
 .stat-card.red .val    { color: #f87171; }
 
 /* ------------------------------------------------------------------ */
+/* Table search input                                                   */
+/* ------------------------------------------------------------------ */
+.table-search-input {
+  width: 100%; height: 2rem; border-radius: 0.4rem;
+  border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+  font-size: 0.8rem; padding: 0 0.75rem; margin-bottom: 0.75rem;
+  transition: border-color 0.15s;
+}
+.table-search-input:focus { outline: none; border-color: #3b82f6; }
+.table-search-input::placeholder { color: #4b5563; }
+
+/* Budget alert badges */
+.badge-budget {
+  display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px;
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; margin-left: 0.4rem;
+}
+.badge-budget.critical { background: rgba(239,68,68,0.15);  color: #f87171; }
+.badge-budget.warning  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+/* ------------------------------------------------------------------ */
 /* Management tables                                                    */
 /* ------------------------------------------------------------------ */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
