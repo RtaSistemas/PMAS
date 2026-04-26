@@ -16,6 +16,7 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'projects') loadProjectsTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
+    if (btn.dataset.tab === 'admin')    loadUsersTable();
   });
 });
 
@@ -1287,9 +1288,98 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Users management (Admin tab)
+// ---------------------------------------------------------------------------
+let _allUsers = [];
+
+async function loadUsersTable() {
+  try {
+    _allUsers = await apiFetch('/api/users');
+    _renderUsersTable(_allUsers);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderUsersTable(users) {
+  const tbody = document.getElementById('usersBody');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">Nenhum usuário encontrado.</td></tr>';
+    return;
+  }
+  const payload = _getTokenPayload();
+  const selfId  = payload ? payload.sub : null;
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>${escHtml(u.username)}</td>
+      <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? 'Admin' : 'Usuário'}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openPwdModal(${u.id})">Senha</button>
+        ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">Excluir</button>` : ''}
+      </div></td>
+    </tr>`).join('');
+}
+
+document.getElementById('newUserBtn').addEventListener('click', () => {
+  document.getElementById('userUsernameInput').value = '';
+  document.getElementById('userPasswordInput').value = '';
+  document.getElementById('userRoleSelect').value    = 'user';
+  document.getElementById('userError').textContent   = '';
+  document.getElementById('userModal').hidden = false;
+});
+
+document.getElementById('userModalClose').addEventListener('click',  () => { document.getElementById('userModal').hidden = true; });
+document.getElementById('userCancelBtn').addEventListener('click',   () => { document.getElementById('userModal').hidden = true; });
+
+document.getElementById('userSaveBtn').addEventListener('click', async () => {
+  const username = document.getElementById('userUsernameInput').value.trim();
+  const password = document.getElementById('userPasswordInput').value;
+  const role     = document.getElementById('userRoleSelect').value;
+  const errEl    = document.getElementById('userError');
+  errEl.textContent = '';
+  if (!username || !password) { errEl.textContent = 'Preencha todos os campos obrigatórios.'; return; }
+  try {
+    await apiFetchJSON('/api/users', 'POST', { username, password, role });
+    document.getElementById('userModal').hidden = true;
+    loadUsersTable();
+    notify(`Usuário "${escHtml(username)}" criado com sucesso.`, 'success');
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+function openPwdModal(userId) {
+  document.getElementById('pwdTargetId').value  = userId;
+  document.getElementById('pwdNewInput').value  = '';
+  document.getElementById('pwdError').textContent = '';
+  document.getElementById('pwdModal').hidden = false;
+}
+
+document.getElementById('pwdModalClose').addEventListener('click', () => { document.getElementById('pwdModal').hidden = true; });
+document.getElementById('pwdCancelBtn').addEventListener('click',  () => { document.getElementById('pwdModal').hidden = true; });
+
+document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
+  const userId      = document.getElementById('pwdTargetId').value;
+  const new_password = document.getElementById('pwdNewInput').value;
+  const errEl       = document.getElementById('pwdError');
+  errEl.textContent = '';
+  if (!new_password) { errEl.textContent = 'Informe a nova senha.'; return; }
+  try {
+    await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
+    document.getElementById('pwdModal').hidden = true;
+    notify('Senha alterada com sucesso.', 'success');
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+async function deleteUser(id, username) {
+  if (!confirm(`Excluir o usuário "${username}"?`)) return;
+  try {
+    await apiFetchJSON(`/api/users/${id}`, 'DELETE');
+    loadUsersTable();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 function _bootApp() {
+  if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
   loadDashboardCycles();
   _renderActiveTab();
 }
