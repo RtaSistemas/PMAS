@@ -149,29 +149,31 @@ def delete_rate_card(card_id: int, db: DbSession):
 def list_team(db: DbSession):
     collabs = db.query(Collaborator).order_by(Collaborator.name).all()
     today = date.today()
-    result = []
-    for c in collabs:
-        current_rate = None
-        if c.seniority_level_id:
-            rc = (
-                db.query(RateCard)
-                .filter(
-                    RateCard.seniority_level_id == c.seniority_level_id,
-                    RateCard.valid_from <= today,
-                    (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= today),
-                )
-                .order_by(RateCard.valid_from.desc())
-                .first()
-            )
-            current_rate = rc.hourly_rate if rc else None
-        result.append({
+
+    valid_cards = (
+        db.query(RateCard)
+        .filter(
+            RateCard.valid_from <= today,
+            (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= today),
+        )
+        .order_by(RateCard.seniority_level_id, RateCard.valid_from.desc())
+        .all()
+    )
+    rate_by_level: dict[int, float] = {}
+    for rc in valid_cards:
+        if rc.seniority_level_id not in rate_by_level:
+            rate_by_level[rc.seniority_level_id] = rc.hourly_rate
+
+    return [
+        {
             "id": c.id,
             "name": c.name,
             "seniority_level_id": c.seniority_level_id,
             "seniority_level_name": c.seniority_level.name if c.seniority_level else None,
-            "current_hourly_rate": current_rate,
-        })
-    return result
+            "current_hourly_rate": rate_by_level.get(c.seniority_level_id) if c.seniority_level_id else None,
+        }
+        for c in collabs
+    ]
 
 
 @router.put("/team/{collab_id}/seniority")

@@ -66,12 +66,17 @@ def root():
     return RedirectResponse(url="/frontend/index.html")
 
 
+_MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
 @app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet")
 def upload_timesheet(file: UploadFile, db: DbSession):
     fname = file.filename or ""
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
-    contents = file.file.read()
+    contents = file.file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo excede o limite de 20 MB.")
     try:
         summary = ingest_file(contents, fname, db)
     except ValueError as exc:

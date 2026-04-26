@@ -123,6 +123,18 @@ def _get_or_create_collaborator(db: Session, name: str) -> Collaborator:
 def _resolve_cycle(db: Session, record_date: date) -> tuple[Cycle, bool]:
     cycle = (
         db.query(Cycle)
+        .filter(
+            Cycle.start_date <= record_date,
+            Cycle.end_date >= record_date,
+            Cycle.is_quarantine == False,  # noqa: E712
+        )
+        .first()
+    )
+    if cycle is not None:
+        return cycle, False
+
+    cycle = (
+        db.query(Cycle)
         .filter(Cycle.start_date <= record_date, Cycle.end_date >= record_date)
         .first()
     )

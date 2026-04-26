@@ -76,4 +76,4 @@ def _migrate_columns() -> None:
                     "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
                 ))
     except Exception:
-        pass  # table not yet created; create_all handles that
+        log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)

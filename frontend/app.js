@@ -522,10 +522,10 @@ function _buildTreemapOption(health, evmMode = false) {
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
         const d = health.find(x => x.pep_wbs === params.name);
-        if (!d) return params.name;
-        let html = `<b>${d.pep_wbs}</b>`;
-        if (d.pep_description) html += `<br><span style="color:#94a3b8">${d.pep_description}</span>`;
-        if (d.name)            html += `<br>Projeto: ${d.name}`;
+        if (!d) return escHtml(params.name);
+        let html = `<b>${escHtml(d.pep_wbs)}</b>`;
+        if (d.pep_description) html += `<br><span style="color:#94a3b8">${escHtml(d.pep_description)}</span>`;
+        if (d.name)            html += `<br>Projeto: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
         html += `<br>${evmMode ? 'Custo real' : 'Consumido'}: <b>${fmtVal(consumed)}</b>`;
@@ -606,7 +606,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         const fmtV = v => evmMode
           ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
           : v.toFixed(1) + 'h';
-        let html = `<b>${params[0].axisValue.replace('\n', ' ')}</b><br>`;
+        let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `Orçado: <b>${fmtV(b)}</b><br>Realizado: <b>${fmtV(a)}</b><br>`;
         html += `Utilização: <b>${pct}</b>`;
         if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ Acima do orçado</span>`;
@@ -680,7 +680,7 @@ function _buildTrendsOption(trends) {
       trigger: 'axis',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        let html = `<b>${params[0].axisValue}</b><br>`;
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         let totalHours = 0;
         params.forEach(p => {
           if (p.seriesName === 'Custo Real') {
@@ -1209,7 +1209,7 @@ function notify(msg, type = 'info') {
 function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : Number(h).toFixed(1); }
 
 function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ---------------------------------------------------------------------------
