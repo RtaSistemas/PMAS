@@ -1,16 +1,17 @@
 # PMAS — Project Management Assistant System
 
-Dashboard analítico de timesheet para gestão de horas por projeto, colaborador e ciclo, com visões de Esforço da Equipe, Saúde do Portfólio e Tendências.
+Dashboard analítico de timesheet para gestão de horas e custos por projeto, colaborador e ciclo, com visões de Esforço da Equipe, Saúde do Portfólio e Tendências. Inclui módulo de RateCard para rastreamento de custo por hora congelado no momento da importação (EVM freeze pattern).
 
 ## Funcionalidades
 
 - **Importação de Timesheet** — Carregue arquivos CSV ou XLSX. Duplicatas são detectadas e ignoradas automaticamente. Datas fora de qualquer ciclo cadastrado geram um ciclo de *quarentena* sem perda de dados.
-- **Esforço da Equipe** — Gráfico de barras horizontais com horas normais, extras e sobreaviso por colaborador. Toggle entre vista empilhada e agrupada. Comparativo orçado vs. realizado por PEP.
-- **Saúde do Portfólio** — Treemap com tamanho proporcional às horas consumidas (blocos cinzas = PEP não cadastrado, vermelhos = acima do budget) + Bullet Chart com thresholds de cor por % de utilização.
+- **Esforço da Equipe** — Gráfico de barras horizontais com horas normais, extras e sobreaviso por colaborador. Toggle entre vista empilhada e agrupada. Comparativo orçado vs. realizado por PEP. Exportação CSV com um clique.
+- **Saúde do Portfólio** — Treemap com tamanho proporcional às horas/custo consumidos (blocos cinzas = PEP não cadastrado, vermelhos = acima do budget) + Bullet Chart com thresholds de cor por % de utilização. Toggle Horas / R$ para visão financeira.
 - **Tendências** — Gráfico de linhas com a queima de horas normais e extras por ciclo em ordem cronológica, filtrável por PEP.
-- **Filtros em Cascata** — Multi-seleção de Ciclo, Código PEP, Descrição PEP e Colaborador com atualização dinâmica.
-- **Cadastro de Ciclos** — Criação, edição e exclusão de períodos de apuração.
-- **Cadastro de Projetos/PEPs** — Registro de projetos com código PEP, nome, cliente, gerente, budget de horas e status.
+- **Filtros em Cascata** — Multi-seleção de Ciclo, Código PEP, Descrição PEP e Colaborador com atualização dinâmica. Filtros de Data início/fim aplicados a todos os três sub-tabs analíticos.
+- **Cadastro de Ciclos** — Criação, edição e exclusão de períodos de apuração. Busca em tempo real na tabela.
+- **Cadastro de Projetos/PEPs** — Registro de projetos com código PEP, nome, cliente, gerente, budget de horas, budget em R$ e status. Busca em tempo real + alertas de budget (Estourado ≥100%, Atenção ≥90%). 
+- **Módulo Equipe / RateCard** — Cadastro de níveis de senioridade, tabela de taxas horárias por nível e período de vigência, atribuição de senioridade por colaborador. O custo por hora é congelado no momento da importação do timesheet (EVM freeze pattern).
 
 ## Requisitos
 
@@ -37,7 +38,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-91 testes cobrindo ingestion, dashboard, CRUD de ciclos/projetos, endpoints de referência e analytics. O CI (GitHub Actions) executa a suite em Python 3.11 e 3.12 a cada push.
+117 testes cobrindo ingestion, dashboard, CRUD de ciclos/projetos, endpoints de referência, analytics e módulo RateCard. O CI (GitHub Actions) executa a suite em Python 3.11 e 3.12 a cada push.
 
 ## Formato esperado do arquivo de timesheet
 
@@ -71,13 +72,19 @@ pytest tests/ -v
 | `POST/PUT/DELETE` | `/api/cycles[/{id}]` | CRUD de ciclos |
 | `GET` | `/api/projects` | Lista projetos ordenados por PEP |
 | `POST/PUT/DELETE` | `/api/projects[/{id}]` | CRUD de projetos |
-| `GET` | `/api/dashboard` | Horas agregadas por colaborador (toda a base) |
-| `GET` | `/api/dashboard/{cycle_id}` | Horas agregadas por colaborador no ciclo |
-| `GET` | `/api/portfolio-health` | Horas consumidas por PEP + budget |
-| `GET` | `/api/trends` | Queima de horas por ciclo (cronológico) |
+| `GET` | `/api/dashboard` | Horas agregadas por colaborador (toda a base) com filtros `date_from`/`date_to` |
+| `GET` | `/api/dashboard/{cycle_id}` | Horas agregadas por colaborador no ciclo com filtros `date_from`/`date_to` |
+| `GET` | `/api/portfolio-health` | Horas e custo real consumidos por PEP + budget (horas e R$) com filtros `date_from`/`date_to` |
+| `GET` | `/api/trends` | Queima de horas e custo real por ciclo (cronológico) com filtros `date_from`/`date_to` |
 | `GET` | `/api/collaborators` | Lista colaboradores com registros |
 | `GET` | `/api/peps` | Lista PEPs com agrupamento de descrições |
 | `POST` | `/api/upload-timesheet` | Ingestão de CSV/XLSX |
+| `GET` | `/api/seniority-levels` | Lista níveis de senioridade |
+| `POST/PUT/DELETE` | `/api/seniority-levels[/{id}]` | CRUD de níveis de senioridade |
+| `GET` | `/api/rate-cards` | Lista tabela de taxas (filtro por `seniority_level_id`) |
+| `POST/PUT/DELETE` | `/api/rate-cards[/{id}]` | CRUD de rate cards |
+| `GET` | `/api/team` | Colaboradores com senioridade e taxa atual |
+| `PUT` | `/api/team/{collab_id}/seniority` | Atribui nível de senioridade ao colaborador |
 
 ## Estrutura do projeto
 
@@ -85,22 +92,23 @@ pytest tests/ -v
 PMAS/
 ├── backend/app/
 │   ├── main.py              # Aplicação FastAPI, CORS, static files, upload
-│   ├── models.py            # ORM: Collaborator, Cycle, Project, TimesheetRecord
-│   ├── schemas.py           # Pydantic: CycleIn, ProjectIn
+│   ├── models.py            # ORM: Collaborator, Cycle, Project, TimesheetRecord, SeniorityLevel, RateCard
+│   ├── schemas.py           # Pydantic: CycleIn, ProjectIn, SeniorityLevelIn, RateCardIn, CollaboratorSeniorityIn
 │   ├── database.py          # Engine SQLite, get_db(), init_db(), migração de colunas
 │   ├── routers/
 │   │   ├── cycles.py        # GET/POST/PUT/DELETE /api/cycles
 │   │   ├── projects.py      # GET/POST/PUT/DELETE /api/projects
-│   │   ├── dashboard.py     # GET /api/dashboard[/{cycle_id}]
+│   │   ├── dashboard.py     # GET /api/dashboard[/{cycle_id}] + date_from/date_to
 │   │   ├── reference.py     # GET /api/collaborators, /api/peps
-│   │   └── analytics.py     # GET /api/portfolio-health, /api/trends
+│   │   ├── analytics.py     # GET /api/portfolio-health, /api/trends + actual_cost + date_from/date_to
+│   │   └── ratecard.py      # CRUD /api/seniority-levels, /api/rate-cards, /api/team
 │   └── services/
-│       └── ingestion.py     # Parser pandas: CSV/XLSX → TimesheetRecord
+│       └── ingestion.py     # Parser pandas: CSV/XLSX → TimesheetRecord, _lookup_rate() EVM freeze
 ├── frontend/
-│   ├── index.html           # Estrutura HTML (3 abas principais + 3 sub-abas analíticas)
-│   ├── style.css            # Tema escuro slate/blue + estilos de analytics
+│   ├── index.html           # 4 abas (Dashboard, Ciclos, Projetos, Equipe) + 3 sub-abas analíticas
+│   ├── style.css            # Tema escuro slate/blue + search input + badge-budget + analytics
 │   ├── multiselect.js       # Componente MultiSelect reutilizável
-│   └── app.js               # Lógica do cliente, gestão ECharts, CRUD
+│   └── app.js               # Lógica do cliente, ECharts, CRUD, toggle Horas/R$, exportação CSV
 ├── tests/
 │   ├── conftest.py          # Fixtures pytest (SQLite in-memory, StaticPool)
 │   ├── test_cycles.py       # 16 testes CRUD de ciclos
@@ -108,7 +116,8 @@ PMAS/
 │   ├── test_dashboard.py    # 9 testes de agregação do dashboard
 │   ├── test_ingestion.py    # 18 testes de ingestão CSV/XLSX
 │   ├── test_reference.py    # 12 testes de endpoints de referência
-│   └── test_analytics.py   # 16 testes de portfolio-health e trends
+│   ├── test_analytics.py    # 16 testes de portfolio-health e trends
+│   └── test_ratecard.py     # 26 testes de seniority, rate cards, team e rate lookup
 ├── .github/workflows/
 │   ├── tests.yml            # CI: pytest Python 3.11 e 3.12
 │   └── release.yml          # Build PyInstaller (Linux + Windows)
