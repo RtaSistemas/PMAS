@@ -2,18 +2,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date as DateType
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _compute_budget_vs_actual(

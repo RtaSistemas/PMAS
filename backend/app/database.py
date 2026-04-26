@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
+from typing import Annotated
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from fastapi import Depends
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+log = logging.getLogger(__name__)
 
 
 def _db_path() -> str:
@@ -37,9 +42,14 @@ def get_db():
         db.close()
 
 
+DbSession = Annotated[Session, Depends(get_db)]
+
+
 def init_db() -> None:
     from backend.app import models  # noqa: F401 — ensures tables are registered
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        conn.execute(text("PRAGMA journal_mode=WAL"))
     _migrate_columns()
 
 

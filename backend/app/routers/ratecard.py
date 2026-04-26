@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, RateCard, SeniorityLevel
 from backend.app.schemas import CollaboratorSeniorityIn, RateCardIn, SeniorityLevelIn
 
 router = APIRouter(prefix="/api", tags=["ratecard"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 # ---------------------------------------------------------------------------

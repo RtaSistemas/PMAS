@@ -969,13 +969,13 @@ async function deleteProject(id, pep) {
 // ---------------------------------------------------------------------------
 let _allSeniorityLevels = [];
 let _allRateCards       = [];
+let _allTeam            = [];
 let _seniorityEditId    = null;
 let _rateCardEditId     = null;
 let _assignCollabId     = null;
 
 async function loadTeamTab() {
-  await loadSeniorityLevels();
-  await loadRateCards();
+  await Promise.all([loadSeniorityLevels(), loadRateCards()]);
   await loadTeamTable();
 }
 
@@ -1022,13 +1022,13 @@ async function loadRateCards() {
 
 async function loadTeamTable() {
   try {
-    const team = await apiFetch('/api/team');
+    _allTeam = await apiFetch('/api/team');
     const tbody = document.getElementById('teamBody');
-    if (!team.length) {
+    if (!_allTeam.length) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Nenhum colaborador encontrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = team.map(m => `
+    tbody.innerHTML = _allTeam.map(m => `
       <tr>
         <td>${escHtml(m.name)}</td>
         <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>

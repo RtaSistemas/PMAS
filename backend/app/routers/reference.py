@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Annotated, List
+from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, TimesheetRecord
 
 router = APIRouter(prefix="/api", tags=["reference"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/collaborators", summary="Listar colaboradores")

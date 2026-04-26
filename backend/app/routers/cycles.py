@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Cycle, TimesheetRecord
 from backend.app.schemas import CycleIn
 
 router = APIRouter(prefix="/api/cycles", tags=["cycles"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _cycle_record_counts(db: Session) -> dict[int, int]:

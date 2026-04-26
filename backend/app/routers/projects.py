@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter, HTTPException
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Project
 from backend.app.schemas import ProjectIn
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _project_to_dict(p: Project) -> dict:

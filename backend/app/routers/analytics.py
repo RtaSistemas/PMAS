@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from datetime import date as DateType
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Cycle, Project, TimesheetRecord
 
 router = APIRouter(prefix="/api", tags=["analytics"])
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project")
