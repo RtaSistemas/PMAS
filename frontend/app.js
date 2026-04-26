@@ -800,7 +800,7 @@ function _renderCyclesTable(cycles) {
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, '${escHtml(c.name)}', ${c.record_count})">Excluir</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">Excluir</button>
       </div></td>
     </tr>`).join('');
 }
@@ -912,7 +912,7 @@ function _renderProjectsTable(projects) {
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${escHtml(p.pep_wbs)}')">Excluir</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">Excluir</button>
       </div></td>
     </tr>`).join('');
 }
@@ -1016,7 +1016,7 @@ async function loadSeniorityLevels() {
         <td>${escHtml(l.name)}</td>
         <td><div class="actions">
           <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, '${escHtml(l.name)}')">Excluir</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">Excluir</button>
         </div></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -1057,7 +1057,7 @@ async function loadTeamTable() {
         <td>${escHtml(m.name)}</td>
         <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
         <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, '${escHtml(m.name)}', ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
