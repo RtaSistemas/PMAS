@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date as DateType
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,8 @@ def _compute_budget_vs_actual(
     pep_codes: List[str],
     cycle_id: Optional[int] = None,
     collaborator_ids: Optional[List[int]] = None,
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
 ) -> list:
     if pep_codes:
         projects = (
@@ -49,6 +52,10 @@ def _compute_budget_vs_actual(
         q = q.filter(TimesheetRecord.cycle_id == cycle_id)
     if collaborator_ids:
         q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_ids))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
 
     actual_by_pep = {
         r.pep_wbs: r.total_hours or 0.0
@@ -120,6 +127,8 @@ def get_dashboard_all(
     pep_code: List[str] = Query(default=[]),
     pep_description: List[str] = Query(default=[]),
     collaborator_id: List[int] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
 ):
     q = _base_query(db)
     if pep_code:
@@ -128,6 +137,10 @@ def get_dashboard_all(
         q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
     if collaborator_id:
         q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
 
     rows = q.group_by(TimesheetRecord.collaborator_id).order_by(Collaborator.name).all()
     chart_data, _ = _aggregate_hours(rows)
@@ -147,7 +160,7 @@ def get_dashboard_all(
         },
         "data": chart_data,
         "breakdown": [],
-        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, None, collaborator_id),
+        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, None, collaborator_id, date_from, date_to),
     }
 
 
@@ -158,6 +171,8 @@ def get_dashboard(
     pep_code: List[str] = Query(default=[]),
     pep_description: List[str] = Query(default=[]),
     collaborator_id: List[int] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
 ):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
@@ -170,6 +185,10 @@ def get_dashboard(
         q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
     if collaborator_id:
         q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
 
     if not pep_description:
         rows = (
@@ -201,5 +220,5 @@ def get_dashboard(
         },
         "data": chart_data,
         "breakdown": breakdown,
-        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, cycle_id, collaborator_id),
+        "budget_vs_actual": _compute_budget_vs_actual(db, pep_code, cycle_id, collaborator_id, date_from, date_to),
     }

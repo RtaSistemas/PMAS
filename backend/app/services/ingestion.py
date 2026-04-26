@@ -7,7 +7,7 @@ from io import BytesIO
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from backend.app.models import Collaborator, Cycle, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, RateCard, TimesheetRecord
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
             normal_hours=normal_h,
             extra_hours=extra_h,
             standby_hours=standby_h,
-            cost_per_hour=0.0,
+            cost_per_hour=_lookup_rate(db, collab, record_date),
         ))
         inserted += 1
 
@@ -158,3 +158,19 @@ def _str_or_none(value) -> str | None:
         return None
     s = str(value).strip()
     return None if s.lower() in {"nan", "none", ""} else s
+
+
+def _lookup_rate(db: Session, collab: Collaborator, record_date: date) -> float:
+    if collab.seniority_level_id is None:
+        return 0.0
+    rc = (
+        db.query(RateCard)
+        .filter(
+            RateCard.seniority_level_id == collab.seniority_level_id,
+            RateCard.valid_from <= record_date,
+            (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= record_date),
+        )
+        .order_by(RateCard.valid_from.desc())
+        .first()
+    )
+    return rc.hourly_rate if rc else 0.0

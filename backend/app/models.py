@@ -15,13 +15,37 @@ from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
 
+class SeniorityLevel(Base):
+    __tablename__ = "seniority_level"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+    rate_cards = relationship("RateCard", back_populates="seniority_level", cascade="all, delete-orphan")
+    collaborators = relationship("Collaborator", back_populates="seniority_level")
+
+
+class RateCard(Base):
+    __tablename__ = "rate_card"
+
+    id = Column(Integer, primary_key=True, index=True)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=False)
+    hourly_rate = Column(Float, nullable=False)
+    valid_from = Column(Date, nullable=False)
+    valid_to = Column(Date, nullable=True)
+
+    seniority_level = relationship("SeniorityLevel", back_populates="rate_cards")
+
+
 class Collaborator(Base):
     __tablename__ = "collaborator"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=True)
 
     records = relationship("TimesheetRecord", back_populates="collaborator")
+    seniority_level = relationship("SeniorityLevel", back_populates="collaborators")
 
 
 class Cycle(Base):
@@ -70,5 +94,6 @@ class Project(Base):
     client = Column(String, nullable=True)
     manager = Column(String, nullable=True)
     budget_hours = Column(Float, nullable=True)
+    budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)

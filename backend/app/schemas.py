@@ -18,4 +18,20 @@ class ProjectIn(BaseModel):
     client: Optional[str] = None
     manager: Optional[str] = None
     budget_hours: Optional[float] = None
+    budget_cost: Optional[float] = None
     status: str = "ativo"
+
+
+class SeniorityLevelIn(BaseModel):
+    name: str
+
+
+class RateCardIn(BaseModel):
+    seniority_level_id: int
+    hourly_rate: float
+    valid_from: DateType
+    valid_to: Optional[DateType] = None
+
+
+class CollaboratorSeniorityIn(BaseModel):
+    seniority_level_id: Optional[int] = None

@@ -48,12 +48,22 @@ def _migrate_columns() -> None:
     from sqlalchemy import text
     try:
         with engine.begin() as conn:
-            result = conn.execute(text("PRAGMA table_info(timesheet_record)"))
-            existing = {row[1] for row in result}
-            if "cost_per_hour" not in existing:
+            tr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(timesheet_record)"))}
+            if "cost_per_hour" not in tr_cols:
                 conn.execute(text(
                     "ALTER TABLE timesheet_record"
                     " ADD COLUMN cost_per_hour FLOAT NOT NULL DEFAULT 0.0"
+                ))
+            c_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(collaborator)"))}
+            if "seniority_level_id" not in c_cols:
+                conn.execute(text(
+                    "ALTER TABLE collaborator"
+                    " ADD COLUMN seniority_level_id INTEGER REFERENCES seniority_level(id)"
+                ))
+            p_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project)"))}
+            if "budget_cost" not in p_cols:
+                conn.execute(text(
+                    "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
                 ))
     except Exception:
         pass  # table not yet created; create_all handles that

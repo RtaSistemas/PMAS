@@ -18,6 +18,7 @@
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
   <button class="tab-btn" data-tab="cycles">Ciclos</button>
   <button class="tab-btn" data-tab="projects">Projetos</button>
+  <button class="tab-btn" data-tab="team">Equipe</button>
 </nav>
 
 <main>
@@ -45,6 +46,8 @@
         <div class="field"><label>PEP (Código)</label><div id="pepMs"></div></div>
         <div class="field"><label>PEP (Descrição)</label><div id="pepDescMs"></div></div>
         <div class="field"><label>Colaborador</label><div id="collaboratorMs"></div></div>
+        <div class="field"><label>Data início</label><input type="date" id="dateFromInput" /></div>
+        <div class="field"><label>Data fim</label><input type="date" id="dateToInput" /></div>
         <div class="field btn-group">
           <button id="loadBtn" class="btn btn-primary">Carregar</button>
           <button id="clearBtn" class="btn btn-secondary">Limpar</button>
@@ -67,7 +70,10 @@
       <div class="card chart-panel" id="effortPanel">
         <div class="panel-header">
           <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
-          <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
+          <div style="display:flex;gap:0.5rem">
+            <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
+            <button id="exportCsvBtn" class="btn btn-secondary btn-sm">⬇ Exportar CSV</button>
+          </div>
         </div>
         <div id="effortEmpty" class="chart-empty" hidden>
           Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
@@ -86,8 +92,11 @@
     <div id="atab-portfolio" class="atab-section" hidden>
       <div class="card chart-panel">
         <div class="panel-header">
-          <span class="panel-title">Distribuição de Horas por PEP (Treemap)</span>
-          <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
+          <span class="panel-title" id="portfolioTreemapTitle">Distribuição de Horas por PEP (Treemap)</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
+            <button id="evmToggleBtn" class="btn btn-secondary btn-sm">Vista: Horas</button>
+          </div>
         </div>
         <div id="portfolioEmpty" class="chart-empty" hidden>
           Nenhum dado de horas encontrado para os filtros selecionados.
@@ -132,6 +141,7 @@
         <h2 class="card-title">Ciclos cadastrados</h2>
         <button class="btn btn-primary btn-sm" id="newCycleBtn">+ Novo ciclo</button>
       </div>
+      <input type="text" id="cycleSearch" class="table-search-input" placeholder="Buscar por nome de ciclo…" />
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>
@@ -157,6 +167,7 @@
         <h2 class="card-title">Projetos / PEPs</h2>
         <button class="btn btn-primary btn-sm" id="newProjectBtn">+ Novo projeto</button>
       </div>
+      <input type="text" id="projectSearch" class="table-search-input" placeholder="Buscar por PEP, nome ou cliente…" />
       <table class="data-table" id="projectsTable">
         <thead>
           <tr>
@@ -172,6 +183,61 @@
         <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
       </table>
     </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- TAB: Equipe                                                         -->
+  <!-- ================================================================== -->
+  <section id="tab-team" class="tab-section" hidden>
+
+    <!-- Seniority levels -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Níveis de Senioridade</h2>
+        <button class="btn btn-primary btn-sm" id="newSeniorityBtn">+ Novo nível</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Nome</th><th></th></tr></thead>
+        <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Rate cards -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Tabela de Taxas (Rate Card)</h2>
+        <button class="btn btn-primary btn-sm" id="newRateCardBtn">+ Nova taxa</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nível</th>
+            <th style="text-align:right">Valor/hora (R$)</th>
+            <th>Vigência início</th>
+            <th>Vigência fim</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rateCardBody"><tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Team / collaborators -->
+    <div class="card">
+      <h2 class="card-title">Colaboradores</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Senioridade</th>
+            <th style="text-align:right">Taxa atual (R$/h)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="teamBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
   </section>
 
 </main>
@@ -247,11 +313,98 @@
         <label for="projectBudgetInput">Budget de horas</label>
         <input type="number" id="projectBudgetInput" placeholder="Ex: 160" min="0" step="0.5" />
       </div>
+      <div class="form-group">
+        <label for="projectBudgetCostInput">Budget (R$)</label>
+        <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
+      </div>
     </div>
     <div class="error-msg" id="projectError"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="projectCancelBtn">Cancelar</button>
       <button class="btn btn-primary" id="projectSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Nível de Senioridade                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="seniorityModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="seniorityModalTitle">Novo Nível de Senioridade</h3>
+      <button class="modal-close" id="seniorityModalClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-group">
+        <label for="seniorityNameInput">Nome *</label>
+        <input type="text" id="seniorityNameInput" placeholder="Ex: Pleno, Sênior" />
+      </div>
+    </div>
+    <div class="error-msg" id="seniorityError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="seniorityCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="senioritySaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Rate Card                                                     -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="rateCardModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="rateCardModalTitle">Nova Taxa</h3>
+      <button class="modal-close" id="rateCardModalClose">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="rateCardLevelInput">Nível de Senioridade *</label>
+        <select class="form-select" id="rateCardLevelInput"></select>
+      </div>
+      <div class="form-group">
+        <label for="rateCardRateInput">Valor/hora (R$) *</label>
+        <input type="number" id="rateCardRateInput" placeholder="Ex: 120.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label for="rateCardFromInput">Vigência início *</label>
+        <input type="date" id="rateCardFromInput" />
+      </div>
+      <div class="form-group">
+        <label for="rateCardToInput">Vigência fim (opcional)</label>
+        <input type="date" id="rateCardToInput" />
+      </div>
+    </div>
+    <div class="error-msg" id="rateCardError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="rateCardCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="rateCardSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Atribuir Senioridade                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="assignSeniorityModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="assignSeniorityTitle">Atribuir Senioridade</h3>
+      <button class="modal-close" id="assignSeniorityClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-group">
+        <label for="assignSenioritySelect">Nível de Senioridade</label>
+        <select class="form-select" id="assignSenioritySelect">
+          <option value="">— Sem senioridade —</option>
+        </select>
+      </div>
+    </div>
+    <div class="error-msg" id="assignSeniorityError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="assignSeniorityCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="assignSenioritySaveBtn">Salvar</button>
     </div>
   </div>
 </div>
