@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as DateType
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -18,6 +19,8 @@ def get_portfolio_health(
     db: DbSession,
     cycle_id: Optional[int] = None,
     pep_wbs: List[str] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
 ):
     q = (
         db.query(
@@ -35,6 +38,10 @@ def get_portfolio_health(
         q = q.filter(TimesheetRecord.cycle_id == cycle_id)
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
 
     rows = q.group_by(TimesheetRecord.pep_wbs, TimesheetRecord.pep_description).all()
 
@@ -78,6 +85,8 @@ def get_portfolio_health(
 def get_trends(
     db: DbSession,
     pep_wbs: List[str] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
 ):
     q = (
         db.query(
@@ -92,6 +101,10 @@ def get_trends(
     )
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
 
     rows = q.group_by(Cycle.id).order_by(Cycle.start_date).all()
 

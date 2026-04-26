@@ -74,6 +74,21 @@ atabBtns.forEach(btn => {
   });
 });
 
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  if (!_lastEffortData.length) { notify('Carregue dados antes de exportar.', 'info'); return; }
+  const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
+  const rows = _lastEffortData.map(d => {
+    const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
+    return `"${d.collaborator}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
+  });
+  const csv  = [header, ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'esforco-equipe.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById('stackToggleBtn').addEventListener('click', () => {
   _stackMode = !_stackMode;
   document.getElementById('stackToggleBtn').textContent =
@@ -184,6 +199,8 @@ loadBtn.addEventListener('click', () => _renderActiveTab());
 
 clearBtn.addEventListener('click', () => {
   cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
+  document.getElementById('dateFromInput').value = '';
+  document.getElementById('dateToInput').value   = '';
   pepDataCache = {};
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
@@ -213,16 +230,22 @@ function _showEmpty(id, show) {
 // ---------------------------------------------------------------------------
 // Esforço da Equipe
 // ---------------------------------------------------------------------------
+let _lastEffortData = [];
+
 async function _renderEffortTab() {
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
   const collabIds = collaboratorMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
 
   const p = new URLSearchParams();
   pepCodes.forEach(c  => p.append('pep_code', c));
   pepDescs.forEach(d  => p.append('pep_description', d));
   collabIds.forEach(id => p.append('collaborator_id', id));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
 
   try {
     let payload;
@@ -233,6 +256,7 @@ async function _renderEffortTab() {
     }
 
     const data = payload.data || [];
+    _lastEffortData = data;
     const bva  = (payload.budget_vs_actual || []).filter(d => d.budget_hours > 0);
 
     // Stats row
@@ -277,9 +301,13 @@ async function _renderEffortTab() {
 async function _renderPortfolioTab() {
   const cycleIds = cycleMs.getValues();
   const pepCodes = pepMs.getValues();
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
   const p = new URLSearchParams();
   if (cycleIds.length > 0) p.set('cycle_id', cycleIds[0]);
   pepCodes.forEach(c => p.append('pep_wbs', c));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
 
   try {
     const health = await apiFetch(`/api/portfolio-health?${p}`);
@@ -317,8 +345,12 @@ async function _renderPortfolioTab() {
 // ---------------------------------------------------------------------------
 async function _renderTrendsTab() {
   const pepCodes = pepMs.getValues();
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
   const p = new URLSearchParams();
   pepCodes.forEach(c => p.append('pep_wbs', c));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
 
   try {
     const trends = await apiFetch(`/api/trends?${p}`);

@@ -46,6 +46,8 @@
         <div class="field"><label>PEP (Código)</label><div id="pepMs"></div></div>
         <div class="field"><label>PEP (Descrição)</label><div id="pepDescMs"></div></div>
         <div class="field"><label>Colaborador</label><div id="collaboratorMs"></div></div>
+        <div class="field"><label>Data início</label><input type="date" id="dateFromInput" /></div>
+        <div class="field"><label>Data fim</label><input type="date" id="dateToInput" /></div>
         <div class="field btn-group">
           <button id="loadBtn" class="btn btn-primary">Carregar</button>
           <button id="clearBtn" class="btn btn-secondary">Limpar</button>
@@ -68,7 +70,10 @@
       <div class="card chart-panel" id="effortPanel">
         <div class="panel-header">
           <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
-          <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
+          <div style="display:flex;gap:0.5rem">
+            <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
+            <button id="exportCsvBtn" class="btn btn-secondary btn-sm">⬇ Exportar CSV</button>
+          </div>
         </div>
         <div id="effortEmpty" class="chart-empty" hidden>
           Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
