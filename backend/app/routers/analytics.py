@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 from datetime import date as DateType
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Cycle, Project, TimesheetRecord
+from backend.app.schemas import PortfolioHealthItem, TrendItem
 
 router = APIRouter(prefix="/api", tags=["analytics"])
-DbSession = Annotated[Session, Depends(get_db)]
 
 
-@router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project")
+@router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project", response_model=list[PortfolioHealthItem])
 def get_portfolio_health(
     db: DbSession,
     cycle_id: Optional[int] = None,
@@ -93,7 +92,7 @@ def get_portfolio_health(
     return result
 
 
-@router.get("/trends", summary="Queima de horas por ciclo em ordem cronológica")
+@router.get("/trends", summary="Queima de horas por ciclo em ordem cronológica", response_model=list[TrendItem])
 def get_trends(
     db: DbSession,
     pep_wbs: List[str] = Query(default=[]),

@@ -1,31 +1,48 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, RateCard, SeniorityLevel
-from backend.app.schemas import CollaboratorSeniorityIn, RateCardIn, SeniorityLevelIn
+from backend.app.schemas import (
+    CollaboratorSeniorityIn, IdOut, RateCardIn, RateCardOut,
+    SeniorityAssignOut, SeniorityLevelIn, SeniorityLevelOut, TeamMemberOut,
+)
 
 router = APIRouter(prefix="/api", tags=["ratecard"])
 
-DbSession = Annotated[Session, Depends(get_db)]
+
+def _assert_no_overlap(db: Session, body: RateCardIn, exclude_id: int | None = None) -> None:
+    q = db.query(RateCard).filter(
+        RateCard.seniority_level_id == body.seniority_level_id,
+        (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= body.valid_from),
+    )
+    if body.valid_to is not None:
+        q = q.filter(RateCard.valid_from <= body.valid_to)
+    if exclude_id is not None:
+        q = q.filter(RateCard.id != exclude_id)
+    if q.first():
+        raise HTTPException(
+            status_code=409,
+            detail="Período sobrepõe outro rate card existente para o mesmo nível.",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Seniority Levels
 # ---------------------------------------------------------------------------
 
-@router.get("/seniority-levels")
+@router.get("/seniority-levels", response_model=list[SeniorityLevelOut])
 def list_seniority_levels(db: DbSession):
     levels = db.query(SeniorityLevel).order_by(SeniorityLevel.name).all()
     return [{"id": l.id, "name": l.name} for l in levels]
 
 
-@router.post("/seniority-levels", status_code=201)
+@router.post("/seniority-levels", status_code=201, response_model=SeniorityLevelOut)
 def create_seniority_level(body: SeniorityLevelIn, db: DbSession):
     if db.query(SeniorityLevel).filter(SeniorityLevel.name == body.name).first():
         raise HTTPException(status_code=409, detail="Nível de senioridade já cadastrado.")
@@ -34,7 +51,7 @@ def create_seniority_level(body: SeniorityLevelIn, db: DbSession):
     return {"id": sl.id, "name": sl.name}
 
 
-@router.put("/seniority-levels/{level_id}")
+@router.put("/seniority-levels/{level_id}", response_model=SeniorityLevelOut)
 def update_seniority_level(level_id: int, body: SeniorityLevelIn, db: DbSession):
     sl = db.get(SeniorityLevel, level_id)
     if not sl:
@@ -67,7 +84,7 @@ def delete_seniority_level(level_id: int, db: DbSession):
 # Rate Cards
 # ---------------------------------------------------------------------------
 
-@router.get("/rate-cards")
+@router.get("/rate-cards", response_model=list[RateCardOut])
 def list_rate_cards(db: DbSession, seniority_level_id: Optional[int] = None):
     q = db.query(RateCard)
     if seniority_level_id:
@@ -79,19 +96,20 @@ def list_rate_cards(db: DbSession, seniority_level_id: Optional[int] = None):
             "seniority_level_id": c.seniority_level_id,
             "seniority_level_name": c.seniority_level.name,
             "hourly_rate": c.hourly_rate,
-            "valid_from": str(c.valid_from),
-            "valid_to": str(c.valid_to) if c.valid_to else None,
+            "valid_from": c.valid_from,
+            "valid_to": c.valid_to,
         }
         for c in cards
     ]
 
 
-@router.post("/rate-cards", status_code=201)
+@router.post("/rate-cards", status_code=201, response_model=IdOut)
 def create_rate_card(body: RateCardIn, db: DbSession):
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
     if not db.get(SeniorityLevel, body.seniority_level_id):
         raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
+    _assert_no_overlap(db, body)
     card = RateCard(
         seniority_level_id=body.seniority_level_id,
         hourly_rate=body.hourly_rate,
@@ -102,13 +120,14 @@ def create_rate_card(body: RateCardIn, db: DbSession):
     return {"id": card.id}
 
 
-@router.put("/rate-cards/{card_id}")
+@router.put("/rate-cards/{card_id}", response_model=IdOut)
 def update_rate_card(card_id: int, body: RateCardIn, db: DbSession):
     card = db.get(RateCard, card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
+    _assert_no_overlap(db, body, exclude_id=card_id)
     card.seniority_level_id = body.seniority_level_id
     card.hourly_rate = body.hourly_rate
     card.valid_from = body.valid_from
@@ -129,36 +148,38 @@ def delete_rate_card(card_id: int, db: DbSession):
 # Team (collaborators + seniority)
 # ---------------------------------------------------------------------------
 
-@router.get("/team")
+@router.get("/team", response_model=list[TeamMemberOut])
 def list_team(db: DbSession):
     collabs = db.query(Collaborator).order_by(Collaborator.name).all()
     today = date.today()
-    result = []
-    for c in collabs:
-        current_rate = None
-        if c.seniority_level_id:
-            rc = (
-                db.query(RateCard)
-                .filter(
-                    RateCard.seniority_level_id == c.seniority_level_id,
-                    RateCard.valid_from <= today,
-                    (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= today),
-                )
-                .order_by(RateCard.valid_from.desc())
-                .first()
-            )
-            current_rate = rc.hourly_rate if rc else None
-        result.append({
+
+    valid_cards = (
+        db.query(RateCard)
+        .filter(
+            RateCard.valid_from <= today,
+            (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= today),
+        )
+        .order_by(RateCard.seniority_level_id, RateCard.valid_from.desc())
+        .all()
+    )
+    rate_by_level: dict[int, float] = {}
+    for rc in valid_cards:
+        if rc.seniority_level_id not in rate_by_level:
+            rate_by_level[rc.seniority_level_id] = rc.hourly_rate
+
+    return [
+        {
             "id": c.id,
             "name": c.name,
             "seniority_level_id": c.seniority_level_id,
             "seniority_level_name": c.seniority_level.name if c.seniority_level else None,
-            "current_hourly_rate": current_rate,
-        })
-    return result
+            "current_hourly_rate": rate_by_level.get(c.seniority_level_id) if c.seniority_level_id else None,
+        }
+        for c in collabs
+    ]
 
 
-@router.put("/team/{collab_id}/seniority")
+@router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)
 def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession):
     collab = db.get(Collaborator, collab_id)
     if not collab:

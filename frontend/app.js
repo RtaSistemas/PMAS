@@ -209,6 +209,8 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
   pepDataCache = {};
+  _evmMode = false;
+  document.getElementById('evmToggleBtn').textContent = 'Vista: Horas';
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   _disposeTabCharts('trends');
@@ -520,10 +522,10 @@ function _buildTreemapOption(health, evmMode = false) {
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
         const d = health.find(x => x.pep_wbs === params.name);
-        if (!d) return params.name;
-        let html = `<b>${d.pep_wbs}</b>`;
-        if (d.pep_description) html += `<br><span style="color:#94a3b8">${d.pep_description}</span>`;
-        if (d.name)            html += `<br>Projeto: ${d.name}`;
+        if (!d) return escHtml(params.name);
+        let html = `<b>${escHtml(d.pep_wbs)}</b>`;
+        if (d.pep_description) html += `<br><span style="color:#94a3b8">${escHtml(d.pep_description)}</span>`;
+        if (d.name)            html += `<br>Projeto: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
         html += `<br>${evmMode ? 'Custo real' : 'Consumido'}: <b>${fmtVal(consumed)}</b>`;
@@ -604,7 +606,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         const fmtV = v => evmMode
           ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
           : v.toFixed(1) + 'h';
-        let html = `<b>${params[0].axisValue.replace('\n', ' ')}</b><br>`;
+        let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `Orçado: <b>${fmtV(b)}</b><br>Realizado: <b>${fmtV(a)}</b><br>`;
         html += `Utilização: <b>${pct}</b>`;
         if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ Acima do orçado</span>`;
@@ -664,23 +666,31 @@ function _buildTrendsOption(trends) {
   const cats    = trends.map(d => d.cycle_name);
   const normals = trends.map(d => +d.normal_hours.toFixed(2));
   const extras  = trends.map(d => +d.extra_hours.toFixed(2));
+  const costs   = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: ['Horas Normais', 'Horas Extras'],
+      data: ['Horas Normais', 'Horas Extras', 'Custo Real'],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
     },
-    grid: { top: 44, right: '3%', bottom: 48, left: '2%', containLabel: true },
+    grid: { top: 44, right: '8%', bottom: 48, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        let html = `<b>${params[0].axisValue}</b><br>`;
-        let total = 0;
-        params.forEach(p => { html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`; total += p.value; });
-        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total: <b>${total.toFixed(1)}h</b></div>`;
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
+        let totalHours = 0;
+        params.forEach(p => {
+          if (p.seriesName === 'Custo Real') {
+            html += `${p.marker} ${p.seriesName}: <b>R$ ${p.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b><br>`;
+          } else {
+            html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
+            totalHours += p.value;
+          }
+        });
+        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total horas: <b>${totalHours.toFixed(1)}h</b></div>`;
         return html;
       },
     },
@@ -690,26 +700,40 @@ function _buildTrendsOption(trends) {
       axisLabel: { color: '#94a3b8', rotate: cats.length > 6 ? 30 : 0, fontSize: 11 },
       axisTick: { alignWithLabel: true },
     },
-    yAxis: {
-      type: 'value', name: 'Horas',
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: '#334155' } },
-    },
+    yAxis: [
+      {
+        type: 'value', name: 'Horas',
+        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+        splitLine: { lineStyle: { color: '#334155' } },
+      },
+      {
+        type: 'value', name: 'R$',
+        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `R$${(v/1000).toFixed(0)}k` },
+        splitLine: { show: false },
+      },
+    ],
     series: [
       {
-        name: 'Horas Normais', type: 'line',
+        name: 'Horas Normais', type: 'line', yAxisIndex: 0,
         data: normals, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#3b82f6', width: 2.5 },
         itemStyle: { color: '#3b82f6' },
         areaStyle: { color: 'rgba(59,130,246,0.12)' },
       },
       {
-        name: 'Horas Extras', type: 'line',
+        name: 'Horas Extras', type: 'line', yAxisIndex: 0,
         data: extras, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#f59e0b', width: 2.5 },
         itemStyle: { color: '#f59e0b' },
         areaStyle: { color: 'rgba(245,158,11,0.10)' },
+      },
+      {
+        name: 'Custo Real', type: 'line', yAxisIndex: 1,
+        data: costs, smooth: true, symbol: 'diamond', symbolSize: 8,
+        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
+        itemStyle: { color: '#10b981' },
       },
     ],
   };
@@ -776,7 +800,7 @@ function _renderCyclesTable(cycles) {
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, '${escHtml(c.name)}', ${c.record_count})">Excluir</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">Excluir</button>
       </div></td>
     </tr>`).join('');
 }
@@ -888,7 +912,7 @@ function _renderProjectsTable(projects) {
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${escHtml(p.pep_wbs)}')">Excluir</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">Excluir</button>
       </div></td>
     </tr>`).join('');
 }
@@ -969,13 +993,13 @@ async function deleteProject(id, pep) {
 // ---------------------------------------------------------------------------
 let _allSeniorityLevels = [];
 let _allRateCards       = [];
+let _allTeam            = [];
 let _seniorityEditId    = null;
 let _rateCardEditId     = null;
 let _assignCollabId     = null;
 
 async function loadTeamTab() {
-  await loadSeniorityLevels();
-  await loadRateCards();
+  await Promise.all([loadSeniorityLevels(), loadRateCards()]);
   await loadTeamTable();
 }
 
@@ -992,7 +1016,7 @@ async function loadSeniorityLevels() {
         <td>${escHtml(l.name)}</td>
         <td><div class="actions">
           <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, '${escHtml(l.name)}')">Excluir</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">Excluir</button>
         </div></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -1022,18 +1046,18 @@ async function loadRateCards() {
 
 async function loadTeamTable() {
   try {
-    const team = await apiFetch('/api/team');
+    _allTeam = await apiFetch('/api/team');
     const tbody = document.getElementById('teamBody');
-    if (!team.length) {
+    if (!_allTeam.length) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Nenhum colaborador encontrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = team.map(m => `
+    tbody.innerHTML = _allTeam.map(m => `
       <tr>
         <td>${escHtml(m.name)}</td>
         <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
         <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, '${escHtml(m.name)}', ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -1185,7 +1209,7 @@ function notify(msg, type = 'info') {
 function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : Number(h).toFixed(1); }
 
 function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ---------------------------------------------------------------------------

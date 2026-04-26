@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date as DateType
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
+from backend.app.schemas import DashboardOut
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _compute_budget_vs_actual(
@@ -121,7 +120,7 @@ def _base_query(db: Session):
     ).join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
 
 
-@router.get("", summary="Dashboard sem filtro de ciclo — toda a base")
+@router.get("", summary="Dashboard sem filtro de ciclo — toda a base", response_model=DashboardOut)
 def get_dashboard_all(
     db: DbSession,
     pep_code: List[str] = Query(default=[]),
@@ -164,7 +163,7 @@ def get_dashboard_all(
     }
 
 
-@router.get("/{cycle_id}", summary="Dashboard de horas por ciclo")
+@router.get("/{cycle_id}", summary="Dashboard de horas por ciclo", response_model=DashboardOut)
 def get_dashboard(
     cycle_id: int,
     db: DbSession,
@@ -209,8 +208,8 @@ def get_dashboard(
         "cycle": {
             "id": cycle.id,
             "name": cycle.name,
-            "start_date": cycle.start_date.isoformat(),
-            "end_date": cycle.end_date.isoformat(),
+            "start_date": cycle.start_date,
+            "end_date": cycle.end_date,
             "is_quarantine": cycle.is_quarantine,
         },
         "filters": {

@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Annotated, List
+from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
+from backend.app.database import DbSession
 from backend.app.models import Collaborator, TimesheetRecord
+from backend.app.schemas import CollaboratorOut, PepOut
 
 router = APIRouter(prefix="/api", tags=["reference"])
 
-DbSession = Annotated[Session, Depends(get_db)]
 
-
-@router.get("/collaborators", summary="Listar colaboradores")
+@router.get("/collaborators", summary="Listar colaboradores", response_model=list[CollaboratorOut])
 def list_collaborators(
     db: DbSession,
     cycle_id: List[int] = Query(default=[]),
@@ -36,7 +34,7 @@ def list_collaborators(
     return [{"id": r.id, "name": r.name} for r in rows]
 
 
-@router.get("/peps", summary="Listar PEPs únicos")
+@router.get("/peps", summary="Listar PEPs únicos", response_model=list[PepOut])
 def list_peps(
     db: DbSession,
     cycle_id: List[int] = Query(default=[]),

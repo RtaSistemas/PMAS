@@ -3,24 +3,33 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Annotated
+from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 
-from backend.app.database import get_db, init_db
+from backend.app.database import DbSession, init_db
+from backend.app.schemas import UploadOut
 from backend.app.routers import analytics, cycles, dashboard, projects, ratecard, reference
 from backend.app.services.ingestion import ingest_file
 
 log = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    init_db()
+    log.info("PMAS API pronta. Banco inicializado.")
+    yield
+
+
 app = FastAPI(
     title="PMAS API",
     description="Project Management Assistant System — Timesheet Foundation",
     version="1.0.0",
+    lifespan=_lifespan,
 )
 
 app.add_middleware(
@@ -58,21 +67,17 @@ def root():
     return RedirectResponse(url="/frontend/index.html")
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-    log.info("PMAS API pronta. Banco inicializado.")
+_MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
-DbSession = Annotated[Session, Depends(get_db)]
-
-
-@app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet")
+@app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
 def upload_timesheet(file: UploadFile, db: DbSession):
     fname = file.filename or ""
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
-    contents = file.file.read()
+    contents = file.file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo excede o limite de 20 MB.")
     try:
         summary = ingest_file(contents, fname, db)
     except ValueError as exc:
