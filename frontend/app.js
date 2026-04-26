@@ -209,6 +209,8 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
   pepDataCache = {};
+  _evmMode = false;
+  document.getElementById('evmToggleBtn').textContent = 'Vista: Horas';
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   _disposeTabCharts('trends');
@@ -664,23 +666,31 @@ function _buildTrendsOption(trends) {
   const cats    = trends.map(d => d.cycle_name);
   const normals = trends.map(d => +d.normal_hours.toFixed(2));
   const extras  = trends.map(d => +d.extra_hours.toFixed(2));
+  const costs   = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: ['Horas Normais', 'Horas Extras'],
+      data: ['Horas Normais', 'Horas Extras', 'Custo Real'],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
     },
-    grid: { top: 44, right: '3%', bottom: 48, left: '2%', containLabel: true },
+    grid: { top: 44, right: '8%', bottom: 48, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
         let html = `<b>${params[0].axisValue}</b><br>`;
-        let total = 0;
-        params.forEach(p => { html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`; total += p.value; });
-        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total: <b>${total.toFixed(1)}h</b></div>`;
+        let totalHours = 0;
+        params.forEach(p => {
+          if (p.seriesName === 'Custo Real') {
+            html += `${p.marker} ${p.seriesName}: <b>R$ ${p.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b><br>`;
+          } else {
+            html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
+            totalHours += p.value;
+          }
+        });
+        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total horas: <b>${totalHours.toFixed(1)}h</b></div>`;
         return html;
       },
     },
@@ -690,26 +700,40 @@ function _buildTrendsOption(trends) {
       axisLabel: { color: '#94a3b8', rotate: cats.length > 6 ? 30 : 0, fontSize: 11 },
       axisTick: { alignWithLabel: true },
     },
-    yAxis: {
-      type: 'value', name: 'Horas',
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: '#334155' } },
-    },
+    yAxis: [
+      {
+        type: 'value', name: 'Horas',
+        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+        splitLine: { lineStyle: { color: '#334155' } },
+      },
+      {
+        type: 'value', name: 'R$',
+        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `R$${(v/1000).toFixed(0)}k` },
+        splitLine: { show: false },
+      },
+    ],
     series: [
       {
-        name: 'Horas Normais', type: 'line',
+        name: 'Horas Normais', type: 'line', yAxisIndex: 0,
         data: normals, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#3b82f6', width: 2.5 },
         itemStyle: { color: '#3b82f6' },
         areaStyle: { color: 'rgba(59,130,246,0.12)' },
       },
       {
-        name: 'Horas Extras', type: 'line',
+        name: 'Horas Extras', type: 'line', yAxisIndex: 0,
         data: extras, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#f59e0b', width: 2.5 },
         itemStyle: { color: '#f59e0b' },
         areaStyle: { color: 'rgba(245,158,11,0.10)' },
+      },
+      {
+        name: 'Custo Real', type: 'line', yAxisIndex: 1,
+        data: costs, smooth: true, symbol: 'diamond', symbolSize: 8,
+        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
+        itemStyle: { color: '#10b981' },
       },
     ],
   };

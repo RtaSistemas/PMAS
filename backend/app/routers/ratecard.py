@@ -4,12 +4,29 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.models import Collaborator, RateCard, SeniorityLevel
 from backend.app.schemas import CollaboratorSeniorityIn, RateCardIn, SeniorityLevelIn
 
 router = APIRouter(prefix="/api", tags=["ratecard"])
+
+
+def _assert_no_overlap(db: Session, body: RateCardIn, exclude_id: int | None = None) -> None:
+    q = db.query(RateCard).filter(
+        RateCard.seniority_level_id == body.seniority_level_id,
+        (RateCard.valid_to.is_(None)) | (RateCard.valid_to >= body.valid_from),
+    )
+    if body.valid_to is not None:
+        q = q.filter(RateCard.valid_from <= body.valid_to)
+    if exclude_id is not None:
+        q = q.filter(RateCard.id != exclude_id)
+    if q.first():
+        raise HTTPException(
+            status_code=409,
+            detail="Período sobrepõe outro rate card existente para o mesmo nível.",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +106,7 @@ def create_rate_card(body: RateCardIn, db: DbSession):
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
     if not db.get(SeniorityLevel, body.seniority_level_id):
         raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
+    _assert_no_overlap(db, body)
     card = RateCard(
         seniority_level_id=body.seniority_level_id,
         hourly_rate=body.hourly_rate,
@@ -106,6 +124,7 @@ def update_rate_card(card_id: int, body: RateCardIn, db: DbSession):
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
+    _assert_no_overlap(db, body, exclude_id=card_id)
     card.seniority_level_id = body.seniority_level_id
     card.hourly_rate = body.hourly_rate
     card.valid_from = body.valid_from
