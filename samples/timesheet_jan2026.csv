@@ -1,0 +1,10 @@
+Colaborador,Data,Horas totais (decimal),Hora extra,Hora sobreaviso,Código PEP,PEP
+Ana Lima,05/01/2026,8.0,Não,Não,60OP-001,Projeto Alpha
+Ana Lima,06/01/2026,8.0,Não,Não,60OP-001,Projeto Alpha
+Ana Lima,07/01/2026,4.0,Sim,Não,60OP-002,Projeto Beta
+Bruno Mendes,05/01/2026,8.0,Não,Não,60OP-002,Projeto Beta
+Bruno Mendes,06/01/2026,8.0,Não,Não,60OP-002,Projeto Beta
+Bruno Mendes,10/01/2026,2.0,Não,Sim,60OP-001,Projeto Alpha
+Carla Souza,05/01/2026,8.0,Não,Não,60OP-001,Projeto Alpha
+Carla Souza,08/01/2026,8.0,Não,Não,60OP-002,Projeto Beta
+Carla Souza,09/01/2026,8.0,Não,Não,,
