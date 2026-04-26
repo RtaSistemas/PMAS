@@ -44,7 +44,7 @@ class TestLogin:
         assert res.status_code == 401
 
     def test_login_admin_role_in_token(self, client, db_session):
-        import jwt as pyjwt
+        from jose import jwt as pyjwt
         from backend.app.deps import SECRET_KEY, ALGORITHM
         _create_user(db_session, "superadmin", "pass", role="admin")
         res = client.post("/api/token", data={"username": "superadmin", "password": "pass"})
