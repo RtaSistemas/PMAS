@@ -18,6 +18,7 @@
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
   <button class="tab-btn" data-tab="cycles">Ciclos</button>
   <button class="tab-btn" data-tab="projects">Projetos</button>
+  <button class="tab-btn" data-tab="team">Equipe</button>
 </nav>
 
 <main>
@@ -176,6 +177,61 @@
     </div>
   </section>
 
+  <!-- ================================================================== -->
+  <!-- TAB: Equipe                                                         -->
+  <!-- ================================================================== -->
+  <section id="tab-team" class="tab-section" hidden>
+
+    <!-- Seniority levels -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Níveis de Senioridade</h2>
+        <button class="btn btn-primary btn-sm" id="newSeniorityBtn">+ Novo nível</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Nome</th><th></th></tr></thead>
+        <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Rate cards -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Tabela de Taxas (Rate Card)</h2>
+        <button class="btn btn-primary btn-sm" id="newRateCardBtn">+ Nova taxa</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nível</th>
+            <th style="text-align:right">Valor/hora (R$)</th>
+            <th>Vigência início</th>
+            <th>Vigência fim</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rateCardBody"><tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Team / collaborators -->
+    <div class="card">
+      <h2 class="card-title">Colaboradores</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Senioridade</th>
+            <th style="text-align:right">Taxa atual (R$/h)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="teamBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+
+  </section>
+
 </main>
 
 <!-- ================================================================== -->
@@ -254,6 +310,89 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="projectCancelBtn">Cancelar</button>
       <button class="btn btn-primary" id="projectSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Nível de Senioridade                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="seniorityModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="seniorityModalTitle">Novo Nível de Senioridade</h3>
+      <button class="modal-close" id="seniorityModalClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-group">
+        <label for="seniorityNameInput">Nome *</label>
+        <input type="text" id="seniorityNameInput" placeholder="Ex: Pleno, Sênior" />
+      </div>
+    </div>
+    <div class="error-msg" id="seniorityError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="seniorityCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="senioritySaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Rate Card                                                     -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="rateCardModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="rateCardModalTitle">Nova Taxa</h3>
+      <button class="modal-close" id="rateCardModalClose">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="rateCardLevelInput">Nível de Senioridade *</label>
+        <select class="form-select" id="rateCardLevelInput"></select>
+      </div>
+      <div class="form-group">
+        <label for="rateCardRateInput">Valor/hora (R$) *</label>
+        <input type="number" id="rateCardRateInput" placeholder="Ex: 120.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label for="rateCardFromInput">Vigência início *</label>
+        <input type="date" id="rateCardFromInput" />
+      </div>
+      <div class="form-group">
+        <label for="rateCardToInput">Vigência fim (opcional)</label>
+        <input type="date" id="rateCardToInput" />
+      </div>
+    </div>
+    <div class="error-msg" id="rateCardError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="rateCardCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="rateCardSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Atribuir Senioridade                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="assignSeniorityModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="assignSeniorityTitle">Atribuir Senioridade</h3>
+      <button class="modal-close" id="assignSeniorityClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-group">
+        <label for="assignSenioritySelect">Nível de Senioridade</label>
+        <select class="form-select" id="assignSenioritySelect">
+          <option value="">— Sem senioridade —</option>
+        </select>
+      </div>
+    </div>
+    <div class="error-msg" id="assignSeniorityError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="assignSeniorityCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="assignSenioritySaveBtn">Salvar</button>
     </div>
   </div>
 </div>

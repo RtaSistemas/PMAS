@@ -15,6 +15,7 @@ tabBtns.forEach(btn => {
 
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'projects') loadProjectsTable();
+    if (btn.dataset.tab === 'team')     loadTeamTab();
   });
 });
 
@@ -894,6 +895,193 @@ async function deleteProject(id, pep) {
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+// ---------------------------------------------------------------------------
+// Team / RateCard management
+// ---------------------------------------------------------------------------
+let _allSeniorityLevels = [];
+let _allRateCards       = [];
+let _seniorityEditId    = null;
+let _rateCardEditId     = null;
+let _assignCollabId     = null;
+
+async function loadTeamTab() {
+  await loadSeniorityLevels();
+  await loadRateCards();
+  await loadTeamTable();
+}
+
+async function loadSeniorityLevels() {
+  try {
+    _allSeniorityLevels = await apiFetch('/api/seniority-levels');
+    const tbody = document.getElementById('seniorityBody');
+    if (!_allSeniorityLevels.length) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">Nenhum nível cadastrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _allSeniorityLevels.map(l => `
+      <tr>
+        <td>${escHtml(l.name)}</td>
+        <td><div class="actions">
+          <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, '${escHtml(l.name)}')">Excluir</button>
+        </div></td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function loadRateCards() {
+  try {
+    _allRateCards = await apiFetch('/api/rate-cards');
+    const tbody = document.getElementById('rateCardBody');
+    if (!_allRateCards.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">Nenhuma taxa cadastrada.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _allRateCards.map(c => `
+      <tr>
+        <td>${escHtml(c.seniority_level_name)}</td>
+        <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+        <td>${c.valid_from}</td>
+        <td>${c.valid_to ?? '—'}</td>
+        <td><div class="actions">
+          <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">Excluir</button>
+        </div></td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function loadTeamTable() {
+  try {
+    const team = await apiFetch('/api/team');
+    const tbody = document.getElementById('teamBody');
+    if (!team.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Nenhum colaborador encontrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = team.map(m => `
+      <tr>
+        <td>${escHtml(m.name)}</td>
+        <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
+        <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, '${escHtml(m.name)}', ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// Seniority level modal
+function openSeniorityModal(id = null) {
+  _seniorityEditId = id;
+  document.getElementById('seniorityModalTitle').textContent = id ? 'Editar Nível' : 'Novo Nível de Senioridade';
+  document.getElementById('seniorityError').textContent = '';
+  const l = id ? _allSeniorityLevels.find(x => x.id === id) : null;
+  document.getElementById('seniorityNameInput').value = l ? l.name : '';
+  document.getElementById('seniorityModal').hidden = false;
+}
+function closeSeniorityModal() { document.getElementById('seniorityModal').hidden = true; }
+
+document.getElementById('senioritySaveBtn').addEventListener('click', async () => {
+  const name = document.getElementById('seniorityNameInput').value.trim();
+  if (!name) { document.getElementById('seniorityError').textContent = 'Nome é obrigatório.'; return; }
+  try {
+    if (_seniorityEditId) {
+      await apiFetchJSON(`/api/seniority-levels/${_seniorityEditId}`, 'PUT', { name });
+    } else {
+      await apiFetchJSON('/api/seniority-levels', 'POST', { name });
+    }
+    closeSeniorityModal();
+    await loadSeniorityLevels();
+  } catch (e) { document.getElementById('seniorityError').textContent = e.message; }
+});
+document.getElementById('seniorityCancelBtn').addEventListener('click', closeSeniorityModal);
+document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
+document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
+
+async function deleteSeniorityLevel(id, name) {
+  if (!confirm(`Excluir o nível "${name}"?`)) return;
+  try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
+  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// Rate card modal
+function _populateLevelSelect(selectId, selectedId = null) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = _allSeniorityLevels.map(l =>
+    `<option value="${l.id}" ${l.id === selectedId ? 'selected' : ''}>${escHtml(l.name)}</option>`
+  ).join('');
+}
+
+function openRateCardModal(id = null) {
+  _rateCardEditId = id;
+  document.getElementById('rateCardModalTitle').textContent = id ? 'Editar Taxa' : 'Nova Taxa';
+  document.getElementById('rateCardError').textContent = '';
+  const c = id ? _allRateCards.find(x => x.id === id) : null;
+  _populateLevelSelect('rateCardLevelInput', c?.seniority_level_id ?? null);
+  document.getElementById('rateCardRateInput').value = c ? c.hourly_rate : '';
+  document.getElementById('rateCardFromInput').value = c ? c.valid_from : '';
+  document.getElementById('rateCardToInput').value   = c ? (c.valid_to ?? '') : '';
+  document.getElementById('rateCardModal').hidden = false;
+}
+function closeRateCardModal() { document.getElementById('rateCardModal').hidden = true; }
+
+document.getElementById('rateCardSaveBtn').addEventListener('click', async () => {
+  const rate = document.getElementById('rateCardRateInput').value;
+  const from = document.getElementById('rateCardFromInput').value;
+  if (!rate || !from) { document.getElementById('rateCardError').textContent = 'Preencha os campos obrigatórios.'; return; }
+  const to = document.getElementById('rateCardToInput').value;
+  const body = {
+    seniority_level_id: parseInt(document.getElementById('rateCardLevelInput').value),
+    hourly_rate: parseFloat(rate),
+    valid_from: from,
+    valid_to: to || null,
+  };
+  try {
+    if (_rateCardEditId) {
+      await apiFetchJSON(`/api/rate-cards/${_rateCardEditId}`, 'PUT', body);
+    } else {
+      await apiFetchJSON('/api/rate-cards', 'POST', body);
+    }
+    closeRateCardModal();
+    await loadRateCards();
+    await loadTeamTable();
+  } catch (e) { document.getElementById('rateCardError').textContent = e.message; }
+});
+document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
+document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
+document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
+
+async function deleteRateCard(id) {
+  if (!confirm('Excluir esta taxa?')) return;
+  try { await apiFetchJSON(`/api/rate-cards/${id}`, 'DELETE'); await loadRateCards(); await loadTeamTable(); }
+  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// Assign seniority modal
+function openAssignSeniority(collabId, name, currentLevelId) {
+  _assignCollabId = collabId;
+  document.getElementById('assignSeniorityTitle').textContent = `Senioridade — ${name}`;
+  document.getElementById('assignSeniorityError').textContent = '';
+  const sel = document.getElementById('assignSenioritySelect');
+  sel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+    _allSeniorityLevels.map(l =>
+      `<option value="${l.id}" ${l.id === currentLevelId ? 'selected' : ''}>${escHtml(l.name)}</option>`
+    ).join('');
+  document.getElementById('assignSeniorityModal').hidden = false;
+}
+function closeAssignSeniority() { document.getElementById('assignSeniorityModal').hidden = true; }
+
+document.getElementById('assignSenioritySaveBtn').addEventListener('click', async () => {
+  const val = document.getElementById('assignSenioritySelect').value;
+  const body = { seniority_level_id: val ? parseInt(val) : null };
+  try {
+    await apiFetchJSON(`/api/team/${_assignCollabId}/seniority`, 'PUT', body);
+    closeAssignSeniority();
+    await loadTeamTable();
+  } catch (e) { document.getElementById('assignSeniorityError').textContent = e.message; }
+});
+document.getElementById('assignSeniorityCancelBtn').addEventListener('click', closeAssignSeniority);
+document.getElementById('assignSeniorityClose').addEventListener('click', closeAssignSeniority);
 
 // ---------------------------------------------------------------------------
 // Utilities
