@@ -51,6 +51,28 @@ def init_db() -> None:
     with engine.connect() as conn:
         conn.execute(text("PRAGMA journal_mode=WAL"))
     _migrate_columns()
+    _seed_admin()
+
+
+def _seed_admin() -> None:
+    import bcrypt as _bcrypt
+    from backend.app.models import User
+
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            db.add(User(
+                username="admin",
+                hashed_password=_bcrypt.hashpw(b"admin", _bcrypt.gensalt()).decode(),
+                role="admin",
+            ))
+            db.commit()
+            log.warning(
+                "Utilizador 'admin' criado com password padrão. "
+                "Altere imediatamente em produção."
+            )
+    finally:
+        db.close()
 
 
 def _migrate_columns() -> None:
@@ -74,6 +96,11 @@ def _migrate_columns() -> None:
             if "budget_cost" not in p_cols:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
+                ))
+            cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
+            if "is_closed" not in cy_cols:
+                conn.execute(text(
+                    "ALTER TABLE cycle ADD COLUMN is_closed BOOLEAN NOT NULL DEFAULT 0"
                 ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)

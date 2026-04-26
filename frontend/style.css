@@ -1,5 +1,45 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ------------------------------------------------------------------ */
+/* Login overlay                                                        */
+/* ------------------------------------------------------------------ */
+#loginOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #0f172a;
+  display: flex; align-items: center; justify-content: center;
+}
+#loginOverlay[hidden] { display: none; }
+
+.login-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; gap: 1rem;
+  box-shadow: 0 0 40px rgba(59,130,246,0.15);
+}
+.login-logo {
+  font-size: 2rem; font-weight: 800; letter-spacing: 0.05em;
+  color: #3b82f6; text-align: center;
+}
+.login-sub {
+  color: #64748b; font-size: 0.8rem; text-align: center; margin-top: -0.5rem;
+}
+.login-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.login-field label { font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
+.login-field input {
+  background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+  color: #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem;
+  outline: none; transition: border-color 0.15s;
+}
+.login-field input:focus { border-color: #3b82f6; }
+.login-btn { width: 100%; margin-top: 0.5rem; padding: 0.65rem; font-size: 0.95rem; }
+.login-error { color: #f87171; font-size: 0.8rem; min-height: 1rem; text-align: center; }
+
+/* Logout button in header */
+.logout-btn { margin-left: auto; font-size: 0.75rem; }
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   background: #0f172a;

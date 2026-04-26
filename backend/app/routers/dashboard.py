@@ -4,15 +4,16 @@ from collections import defaultdict
 from datetime import date as DateType
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
 from backend.app.schemas import DashboardOut
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
 
 def _compute_budget_vs_actual(

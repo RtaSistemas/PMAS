@@ -56,6 +56,7 @@ class Cycle(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     is_quarantine = Column(Boolean, default=False, nullable=False)
+    is_closed = Column(Boolean, default=False, nullable=False)
 
     records = relationship("TimesheetRecord", back_populates="cycle")
 
@@ -97,3 +98,12 @@ class Project(Base):
     budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="user")

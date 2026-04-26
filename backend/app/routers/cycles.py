@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
+from backend.app.deps import AdminUser, get_current_user
 from backend.app.models import Cycle, TimesheetRecord
 from backend.app.schemas import CycleIn, CycleOut
 
-router = APIRouter(prefix="/api/cycles", tags=["cycles"])
+router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(get_current_user)])
 
 
 def _cycle_record_counts(db: Session) -> dict[int, int]:
@@ -27,6 +28,7 @@ def _cycle_to_dict(c: Cycle, record_count: int = 0) -> dict:
         "start_date": c.start_date,
         "end_date": c.end_date,
         "is_quarantine": c.is_quarantine,
+        "is_closed": c.is_closed,
         "record_count": record_count,
     }
 
@@ -64,6 +66,18 @@ def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
     cycle.name = body.name
     cycle.start_date = body.start_date
     cycle.end_date = body.end_date
+    db.commit()
+    db.refresh(cycle)
+    counts = _cycle_record_counts(db)
+    return _cycle_to_dict(cycle, counts.get(cycle.id, 0))
+
+
+@router.patch("/{cycle_id}/toggle-status", summary="Bloquear/desbloquear ciclo", response_model=CycleOut)
+def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
+    cycle = db.get(Cycle, cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
+    cycle.is_closed = not cycle.is_closed
     db.commit()
     db.refresh(cycle)
     counts = _cycle_record_counts(db)

@@ -791,6 +791,7 @@ function _renderCyclesTable(cycles) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo encontrado.</td></tr>';
     return;
   }
+  const admin = _isAdmin();
   tbody.innerHTML = cycles.map(c => `
     <tr>
       <td>${escHtml(c.name)}</td>
@@ -799,10 +800,20 @@ function _renderCyclesTable(cycles) {
       <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? 'Quarentena' : 'Regular'}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
+        ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? 'Desbloquear ciclo' : 'Bloquear ciclo'}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">Excluir</button>
       </div></td>
     </tr>`).join('');
+}
+
+async function toggleCycleLock(id, isClosed) {
+  const label = isClosed ? 'Desbloquear' : 'Bloquear';
+  if (!confirm(`${label} este ciclo?`)) return;
+  try {
+    await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
+    loadCyclesTable();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 function openCycleModal(id = null) {
@@ -1178,8 +1189,34 @@ document.getElementById('assignSeniorityClose').addEventListener('click', closeA
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+function _authHeaders(extra = {}) {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
+}
+
+function _getTokenPayload() {
+  const token = localStorage.getItem('access_token');
+  if (!token) return null;
+  try { return JSON.parse(atob(token.split('.')[1])); } catch (_) { return null; }
+}
+
+function _isAdmin() {
+  const p = _getTokenPayload();
+  return p ? p.role === 'admin' : false;
+}
+
+function _handleUnauthorized() {
+  localStorage.removeItem('access_token');
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('loginOverlay').removeAttribute('hidden');
+}
+
 async function apiFetch(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: _authHeaders() });
+  if (res.status === 401) { _handleUnauthorized(); return; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
@@ -1190,9 +1227,10 @@ async function apiFetch(url) {
 async function apiFetchJSON(url, method, body) {
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: _authHeaders({ 'Content-Type': 'application/json' }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) { _handleUnauthorized(); return; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
@@ -1213,7 +1251,51 @@ function escHtml(s) {
 }
 
 // ---------------------------------------------------------------------------
+// Login form
+// ---------------------------------------------------------------------------
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username, password }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      errEl.textContent = j.detail ?? 'Credenciais inválidas.';
+      return;
+    }
+    const { access_token } = await res.json();
+    localStorage.setItem('access_token', access_token);
+    document.getElementById('loginOverlay').setAttribute('hidden', '');
+    document.getElementById('appShell').removeAttribute('hidden');
+    _bootApp();
+  } catch (_) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('access_token');
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('loginOverlay').removeAttribute('hidden');
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-loadDashboardCycles();
-_renderActiveTab();
+function _bootApp() {
+  loadDashboardCycles();
+  _renderActiveTab();
+}
+
+if (localStorage.getItem('access_token')) {
+  document.getElementById('loginOverlay').setAttribute('hidden', '');
+  document.getElementById('appShell').removeAttribute('hidden');
+  _bootApp();
+}

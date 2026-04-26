@@ -51,6 +51,7 @@ class CycleOut(BaseModel):
     start_date: DateType
     end_date: DateType
     is_quarantine: bool
+    is_closed: bool
     record_count: int
 
 
@@ -176,3 +177,16 @@ class UploadOut(BaseModel):
     records_inserted: int
     records_skipped: int
     quarantine_cycles_created: int
+
+
+# Auth
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
