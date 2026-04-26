@@ -45,7 +45,7 @@ def create_tables():
     Base.metadata.drop_all(bind=_ENGINE)
 
 
-_MOCK_ADMIN = User(id=1, username="test_admin", hashed_password="", role="admin")
+_MOCK_ADMIN = User(id=9999, username="test_admin", hashed_password="", role="admin")
 
 
 @pytest.fixture(scope="session")

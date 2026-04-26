@@ -43,6 +43,7 @@
   <button class="tab-btn" data-tab="cycles">Ciclos</button>
   <button class="tab-btn" data-tab="projects">Projetos</button>
   <button class="tab-btn" data-tab="team">Equipe</button>
+  <button class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>Admin</button>
 </nav>
 
 <main>
@@ -264,6 +265,28 @@
 
   </section>
 
+  <!-- ================================================================== -->
+  <!-- TAB: Admin                                                           -->
+  <!-- ================================================================== -->
+  <section id="tab-admin" class="tab-section" hidden>
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Gestão de Usuários</h2>
+        <button class="btn btn-primary btn-sm" id="newUserBtn">+ Novo usuário</button>
+      </div>
+      <table class="data-table" id="usersTable">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Perfil</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"><tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
 </main>
 
 <!-- ================================================================== -->
@@ -434,6 +457,64 @@
 </div>
 
 </div><!-- /appShell -->
+
+<!-- ================================================================== -->
+<!-- Modal: Novo Usuário                                                  -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="userModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Novo Usuário</h3>
+      <button class="modal-close" id="userModalClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-group">
+        <label for="userUsernameInput">Usuário *</label>
+        <input type="text" id="userUsernameInput" placeholder="mínimo 3 caracteres" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="userPasswordInput">Senha *</label>
+        <input type="password" id="userPasswordInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label for="userRoleSelect">Perfil</label>
+        <select class="form-select" id="userRoleSelect">
+          <option value="user">Usuário</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="error-msg" id="userError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="userCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="userSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Alterar Senha                                                 -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="pwdModal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Alterar Senha</h3>
+      <button class="modal-close" id="pwdModalClose">×</button>
+    </div>
+    <div class="form-grid cols-1">
+      <input type="hidden" id="pwdTargetId" />
+      <div class="form-group">
+        <label for="pwdNewInput">Nova senha *</label>
+        <input type="password" id="pwdNewInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+      </div>
+    </div>
+    <div class="error-msg" id="pwdError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="pwdCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="pwdSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
 
 <script src="multiselect.js"></script>
 <script src="app.js"></script>

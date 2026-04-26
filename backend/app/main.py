@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.database import DbSession, init_db
 from backend.app.deps import CurrentUser
 from backend.app.schemas import UploadOut
-from backend.app.routers import analytics, auth, cycles, dashboard, projects, ratecard, reference
+from backend.app.routers import analytics, auth, cycles, dashboard, projects, ratecard, reference, users
 from backend.app.services.ingestion import ClosedCycleError, ingest_file
 
 log = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(cycles.router)
 app.include_router(projects.router)
 app.include_router(dashboard.router)

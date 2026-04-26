@@ -39,6 +39,17 @@ class CollaboratorSeniorityIn(BaseModel):
     seniority_level_id: Optional[int] = None
 
 
+class UserCreateIn(BaseModel):
+    username: str = Field(min_length=3)
+    password: str = Field(min_length=6)
+    role: Literal["admin", "user"] = "user"
+
+
+class PasswordChangeIn(BaseModel):
+    new_password: str = Field(min_length=6)
+    current_password: Optional[str] = None
+
+
 # ── Output schemas ───────────────────────────────────────────────────────────
 
 class IdOut(BaseModel):
