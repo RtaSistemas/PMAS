@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.models import Cycle, TimesheetRecord
-from backend.app.schemas import CycleIn
+from backend.app.schemas import CycleIn, CycleOut
 
 router = APIRouter(prefix="/api/cycles", tags=["cycles"])
 
@@ -24,21 +24,21 @@ def _cycle_to_dict(c: Cycle, record_count: int = 0) -> dict:
     return {
         "id": c.id,
         "name": c.name,
-        "start_date": c.start_date.isoformat(),
-        "end_date": c.end_date.isoformat(),
+        "start_date": c.start_date,
+        "end_date": c.end_date,
         "is_quarantine": c.is_quarantine,
         "record_count": record_count,
     }
 
 
-@router.get("", summary="Listar ciclos")
+@router.get("", summary="Listar ciclos", response_model=list[CycleOut])
 def list_cycles(db: DbSession):
     cycles = db.query(Cycle).order_by(Cycle.start_date).all()
     counts = _cycle_record_counts(db)
     return [_cycle_to_dict(c, counts.get(c.id, 0)) for c in cycles]
 
 
-@router.post("", summary="Criar ciclo", status_code=201)
+@router.post("", summary="Criar ciclo", status_code=201, response_model=CycleOut)
 def create_cycle(body: CycleIn, db: DbSession):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
@@ -54,7 +54,7 @@ def create_cycle(body: CycleIn, db: DbSession):
     return _cycle_to_dict(cycle, 0)
 
 
-@router.put("/{cycle_id}", summary="Atualizar ciclo")
+@router.put("/{cycle_id}", summary="Atualizar ciclo", response_model=CycleOut)
 def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:

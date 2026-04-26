@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.app.database import DbSession
 from backend.app.models import Project
-from backend.app.schemas import ProjectIn
+from backend.app.schemas import ProjectIn, ProjectOut
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -22,13 +22,13 @@ def _project_to_dict(p: Project) -> dict:
     }
 
 
-@router.get("", summary="Listar projetos")
+@router.get("", summary="Listar projetos", response_model=list[ProjectOut])
 def list_projects(db: DbSession):
     projects = db.query(Project).order_by(Project.pep_wbs).all()
     return [_project_to_dict(p) for p in projects]
 
 
-@router.post("", summary="Criar projeto", status_code=201)
+@router.post("", summary="Criar projeto", status_code=201, response_model=ProjectOut)
 def create_project(body: ProjectIn, db: DbSession):
     if db.query(Project).filter(Project.pep_wbs == body.pep_wbs).first():
         raise HTTPException(status_code=409, detail="Já existe um projeto com esse código PEP.")
@@ -39,7 +39,7 @@ def create_project(body: ProjectIn, db: DbSession):
     return _project_to_dict(project)
 
 
-@router.put("/{project_id}", summary="Atualizar projeto")
+@router.put("/{project_id}", summary="Atualizar projeto", response_model=ProjectOut)
 def update_project(project_id: int, body: ProjectIn, db: DbSession):
     project = db.get(Project, project_id)
     if project is None:

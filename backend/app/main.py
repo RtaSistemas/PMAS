@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.database import DbSession, init_db
+from backend.app.schemas import UploadOut
 from backend.app.routers import analytics, cycles, dashboard, projects, ratecard, reference
 from backend.app.services.ingestion import ingest_file
 
@@ -69,7 +70,7 @@ def root():
 _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
-@app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet")
+@app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
 def upload_timesheet(file: UploadFile, db: DbSession):
     fname = file.filename or ""
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):

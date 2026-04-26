@@ -8,11 +8,12 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.models import Cycle, Project, TimesheetRecord
+from backend.app.schemas import PortfolioHealthItem, TrendItem
 
 router = APIRouter(prefix="/api", tags=["analytics"])
 
 
-@router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project")
+@router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project", response_model=list[PortfolioHealthItem])
 def get_portfolio_health(
     db: DbSession,
     cycle_id: Optional[int] = None,
@@ -91,7 +92,7 @@ def get_portfolio_health(
     return result
 
 
-@router.get("/trends", summary="Queima de horas por ciclo em ordem cronológica")
+@router.get("/trends", summary="Queima de horas por ciclo em ordem cronológica", response_model=list[TrendItem])
 def get_trends(
     db: DbSession,
     pep_wbs: List[str] = Query(default=[]),
