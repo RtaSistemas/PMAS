@@ -58,6 +58,7 @@ _ro.observe(document.querySelector('main'));
 // Sub-tab state
 let _activeATab = 'effort';
 let _stackMode  = true;   // true = stacked, false = grouped
+let _evmMode    = false;  // false = hours, true = R$
 
 const atabBtns     = document.querySelectorAll('.atab-btn');
 const atabSections = document.querySelectorAll('.atab-section');
@@ -72,6 +73,12 @@ atabBtns.forEach(btn => {
     document.getElementById(`atab-${_activeATab}`).hidden = false;
     _renderActiveTab();
   });
+});
+
+document.getElementById('evmToggleBtn').addEventListener('click', () => {
+  _evmMode = !_evmMode;
+  document.getElementById('evmToggleBtn').textContent = _evmMode ? 'Vista: R$' : 'Vista: Horas';
+  _renderPortfolioTab();
 });
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
@@ -320,19 +327,25 @@ async function _renderPortfolioTab() {
     }
     _showEmpty('portfolioEmpty', false);
 
+    // Update treemap title
+    document.getElementById('portfolioTreemapTitle').textContent =
+      _evmMode ? 'Custo Real por PEP (Treemap)' : 'Distribuição de Horas por PEP (Treemap)';
+
     // Treemap
     const tm = _getOrCreateChart('treemapChart');
-    tm.setOption(_buildTreemapOption(health), true);
+    tm.setOption(_buildTreemapOption(health, _evmMode), true);
     tm.resize();
 
-    // Bullet chart — only for PEPs with registered budget
-    const withBudget = health.filter(d => d.budget_hours != null);
+    // Bullet chart — in hours mode use budget_hours, in R$ mode use budget_cost
+    const withBudget = _evmMode
+      ? health.filter(d => d.budget_cost != null)
+      : health.filter(d => d.budget_hours != null);
     if (withBudget.length > 0) {
       document.getElementById('bulletPanel').hidden = false;
       document.getElementById('bulletChart').style.height =
         `${Math.max(220, withBudget.length * 60 + 80)}px`;
       const bc = _getOrCreateChart('bulletChart');
-      bc.setOption(_buildBulletOption(withBudget), true);
+      bc.setOption(_buildBulletOption(withBudget, _evmMode), true);
       bc.resize();
     } else {
       document.getElementById('bulletPanel').hidden = true;
@@ -496,7 +509,10 @@ function _buildBudgetOption(budgetData) {
   };
 }
 
-function _buildTreemapOption(health) {
+function _buildTreemapOption(health, evmMode = false) {
+  const fmtVal = v => evmMode
+    ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+    : v.toFixed(1) + 'h';
   return {
     backgroundColor: 'transparent',
     tooltip: {
@@ -508,10 +524,12 @@ function _buildTreemapOption(health) {
         let html = `<b>${d.pep_wbs}</b>`;
         if (d.pep_description) html += `<br><span style="color:#94a3b8">${d.pep_description}</span>`;
         if (d.name)            html += `<br>Projeto: ${d.name}`;
-        html += `<br>Consumido: <b>${d.consumed_hours.toFixed(1)}h</b>`;
-        if (d.budget_hours != null) {
-          const pct = (d.consumed_hours / d.budget_hours * 100).toFixed(1);
-          html += `<br>Budget: ${d.budget_hours.toFixed(1)}h (${pct}% utilizado)`;
+        const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+        const budget   = evmMode ? d.budget_cost : d.budget_hours;
+        html += `<br>${evmMode ? 'Custo real' : 'Consumido'}: <b>${fmtVal(consumed)}</b>`;
+        if (budget != null) {
+          const pct = (consumed / budget * 100).toFixed(1);
+          html += `<br>Budget: ${fmtVal(budget)} (${pct}% utilizado)`;
         }
         if (!d.is_registered) html += `<br><span style="color:#f59e0b">⚠ PEP não cadastrado</span>`;
         return html;
@@ -527,9 +545,12 @@ function _buildTreemapOption(health) {
         show: true, fontSize: 11, color: '#f1f5f9',
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
-          const h  = d ? d.consumed_hours.toFixed(0) + 'h' : '';
+          const val = d ? (evmMode ? d.actual_cost : d.consumed_hours) : 0;
+          const valStr = evmMode
+            ? 'R$' + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
+            : val.toFixed(0) + 'h';
           const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
-          return `${nm}\n${h}${d && !d.is_registered ? '\n⚠' : ''}`;
+          return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
       },
       itemStyle: { gapWidth: 2, borderRadius: 4 },
@@ -537,30 +558,39 @@ function _buildTreemapOption(health) {
         itemStyle: { borderWidth: 0, gapWidth: 4 },
         upperLabel: { show: false },
       }],
-      data: health.map(d => ({
-        name: d.pep_wbs,
-        value: d.consumed_hours,
-        itemStyle: {
-          color: !d.is_registered
-            ? '#475569'
-            : d.budget_hours != null && d.consumed_hours >= d.budget_hours
-              ? 'rgba(248,113,113,0.75)'
-              : 'rgba(59,130,246,0.75)',
-          borderColor: '#0f172a',
-        },
-      })),
+      data: health.map(d => {
+        const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+        const budget   = evmMode ? d.budget_cost : d.budget_hours;
+        return {
+          name: d.pep_wbs,
+          value: consumed,
+          itemStyle: {
+            color: !d.is_registered
+              ? '#475569'
+              : budget != null && consumed >= budget
+                ? 'rgba(248,113,113,0.75)'
+                : 'rgba(59,130,246,0.75)',
+            borderColor: '#0f172a',
+          },
+        };
+      }),
     }],
   };
 }
 
-function _buildBulletOption(withBudget) {
+function _buildBulletOption(withBudget, evmMode = false) {
   const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
-  const budgets = withBudget.map(d => d.budget_hours || 0);
+  const budgets = withBudget.map(d => (evmMode ? d.budget_cost : d.budget_hours) || 0);
   const actuals = withBudget.map((d, i) => {
-    const pct = budgets[i] > 0 ? d.consumed_hours / budgets[i] : 0;
+    const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+    const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
     const color = pct >= 1.0 ? '#f87171' : pct >= 0.75 ? '#f59e0b' : '#3b82f6';
-    return { value: +(d.consumed_hours.toFixed(2)), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
+    return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
+  const unit = evmMode ? 'R$' : 'h';
+  const fmtAx = evmMode
+    ? v => v >= 1000 ? `R$${(v/1000).toFixed(0)}k` : `R$${v.toFixed(0)}`
+    : v => `${v}h`;
   return {
     backgroundColor: 'transparent',
     grid: { top: 16, right: '10%', bottom: 16, left: '2%', containLabel: true },
@@ -571,8 +601,11 @@ function _buildBulletOption(withBudget) {
         const b = budgets[params[0].dataIndex];
         const a = params.find(p => p.seriesName === 'Realizado')?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
+        const fmtV = v => evmMode
+          ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+          : v.toFixed(1) + 'h';
         let html = `<b>${params[0].axisValue.replace('\n', ' ')}</b><br>`;
-        html += `Orçado: <b>${b.toFixed(1)}h</b><br>Realizado: <b>${a.toFixed(1)}h</b><br>`;
+        html += `Orçado: <b>${fmtV(b)}</b><br>Realizado: <b>${fmtV(a)}</b><br>`;
         html += `Utilização: <b>${pct}</b>`;
         if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ Acima do orçado</span>`;
         return html;
@@ -580,7 +613,7 @@ function _buildBulletOption(withBudget) {
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: v => `${v}h` },
+      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: fmtAx },
       splitLine: { lineStyle: { color: '#334155' } },
     },
     yAxis: {
@@ -867,15 +900,16 @@ function openProjectModal(id = null) {
   if (id) {
     const p = _allProjects.find(x => x.id === id);
     if (p) {
-      document.getElementById('projectPepInput').value     = p.pep_wbs;
-      document.getElementById('projectNameInput').value    = p.name    || '';
-      document.getElementById('projectClientInput').value  = p.client  || '';
-      document.getElementById('projectManagerInput').value = p.manager || '';
-      document.getElementById('projectBudgetInput').value  = p.budget_hours ?? '';
-      document.getElementById('projectStatusInput').value  = p.status;
+      document.getElementById('projectPepInput').value         = p.pep_wbs;
+      document.getElementById('projectNameInput').value        = p.name    || '';
+      document.getElementById('projectClientInput').value      = p.client  || '';
+      document.getElementById('projectManagerInput').value     = p.manager || '';
+      document.getElementById('projectBudgetInput').value      = p.budget_hours ?? '';
+      document.getElementById('projectBudgetCostInput').value  = p.budget_cost ?? '';
+      document.getElementById('projectStatusInput').value      = p.status;
     }
   } else {
-    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput']
+    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput','projectBudgetCostInput']
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
@@ -887,13 +921,15 @@ function closeProjectModal() { document.getElementById('projectModal').hidden = 
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
   if (!pep) { document.getElementById('projectError').textContent = 'Código PEP é obrigatório.'; return; }
-  const budget = document.getElementById('projectBudgetInput').value;
+  const budget     = document.getElementById('projectBudgetInput').value;
+  const budgetCost = document.getElementById('projectBudgetCostInput').value;
   const body = {
     pep_wbs:      pep,
     name:         document.getElementById('projectNameInput').value.trim()    || null,
     client:       document.getElementById('projectClientInput').value.trim()  || null,
     manager:      document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours: budget !== '' ? parseFloat(budget) : null,
+    budget_hours: budget     !== '' ? parseFloat(budget)     : null,
+    budget_cost:  budgetCost !== '' ? parseFloat(budgetCost) : null,
     status:       document.getElementById('projectStatusInput').value,
   };
   try {

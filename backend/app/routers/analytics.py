@@ -31,6 +31,14 @@ def get_portfolio_health(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("consumed_hours"),
+            func.sum(
+                TimesheetRecord.cost_per_hour
+                * (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                )
+            ).label("actual_cost"),
         )
         .filter(TimesheetRecord.pep_wbs.isnot(None))
     )
@@ -53,8 +61,10 @@ def get_portfolio_health(
                 "pep_wbs": r.pep_wbs,
                 "pep_description": r.pep_description,
                 "consumed_hours": 0.0,
+                "actual_cost": 0.0,
             }
         pep_map[r.pep_wbs]["consumed_hours"] += r.consumed_hours or 0.0
+        pep_map[r.pep_wbs]["actual_cost"]    += r.actual_cost    or 0.0
 
     if not pep_map:
         return []
@@ -72,7 +82,9 @@ def get_portfolio_health(
             "pep_description": data["pep_description"],
             "name": projects[key].name if key in projects else None,
             "budget_hours": projects[key].budget_hours if key in projects else None,
+            "budget_cost": projects[key].budget_cost if key in projects else None,
             "consumed_hours": data["consumed_hours"],
+            "actual_cost": data["actual_cost"],
             "is_registered": key in projects,
         }
         for key, data in pep_map.items()
@@ -95,6 +107,14 @@ def get_trends(
             func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
             func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
             func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+            func.sum(
+                TimesheetRecord.cost_per_hour
+                * (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                )
+            ).label("actual_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(Cycle.is_quarantine == False)  # noqa: E712
@@ -114,6 +134,7 @@ def get_trends(
             "normal_hours": r.normal_hours or 0.0,
             "extra_hours": r.extra_hours or 0.0,
             "standby_hours": r.standby_hours or 0.0,
+            "actual_cost": r.actual_cost or 0.0,
         }
         for r in rows
     ]

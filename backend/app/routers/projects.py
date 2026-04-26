@@ -22,6 +22,7 @@ def _project_to_dict(p: Project) -> dict:
         "client": p.client,
         "manager": p.manager,
         "budget_hours": p.budget_hours,
+        "budget_cost": p.budget_cost,
         "status": p.status,
     }
 

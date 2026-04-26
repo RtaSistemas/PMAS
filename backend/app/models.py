@@ -94,5 +94,6 @@ class Project(Base):
     client = Column(String, nullable=True)
     manager = Column(String, nullable=True)
     budget_hours = Column(Float, nullable=True)
+    budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)

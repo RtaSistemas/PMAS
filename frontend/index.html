@@ -92,8 +92,11 @@
     <div id="atab-portfolio" class="atab-section" hidden>
       <div class="card chart-panel">
         <div class="panel-header">
-          <span class="panel-title">Distribuição de Horas por PEP (Treemap)</span>
-          <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
+          <span class="panel-title" id="portfolioTreemapTitle">Distribuição de Horas por PEP (Treemap)</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
+            <button id="evmToggleBtn" class="btn btn-secondary btn-sm">Vista: Horas</button>
+          </div>
         </div>
         <div id="portfolioEmpty" class="chart-empty" hidden>
           Nenhum dado de horas encontrado para os filtros selecionados.
@@ -309,6 +312,10 @@
       <div class="form-group">
         <label for="projectBudgetInput">Budget de horas</label>
         <input type="number" id="projectBudgetInput" placeholder="Ex: 160" min="0" step="0.5" />
+      </div>
+      <div class="form-group">
+        <label for="projectBudgetCostInput">Budget (R$)</label>
+        <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
       </div>
     </div>
     <div class="error-msg" id="projectError"></div>

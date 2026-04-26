@@ -18,6 +18,7 @@ class ProjectIn(BaseModel):
     client: Optional[str] = None
     manager: Optional[str] = None
     budget_hours: Optional[float] = None
+    budget_cost: Optional[float] = None
     status: str = "ativo"
 
 
