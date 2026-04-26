@@ -20,30 +20,74 @@ _COL_PEP_CODE = "Código PEP"
 _COL_PEP_DESC = "PEP"
 
 
-def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
+class ClosedCycleError(Exception):
+    def __init__(self, cycle_names: list[str]) -> None:
+        self.cycle_names = cycle_names
+        super().__init__(f"Ciclos fechados: {', '.join(cycle_names)}")
+
+
+def ingest_file(
+    file_bytes: bytes,
+    filename: str,
+    db: Session,
+    user_role: str = "admin",
+) -> dict:
     df = _load_dataframe(file_bytes, filename)
 
-    # Load all existing dedup keys once to avoid per-row queries
-    existing_keys: set[tuple] = set(
-        db.query(
-            TimesheetRecord.collaborator_id,
-            TimesheetRecord.cycle_id,
-            TimesheetRecord.record_date,
-            TimesheetRecord.pep_wbs,
-            TimesheetRecord.pep_description,
-        ).all()
-    )
-
-    inserted = 0
-    skipped = 0
+    # Pass 1: resolve collaborators and cycles
+    collab_cache: dict[str, Collaborator] = {}
+    cycle_cache: dict[date, Cycle] = {}
     quarantine_cycles_created = 0
 
     for _, row in df.iterrows():
-        collab = _get_or_create_collaborator(db, str(row[_COL_COLLABORATOR]).strip())
+        name = str(row[_COL_COLLABORATOR]).strip()
+        if name not in collab_cache:
+            collab_cache[name] = _get_or_create_collaborator(db, name)
+
         record_date: date = _parse_date(row[_COL_DATE])
-        cycle, created = _resolve_cycle(db, record_date)
-        if created:
-            quarantine_cycles_created += 1
+        if record_date not in cycle_cache:
+            cycle, created = _resolve_cycle(db, record_date)
+            cycle_cache[record_date] = cycle
+            if created:
+                quarantine_cycles_created += 1
+
+    # Collect (collaborator_id, cycle_id) pairs touched by this upload
+    affected_pairs: set[tuple[int, int]] = set()
+    for _, row in df.iterrows():
+        collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
+        cycle = cycle_cache[_parse_date(row[_COL_DATE])]
+        affected_pairs.add((collab.id, cycle.id))
+
+    # RBAC: non-admins may not modify closed cycles
+    if user_role != "admin":
+        checked: set[int] = set()
+        closed_names: list[str] = []
+        for _, cycle_id in affected_pairs:
+            if cycle_id in checked:
+                continue
+            checked.add(cycle_id)
+            c = db.get(Cycle, cycle_id)
+            if c and c.is_closed:
+                closed_names.append(c.name)
+        if closed_names:
+            raise ClosedCycleError(closed_names)
+
+    # DELETE existing records for all affected (collaborator, cycle) pairs
+    for collab_id, cycle_id in affected_pairs:
+        db.query(TimesheetRecord).filter(
+            TimesheetRecord.collaborator_id == collab_id,
+            TimesheetRecord.cycle_id == cycle_id,
+        ).delete(synchronize_session=False)
+
+    # INSERT fresh records (intra-batch dedup only)
+    seen_keys: set[tuple] = set()
+    inserted = 0
+    skipped = 0
+
+    for _, row in df.iterrows():
+        collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
+        record_date = _parse_date(row[_COL_DATE])
+        cycle = cycle_cache[record_date]
 
         normal_h = extra_h = standby_h = 0.0
         total_h = float(row[_COL_HOURS])
@@ -59,11 +103,11 @@ def ingest_file(file_bytes: bytes, filename: str, db: Session) -> dict:
         pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
 
         key = (collab.id, cycle.id, record_date, pep_code, pep_desc)
-        if key in existing_keys:
+        if key in seen_keys:
             skipped += 1
             continue
 
-        existing_keys.add(key)
+        seen_keys.add(key)
         db.add(TimesheetRecord(
             collaborator_id=collab.id,
             cycle_id=cycle.id,

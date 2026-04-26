@@ -56,6 +56,7 @@ class Cycle(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     is_quarantine = Column(Boolean, default=False, nullable=False)
+    is_closed = Column(Boolean, default=False, nullable=False)
 
     records = relationship("TimesheetRecord", back_populates="cycle")
 

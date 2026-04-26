@@ -133,3 +133,31 @@ class TestDeleteCycle:
         r = client.delete(f"/api/cycles/{target['id']}")
         assert r.status_code == 409
         assert "registro" in r.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/cycles/{id}/toggle-status
+# ---------------------------------------------------------------------------
+
+class TestToggleStatus:
+    def test_toggle_closes_open_cycle(self, client):
+        c = _create(client, name="Fechável")
+        assert c["is_closed"] is False
+        r = client.patch(f"/api/cycles/{c['id']}/toggle-status")
+        assert r.status_code == 200
+        assert r.json()["is_closed"] is True
+
+    def test_toggle_reopens_closed_cycle(self, client):
+        c = _create(client, name="Reabrível")
+        client.patch(f"/api/cycles/{c['id']}/toggle-status")
+        r = client.patch(f"/api/cycles/{c['id']}/toggle-status")
+        assert r.status_code == 200
+        assert r.json()["is_closed"] is False
+
+    def test_new_cycles_start_open(self, client):
+        c = _create(client, name="Novo")
+        assert c["is_closed"] is False
+
+    def test_toggle_not_found(self, client):
+        r = client.patch("/api/cycles/99999/toggle-status")
+        assert r.status_code == 404

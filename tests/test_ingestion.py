@@ -61,8 +61,10 @@ class TestIngestFile:
     def test_deduplication_across_calls(self, db_session, sample_cycle):
         ingest_file(_csv(BASE_ROW), "t.csv", db_session)
         summary2 = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
-        assert summary2["records_inserted"] == 0
-        assert summary2["records_skipped"] == 1
+        # Second upload replaces previous data — idempotent, not additive
+        assert summary2["records_inserted"] == 1
+        assert summary2["records_skipped"] == 0
+        assert db_session.query(TimesheetRecord).count() == 1
 
     def test_extra_hours(self, db_session, sample_cycle):
         row = {**BASE_ROW, "Hora extra": "Sim", "Hora sobreaviso": "Não"}
@@ -114,6 +116,24 @@ class TestIngestFile:
         df = pd.DataFrame([BASE_ROW])
         df.to_excel(buf, index=False)
         summary = ingest_file(buf.getvalue(), "dados.xlsx", db_session)
+        assert summary["records_inserted"] == 1
+
+    def test_closed_cycle_rejected_for_user(self, db_session, sample_cycle):
+        from backend.app.services.ingestion import ClosedCycleError
+        sample_cycle.is_closed = True
+        db_session.commit()
+        with pytest.raises(ClosedCycleError):
+            ingest_file(_csv(BASE_ROW), "t.csv", db_session, user_role="user")
+
+    def test_closed_cycle_allowed_for_admin(self, db_session, sample_cycle):
+        sample_cycle.is_closed = True
+        db_session.commit()
+        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session, user_role="admin")
+        assert summary["records_inserted"] == 1
+
+    def test_default_user_role_is_admin(self, db_session, sample_cycle):
+        # calling without user_role keeps backward-compatible admin behaviour
+        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
         assert summary["records_inserted"] == 1
 
 

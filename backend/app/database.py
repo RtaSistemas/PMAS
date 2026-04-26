@@ -97,5 +97,10 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
                 ))
+            cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
+            if "is_closed" not in cy_cols:
+                conn.execute(text(
+                    "ALTER TABLE cycle ADD COLUMN is_closed BOOLEAN NOT NULL DEFAULT 0"
+                ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)

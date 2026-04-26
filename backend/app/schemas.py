@@ -51,6 +51,7 @@ class CycleOut(BaseModel):
     start_date: DateType
     end_date: DateType
     is_quarantine: bool
+    is_closed: bool
     record_count: int
 
 
