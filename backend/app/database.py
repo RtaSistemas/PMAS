@@ -51,6 +51,28 @@ def init_db() -> None:
     with engine.connect() as conn:
         conn.execute(text("PRAGMA journal_mode=WAL"))
     _migrate_columns()
+    _seed_admin()
+
+
+def _seed_admin() -> None:
+    import bcrypt as _bcrypt
+    from backend.app.models import User
+
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            db.add(User(
+                username="admin",
+                hashed_password=_bcrypt.hashpw(b"admin", _bcrypt.gensalt()).decode(),
+                role="admin",
+            ))
+            db.commit()
+            log.warning(
+                "Utilizador 'admin' criado com password padrão. "
+                "Altere imediatamente em produção."
+            )
+    finally:
+        db.close()
 
 
 def _migrate_columns() -> None:

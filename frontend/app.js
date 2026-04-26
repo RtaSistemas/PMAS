@@ -1178,8 +1178,23 @@ document.getElementById('assignSeniorityClose').addEventListener('click', closeA
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+function _authHeaders(extra = {}) {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
+}
+
+function _handleUnauthorized() {
+  localStorage.removeItem('access_token');
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('loginOverlay').removeAttribute('hidden');
+}
+
 async function apiFetch(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: _authHeaders() });
+  if (res.status === 401) { _handleUnauthorized(); return; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
@@ -1190,9 +1205,10 @@ async function apiFetch(url) {
 async function apiFetchJSON(url, method, body) {
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: _authHeaders({ 'Content-Type': 'application/json' }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) { _handleUnauthorized(); return; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
@@ -1213,7 +1229,51 @@ function escHtml(s) {
 }
 
 // ---------------------------------------------------------------------------
+// Login form
+// ---------------------------------------------------------------------------
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username, password }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      errEl.textContent = j.detail ?? 'Credenciais inválidas.';
+      return;
+    }
+    const { access_token } = await res.json();
+    localStorage.setItem('access_token', access_token);
+    document.getElementById('loginOverlay').setAttribute('hidden', '');
+    document.getElementById('appShell').removeAttribute('hidden');
+    _bootApp();
+  } catch (_) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('access_token');
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('loginOverlay').removeAttribute('hidden');
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-loadDashboardCycles();
-_renderActiveTab();
+function _bootApp() {
+  loadDashboardCycles();
+  _renderActiveTab();
+}
+
+if (localStorage.getItem('access_token')) {
+  document.getElementById('loginOverlay').setAttribute('hidden', '');
+  document.getElementById('appShell').removeAttribute('hidden');
+  _bootApp();
+}

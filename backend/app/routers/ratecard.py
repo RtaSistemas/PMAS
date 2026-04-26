@@ -3,17 +3,18 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, RateCard, SeniorityLevel
 from backend.app.schemas import (
     CollaboratorSeniorityIn, IdOut, RateCardIn, RateCardOut,
     SeniorityAssignOut, SeniorityLevelIn, SeniorityLevelOut, TeamMemberOut,
 )
 
-router = APIRouter(prefix="/api", tags=["ratecard"])
+router = APIRouter(prefix="/api", tags=["ratecard"], dependencies=[Depends(get_current_user)])
 
 
 def _assert_no_overlap(db: Session, body: RateCardIn, exclude_id: int | None = None) -> None:

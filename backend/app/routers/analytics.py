@@ -3,14 +3,15 @@ from __future__ import annotations
 from datetime import date as DateType
 from typing import List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Cycle, Project, TimesheetRecord
 from backend.app.schemas import PortfolioHealthItem, TrendItem
 
-router = APIRouter(prefix="/api", tags=["analytics"])
+router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project", response_model=list[PortfolioHealthItem])

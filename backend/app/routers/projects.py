@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Project
 from backend.app.schemas import ProjectIn, ProjectOut
 
-router = APIRouter(prefix="/api/projects", tags=["projects"])
+router = APIRouter(prefix="/api/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
 
 def _project_to_dict(p: Project) -> dict:

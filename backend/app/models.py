@@ -97,3 +97,12 @@ class Project(Base):
     budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="user")

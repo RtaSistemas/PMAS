@@ -3,14 +3,15 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, TimesheetRecord
 from backend.app.schemas import CollaboratorOut, PepOut
 
-router = APIRouter(prefix="/api", tags=["reference"])
+router = APIRouter(prefix="/api", tags=["reference"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/collaborators", summary="Listar colaboradores", response_model=list[CollaboratorOut])

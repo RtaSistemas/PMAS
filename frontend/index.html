@@ -9,9 +9,33 @@
 </head>
 <body>
 
+<!-- Login overlay — visible until authenticated -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">PMAS</div>
+    <p class="login-sub">Project Management Assistant System</p>
+    <form id="loginForm" autocomplete="on">
+      <div class="login-field">
+        <label for="loginUsername">Utilizador</label>
+        <input id="loginUsername" type="text" autocomplete="username" required placeholder="admin" />
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••" />
+      </div>
+      <button type="submit" class="btn btn-primary login-btn">Entrar</button>
+      <p id="loginError" class="login-error"></p>
+    </form>
+  </div>
+</div>
+
+<!-- App shell — hidden until authenticated -->
+<div id="appShell" hidden>
+
 <header>
   <h1>PMAS <span class="header-sub">- Project Management Assistant System</span></h1>
   <span class="badge">Timesheet</span>
+  <button id="logoutBtn" class="btn btn-secondary btn-sm logout-btn">Sair</button>
 </header>
 
 <nav class="app-tabs">
@@ -408,6 +432,8 @@
     </div>
   </div>
 </div>
+
+</div><!-- /appShell -->
 
 <script src="multiselect.js"></script>
 <script src="app.js"></script>

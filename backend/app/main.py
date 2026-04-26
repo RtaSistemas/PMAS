@@ -11,8 +11,9 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.database import DbSession, init_db
+from backend.app.deps import CurrentUser
 from backend.app.schemas import UploadOut
-from backend.app.routers import analytics, cycles, dashboard, projects, ratecard, reference
+from backend.app.routers import analytics, auth, cycles, dashboard, projects, ratecard, reference
 from backend.app.services.ingestion import ingest_file
 
 log = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(cycles.router)
 app.include_router(projects.router)
 app.include_router(dashboard.router)
@@ -71,7 +73,7 @@ _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
 @app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
-def upload_timesheet(file: UploadFile, db: DbSession):
+def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser):
     fname = file.filename or ""
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")

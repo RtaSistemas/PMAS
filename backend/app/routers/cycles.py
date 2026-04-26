@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
+from backend.app.deps import get_current_user
 from backend.app.models import Cycle, TimesheetRecord
 from backend.app.schemas import CycleIn, CycleOut
 
-router = APIRouter(prefix="/api/cycles", tags=["cycles"])
+router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(get_current_user)])
 
 
 def _cycle_record_counts(db: Session) -> dict[int, int]:
