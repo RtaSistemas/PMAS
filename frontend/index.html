@@ -146,7 +146,12 @@
       <div class="card chart-panel">
         <div class="panel-header">
           <span class="panel-title">Queima de Horas por Ciclo</span>
-          <span class="panel-note">Ciclos de quarentena excluídos · filtre por PEP para isolar projetos</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <label for="trendsPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap">PEP:</label>
+            <select id="trendsPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:160px">
+              <option value="">Todos</option>
+            </select>
+          </div>
         </div>
         <div id="trendsEmpty" class="chart-empty" hidden>
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
@@ -164,7 +169,14 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title">Ciclos cadastrados</h2>
-        <button class="btn btn-primary btn-sm" id="newCycleBtn">+ Novo ciclo</button>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" id="exportCyclesBtn">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            ⬆ Importar CSV
+            <input type="file" id="importCyclesInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newCycleBtn">+ Novo ciclo</button>
+        </div>
       </div>
       <input type="text" id="cycleSearch" class="table-search-input" placeholder="Buscar por nome de ciclo…" />
       <table class="data-table" id="cyclesTable">
@@ -190,7 +202,14 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title">Projetos / PEPs</h2>
-        <button class="btn btn-primary btn-sm" id="newProjectBtn">+ Novo projeto</button>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" id="exportProjectsBtn">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            ⬆ Importar CSV
+            <input type="file" id="importProjectsInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newProjectBtn">+ Novo projeto</button>
+        </div>
       </div>
       <input type="text" id="projectSearch" class="table-search-input" placeholder="Buscar por PEP, nome ou cliente…" />
       <table class="data-table" id="projectsTable">

@@ -58,6 +58,27 @@ class TestIngestFile:
         assert summary["records_inserted"] == 1
         assert summary["records_skipped"] == 1
 
+    def test_same_day_normal_hours_different_start_time_all_inserted(self, db_session, sample_cycle):
+        row1 = {**BASE_ROW, "Hora Inicial [H]": "08:00"}
+        row2 = {**BASE_ROW, "Hora Inicial [H]": "10:00"}
+        summary = ingest_file(_csv(row1, row2), "t.csv", db_session)
+        assert summary["records_inserted"] == 2
+        assert summary["records_skipped"] == 0
+
+    def test_same_day_same_start_time_is_duplicate(self, db_session, sample_cycle):
+        row1 = {**BASE_ROW, "Hora Inicial [H]": "08:00"}
+        row2 = {**BASE_ROW, "Hora Inicial [H]": "08:00"}
+        summary = ingest_file(_csv(row1, row2), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        assert summary["records_skipped"] == 1
+
+    def test_empty_start_time_treated_as_none_deduplicates(self, db_session, sample_cycle):
+        row1 = {**BASE_ROW, "Hora Inicial [H]": ""}
+        row2 = {**BASE_ROW, "Hora Inicial [H]": ""}
+        summary = ingest_file(_csv(row1, row2), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        assert summary["records_skipped"] == 1
+
     def test_different_hour_types_same_day_all_inserted(self, db_session, sample_cycle):
         normal_row  = {**BASE_ROW, "Hora extra": "Não", "Hora sobreaviso": "Não"}
         extra_row   = {**BASE_ROW, "Hora extra": "Sim", "Hora sobreaviso": "Não"}

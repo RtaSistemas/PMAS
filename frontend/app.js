@@ -72,6 +72,7 @@ atabBtns.forEach(btn => {
     btn.classList.add('active');
     _activeATab = btn.dataset.atab;
     document.getElementById(`atab-${_activeATab}`).hidden = false;
+    if (_activeATab === 'trends') _populateTrendsPepSelect();
     _renderActiveTab();
   });
 });
@@ -360,12 +361,27 @@ async function _renderPortfolioTab() {
 // ---------------------------------------------------------------------------
 // Tendências
 // ---------------------------------------------------------------------------
+async function _populateTrendsPepSelect() {
+  const sel = document.getElementById('trendsPepSelect');
+  const current = sel.value;
+  try {
+    const peps = await apiFetch('/api/peps');
+    sel.innerHTML = '<option value="">Todos</option>' +
+      peps.map(p => `<option value="${escHtml(p.code)}">${escHtml(p.code)}${p.descriptions[0] ? ' — ' + escHtml(p.descriptions[0]) : ''}</option>`).join('');
+    if (peps.some(p => p.code === current)) sel.value = current;
+  } catch (_) { /* non-critical */ }
+}
+
 async function _renderTrendsTab() {
-  const pepCodes = pepMs.getValues();
-  const dateFrom = document.getElementById('dateFromInput').value;
-  const dateTo   = document.getElementById('dateToInput').value;
+  const localPep  = document.getElementById('trendsPepSelect').value;
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
   const p = new URLSearchParams();
-  pepCodes.forEach(c => p.append('pep_wbs', c));
+  if (localPep) {
+    p.append('pep_wbs', localPep);
+  } else {
+    pepMs.getValues().forEach(c => p.append('pep_wbs', c));
+  }
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
@@ -384,6 +400,10 @@ async function _renderTrendsTab() {
     tc.resize();
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
+
+document.getElementById('trendsPepSelect').addEventListener('change', () => {
+  if (_activeATab === 'trends') _renderTrendsTab();
+});
 
 // ---------------------------------------------------------------------------
 // Chart option builders
@@ -571,9 +591,11 @@ function _buildTreemapOption(health, evmMode = false) {
           itemStyle: {
             color: !d.is_registered
               ? '#475569'
-              : budget != null && consumed >= budget
+              : budget != null && consumed / budget >= 1.0
                 ? 'rgba(248,113,113,0.75)'
-                : 'rgba(59,130,246,0.75)',
+                : budget != null && consumed / budget >= 0.75
+                  ? 'rgba(245,158,11,0.75)'
+                  : 'rgba(59,130,246,0.75)',
             borderColor: '#0f172a',
           },
         };
@@ -879,6 +901,37 @@ async function deleteCycle(id, name, count) {
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
+document.getElementById('exportCyclesBtn').addEventListener('click', () => {
+  if (!_allCycles.length) { notify('Nenhum ciclo para exportar.', 'info'); return; }
+  const header = 'name,start_date,end_date,is_quarantine,is_closed,record_count';
+  const rows = _allCycles.map(c =>
+    `"${c.name}",${c.start_date},${c.end_date},${c.is_quarantine},${c.is_closed},${c.record_count}`
+  );
+  const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'ciclos.csv' });
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importCyclesInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/cycles/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    loadCyclesTable();
+    loadDashboardCycles();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
+
 // ---------------------------------------------------------------------------
 // Projects management
 // ---------------------------------------------------------------------------
@@ -1000,6 +1053,37 @@ async function deleteProject(id, pep) {
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+document.getElementById('exportProjectsBtn').addEventListener('click', () => {
+  if (!_allProjects.length) { notify('Nenhum projeto para exportar.', 'info'); return; }
+  const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status';
+  const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+  const rows = _allProjects.map(p =>
+    `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status}`
+  );
+  const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'projetos.csv' });
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importProjectsInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/projects/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    loadProjectsTable();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
 
 // ---------------------------------------------------------------------------
 // Team / RateCard management

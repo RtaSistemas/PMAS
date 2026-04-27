@@ -1,13 +1,35 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import io
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Project
-from backend.app.schemas import ProjectIn, ProjectOut
+from backend.app.schemas import ImportResultOut, ProjectIn, ProjectOut
 
 router = APIRouter(prefix="/api/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
+
+
+def _str_or_none(value) -> str | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return None if s.lower() in {"nan", "none", ""} else s
+
+
+def _float_or_none(value) -> float | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if s.lower() in {"nan", "none", ""}:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
 
 
 def _project_to_dict(p: Project) -> dict:
@@ -55,6 +77,51 @@ def update_project(project_id: int, body: ProjectIn, db: DbSession):
     db.commit()
     db.refresh(project)
     return _project_to_dict(project)
+
+
+@router.post("/import", summary="Importar projetos via CSV", response_model=ImportResultOut)
+def import_projects(file: UploadFile, db: DbSession):
+    try:
+        df = pd.read_csv(io.BytesIO(file.file.read()))
+        df.columns = [c.strip() for c in df.columns]
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {e}")
+    missing = {"pep_wbs"} - set(df.columns)
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {missing}")
+    created, updated, errors = 0, 0, []
+    for i, row in df.iterrows():
+        try:
+            pep = _str_or_none(row.get("pep_wbs"))
+            if not pep:
+                errors.append(f"Linha {i + 2}: pep_wbs vazio")
+                continue
+            name    = _str_or_none(row.get("name"))
+            client  = _str_or_none(row.get("client"))
+            manager = _str_or_none(row.get("manager"))
+            raw_status = str(row.get("status", "ativo")).strip()
+            status = raw_status if raw_status in ("ativo", "suspenso", "encerrado") else "ativo"
+            budget_hours = _float_or_none(row.get("budget_hours"))
+            budget_cost  = _float_or_none(row.get("budget_cost"))
+            existing = db.query(Project).filter(Project.pep_wbs == pep).first()
+            if existing:
+                if name    is not None: existing.name         = name
+                if client  is not None: existing.client       = client
+                if manager is not None: existing.manager      = manager
+                existing.status = status
+                if budget_hours is not None: existing.budget_hours = budget_hours
+                if budget_cost  is not None: existing.budget_cost  = budget_cost
+                updated += 1
+            else:
+                db.add(Project(
+                    pep_wbs=pep, name=name, client=client, manager=manager,
+                    status=status, budget_hours=budget_hours, budget_cost=budget_cost,
+                ))
+                created += 1
+        except Exception as exc:
+            errors.append(f"Linha {i + 2}: {exc}")
+    db.commit()
+    return {"created": created, "updated": updated, "errors": errors}
 
 
 @router.delete("/{project_id}", summary="Excluir projeto", status_code=204)
