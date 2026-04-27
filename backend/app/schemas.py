@@ -206,6 +206,12 @@ class UploadOut(BaseModel):
     quarantine_cycles_created: int
 
 
+class PepRadarItem(BaseModel):
+    pep_description: str
+    total_hours: float
+    actual_cost: float
+
+
 # Auth
 
 class Token(BaseModel):

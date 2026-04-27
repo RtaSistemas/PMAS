@@ -200,3 +200,60 @@ class TestTrends:
         names_to_hours = {r["cycle_name"]: r["normal_hours"] for r in result}
         assert names_to_hours["MA1"] == 6.0
         assert names_to_hours["MA2"] == 9.0
+
+
+# ===========================================================================
+# /api/dashboard/pep-radar
+# ===========================================================================
+
+class TestPepRadar:
+    def test_empty(self, client):
+        assert client.get("/api/dashboard/pep-radar").json() == []
+
+    def test_returns_hours_and_cost_per_pep_description(self, client, db_session):
+        cy = _cycle(db_session, "R1", 2026, 1)
+        co = _collab(db_session, "Ana")
+        _rec(db_session, cy, co, "P1", desc="Alpha", normal=8.0)
+        _rec(db_session, cy, co, "P2", desc="Beta",  normal=4.0)
+        result = client.get("/api/dashboard/pep-radar").json()
+        descs = {r["pep_description"] for r in result}
+        assert descs == {"Alpha", "Beta"}
+
+    def test_sorted_desc_by_hours(self, client, db_session):
+        cy = _cycle(db_session, "R2", 2026, 2)
+        co = _collab(db_session, "Bob")
+        _rec(db_session, cy, co, "P1", desc="Low",  normal=2.0)
+        _rec(db_session, cy, co, "P2", desc="High", normal=10.0)
+        result = client.get("/api/dashboard/pep-radar").json()
+        assert result[0]["pep_description"] == "High"
+        assert result[1]["pep_description"] == "Low"
+
+    def test_excludes_records_without_pep_description(self, client, db_session):
+        cy = _cycle(db_session, "R3", 2026, 3)
+        co = _collab(db_session, "Carl")
+        r = TimesheetRecord(
+            collaborator_id=co.id, cycle_id=cy.id,
+            record_date=date(2026, 3, 5),
+            pep_wbs=None, pep_description=None,
+            normal_hours=8.0, extra_hours=0.0, standby_hours=0.0, cost_per_hour=0.0,
+        )
+        db_session.add(r); db_session.commit()
+        assert client.get("/api/dashboard/pep-radar").json() == []
+
+    def test_filter_by_cycle_id(self, client, db_session):
+        c1 = _cycle(db_session, "R4a", 2026, 4)
+        c2 = _cycle(db_session, "R4b", 2026, 5)
+        co = _collab(db_session, "Diana")
+        _rec(db_session, c1, co, "P1", desc="Want",   normal=8.0)
+        _rec(db_session, c2, co, "P2", desc="Ignore", normal=5.0)
+        result = client.get(f"/api/dashboard/pep-radar?cycle_id={c1.id}").json()
+        assert len(result) == 1
+        assert result[0]["pep_description"] == "Want"
+
+    def test_limits_to_12_peps(self, client, db_session):
+        cy = _cycle(db_session, "R5", 2026, 6)
+        co = _collab(db_session, "Eve")
+        for i in range(15):
+            _rec(db_session, cy, co, f"P{i}", desc=f"Desc{i}", normal=float(i + 1))
+        result = client.get("/api/dashboard/pep-radar").json()
+        assert len(result) == 12

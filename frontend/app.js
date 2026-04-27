@@ -29,7 +29,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:    ['effortChart', 'budgetChart'],
+  effort:    ['effortChart', 'budgetChart', 'radarChart'],
   portfolio: ['treemapChart', 'bulletChart'],
   trends:    ['trendsChart'],
 };
@@ -304,6 +304,23 @@ async function _renderEffortTab() {
     } else {
       document.getElementById('budgetPanel').hidden = true;
     }
+
+    // Radar chart
+    const rp = new URLSearchParams(p);
+    if (cycleIds.length > 0) rp.set('cycle_id', cycleIds[0]);
+    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
+    if (radarItems.length >= 3) {
+      document.getElementById('radarPanel').hidden = false;
+      const rc = _getOrCreateChart('radarChart');
+      rc.setOption(_buildRadarOption(radarItems), true);
+      rc.resize();
+    } else {
+      document.getElementById('radarPanel').hidden = true;
+      if (_charts['radarChart'] && !_charts['radarChart'].isDisposed()) {
+        _charts['radarChart'].dispose();
+        delete _charts['radarChart'];
+      }
+    }
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
@@ -530,6 +547,64 @@ function _buildBudgetOption(budgetData) {
       { name: 'Orçado',    type: 'bar', data: budgets, itemStyle: { color: '#22d3ee' }, barMaxWidth: 28, barGap: '10%' },
       { name: 'Realizado', type: 'bar', data: actuals,                                  barMaxWidth: 28, barGap: '10%' },
     ],
+  };
+}
+
+function _buildRadarOption(items) {
+  const maxH = Math.max(...items.map(d => d.total_hours), 1);
+  const maxC = Math.max(...items.map(d => d.actual_cost), 1);
+  const fmtR = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  return {
+    backgroundColor: 'transparent',
+    legend: {
+      data: ['Horas', 'Custo (R$)'],
+      bottom: 4,
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24,
+    },
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        const isCost = params.name === 'Custo (R$)';
+        let html = `<b>${escHtml(params.name)}</b><br>`;
+        (params.data.value || []).forEach((_, i) => {
+          if (i >= items.length) return;
+          const d = items[i];
+          const raw = isCost ? fmtR(d.actual_cost) : `${d.total_hours.toFixed(1)}h`;
+          html += `<span style="color:#94a3b8">${escHtml(d.pep_description)}</span>: <b>${raw}</b><br>`;
+        });
+        return html;
+      },
+    },
+    radar: {
+      indicator: items.map(d => ({ name: d.pep_description, max: 100 })),
+      center: ['50%', '50%'],
+      radius: '60%',
+      axisName: { color: '#94a3b8', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#334155' } },
+      splitArea: { areaStyle: { color: ['rgba(30,41,59,0.4)', 'rgba(30,41,59,0.1)'] } },
+      axisLine: { lineStyle: { color: '#475569' } },
+    },
+    series: [{
+      type: 'radar',
+      data: [
+        {
+          name: 'Horas',
+          value: items.map(d => +(d.total_hours / maxH * 100).toFixed(1)),
+          itemStyle: { color: '#3b82f6' },
+          lineStyle: { color: '#3b82f6', width: 2 },
+          areaStyle: { color: 'rgba(59,130,246,0.15)' },
+        },
+        {
+          name: 'Custo (R$)',
+          value: items.map(d => +(d.actual_cost / maxC * 100).toFixed(1)),
+          itemStyle: { color: '#f59e0b' },
+          lineStyle: { color: '#f59e0b', width: 2 },
+          areaStyle: { color: 'rgba(245,158,11,0.15)' },
+        },
+      ],
+    }],
   };
 }
 
