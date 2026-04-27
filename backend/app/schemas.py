@@ -39,6 +39,12 @@ class CollaboratorSeniorityIn(BaseModel):
     seniority_level_id: Optional[int] = None
 
 
+class ImportResultOut(BaseModel):
+    created: int
+    updated: int = 0
+    errors: List[str] = []
+
+
 class GlobalConfigIn(BaseModel):
     extra_hours_multiplier: float = Field(gt=0)
     standby_hours_multiplier: float = Field(gt=0)

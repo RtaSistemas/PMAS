@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import io
+from datetime import date as DateType
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
 from backend.app.models import Cycle, TimesheetRecord
-from backend.app.schemas import CycleIn, CycleOut
+from backend.app.schemas import CycleIn, CycleOut, ImportResultOut
 
 router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(get_current_user)])
 
@@ -82,6 +86,40 @@ def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
     db.refresh(cycle)
     counts = _cycle_record_counts(db)
     return _cycle_to_dict(cycle, counts.get(cycle.id, 0))
+
+
+@router.post("/import", summary="Importar ciclos via CSV", response_model=ImportResultOut)
+def import_cycles(file: UploadFile, db: DbSession):
+    try:
+        raw = file.file.read()
+        df = pd.read_csv(io.BytesIO(raw))
+        df.columns = [c.strip() for c in df.columns]
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {e}")
+    required = {"name", "start_date", "end_date"}
+    missing = required - set(df.columns)
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {missing}")
+    created, errors = 0, []
+    for i, row in df.iterrows():
+        try:
+            name = str(row["name"]).strip()
+            if not name or name.lower() in {"nan", "none"}:
+                errors.append(f"Linha {i + 2}: nome vazio")
+                continue
+            start: DateType = pd.to_datetime(str(row["start_date"])).date()
+            end: DateType = pd.to_datetime(str(row["end_date"])).date()
+            if end < start:
+                errors.append(f"Linha {i + 2}: end_date antes de start_date para '{name}'")
+                continue
+            if db.query(Cycle).filter(Cycle.name == name).first():
+                continue
+            db.add(Cycle(name=name, start_date=start, end_date=end, is_quarantine=False))
+            created += 1
+        except Exception as exc:
+            errors.append(f"Linha {i + 2}: {exc}")
+    db.commit()
+    return {"created": created, "updated": 0, "errors": errors}
 
 
 @router.delete("/{cycle_id}", summary="Excluir ciclo", status_code=204)
