@@ -18,6 +18,7 @@ _COL_EXTRA = "Hora extra"
 _COL_STANDBY = "Hora sobreaviso"
 _COL_PEP_CODE = "Código PEP"
 _COL_PEP_DESC = "PEP"
+_COL_START_TIME = "Hora Inicial [H]"
 
 
 class ClosedCycleError(Exception):
@@ -102,10 +103,11 @@ def ingest_file(
             normal_h = total_h
             hour_type = "normal"
 
-        pep_code = _str_or_none(row.get(_COL_PEP_CODE))
-        pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
+        pep_code   = _str_or_none(row.get(_COL_PEP_CODE))
+        pep_desc   = _str_or_none(row.get(_COL_PEP_DESC))
+        start_time = _str_or_none(row.get(_COL_START_TIME))
 
-        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type)
+        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
         if key in seen_keys:
             skipped += 1
             continue
