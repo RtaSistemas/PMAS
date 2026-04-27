@@ -180,8 +180,9 @@ csvInput.addEventListener('change', async () => {
   notify(`Enviando "${file.name}"…`, 'info');
   const form = new FormData(); form.append('file', file);
   try {
-    const res  = await fetch('/api/upload-timesheet', { method: 'POST', body: form });
+    const res  = await fetch('/api/upload-timesheet', { method: 'POST', headers: _authHeaders(), body: form });
     const json = await res.json();
+    if (res.status === 401) { _handleUnauthorized(); return; }
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
     let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
     if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
