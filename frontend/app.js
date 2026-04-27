@@ -1012,7 +1012,7 @@ let _rateCardEditId     = null;
 let _assignCollabId     = null;
 
 async function loadTeamTab() {
-  await Promise.all([loadSeniorityLevels(), loadRateCards()]);
+  await Promise.all([loadSeniorityLevels(), loadRateCards(), loadGlobalConfig()]);
   await loadTeamTable();
 }
 
@@ -1063,15 +1063,19 @@ async function loadTeamTable() {
     const tbody = document.getElementById('teamBody');
     if (!_allTeam.length) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Nenhum colaborador encontrado.</td></tr>';
-      return;
+    } else {
+      tbody.innerHTML = _allTeam.map(m => `
+        <tr>
+          <td>${escHtml(m.name)}</td>
+          <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
+          <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
+          <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
+        </tr>`).join('');
     }
-    tbody.innerHTML = _allTeam.map(m => `
-      <tr>
-        <td>${escHtml(m.name)}</td>
-        <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
-        <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
-      </tr>`).join('');
+    // Populate bulk seniority select
+    const bulkSel = document.getElementById('bulkSenioritySelect');
+    bulkSel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+      _allSeniorityLevels.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -1187,6 +1191,53 @@ document.getElementById('assignSenioritySaveBtn').addEventListener('click', asyn
 });
 document.getElementById('assignSeniorityCancelBtn').addEventListener('click', closeAssignSeniority);
 document.getElementById('assignSeniorityClose').addEventListener('click', closeAssignSeniority);
+
+// Bulk assign seniority
+document.getElementById('bulkSeniorityBtn').addEventListener('click', async () => {
+  const val = document.getElementById('bulkSenioritySelect').value;
+  const label = val
+    ? _allSeniorityLevels.find(l => l.id === parseInt(val))?.name
+    : 'Sem senioridade';
+  if (!confirm(`Atribuir "${label}" a TODOS os colaboradores?`)) return;
+  try {
+    const body = { seniority_level_id: val ? parseInt(val) : null };
+    await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
+    await loadTeamTable();
+    notify(`Senioridade "${label}" atribuída a todos.`, 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+// Global config (multipliers)
+async function loadGlobalConfig() {
+  try {
+    const cfg = await apiFetch('/api/config');
+    document.getElementById('extraMultiplierInput').value   = cfg.extra_hours_multiplier;
+    document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
+  } catch (e) { /* non-critical, leave placeholders */ }
+}
+
+document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+  const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
+  const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
+  const msg = document.getElementById('configMsg');
+  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
+    msg.style.color = '#ef4444';
+    msg.textContent = 'Os multiplicadores devem ser números positivos.';
+    return;
+  }
+  try {
+    await apiFetchJSON('/api/config', 'PUT', {
+      extra_hours_multiplier: em,
+      standby_hours_multiplier: sm,
+    });
+    msg.style.color = '#22c55e';
+    msg.textContent = 'Fatores salvos com sucesso.';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  } catch (e) {
+    msg.style.color = '#ef4444';
+    msg.textContent = e.message;
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Utilities

@@ -52,6 +52,19 @@ def init_db() -> None:
         conn.execute(text("PRAGMA journal_mode=WAL"))
     _migrate_columns()
     _seed_admin()
+    _seed_config()
+
+
+def _seed_config() -> None:
+    from backend.app.models import GlobalConfig
+
+    db = SessionLocal()
+    try:
+        if not db.get(GlobalConfig, 1):
+            db.add(GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=1.0))
+            db.commit()
+    finally:
+        db.close()
 
 
 def _seed_admin() -> None:

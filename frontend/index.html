@@ -247,9 +247,34 @@
       </table>
     </div>
 
+    <!-- Global cost multipliers -->
+    <div class="card">
+      <h2 class="card-title">Fatores Globais de Custo</h2>
+      <div class="form-grid" style="align-items:flex-end">
+        <div class="form-group">
+          <label for="extraMultiplierInput">Multiplicador — Hora Extra</label>
+          <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
+        </div>
+        <div class="form-group">
+          <label for="standbyMultiplierInput">Multiplicador — Hora Sobreaviso</label>
+          <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
+        </div>
+        <div class="form-group">
+          <button class="btn btn-primary btn-sm" id="saveConfigBtn">Salvar fatores</button>
+        </div>
+      </div>
+      <p id="configMsg" style="margin-top:.5rem;font-size:.8rem;color:#94a3b8"></p>
+    </div>
+
     <!-- Team / collaborators -->
     <div class="card">
-      <h2 class="card-title">Colaboradores</h2>
+      <div class="section-header">
+        <h2 class="card-title">Colaboradores</h2>
+        <div class="actions">
+          <select id="bulkSenioritySelect" class="form-select" style="min-width:180px"></select>
+          <button class="btn btn-secondary btn-sm" id="bulkSeniorityBtn">Atribuir a todos</button>
+        </div>
+      </div>
       <table class="data-table">
         <thead>
           <tr>

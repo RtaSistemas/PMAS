@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
-from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, RateCard, SeniorityLevel
+from backend.app.deps import AdminUser, get_current_user
+from backend.app.models import Collaborator, GlobalConfig, RateCard, SeniorityLevel
 from backend.app.schemas import (
-    CollaboratorSeniorityIn, IdOut, RateCardIn, RateCardOut,
+    CollaboratorSeniorityIn, GlobalConfigIn, GlobalConfigOut,
+    IdOut, RateCardIn, RateCardOut,
     SeniorityAssignOut, SeniorityLevelIn, SeniorityLevelOut, TeamMemberOut,
 )
 
@@ -180,6 +181,15 @@ def list_team(db: DbSession):
     ]
 
 
+@router.put("/team/bulk-seniority", summary="Atribuir senioridade a todos os colaboradores", response_model=list[TeamMemberOut])
+def bulk_assign_seniority(body: CollaboratorSeniorityIn, db: DbSession, _admin: AdminUser):
+    if body.seniority_level_id is not None and not db.get(SeniorityLevel, body.seniority_level_id):
+        raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
+    db.query(Collaborator).update({"seniority_level_id": body.seniority_level_id})
+    db.commit()
+    return list_team(db)
+
+
 @router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)
 def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession):
     collab = db.get(Collaborator, collab_id)
@@ -190,3 +200,32 @@ def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSessio
     collab.seniority_level_id = body.seniority_level_id
     db.commit()
     return {"id": collab.id, "seniority_level_id": collab.seniority_level_id}
+
+
+# ---------------------------------------------------------------------------
+# Global config (multipliers)
+# ---------------------------------------------------------------------------
+
+def _get_or_init_config(db) -> GlobalConfig:
+    cfg = db.get(GlobalConfig, 1)
+    if cfg is None:
+        cfg = GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=1.0)
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return cfg
+
+
+@router.get("/config", summary="Fatores globais de custo", response_model=GlobalConfigOut)
+def get_config(db: DbSession):
+    return _get_or_init_config(db)
+
+
+@router.put("/config", summary="Atualizar fatores globais de custo", response_model=GlobalConfigOut)
+def update_config(body: GlobalConfigIn, db: DbSession, _admin: AdminUser):
+    cfg = _get_or_init_config(db)
+    cfg.extra_hours_multiplier = body.extra_hours_multiplier
+    cfg.standby_hours_multiplier = body.standby_hours_multiplier
+    db.commit()
+    db.refresh(cfg)
+    return cfg
