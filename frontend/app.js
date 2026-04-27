@@ -551,11 +551,22 @@ function _buildBudgetOption(budgetData) {
 }
 
 function _buildRadarOption(items) {
-  const maxH = Math.max(...items.map(d => d.total_hours), 1);
-  const maxC = Math.max(...items.map(d => d.actual_cost), 1);
-  const fmtR = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const maxH   = Math.max(...items.map(d => d.total_hours), 1);
+  const maxC   = Math.max(...items.map(d => d.actual_cost), 1);
+  const totalH = items.reduce((s, d) => s + d.total_hours, 0);
+  const totalC = items.reduce((s, d) => s + d.actual_cost, 0);
+  const fmtR   = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const abbrev = s => s.length > 20 ? s.slice(0, 19) + '…' : s;
+  const LINE_H = 17;
+  const TOP    = 44;   // abaixo do título
   return {
     backgroundColor: 'transparent',
+    title: {
+      text: `Total  ·  ${totalH.toFixed(1)}h  |  ${fmtR(totalC)}`,
+      top: 6,
+      left: 'center',
+      textStyle: { color: '#e2e8f0', fontSize: 12, fontWeight: 600 },
+    },
     legend: {
       data: ['Horas', 'Custo (R$)'],
       bottom: 4,
@@ -605,6 +616,40 @@ function _buildRadarOption(items) {
         },
       ],
     }],
+    graphic: [
+      // Painel esquerdo — horas por PEP
+      {
+        type: 'group',
+        left: 4,
+        top: TOP,
+        children: items.map((d, i) => ({
+          type: 'text',
+          y: i * LINE_H,
+          style: {
+            text: `${abbrev(d.pep_description)}: ${d.total_hours.toFixed(1)}h`,
+            fill: '#3b82f6',
+            fontSize: 10,
+            textAlign: 'left',
+          },
+        })),
+      },
+      // Painel direito — custo por PEP
+      {
+        type: 'group',
+        right: 4,
+        top: TOP,
+        children: items.map((d, i) => ({
+          type: 'text',
+          y: i * LINE_H,
+          style: {
+            text: `${abbrev(d.pep_description)}: ${fmtR(d.actual_cost)}`,
+            fill: '#f59e0b',
+            fontSize: 10,
+            textAlign: 'right',
+          },
+        })),
+      },
+    ],
   };
 }
 
