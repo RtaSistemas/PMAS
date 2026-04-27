@@ -94,15 +94,18 @@ def ingest_file(
 
         if _is_yes(row.get(_COL_EXTRA, "")):
             extra_h = total_h
+            hour_type = "extra"
         elif _is_yes(row.get(_COL_STANDBY, "")):
             standby_h = total_h
+            hour_type = "standby"
         else:
             normal_h = total_h
+            hour_type = "normal"
 
         pep_code = _str_or_none(row.get(_COL_PEP_CODE))
         pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
 
-        key = (collab.id, cycle.id, record_date, pep_code, pep_desc)
+        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type)
         if key in seen_keys:
             skipped += 1
             continue

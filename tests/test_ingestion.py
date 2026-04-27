@@ -58,6 +58,18 @@ class TestIngestFile:
         assert summary["records_inserted"] == 1
         assert summary["records_skipped"] == 1
 
+    def test_different_hour_types_same_day_all_inserted(self, db_session, sample_cycle):
+        normal_row  = {**BASE_ROW, "Hora extra": "Não", "Hora sobreaviso": "Não"}
+        extra_row   = {**BASE_ROW, "Hora extra": "Sim", "Hora sobreaviso": "Não"}
+        standby_row = {**BASE_ROW, "Hora extra": "Não", "Hora sobreaviso": "Sim"}
+        summary = ingest_file(_csv(normal_row, extra_row, standby_row), "t.csv", db_session)
+        assert summary["records_inserted"] == 3
+        assert summary["records_skipped"] == 0
+        records = db_session.query(TimesheetRecord).all()
+        assert sum(r.normal_hours for r in records) == 8.0
+        assert sum(r.extra_hours for r in records) == 8.0
+        assert sum(r.standby_hours for r in records) == 8.0
+
     def test_deduplication_across_calls(self, db_session, sample_cycle):
         ingest_file(_csv(BASE_ROW), "t.csv", db_session)
         summary2 = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
