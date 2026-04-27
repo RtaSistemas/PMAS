@@ -39,6 +39,16 @@ class CollaboratorSeniorityIn(BaseModel):
     seniority_level_id: Optional[int] = None
 
 
+class GlobalConfigIn(BaseModel):
+    extra_hours_multiplier: float = Field(gt=0)
+    standby_hours_multiplier: float = Field(gt=0)
+
+
+class GlobalConfigOut(BaseModel):
+    extra_hours_multiplier: float
+    standby_hours_multiplier: float
+
+
 class UserCreateIn(BaseModel):
     username: str = Field(min_length=3)
     password: str = Field(min_length=6)

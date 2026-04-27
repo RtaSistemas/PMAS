@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Cycle, Project, TimesheetRecord
+from backend.app.models import Cycle, GlobalConfig, Project, TimesheetRecord
 from backend.app.schemas import PortfolioHealthItem, TrendItem
 
 router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_current_user)])
@@ -22,6 +22,10 @@ def get_portfolio_health(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 1.0
+
     q = (
         db.query(
             TimesheetRecord.pep_wbs,
@@ -35,8 +39,8 @@ def get_portfolio_health(
                 TimesheetRecord.cost_per_hour
                 * (
                     TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours
-                    + TimesheetRecord.standby_hours
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
                 )
             ).label("actual_cost"),
         )
@@ -100,6 +104,10 @@ def get_trends(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 1.0
+
     q = (
         db.query(
             Cycle.name.label("cycle_name"),
@@ -111,8 +119,8 @@ def get_trends(
                 TimesheetRecord.cost_per_hour
                 * (
                     TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours
-                    + TimesheetRecord.standby_hours
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
                 )
             ).label("actual_cost"),
         )

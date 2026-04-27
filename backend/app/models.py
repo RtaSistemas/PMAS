@@ -107,3 +107,11 @@ class User(Base):
     username = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user")
+
+
+class GlobalConfig(Base):
+    __tablename__ = "global_config"
+
+    id = Column(Integer, primary_key=True)          # singleton — always id=1
+    extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
+    standby_hours_multiplier = Column(Float, default=1.0, nullable=False)

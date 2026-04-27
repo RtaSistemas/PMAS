@@ -5,7 +5,23 @@ from io import BytesIO
 
 import pytest
 
-from backend.app.models import Collaborator, Cycle, RateCard, SeniorityLevel, TimesheetRecord
+from contextlib import contextmanager
+
+from backend.app.deps import get_current_user
+from backend.app.main import app
+from backend.app.models import Collaborator, Cycle, GlobalConfig, RateCard, SeniorityLevel, TimesheetRecord, User
+from backend.app.routers.auth import hash_password
+
+
+@contextmanager
+def _acting_as(user):
+    saved = dict(app.dependency_overrides)
+    app.dependency_overrides[get_current_user] = lambda: user
+    from fastapi.testclient import TestClient
+    with TestClient(app, raise_server_exceptions=True) as c:
+        yield c
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(saved)
 
 
 # ---------------------------------------------------------------------------
@@ -257,3 +273,103 @@ class TestRateLookupIngestion:
         db_session.commit()
         db_session.refresh(rec)
         assert rec.cost_per_hour == 100.0
+
+
+# ===========================================================================
+# Bulk seniority assignment
+# ===========================================================================
+
+class TestBulkSeniority:
+    def _make_collabs(self, db_session, names):
+        collabs = []
+        for n in names:
+            c = Collaborator(name=n)
+            db_session.add(c)
+        db_session.commit()
+        for n in names:
+            collabs.append(db_session.query(Collaborator).filter_by(name=n).first())
+        return collabs
+
+    def test_assigns_level_to_all(self, client, db_session):
+        sl = _level(db_session, "Pleno")
+        self._make_collabs(db_session, ["Alice", "Bob", "Carol"])
+        r = client.put("/api/team/bulk-seniority", json={"seniority_level_id": sl.id})
+        assert r.status_code == 200
+        names_with_level = [m["name"] for m in r.json() if m["seniority_level_id"] == sl.id]
+        assert set(names_with_level) == {"Alice", "Bob", "Carol"}
+
+    def test_clears_all_seniority(self, client, db_session):
+        sl = _level(db_session, "Senior")
+        self._make_collabs(db_session, ["Dave", "Eve"])
+        client.put("/api/team/bulk-seniority", json={"seniority_level_id": sl.id})
+        r = client.put("/api/team/bulk-seniority", json={"seniority_level_id": None})
+        assert r.status_code == 200
+        assert all(m["seniority_level_id"] is None for m in r.json())
+
+    def test_unknown_level_rejected(self, client):
+        r = client.put("/api/team/bulk-seniority", json={"seniority_level_id": 99999})
+        assert r.status_code == 404
+
+    def test_non_admin_forbidden(self, db_session):
+        regular = User(username="reguser", hashed_password=hash_password("pass"), role="user")
+        db_session.add(regular); db_session.commit(); db_session.refresh(regular)
+        sl = _level(db_session, "Junior")
+        with _acting_as(regular) as c:
+            r = c.put("/api/team/bulk-seniority", json={"seniority_level_id": sl.id})
+        assert r.status_code == 403
+
+
+# ===========================================================================
+# Global config (multipliers)
+# ===========================================================================
+
+class TestGlobalConfig:
+    def test_get_returns_defaults(self, client):
+        r = client.get("/api/config")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["extra_hours_multiplier"] > 0
+        assert d["standby_hours_multiplier"] > 0
+
+    def test_put_updates_values(self, client):
+        r = client.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 0.5})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["extra_hours_multiplier"] == 2.0
+        assert d["standby_hours_multiplier"] == 0.5
+
+    def test_put_zero_multiplier_rejected(self, client):
+        r = client.put("/api/config", json={"extra_hours_multiplier": 0, "standby_hours_multiplier": 1.0})
+        assert r.status_code == 422
+
+    def test_put_non_admin_forbidden(self, db_session):
+        regular = User(username="cfguser", hashed_password=hash_password("pass"), role="user")
+        db_session.add(regular); db_session.commit(); db_session.refresh(regular)
+        with _acting_as(regular) as c:
+            r = c.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
+        assert r.status_code == 403
+
+    def test_multipliers_applied_to_actual_cost(self, client, db_session):
+        """extra_hours at 2x should double the extra-hours cost component."""
+        # Set multipliers
+        client.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
+        # Create cycle, seniority, rate card, collaborator
+        cycle = Cycle(name="TestMult", start_date=date(2026, 3, 1), end_date=date(2026, 3, 31))
+        db_session.add(cycle); db_session.commit(); db_session.refresh(cycle)
+        sl = _level(db_session, "MultLevel")
+        _rate(db_session, sl, 100.0, date(2026, 1, 1))
+        collab = Collaborator(name="MultCollab", seniority_level_id=sl.id)
+        db_session.add(collab); db_session.commit(); db_session.refresh(collab)
+        # Insert record with 4h extra at R$100/h — with 2x multiplier, cost = 4 * 100 * 2 = 800
+        rec = TimesheetRecord(
+            collaborator_id=collab.id, cycle_id=cycle.id,
+            record_date=date(2026, 3, 10),
+            pep_wbs="60OP-MULT", pep_description="Mult Test",
+            normal_hours=0.0, extra_hours=4.0, standby_hours=0.0,
+            cost_per_hour=100.0,
+        )
+        db_session.add(rec); db_session.commit()
+        r = client.get("/api/portfolio-health")
+        item = next((x for x in r.json() if x["pep_wbs"] == "60OP-MULT"), None)
+        assert item is not None
+        assert item["actual_cost"] == pytest.approx(800.0)
