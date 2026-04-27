@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
-from backend.app.schemas import DashboardOut
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
+from backend.app.schemas import DashboardOut, PepRadarItem
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
@@ -119,6 +119,74 @@ def _base_query(db: Session):
         func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
         func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
     ).join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+
+
+@router.get("/pep-radar", summary="Horas e custo por PEP (descrição) para radar chart", response_model=list[PepRadarItem])
+def get_pep_radar(
+    db: DbSession,
+    cycle_id: Optional[int] = None,
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 1.0
+
+    q = (
+        db.query(
+            TimesheetRecord.pep_description,
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
+                )
+            ).label("actual_cost"),
+        )
+        .filter(TimesheetRecord.pep_description.isnot(None))
+    )
+
+    if cycle_id is not None:
+        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+    if pep_code:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
+
+    rows = (
+        q.group_by(TimesheetRecord.pep_description)
+        .order_by(
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).desc()
+        )
+        .limit(12)
+        .all()
+    )
+    return [
+        {
+            "pep_description": r.pep_description,
+            "total_hours": round(r.total_hours or 0.0, 2),
+            "actual_cost": round(r.actual_cost or 0.0, 2),
+        }
+        for r in rows
+    ]
 
 
 @router.get("", summary="Dashboard sem filtro de ciclo — toda a base", response_model=DashboardOut)
