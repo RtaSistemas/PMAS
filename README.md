@@ -2,6 +2,8 @@
 
 Dashboard analítico de timesheet para gestão de horas e custos por projeto, colaborador e ciclo, com visões de Esforço da Equipe, Saúde do Portfólio e Tendências. Inclui módulo de RateCard para rastreamento de custo por hora congelado no momento da importação (EVM freeze pattern).
 
+<img width="1920" height="908" alt="timesheet" src="https://github.com/user-attachments/assets/f322a8b2-1bf3-4239-ab6a-12c266b986f4" />
+
 ## Funcionalidades
 
 - **Importação de Timesheet** — Carregue arquivos CSV ou XLSX. Duplicatas são detectadas e ignoradas automaticamente. Datas fora de qualquer ciclo cadastrado geram um ciclo de *quarentena* sem perda de dados.
@@ -12,6 +14,8 @@ Dashboard analítico de timesheet para gestão de horas e custos por projeto, co
 - **Cadastro de Ciclos** — Criação, edição e exclusão de períodos de apuração. Busca em tempo real na tabela.
 - **Cadastro de Projetos/PEPs** — Registro de projetos com código PEP, nome, cliente, gerente, budget de horas, budget em R$ e status. Busca em tempo real + alertas de budget (Estourado ≥100%, Atenção ≥90%). 
 - **Módulo Equipe / RateCard** — Cadastro de níveis de senioridade, tabela de taxas horárias por nível e período de vigência, atribuição de senioridade por colaborador. O custo por hora é congelado no momento da importação do timesheet (EVM freeze pattern).
+
+<img width="1920" height="911" alt="Saude" src="https://github.com/user-attachments/assets/c600b225-8f6e-48e1-a221-1a7cb179d6dd" />
 
 ## Requisitos
 
@@ -51,6 +55,8 @@ pytest tests/ -v
 | `Hora sobreaviso` | Não | `Sim`/`Não` — indica horas de sobreaviso |
 | `Código PEP` | Não | Código WBS do projeto (ex: `60OP-03333`) |
 | `PEP` | Não | Descrição do PEP (ex: `COPEL-D \| OMS`) |
+
+<img width="1915" height="912" alt="ciclos" src="https://github.com/user-attachments/assets/939c98d7-9636-4c25-b450-4f7ebffd5b14" />
 
 ## Stack tecnológico
 
