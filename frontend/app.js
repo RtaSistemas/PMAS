@@ -1,6 +1,190 @@
 /* PMAS — Frontend App */
 
 // ---------------------------------------------------------------------------
+// i18n
+// ---------------------------------------------------------------------------
+const _LANG = {
+  pt: {
+    'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
+    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe',
+    'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
+    'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
+    'filter.dfrom':'Data início','filter.dto':'Data fim',
+    'btn.load':'Carregar','btn.clear':'Limpar',
+    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências',
+    'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
+    'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
+    'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
+    'radar.title':'Horas e Custo por PEP — Radar',
+    'radar.note':'Valores normalizados · passe o mouse para ver totais absolutos',
+    'portfolio.treemap_h':'Distribuição de Horas por PEP (Treemap)',
+    'portfolio.treemap_r':'Custo Real por PEP (Treemap)',
+    'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
+    'portfolio.note':'Blocos cinzas = PEP sem projeto cadastrado',
+    'btn.view_hours':'Vista: Horas','btn.view_cost':'Vista: R$',
+    'bullet.title':'Orçado vs. Realizado — Bullet Chart',
+    'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
+    'trends.all':'Todos',
+    'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
+    'cycles.title':'Ciclos cadastrados','btn.new_cycle':'+ Novo ciclo',
+    'cycles.search_ph':'Buscar por nome de ciclo…',
+    'cycles.th.name':'Nome','cycles.th.start':'Início','cycles.th.end':'Fim',
+    'cycles.th.type':'Tipo','cycles.th.recs':'Registros',
+    'projects.title':'Projetos / PEPs','btn.new_project':'+ Novo projeto',
+    'projects.search_ph':'Buscar por PEP, nome ou cliente…',
+    'projects.th.pep':'Código PEP','projects.th.name':'Nome do Projeto',
+    'projects.th.client':'Cliente','projects.th.mgr':'Gerente',
+    'projects.th.budget':'Budget (h)','projects.th.status':'Status',
+    'seniority.title':'Níveis de Senioridade','seniority.th.name':'Nome',
+    'btn.new_seniority':'+ Novo nível',
+    'ratecard.title':'Tabela de Taxas (Rate Card)','btn.new_ratecard':'+ Nova taxa',
+    'ratecard.th.level':'Nível','ratecard.th.rate':'Valor/hora (R$)',
+    'ratecard.th.from':'Vigência início','ratecard.th.to':'Vigência fim',
+    'config.title':'Fatores Globais de Custo',
+    'config.extra_lbl':'Multiplicador — Hora Extra',
+    'config.standby_lbl':'Multiplicador — Hora Sobreaviso',
+    'btn.save_config':'Salvar fatores',
+    'team.title':'Colaboradores','btn.assign_all':'Atribuir a todos',
+    'team.th.name':'Nome','team.th.seniority':'Senioridade','team.th.rate':'Taxa atual (R$/h)',
+    'admin.title':'Gestão de Usuários','btn.new_user':'+ Novo usuário',
+    'user.th.user':'Usuário','user.th.role':'Perfil',
+    'btn.cancel':'Cancelar','btn.save':'Salvar','btn.edit':'Editar','btn.delete':'Excluir',
+    'btn.export_csv2':'⬇ Exportar CSV','btn.import_csv':'⬆ Importar CSV',
+    'cm.title_new':'Novo Ciclo','cm.title_edit':'Editar Ciclo',
+    'cm.name_lbl':'Nome *','cm.name_ph':'Ex: Janeiro/2026',
+    'cm.start_lbl':'Data início *','cm.end_lbl':'Data fim *',
+    'pm.title_new':'Novo Projeto','pm.title_edit':'Editar Projeto',
+    'pm.pep_lbl':'Código PEP *','pm.pep_ph':'Ex: 60OP-03333','pm.status_lbl':'Status',
+    'pm.name_lbl':'Nome do Projeto','pm.name_ph':'Nome descritivo',
+    'pm.client_lbl':'Cliente','pm.client_ph':'Nome do cliente',
+    'pm.mgr_lbl':'Gerente','pm.mgr_ph':'Nome do gerente',
+    'pm.bh_lbl':'Budget de horas','pm.bc_lbl':'Budget (R$)',
+    'opt.ativo':'Ativo','opt.suspenso':'Suspenso','opt.encerrado':'Encerrado',
+    'sm.title_new':'Novo Nível de Senioridade','sm.name_lbl':'Nome *','sm.name_ph':'Ex: Pleno, Sênior',
+    'rm.title_new':'Nova Taxa','rm.level_lbl':'Nível de Senioridade *',
+    'rm.rate_lbl':'Valor/hora (R$) *','rm.rate_ph':'Ex: 120.00',
+    'rm.from_lbl':'Vigência início *','rm.to_lbl':'Vigência fim (opcional)',
+    'as.title':'Atribuir Senioridade','as.level_lbl':'Nível de Senioridade',
+    'as.none_opt':'— Sem senioridade —',
+    'um.title':'Novo Usuário','um.user_lbl':'Usuário *','um.user_ph':'mínimo 3 caracteres',
+    'um.pwd_lbl':'Senha *','um.pwd_ph':'mínimo 6 caracteres','um.role_lbl':'Perfil',
+    'opt.user':'Usuário',
+    'pwdm.title':'Alterar Senha','pwdm.new_lbl':'Nova senha *','pwdm.new_ph':'mínimo 6 caracteres',
+    'ch.normal_h':'Horas Normais','ch.extra_h':'Horas Extras','ch.standby_h':'Sobreaviso',
+    'ch.budget':'Budget','ch.actual':'Realizado','ch.hours':'Horas','ch.cost':'Custo (R$)',
+    'ch.cycle_axis':'Ciclo','ch.cost_axis':'Custo Real (R$)',
+    'badge.quarantine':'Quarentena','badge.regular':'Regular',
+    'title.lock':'Bloquear ciclo','title.unlock':'Desbloquear ciclo',
+    'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
+    'stat.total':'Total','stat.collabs':'Colaboradores',
+    'stat.budgeted':'Orçado (PEPs c/ budget)','stat.vs_budget':'Realizado vs Orçado',
+    'budget.exceeded':'Estourado','budget.warning':'Atenção ≥90%',
+    'lbl.admin':'Admin','lbl.user':'Usuário',
+    'loading':'Carregando…','no_cycles':'Nenhum ciclo encontrado.',
+    'no_projects':'Nenhum projeto encontrado.','no_seniority':'Nenhum nível cadastrado.',
+    'no_rates':'Nenhuma taxa cadastrada.','no_team':'Nenhum colaborador encontrado.',
+    'no_users':'Nenhum usuário encontrado.',
+    'btn.assign':'Atribuir','btn.pwd':'Senha',
+    'ch.actual_cost':'Custo Real',
+    'tt.over_budget':'Acima do orçado','tt.utilization':'Utilização','tt.total_hours':'Total horas',
+    'tt.project':'Projeto','tt.consumed':'Consumido','tt.actual_cost_lbl':'Custo real',
+    'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
+  },
+  en: {
+    'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
+    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team',
+    'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
+    'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
+    'filter.dfrom':'Start date','filter.dto':'End date',
+    'btn.load':'Load','btn.clear':'Clear',
+    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends',
+    'effort.empty':'Select a cycle or PEP in the filters and click Load.',
+    'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
+    'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
+    'radar.title':'Hours & Cost by PEP — Radar',
+    'radar.note':'Normalized values · hover for absolute totals',
+    'portfolio.treemap_h':'Hour Distribution by PEP (Treemap)',
+    'portfolio.treemap_r':'Actual Cost by PEP (Treemap)',
+    'portfolio.empty':'No hour data found for the selected filters.',
+    'portfolio.note':'Gray blocks = PEP without registered project',
+    'btn.view_hours':'View: Hours','btn.view_cost':'View: R$',
+    'bullet.title':'Budget vs. Actual — Bullet Chart',
+    'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
+    'trends.all':'All',
+    'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
+    'cycles.title':'Registered Cycles','btn.new_cycle':'+ New cycle',
+    'cycles.search_ph':'Search by cycle name…',
+    'cycles.th.name':'Name','cycles.th.start':'Start','cycles.th.end':'End',
+    'cycles.th.type':'Type','cycles.th.recs':'Records',
+    'projects.title':'Projects / PEPs','btn.new_project':'+ New project',
+    'projects.search_ph':'Search by PEP, name or client…',
+    'projects.th.pep':'PEP Code','projects.th.name':'Project Name',
+    'projects.th.client':'Client','projects.th.mgr':'Manager',
+    'projects.th.budget':'Budget (h)','projects.th.status':'Status',
+    'seniority.title':'Seniority Levels','seniority.th.name':'Name',
+    'btn.new_seniority':'+ New level',
+    'ratecard.title':'Rate Card Table','btn.new_ratecard':'+ New rate',
+    'ratecard.th.level':'Level','ratecard.th.rate':'Rate/hour (R$)',
+    'ratecard.th.from':'Valid from','ratecard.th.to':'Valid to',
+    'config.title':'Global Cost Factors',
+    'config.extra_lbl':'Multiplier — Overtime',
+    'config.standby_lbl':'Multiplier — Standby',
+    'btn.save_config':'Save factors',
+    'team.title':'Collaborators','btn.assign_all':'Assign to all',
+    'team.th.name':'Name','team.th.seniority':'Seniority','team.th.rate':'Current rate (R$/h)',
+    'admin.title':'User Management','btn.new_user':'+ New user',
+    'user.th.user':'Username','user.th.role':'Role',
+    'btn.cancel':'Cancel','btn.save':'Save','btn.edit':'Edit','btn.delete':'Delete',
+    'btn.export_csv2':'⬇ Export CSV','btn.import_csv':'⬆ Import CSV',
+    'cm.title_new':'New Cycle','cm.title_edit':'Edit Cycle',
+    'cm.name_lbl':'Name *','cm.name_ph':'E.g.: January/2026',
+    'cm.start_lbl':'Start date *','cm.end_lbl':'End date *',
+    'pm.title_new':'New Project','pm.title_edit':'Edit Project',
+    'pm.pep_lbl':'PEP Code *','pm.pep_ph':'E.g.: 60OP-03333','pm.status_lbl':'Status',
+    'pm.name_lbl':'Project Name','pm.name_ph':'Descriptive name',
+    'pm.client_lbl':'Client','pm.client_ph':'Client name',
+    'pm.mgr_lbl':'Manager','pm.mgr_ph':'Manager name',
+    'pm.bh_lbl':'Hours budget','pm.bc_lbl':'Budget (R$)',
+    'opt.ativo':'Active','opt.suspenso':'Suspended','opt.encerrado':'Closed',
+    'sm.title_new':'New Seniority Level','sm.name_lbl':'Name *','sm.name_ph':'E.g.: Mid, Senior',
+    'rm.title_new':'New Rate','rm.level_lbl':'Seniority Level *',
+    'rm.rate_lbl':'Rate/hour (R$) *','rm.rate_ph':'E.g.: 120.00',
+    'rm.from_lbl':'Valid from *','rm.to_lbl':'Valid to (optional)',
+    'as.title':'Assign Seniority','as.level_lbl':'Seniority Level',
+    'as.none_opt':'— No seniority —',
+    'um.title':'New User','um.user_lbl':'Username *','um.user_ph':'minimum 3 characters',
+    'um.pwd_lbl':'Password *','um.pwd_ph':'minimum 6 characters','um.role_lbl':'Role',
+    'opt.user':'User',
+    'pwdm.title':'Change Password','pwdm.new_lbl':'New password *','pwdm.new_ph':'minimum 6 characters',
+    'ch.normal_h':'Normal Hours','ch.extra_h':'Overtime','ch.standby_h':'Standby',
+    'ch.budget':'Budget','ch.actual':'Actual','ch.hours':'Hours','ch.cost':'Cost (R$)',
+    'ch.cycle_axis':'Cycle','ch.cost_axis':'Actual Cost (R$)',
+    'badge.quarantine':'Quarantine','badge.regular':'Regular',
+    'title.lock':'Lock cycle','title.unlock':'Unlock cycle',
+    'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
+    'stat.total':'Total','stat.collabs':'Collaborators',
+    'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
+    'budget.exceeded':'Exceeded','budget.warning':'Warning ≥90%',
+    'lbl.admin':'Admin','lbl.user':'User',
+    'loading':'Loading…','no_cycles':'No cycles found.',
+    'no_projects':'No projects found.','no_seniority':'No levels registered.',
+    'no_rates':'No rates registered.','no_team':'No collaborators found.',
+    'no_users':'No users found.',
+    'btn.assign':'Assign','btn.pwd':'Password',
+    'ch.actual_cost':'Actual Cost',
+    'tt.over_budget':'Above budget','tt.utilization':'Utilization','tt.total_hours':'Total hours',
+    'tt.project':'Project','tt.consumed':'Consumed','tt.actual_cost_lbl':'Actual cost',
+    'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
+  },
+};
+let _locale = localStorage.getItem('pmas_lang') || 'pt';
+function _t(key) { return (_LANG[_locale] || _LANG.pt)[key] || key; }
+function _applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = _t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = _t(el.dataset.i18nPh); });
+}
+
+// ---------------------------------------------------------------------------
 // Top-level tab navigation
 // ---------------------------------------------------------------------------
 const tabBtns     = document.querySelectorAll('.tab-btn');
@@ -79,7 +263,7 @@ atabBtns.forEach(btn => {
 
 document.getElementById('evmToggleBtn').addEventListener('click', () => {
   _evmMode = !_evmMode;
-  document.getElementById('evmToggleBtn').textContent = _evmMode ? 'Vista: R$' : 'Vista: Horas';
+  document.getElementById('evmToggleBtn').textContent = _evmMode ? _t('btn.view_cost') : _t('btn.view_hours');
   _renderPortfolioTab();
 });
 
@@ -101,7 +285,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 document.getElementById('stackToggleBtn').addEventListener('click', () => {
   _stackMode = !_stackMode;
   document.getElementById('stackToggleBtn').textContent =
-    _stackMode ? 'Vista: Empilhada' : 'Vista: Agrupada';
+    _stackMode ? _t('btn.stacked') : _t('btn.grouped');
   const ch = _charts['effortChart'];
   if (ch && !ch.isDisposed()) {
     ch.setOption(_buildEffortSeriesOnly(_stackMode), false);
@@ -111,9 +295,8 @@ document.getElementById('stackToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Dashboard — DOM refs and multi-selects
 // ---------------------------------------------------------------------------
-const csvInput   = document.getElementById('csvInput');
-const uploadZone = document.getElementById('uploadZone');
-const loadBtn    = document.getElementById('loadBtn');
+const csvInput = document.getElementById('csvInput');
+const loadBtn  = document.getElementById('loadBtn');
 const clearBtn   = document.getElementById('clearBtn');
 
 const cycleMs        = new MultiSelect(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
@@ -194,12 +377,18 @@ csvInput.addEventListener('change', async () => {
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
 });
 
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = '#3b82f6'; });
-uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault(); uploadZone.style.borderColor = '';
-  const file = e.dataTransfer.files[0];
-  if (file) { const dt = new DataTransfer(); dt.items.add(file); csvInput.files = dt.files; csvInput.dispatchEvent(new Event('change')); }
+// Language toggle
+document.getElementById('langToggleBtn').addEventListener('click', () => {
+  _locale = _locale === 'pt' ? 'en' : 'pt';
+  localStorage.setItem('pmas_lang', _locale);
+  document.getElementById('langToggleBtn').textContent = _t('btn.lang');
+  _applyI18n();
+  // Re-render dynamic content for active tab
+  const tab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (tab === 'cycles')   _renderCyclesTable(_allCycles);
+  if (tab === 'projects') _renderProjectsTable(_allProjects);
+  if (tab === 'team')     loadTeamTab();
+  if (tab === 'dashboard') _renderActiveTab();
 });
 
 // ---------------------------------------------------------------------------
@@ -213,7 +402,7 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('dateToInput').value   = '';
   pepDataCache = {};
   _evmMode = false;
-  document.getElementById('evmToggleBtn').textContent = 'Vista: Horas';
+  document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   _disposeTabCharts('trends');
@@ -351,7 +540,7 @@ async function _renderPortfolioTab() {
 
     // Update treemap title
     document.getElementById('portfolioTreemapTitle').textContent =
-      _evmMode ? 'Custo Real por PEP (Treemap)' : 'Distribuição de Horas por PEP (Treemap)';
+      _evmMode ? _t('portfolio.treemap_r') : _t('portfolio.treemap_h');
 
     // Treemap
     const tm = _getOrCreateChart('treemapChart');
@@ -383,7 +572,7 @@ async function _populateTrendsPepSelect() {
   const current = sel.value;
   try {
     const peps = await apiFetch('/api/peps');
-    sel.innerHTML = '<option value="">Todos</option>' +
+    sel.innerHTML = `<option value="">${_t('trends.all')}</option>` +
       peps.map(p => `<option value="${escHtml(p.code)}">${escHtml(p.code)}${p.descriptions[0] ? ' — ' + escHtml(p.descriptions[0]) : ''}</option>`).join('');
     if (peps.some(p => p.code === current)) sel.value = current;
   } catch (_) { /* non-critical */ }
@@ -450,7 +639,7 @@ function _buildEffortOption(data, stacked) {
       subtextStyle: { color: '#64748b', fontSize: 11 },
     },
     legend: {
-      data: ['Horas Normais', 'Horas Extras', 'Sobreaviso'],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h')],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 14, itemHeight: 10,
@@ -468,7 +657,7 @@ function _buildEffortOption(data, stacked) {
       },
     },
     xAxis: {
-      type: 'value', name: 'Horas',
+      type: 'value', name: _t('ch.hours'),
       nameTextStyle: { color: '#94a3b8', fontSize: 11 },
       axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
       splitLine: { lineStyle: { color: '#1e293b' } },
@@ -492,9 +681,9 @@ function _buildEffortOption(data, stacked) {
       },
     },
     series: [
-      { name: 'Horas Normais', type: 'bar', stack, data: slice.map(r => +r.normal_hours.toFixed(2)),  itemStyle: { color: '#3b82f6' }, barMaxWidth: 32 },
-      { name: 'Horas Extras',  type: 'bar', stack, data: slice.map(r => +r.extra_hours.toFixed(2)),   itemStyle: { color: '#f59e0b' }, barMaxWidth: 32 },
-      { name: 'Sobreaviso',    type: 'bar', stack, data: slice.map(r => +r.standby_hours.toFixed(2)), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 32 },
+      { name: _t('ch.normal_h'),  type: 'bar', stack, data: slice.map(r => +r.normal_hours.toFixed(2)),  itemStyle: { color: '#3b82f6' }, barMaxWidth: 32 },
+      { name: _t('ch.extra_h'),   type: 'bar', stack, data: slice.map(r => +r.extra_hours.toFixed(2)),   itemStyle: { color: '#f59e0b' }, barMaxWidth: 32 },
+      { name: _t('ch.standby_h'), type: 'bar', stack, data: slice.map(r => +r.standby_hours.toFixed(2)), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 32 },
     ],
   };
 }
@@ -504,9 +693,9 @@ function _buildEffortSeriesOnly(stacked) {
   const stack = stacked ? 'total' : undefined;
   return {
     series: [
-      { name: 'Horas Normais', stack },
-      { name: 'Horas Extras',  stack },
-      { name: 'Sobreaviso',    stack },
+      { name: _t('ch.normal_h'),  stack },
+      { name: _t('ch.extra_h'),   stack },
+      { name: _t('ch.standby_h'), stack },
     ],
   };
 }
@@ -521,7 +710,7 @@ function _buildBudgetOption(budgetData) {
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: ['Orçado', 'Realizado'], top: 8, left: 'center',
+      data: [_t('ch.budget'), _t('ch.actual')], top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10,
     },
     grid: { top: 44, right: '3%', bottom: 28, left: '2%', containLabel: true },
@@ -529,23 +718,23 @@ function _buildBudgetOption(budgetData) {
       trigger: 'axis', axisPointer: { type: 'shadow' },
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        const bVal = params.find(p => p.seriesName === 'Orçado')?.value ?? 0;
-        const aVal = params.find(p => p.seriesName === 'Realizado')?.value ?? 0;
+        const bVal = params.find(p => p.seriesName === _t('ch.budget'))?.value ?? 0;
+        const aVal = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct  = bVal > 0 ? ` (${(aVal / bVal * 100).toFixed(1)}%)` : '';
         let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue.replace('\n', ' — ')}</div>`;
         params.forEach(p => {
-          const extra = p.seriesName === 'Realizado' ? pct : '';
+          const extra = p.seriesName === _t('ch.actual') ? pct : '';
           html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b>${extra}</div>`;
         });
-        if (bVal > 0 && aVal > bVal) html += `<div style="color:#f87171;font-size:11px;margin-top:4px">⚠ Acima do orçado</div>`;
+        if (bVal > 0 && aVal > bVal) html += `<div style="color:#f87171;font-size:11px;margin-top:4px">⚠ ${_t('tt.over_budget')}</div>`;
         return html;
       },
     },
-    xAxis: { type: 'value', name: 'Horas', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    xAxis: { type: 'value', name: _t('ch.hours'), nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` }, splitLine: { lineStyle: { color: '#1e293b' } } },
     yAxis: { type: 'category', data: labels, axisTick: { show: false }, axisLabel: { color: '#e2e8f0', fontSize: 10, lineHeight: 16 } },
     series: [
-      { name: 'Orçado',    type: 'bar', data: budgets, itemStyle: { color: '#22d3ee' }, barMaxWidth: 28, barGap: '10%' },
-      { name: 'Realizado', type: 'bar', data: actuals,                                  barMaxWidth: 28, barGap: '10%' },
+      { name: _t('ch.budget'), type: 'bar', data: budgets, itemStyle: { color: '#22d3ee' }, barMaxWidth: 28, barGap: '10%' },
+      { name: _t('ch.actual'), type: 'bar', data: actuals,                                  barMaxWidth: 28, barGap: '10%' },
     ],
   };
 }
@@ -568,7 +757,7 @@ function _buildRadarOption(items) {
       textStyle: { color: '#e2e8f0', fontSize: 12, fontWeight: 600 },
     },
     legend: {
-      data: ['Horas', 'Custo (R$)'],
+      data: [_t('ch.hours'), _t('ch.cost')],
       bottom: 4,
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24,
@@ -577,7 +766,7 @@ function _buildRadarOption(items) {
       trigger: 'item',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        const isCost = params.name === 'Custo (R$)';
+        const isCost = params.name === _t('ch.cost');
         let html = `<b>${escHtml(params.name)}</b><br>`;
         (params.data.value || []).forEach((_, i) => {
           if (i >= items.length) return;
@@ -601,14 +790,14 @@ function _buildRadarOption(items) {
       type: 'radar',
       data: [
         {
-          name: 'Horas',
+          name: _t('ch.hours'),
           value: items.map(d => +(d.total_hours / maxH * 100).toFixed(1)),
           itemStyle: { color: '#3b82f6' },
           lineStyle: { color: '#3b82f6', width: 2 },
           areaStyle: { color: 'rgba(59,130,246,0.15)' },
         },
         {
-          name: 'Custo (R$)',
+          name: _t('ch.cost'),
           value: items.map(d => +(d.actual_cost / maxC * 100).toFixed(1)),
           itemStyle: { color: '#f59e0b' },
           lineStyle: { color: '#f59e0b', width: 2 },
@@ -667,15 +856,15 @@ function _buildTreemapOption(health, evmMode = false) {
         if (!d) return escHtml(params.name);
         let html = `<b>${escHtml(d.pep_wbs)}</b>`;
         if (d.pep_description) html += `<br><span style="color:#94a3b8">${escHtml(d.pep_description)}</span>`;
-        if (d.name)            html += `<br>Projeto: ${escHtml(d.name)}`;
+        if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
-        html += `<br>${evmMode ? 'Custo real' : 'Consumido'}: <b>${fmtVal(consumed)}</b>`;
+        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
         if (budget != null) {
           const pct = (consumed / budget * 100).toFixed(1);
-          html += `<br>Budget: ${fmtVal(budget)} (${pct}% utilizado)`;
+          html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
         }
-        if (!d.is_registered) html += `<br><span style="color:#f59e0b">⚠ PEP não cadastrado</span>`;
+        if (!d.is_registered) html += `<br><span style="color:#f59e0b">${_t('tt.pep_not_reg')}</span>`;
         return html;
       },
     },
@@ -745,15 +934,15 @@ function _buildBulletOption(withBudget, evmMode = false) {
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
         const b = budgets[params[0].dataIndex];
-        const a = params.find(p => p.seriesName === 'Realizado')?.value ?? 0;
+        const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
         const fmtV = v => evmMode
           ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
           : v.toFixed(1) + 'h';
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
-        html += `Orçado: <b>${fmtV(b)}</b><br>Realizado: <b>${fmtV(a)}</b><br>`;
-        html += `Utilização: <b>${pct}</b>`;
-        if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ Acima do orçado</span>`;
+        html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
+        html += `${_t('tt.utilization')}: <b>${pct}</b>`;
+        if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ ${_t('tt.over_budget')}</span>`;
         return html;
       },
     },
@@ -769,7 +958,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
     },
     series: [
       {
-        name: 'Budget',
+        name: _t('ch.budget'),
         type: 'bar',
         barMaxWidth: 48,
         barGap: '-100%',
@@ -785,7 +974,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         })),
       },
       {
-        name: 'Realizado',
+        name: _t('ch.actual'),
         type: 'bar',
         barMaxWidth: 28,
         barGap: '-100%',
@@ -814,7 +1003,7 @@ function _buildTrendsOption(trends) {
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: ['Horas Normais', 'Horas Extras', 'Custo Real'],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.actual_cost')],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
@@ -827,14 +1016,14 @@ function _buildTrendsOption(trends) {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         let totalHours = 0;
         params.forEach(p => {
-          if (p.seriesName === 'Custo Real') {
+          if (p.seriesName === _t('ch.actual_cost')) {
             html += `${p.marker} ${p.seriesName}: <b>R$ ${p.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b><br>`;
           } else {
             html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
             totalHours += p.value;
           }
         });
-        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">Total horas: <b>${totalHours.toFixed(1)}h</b></div>`;
+        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">${_t('tt.total_hours')}: <b>${totalHours.toFixed(1)}h</b></div>`;
         return html;
       },
     },
@@ -846,7 +1035,7 @@ function _buildTrendsOption(trends) {
     },
     yAxis: [
       {
-        type: 'value', name: 'Horas',
+        type: 'value', name: _t('ch.hours'),
         nameTextStyle: { color: '#94a3b8', fontSize: 11 },
         axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
         splitLine: { lineStyle: { color: '#334155' } },
@@ -860,21 +1049,21 @@ function _buildTrendsOption(trends) {
     ],
     series: [
       {
-        name: 'Horas Normais', type: 'line', yAxisIndex: 0,
+        name: _t('ch.normal_h'), type: 'line', yAxisIndex: 0,
         data: normals, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#3b82f6', width: 2.5 },
         itemStyle: { color: '#3b82f6' },
         areaStyle: { color: 'rgba(59,130,246,0.12)' },
       },
       {
-        name: 'Horas Extras', type: 'line', yAxisIndex: 0,
+        name: _t('ch.extra_h'), type: 'line', yAxisIndex: 0,
         data: extras, smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: '#f59e0b', width: 2.5 },
         itemStyle: { color: '#f59e0b' },
         areaStyle: { color: 'rgba(245,158,11,0.10)' },
       },
       {
-        name: 'Custo Real', type: 'line', yAxisIndex: 1,
+        name: _t('ch.actual_cost'), type: 'line', yAxisIndex: 1,
         data: costs, smooth: true, symbol: 'diamond', symbolSize: 8,
         lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
         itemStyle: { color: '#10b981' },
@@ -892,11 +1081,11 @@ function _buildStatsRow(data, budgetData = []) {
   const total = normal + extra + standby;
   const row   = document.createElement('div'); row.className = 'stats-row';
   const cards = [
-    { val: fmt(normal),  lbl: 'Horas Normais', cls: 'blue'    },
-    { val: fmt(extra),   lbl: 'Horas Extras',  cls: 'amber'   },
-    { val: fmt(standby), lbl: 'Sobreaviso',    cls: 'violet'  },
-    { val: fmt(total),   lbl: 'Total',         cls: 'green'   },
-    { val: data.length,  lbl: 'Colaboradores', cls: 'neutral' },
+    { val: fmt(normal),  lbl: _t('stat.normal_h'),  cls: 'blue'    },
+    { val: fmt(extra),   lbl: _t('stat.extra_h'),   cls: 'amber'   },
+    { val: fmt(standby), lbl: _t('stat.standby_h'), cls: 'violet'  },
+    { val: fmt(total),   lbl: _t('stat.total'),     cls: 'green'   },
+    { val: data.length,  lbl: _t('stat.collabs'),   cls: 'neutral' },
   ];
   if (budgetData.length > 0) {
     const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
@@ -904,8 +1093,8 @@ function _buildStatsRow(data, budgetData = []) {
     const pct  = totalBudget > 0 ? (totalActual / totalBudget * 100).toFixed(1) : '—';
     const over = totalBudget > 0 && totalActual > totalBudget;
     cards.push(
-      { val: fmt(totalBudget), lbl: 'Orçado (PEPs c/ budget)', cls: 'neutral' },
-      { val: `${pct}%`,        lbl: 'Realizado vs Orçado',    cls: over ? 'red' : 'green' },
+      { val: fmt(totalBudget), lbl: _t('stat.budgeted'),   cls: 'neutral' },
+      { val: `${pct}%`,        lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
     );
   }
   cards.forEach(({ val, lbl, cls }) => {
@@ -932,7 +1121,7 @@ async function loadCyclesTable() {
 function _renderCyclesTable(cycles) {
   const tbody = document.getElementById('cyclesBody');
   if (!cycles.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum ciclo encontrado.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_cycles')}</td></tr>`;
     return;
   }
   const admin = _isAdmin();
@@ -941,12 +1130,12 @@ function _renderCyclesTable(cycles) {
       <td>${escHtml(c.name)}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
-      <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? 'Quarentena' : 'Regular'}</span></td>
+      <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? _t('badge.quarantine') : _t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
-        ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? 'Desbloquear ciclo' : 'Bloquear ciclo'}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
-        <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">Excluir</button>
+        ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`).join('');
 }
@@ -962,7 +1151,7 @@ async function toggleCycleLock(id, isClosed) {
 
 function openCycleModal(id = null) {
   _cycleEditId = id;
-  document.getElementById('cycleModalTitle').textContent = id ? 'Editar Ciclo' : 'Novo Ciclo';
+  document.getElementById('cycleModalTitle').textContent = id ? _t('cm.title_edit') : _t('cm.title_new');
   document.getElementById('cycleError').textContent = '';
   if (id) {
     const c = _allCycles.find(x => x.id === id);
@@ -1077,15 +1266,15 @@ function _buildBudgetCell(p) {
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
   if (!consumed) return budgetStr;
   const pct = consumed / p.budget_hours;
-  if (pct >= 1.0) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">Estourado</span>`;
-  if (pct >= 0.9) return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">Atenção ≥90%</span>`;
+  if (pct >= 1.0) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
+  if (pct >= 0.9) return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')}</span>`;
   return budgetStr;
 }
 
 function _renderProjectsTable(projects) {
   const tbody = document.getElementById('projectsBody');
   if (!projects.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum projeto encontrado.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
     return;
   }
   tbody.innerHTML = projects.map(p => `
@@ -1097,15 +1286,15 @@ function _renderProjectsTable(projects) {
       <td style="text-align:right">${_buildBudgetCell(p)}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">Excluir</button>
+        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`).join('');
 }
 
 function openProjectModal(id = null) {
   _projectEditId = id;
-  document.getElementById('projectModalTitle').textContent = id ? 'Editar Projeto' : 'Novo Projeto';
+  document.getElementById('projectModalTitle').textContent = id ? _t('pm.title_edit') : _t('pm.title_new');
   document.getElementById('projectError').textContent = '';
   if (id) {
     const p = _allProjects.find(x => x.id === id);
@@ -1225,15 +1414,15 @@ async function loadSeniorityLevels() {
     _allSeniorityLevels = await apiFetch('/api/seniority-levels');
     const tbody = document.getElementById('seniorityBody');
     if (!_allSeniorityLevels.length) {
-      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">Nenhum nível cadastrado.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_seniority')}</td></tr>`;
       return;
     }
     tbody.innerHTML = _allSeniorityLevels.map(l => `
       <tr>
         <td>${escHtml(l.name)}</td>
         <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">Excluir</button>
+          <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
         </div></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -1244,7 +1433,7 @@ async function loadRateCards() {
     _allRateCards = await apiFetch('/api/rate-cards');
     const tbody = document.getElementById('rateCardBody');
     if (!_allRateCards.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">Nenhuma taxa cadastrada.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_rates')}</td></tr>`;
       return;
     }
     tbody.innerHTML = _allRateCards.map(c => `
@@ -1254,8 +1443,8 @@ async function loadRateCards() {
         <td>${c.valid_from}</td>
         <td>${c.valid_to ?? '—'}</td>
         <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">Excluir</button>
+          <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
         </div></td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -1266,14 +1455,14 @@ async function loadTeamTable() {
     _allTeam = await apiFetch('/api/team');
     const tbody = document.getElementById('teamBody');
     if (!_allTeam.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Nenhum colaborador encontrado.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_team')}</td></tr>`;
     } else {
       tbody.innerHTML = _allTeam.map(m => `
         <tr>
           <td>${escHtml(m.name)}</td>
           <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
           <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
-          <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">Atribuir</button></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
         </tr>`).join('');
     }
     // Populate bulk seniority select
@@ -1558,7 +1747,7 @@ async function loadUsersTable() {
 function _renderUsersTable(users) {
   const tbody = document.getElementById('usersBody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">Nenhum usuário encontrado.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">${_t('no_users')}</td></tr>`;
     return;
   }
   const payload = _getTokenPayload();
@@ -1566,10 +1755,10 @@ function _renderUsersTable(users) {
   tbody.innerHTML = users.map(u => `
     <tr>
       <td>${escHtml(u.username)}</td>
-      <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? 'Admin' : 'Usuário'}</span></td>
+      <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? _t('lbl.admin') : _t('lbl.user')}</span></td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openPwdModal(${u.id})">Senha</button>
-        ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">Excluir</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="openPwdModal(${u.id})">${_t('btn.pwd')}</button>
+        ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">${_t('btn.delete')}</button>` : ''}
       </div></td>
     </tr>`).join('');
 }
@@ -1636,6 +1825,8 @@ async function deleteUser(id, username) {
 // ---------------------------------------------------------------------------
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
+  document.getElementById('langToggleBtn').textContent = _t('btn.lang');
+  _applyI18n();
   loadDashboardCycles();
   _renderActiveTab();
 }

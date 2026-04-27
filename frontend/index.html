@@ -9,7 +9,7 @@
 </head>
 <body>
 
-<!-- Login overlay — visible until authenticated -->
+<!-- Login overlay -->
 <div id="loginOverlay">
   <div class="login-card">
     <div class="login-logo">PMAS</div>
@@ -29,20 +29,29 @@
   </div>
 </div>
 
-<!-- App shell — hidden until authenticated -->
+<!-- App shell -->
 <div id="appShell" hidden>
 
 <header>
-  <h1>PMAS <span class="header-sub">- Project Management Assistant System</span></h1>
+  <h1>PMAS <span class="header-sub">— Project Management Assistant System</span></h1>
   <span class="badge">Timesheet</span>
-  <button id="logoutBtn" class="btn btn-secondary btn-sm logout-btn">Sair</button>
+  <div class="header-actions">
+    <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Importar CSV ou XLSX">
+      <span data-i18n="btn.import_ts">⬆ Importar</span>
+      <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
+    </label>
+    <button id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
+    <button id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
+  </div>
 </header>
+
+<div id="notification"></div>
 
 <nav class="app-tabs">
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  <button class="tab-btn" data-tab="cycles">Ciclos</button>
-  <button class="tab-btn" data-tab="projects">Projetos</button>
-  <button class="tab-btn" data-tab="team">Equipe</button>
+  <button class="tab-btn" data-tab="cycles" data-i18n="tab.cycles">Ciclos</button>
+  <button class="tab-btn" data-tab="projects" data-i18n="tab.projects">Projetos</button>
+  <button class="tab-btn" data-tab="team" data-i18n="tab.team">Equipe</button>
   <button class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>Admin</button>
 </nav>
 
@@ -54,37 +63,26 @@
   <section id="tab-dashboard" class="tab-section">
 
     <div class="card">
-      <h2>Importar Timesheet</h2>
-      <label class="upload-zone" id="uploadZone">
-        <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" />
-        <div class="upload-icon">📂</div>
-        <strong>Clique para selecionar CSV ou XLSX</strong>
-        <p>ou arraste e solte aqui</p>
-      </label>
-      <div id="notification"></div>
-    </div>
-
-    <div class="card">
-      <h2>Filtros</h2>
+      <h2 data-i18n="filters.title">Filtros</h2>
       <div class="filter-grid">
-        <div class="field"><label>Ciclo</label><div id="cycleMs"></div></div>
-        <div class="field"><label>PEP (Código)</label><div id="pepMs"></div></div>
-        <div class="field"><label>PEP (Descrição)</label><div id="pepDescMs"></div></div>
-        <div class="field"><label>Colaborador</label><div id="collaboratorMs"></div></div>
-        <div class="field"><label>Data início</label><input type="date" id="dateFromInput" /></div>
-        <div class="field"><label>Data fim</label><input type="date" id="dateToInput" /></div>
+        <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+        <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+        <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+        <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+        <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
+        <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
         <div class="field btn-group">
-          <button id="loadBtn" class="btn btn-primary">Carregar</button>
-          <button id="clearBtn" class="btn btn-secondary">Limpar</button>
+          <button id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
+          <button id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
         </div>
       </div>
     </div>
 
     <!-- Analytics sub-tab navigation -->
     <nav class="analytics-tabs">
-      <button class="atab-btn active" data-atab="effort">Esforço da Equipe</button>
-      <button class="atab-btn" data-atab="portfolio">Saúde do Portfólio</button>
-      <button class="atab-btn" data-atab="trends">Tendências</button>
+      <button class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
+      <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
+      <button class="atab-btn" data-atab="trends" data-i18n="atab.trends">Tendências</button>
     </nav>
 
     <!-- ============================================================ -->
@@ -96,25 +94,25 @@
         <div class="panel-header">
           <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
           <div style="display:flex;gap:0.5rem">
-            <button id="stackToggleBtn" class="btn btn-secondary btn-sm">Vista: Empilhada</button>
-            <button id="exportCsvBtn" class="btn btn-secondary btn-sm">⬇ Exportar CSV</button>
+            <button id="stackToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.stacked">Vista: Empilhada</button>
+            <button id="exportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
           </div>
         </div>
-        <div id="effortEmpty" class="chart-empty" hidden>
+        <div id="effortEmpty" class="chart-empty" hidden data-i18n="effort.empty">
           Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
         </div>
         <div id="effortChart" style="width:100%;height:500px"></div>
       </div>
-      <div class="card chart-panel" id="budgetPanel" hidden>
-        <div class="panel-title">Orçado vs. Realizado por PEP</div>
-        <div id="budgetChart" style="width:100%;height:300px"></div>
-      </div>
       <div class="card chart-panel" id="radarPanel" hidden>
         <div class="panel-header">
-          <span class="panel-title">Horas e Custo por PEP — Radar</span>
-          <span class="panel-note">Valores normalizados · passe o mouse para ver totais absolutos</span>
+          <span class="panel-title" data-i18n="radar.title">Horas e Custo por PEP — Radar</span>
+          <span class="panel-note" data-i18n="radar.note">Valores normalizados · passe o mouse para ver totais absolutos</span>
         </div>
         <div id="radarChart" style="width:100%;height:440px"></div>
+      </div>
+      <div class="card chart-panel" id="budgetPanel" hidden>
+        <div class="panel-title" data-i18n="budget.title">Orçado vs. Realizado por PEP</div>
+        <div id="budgetChart" style="width:100%;height:300px"></div>
       </div>
     </div>
 
@@ -124,19 +122,19 @@
     <div id="atab-portfolio" class="atab-section" hidden>
       <div class="card chart-panel">
         <div class="panel-header">
-          <span class="panel-title" id="portfolioTreemapTitle">Distribuição de Horas por PEP (Treemap)</span>
+          <span class="panel-title" id="portfolioTreemapTitle" data-i18n="portfolio.treemap_h">Distribuição de Horas por PEP (Treemap)</span>
           <div style="display:flex;gap:0.5rem;align-items:center">
-            <span class="panel-note">Blocos cinzas = PEP sem projeto cadastrado</span>
-            <button id="evmToggleBtn" class="btn btn-secondary btn-sm">Vista: Horas</button>
+            <span class="panel-note" data-i18n="portfolio.note">Blocos cinzas = PEP sem projeto cadastrado</span>
+            <button id="evmToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_hours">Vista: Horas</button>
           </div>
         </div>
-        <div id="portfolioEmpty" class="chart-empty" hidden>
+        <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
           Nenhum dado de horas encontrado para os filtros selecionados.
         </div>
         <div id="treemapChart" style="width:100%;height:440px"></div>
       </div>
       <div class="card chart-panel" id="bulletPanel" hidden>
-        <div class="panel-title">Orçado vs. Realizado — Bullet Chart</div>
+        <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
         <div class="panel-note" style="margin-bottom:0.75rem">
           <span class="threshold-dot blue"></span> &lt; 75%&nbsp;
           <span class="threshold-dot amber"></span> 75–99%&nbsp;
@@ -152,15 +150,15 @@
     <div id="atab-trends" class="atab-section" hidden>
       <div class="card chart-panel">
         <div class="panel-header">
-          <span class="panel-title">Queima de Horas por Ciclo</span>
+          <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
           <div style="display:flex;align-items:center;gap:0.5rem">
-            <label for="trendsPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap">PEP:</label>
+            <label for="trendsPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
             <select id="trendsPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:160px">
-              <option value="">Todos</option>
+              <option value="" data-i18n="trends.all">Todos</option>
             </select>
           </div>
         </div>
-        <div id="trendsEmpty" class="chart-empty" hidden>
+        <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
@@ -175,29 +173,29 @@
   <section id="tab-cycles" class="tab-section" hidden>
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Ciclos cadastrados</h2>
+        <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
         <div class="actions">
-          <button class="btn btn-secondary btn-sm" id="exportCyclesBtn">⬇ Exportar CSV</button>
+          <button class="btn btn-secondary btn-sm" id="exportCyclesBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-            ⬆ Importar CSV
+            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importCyclesInput" accept=".csv" hidden />
           </label>
-          <button class="btn btn-primary btn-sm" id="newCycleBtn">+ Novo ciclo</button>
+          <button class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
-      <input type="text" id="cycleSearch" class="table-search-input" placeholder="Buscar por nome de ciclo…" />
+      <input type="text" id="cycleSearch" class="table-search-input" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>
-            <th>Nome</th>
-            <th>Início</th>
-            <th>Fim</th>
-            <th>Tipo</th>
-            <th style="text-align:right">Registros</th>
+            <th data-i18n="cycles.th.name">Nome</th>
+            <th data-i18n="cycles.th.start">Início</th>
+            <th data-i18n="cycles.th.end">Fim</th>
+            <th data-i18n="cycles.th.type">Tipo</th>
+            <th style="text-align:right" data-i18n="cycles.th.recs">Registros</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="cyclesBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+        <tbody id="cyclesBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -208,30 +206,30 @@
   <section id="tab-projects" class="tab-section" hidden>
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Projetos / PEPs</h2>
+        <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
         <div class="actions">
-          <button class="btn btn-secondary btn-sm" id="exportProjectsBtn">⬇ Exportar CSV</button>
+          <button class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-            ⬆ Importar CSV
+            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importProjectsInput" accept=".csv" hidden />
           </label>
-          <button class="btn btn-primary btn-sm" id="newProjectBtn">+ Novo projeto</button>
+          <button class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
         </div>
       </div>
-      <input type="text" id="projectSearch" class="table-search-input" placeholder="Buscar por PEP, nome ou cliente…" />
+      <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
       <table class="data-table" id="projectsTable">
         <thead>
           <tr>
-            <th>Código PEP</th>
-            <th>Nome do Projeto</th>
-            <th>Cliente</th>
-            <th>Gerente</th>
-            <th style="text-align:right">Budget (h)</th>
-            <th>Status</th>
+            <th data-i18n="projects.th.pep">Código PEP</th>
+            <th data-i18n="projects.th.name">Nome do Projeto</th>
+            <th data-i18n="projects.th.client">Cliente</th>
+            <th data-i18n="projects.th.mgr">Gerente</th>
+            <th style="text-align:right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th data-i18n="projects.th.status">Status</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+        <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -241,76 +239,72 @@
   <!-- ================================================================== -->
   <section id="tab-team" class="tab-section" hidden>
 
-    <!-- Seniority levels -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Níveis de Senioridade</h2>
-        <button class="btn btn-primary btn-sm" id="newSeniorityBtn">+ Novo nível</button>
+        <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
+        <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
       </div>
       <table class="data-table">
-        <thead><tr><th>Nome</th><th></th></tr></thead>
-        <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+        <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
+        <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
-    <!-- Rate cards -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Tabela de Taxas (Rate Card)</h2>
-        <button class="btn btn-primary btn-sm" id="newRateCardBtn">+ Nova taxa</button>
+        <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
+        <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
       </div>
       <table class="data-table">
         <thead>
           <tr>
-            <th>Nível</th>
-            <th style="text-align:right">Valor/hora (R$)</th>
-            <th>Vigência início</th>
-            <th>Vigência fim</th>
+            <th data-i18n="ratecard.th.level">Nível</th>
+            <th style="text-align:right" data-i18n="ratecard.th.rate">Valor/hora (R$)</th>
+            <th data-i18n="ratecard.th.from">Vigência início</th>
+            <th data-i18n="ratecard.th.to">Vigência fim</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="rateCardBody"><tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+        <tbody id="rateCardBody"><tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
-    <!-- Global cost multipliers -->
     <div class="card">
-      <h2 class="card-title">Fatores Globais de Custo</h2>
+      <h2 class="card-title" data-i18n="config.title">Fatores Globais de Custo</h2>
       <div class="form-grid" style="align-items:flex-end">
         <div class="form-group">
-          <label for="extraMultiplierInput">Multiplicador — Hora Extra</label>
+          <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
           <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
         </div>
         <div class="form-group">
-          <label for="standbyMultiplierInput">Multiplicador — Hora Sobreaviso</label>
+          <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
           <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
         </div>
         <div class="form-group">
-          <button class="btn btn-primary btn-sm" id="saveConfigBtn">Salvar fatores</button>
+          <button class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
         </div>
       </div>
       <p id="configMsg" style="margin-top:.5rem;font-size:.8rem;color:#94a3b8"></p>
     </div>
 
-    <!-- Team / collaborators -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Colaboradores</h2>
+        <h2 class="card-title" data-i18n="team.title">Colaboradores</h2>
         <div class="actions">
           <select id="bulkSenioritySelect" class="form-select" style="min-width:180px"></select>
-          <button class="btn btn-secondary btn-sm" id="bulkSeniorityBtn">Atribuir a todos</button>
+          <button class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
       <table class="data-table">
         <thead>
           <tr>
-            <th>Nome</th>
-            <th>Senioridade</th>
-            <th style="text-align:right">Taxa atual (R$/h)</th>
+            <th data-i18n="team.th.name">Nome</th>
+            <th data-i18n="team.th.seniority">Senioridade</th>
+            <th style="text-align:right" data-i18n="team.th.rate">Taxa atual (R$/h)</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="teamBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr></tbody>
+        <tbody id="teamBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
@@ -322,18 +316,18 @@
   <section id="tab-admin" class="tab-section" hidden>
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Gestão de Usuários</h2>
-        <button class="btn btn-primary btn-sm" id="newUserBtn">+ Novo usuário</button>
+        <h2 class="card-title" data-i18n="admin.title">Gestão de Usuários</h2>
+        <button class="btn btn-primary btn-sm" id="newUserBtn" data-i18n="btn.new_user">+ Novo usuário</button>
       </div>
       <table class="data-table" id="usersTable">
         <thead>
           <tr>
-            <th>Usuário</th>
-            <th>Perfil</th>
+            <th data-i18n="user.th.user">Usuário</th>
+            <th data-i18n="user.th.role">Perfil</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="usersBody"><tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+        <tbody id="usersBody"><tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -346,29 +340,29 @@
 <div class="modal-backdrop" id="cycleModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="cycleModalTitle">Novo Ciclo</h3>
+      <h3 id="cycleModalTitle" data-i18n="cm.title_new">Novo Ciclo</h3>
       <button class="modal-close" id="cycleModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="cycleNameInput">Nome *</label>
-        <input type="text" id="cycleNameInput" placeholder="Ex: Janeiro/2026" />
+        <label for="cycleNameInput" data-i18n="cm.name_lbl">Nome *</label>
+        <input type="text" id="cycleNameInput" data-i18n-ph="cm.name_ph" placeholder="Ex: Janeiro/2026" />
       </div>
       <div class="form-grid">
         <div class="form-group">
-          <label for="cycleStartInput">Data início *</label>
+          <label for="cycleStartInput" data-i18n="cm.start_lbl">Data início *</label>
           <input type="date" id="cycleStartInput" />
         </div>
         <div class="form-group">
-          <label for="cycleEndInput">Data fim *</label>
+          <label for="cycleEndInput" data-i18n="cm.end_lbl">Data fim *</label>
           <input type="date" id="cycleEndInput" />
         </div>
       </div>
     </div>
     <div class="error-msg" id="cycleError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="cycleCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="cycleSaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="cycleCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="cycleSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -379,47 +373,47 @@
 <div class="modal-backdrop" id="projectModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="projectModalTitle">Novo Projeto</h3>
+      <h3 id="projectModalTitle" data-i18n="pm.title_new">Novo Projeto</h3>
       <button class="modal-close" id="projectModalClose">×</button>
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label for="projectPepInput">Código PEP *</label>
-        <input type="text" id="projectPepInput" placeholder="Ex: 60OP-03333" />
+        <label for="projectPepInput" data-i18n="pm.pep_lbl">Código PEP *</label>
+        <input type="text" id="projectPepInput" data-i18n-ph="pm.pep_ph" placeholder="Ex: 60OP-03333" />
       </div>
       <div class="form-group">
-        <label for="projectStatusInput">Status</label>
+        <label for="projectStatusInput" data-i18n="pm.status_lbl">Status</label>
         <select class="form-select" id="projectStatusInput">
-          <option value="ativo">Ativo</option>
-          <option value="suspenso">Suspenso</option>
-          <option value="encerrado">Encerrado</option>
+          <option value="ativo" data-i18n="opt.ativo">Ativo</option>
+          <option value="suspenso" data-i18n="opt.suspenso">Suspenso</option>
+          <option value="encerrado" data-i18n="opt.encerrado">Encerrado</option>
         </select>
       </div>
       <div class="form-group full">
-        <label for="projectNameInput">Nome do Projeto</label>
-        <input type="text" id="projectNameInput" placeholder="Nome descritivo" />
+        <label for="projectNameInput" data-i18n="pm.name_lbl">Nome do Projeto</label>
+        <input type="text" id="projectNameInput" data-i18n-ph="pm.name_ph" placeholder="Nome descritivo" />
       </div>
       <div class="form-group">
-        <label for="projectClientInput">Cliente</label>
-        <input type="text" id="projectClientInput" placeholder="Nome do cliente" />
+        <label for="projectClientInput" data-i18n="pm.client_lbl">Cliente</label>
+        <input type="text" id="projectClientInput" data-i18n-ph="pm.client_ph" placeholder="Nome do cliente" />
       </div>
       <div class="form-group">
-        <label for="projectManagerInput">Gerente</label>
-        <input type="text" id="projectManagerInput" placeholder="Nome do gerente" />
+        <label for="projectManagerInput" data-i18n="pm.mgr_lbl">Gerente</label>
+        <input type="text" id="projectManagerInput" data-i18n-ph="pm.mgr_ph" placeholder="Nome do gerente" />
       </div>
       <div class="form-group">
-        <label for="projectBudgetInput">Budget de horas</label>
+        <label for="projectBudgetInput" data-i18n="pm.bh_lbl">Budget de horas</label>
         <input type="number" id="projectBudgetInput" placeholder="Ex: 160" min="0" step="0.5" />
       </div>
       <div class="form-group">
-        <label for="projectBudgetCostInput">Budget (R$)</label>
+        <label for="projectBudgetCostInput" data-i18n="pm.bc_lbl">Budget (R$)</label>
         <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
       </div>
     </div>
     <div class="error-msg" id="projectError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="projectCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="projectSaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="projectCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="projectSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -430,19 +424,19 @@
 <div class="modal-backdrop" id="seniorityModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="seniorityModalTitle">Novo Nível de Senioridade</h3>
+      <h3 id="seniorityModalTitle" data-i18n="sm.title_new">Novo Nível de Senioridade</h3>
       <button class="modal-close" id="seniorityModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="seniorityNameInput">Nome *</label>
-        <input type="text" id="seniorityNameInput" placeholder="Ex: Pleno, Sênior" />
+        <label for="seniorityNameInput" data-i18n="sm.name_lbl">Nome *</label>
+        <input type="text" id="seniorityNameInput" data-i18n-ph="sm.name_ph" placeholder="Ex: Pleno, Sênior" />
       </div>
     </div>
     <div class="error-msg" id="seniorityError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="seniorityCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="senioritySaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="seniorityCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="senioritySaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -453,31 +447,31 @@
 <div class="modal-backdrop" id="rateCardModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="rateCardModalTitle">Nova Taxa</h3>
+      <h3 id="rateCardModalTitle" data-i18n="rm.title_new">Nova Taxa</h3>
       <button class="modal-close" id="rateCardModalClose">×</button>
     </div>
     <div class="form-grid">
       <div class="form-group full">
-        <label for="rateCardLevelInput">Nível de Senioridade *</label>
+        <label for="rateCardLevelInput" data-i18n="rm.level_lbl">Nível de Senioridade *</label>
         <select class="form-select" id="rateCardLevelInput"></select>
       </div>
       <div class="form-group">
-        <label for="rateCardRateInput">Valor/hora (R$) *</label>
-        <input type="number" id="rateCardRateInput" placeholder="Ex: 120.00" min="0" step="0.01" />
+        <label for="rateCardRateInput" data-i18n="rm.rate_lbl">Valor/hora (R$) *</label>
+        <input type="number" id="rateCardRateInput" data-i18n-ph="rm.rate_ph" placeholder="Ex: 120.00" min="0" step="0.01" />
       </div>
       <div class="form-group">
-        <label for="rateCardFromInput">Vigência início *</label>
+        <label for="rateCardFromInput" data-i18n="rm.from_lbl">Vigência início *</label>
         <input type="date" id="rateCardFromInput" />
       </div>
       <div class="form-group">
-        <label for="rateCardToInput">Vigência fim (opcional)</label>
+        <label for="rateCardToInput" data-i18n="rm.to_lbl">Vigência fim (opcional)</label>
         <input type="date" id="rateCardToInput" />
       </div>
     </div>
     <div class="error-msg" id="rateCardError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="rateCardCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="rateCardSaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="rateCardCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="rateCardSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -488,21 +482,21 @@
 <div class="modal-backdrop" id="assignSeniorityModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="assignSeniorityTitle">Atribuir Senioridade</h3>
+      <h3 id="assignSeniorityTitle" data-i18n="as.title">Atribuir Senioridade</h3>
       <button class="modal-close" id="assignSeniorityClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="assignSenioritySelect">Nível de Senioridade</label>
+        <label for="assignSenioritySelect" data-i18n="as.level_lbl">Nível de Senioridade</label>
         <select class="form-select" id="assignSenioritySelect">
-          <option value="">— Sem senioridade —</option>
+          <option value="" data-i18n="as.none_opt">— Sem senioridade —</option>
         </select>
       </div>
     </div>
     <div class="error-msg" id="assignSeniorityError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="assignSeniorityCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="assignSenioritySaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="assignSeniorityCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="assignSenioritySaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -515,30 +509,30 @@
 <div class="modal-backdrop" id="userModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3>Novo Usuário</h3>
+      <h3 data-i18n="um.title">Novo Usuário</h3>
       <button class="modal-close" id="userModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="userUsernameInput">Usuário *</label>
-        <input type="text" id="userUsernameInput" placeholder="mínimo 3 caracteres" autocomplete="off" />
+        <label for="userUsernameInput" data-i18n="um.user_lbl">Usuário *</label>
+        <input type="text" id="userUsernameInput" data-i18n-ph="um.user_ph" placeholder="mínimo 3 caracteres" autocomplete="off" />
       </div>
       <div class="form-group">
-        <label for="userPasswordInput">Senha *</label>
-        <input type="password" id="userPasswordInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        <label for="userPasswordInput" data-i18n="um.pwd_lbl">Senha *</label>
+        <input type="password" id="userPasswordInput" data-i18n-ph="um.pwd_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
       </div>
       <div class="form-group">
-        <label for="userRoleSelect">Perfil</label>
+        <label for="userRoleSelect" data-i18n="um.role_lbl">Perfil</label>
         <select class="form-select" id="userRoleSelect">
-          <option value="user">Usuário</option>
+          <option value="user" data-i18n="opt.user">Usuário</option>
           <option value="admin">Admin</option>
         </select>
       </div>
     </div>
     <div class="error-msg" id="userError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="userCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="userSaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="userCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="userSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -549,20 +543,20 @@
 <div class="modal-backdrop" id="pwdModal" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h3>Alterar Senha</h3>
+      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
       <button class="modal-close" id="pwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <input type="hidden" id="pwdTargetId" />
       <div class="form-group">
-        <label for="pwdNewInput">Nova senha *</label>
-        <input type="password" id="pwdNewInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        <label for="pwdNewInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
+        <input type="password" id="pwdNewInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
       </div>
     </div>
     <div class="error-msg" id="pwdError"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="pwdCancelBtn">Cancelar</button>
-      <button class="btn btn-primary" id="pwdSaveBtn">Salvar</button>
+      <button class="btn btn-secondary" id="pwdCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="pwdSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
