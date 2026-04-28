@@ -1,5 +1,9 @@
 # PMAS — Project Management Assistant System
 
+<p align="center">
+  <img src="docs/banner.png" alt="PMAS — Dashboard Analítico de Gestão de Projetos" width="480">
+</p>
+
 Dashboard analítico de timesheet para gestão de horas e custos por projeto, colaborador e ciclo, com visões de Esforço da Equipe, Saúde do Portfólio e Tendências. Inclui módulo de RateCard para rastreamento de custo por hora congelado no momento da importação (EVM freeze pattern).
 
 <img width="1920" height="908" alt="timesheet" src="https://github.com/user-attachments/assets/f322a8b2-1bf3-4239-ab6a-12c266b986f4" />
