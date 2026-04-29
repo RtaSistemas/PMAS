@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
-from backend.app.schemas import DashboardOut, PepRadarItem
+from backend.app.schemas import CollaboratorTimelineItem, DashboardOut, PepRadarItem
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
@@ -184,6 +184,58 @@ def get_pep_radar(
             "pep_description": r.pep_description,
             "total_hours": round(r.total_hours or 0.0, 2),
             "actual_cost": round(r.actual_cost or 0.0, 2),
+        }
+        for r in rows          # ← última linha atual do get_pep_radar
+    ]                          # ← fecha o return [] do get_pep_radar
+                               # ← linha em branco
+                               # ← linha em branco
+@router.get(
+    "/collaborator-timeline",
+    summary="Horas por colaborador distribuídas por ciclo",
+    response_model=list[CollaboratorTimelineItem],
+)
+def get_collaborator_timeline(
+    db: DbSession,
+    collaborator_name: str,
+    pep_code: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+):
+    q = (
+        db.query(
+            Cycle.name.label("cycle_name"),
+            Cycle.start_date.label("cycle_start"),
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+        .filter(
+            Collaborator.name == collaborator_name,
+            Cycle.is_quarantine == False,  # noqa: E712
+        )
+    )
+    if pep_code:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
+    rows = (
+        q.group_by(Cycle.id)
+        .order_by(Cycle.start_date)
+        .all()
+    )
+    return [
+        {
+            "cycle_name": r.cycle_name,
+            "normal_hours": round(r.normal_hours or 0.0, 2),
+            "extra_hours": round(r.extra_hours or 0.0, 2),
+            "standby_hours": round(r.standby_hours or 0.0, 2),
         }
         for r in rows
     ]
