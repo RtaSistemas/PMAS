@@ -175,7 +175,14 @@ class DashboardOut(BaseModel):
     filters: DashboardFilters
     data: List[CollaboratorHours]
     breakdown: List[BreakdownItem]
-    budget_vs_actual: List[BudgetVsActualItem]
+    budget_vs_actual: List[BudgetVsActualItem]   # ← última linha atual do DashboardOut
+                                                  # ← linha em branco
+                                                  # ← linha em branco
+class CollaboratorTimelineItem(BaseModel):
+    cycle_name: str
+    normal_hours: float
+    extra_hours: float
+    standby_hours: float
 
 
 # Analytics types
