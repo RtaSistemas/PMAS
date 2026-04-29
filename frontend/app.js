@@ -486,11 +486,11 @@ async function _renderEffortTab() {
     ch.setOption(_buildEffortOption(data, _stackMode), true);
     ch.resize();
     ch.off('click');
-ch.on('click', async (params) => {
-  if (params && params.name) {
-    await _openCollabTimelineModal(params.name);
-  }
-  });
+    ch.on('click', async (params) => {
+      if (params && params.name) {
+        await _openCollabTimelineModal(params.name);
+      }
+    });
 
     // Budget chart
     if (bva.length > 0) {
@@ -1082,6 +1082,148 @@ function _buildTrendsOption(trends) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Collaborator Timeline Modal
+// ---------------------------------------------------------------------------
+async function _openCollabTimelineModal(collaboratorName) {
+  // 1. Pega filtros ativos da tela
+  const pepCodes  = pepMs.getValues();
+  const pepDescs  = pepDescMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
+
+  // 2. Monta query string
+  const p = new URLSearchParams();
+  p.set('collaborator_name', collaboratorName);
+  pepCodes.forEach(c => p.append('pep_code', c));
+  pepDescs.forEach(d => p.append('pep_description', d));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
+
+  // 3. Chama o endpoint
+  let rows = [];
+  try {
+    rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`);
+  } catch (err) {
+    notify('Erro ao carregar timeline do colaborador.', 'error');
+    return;
+  }
+
+  // 4. Cria/reutiliza modal
+  let modal = document.getElementById('collabTimelineModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'collabTimelineModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:9999;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,0.7);
+    `;
+    modal.innerHTML = `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;
+                  padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <span id="collabTimelineTitle" style="font-size:1rem;font-weight:600;color:#e2e8f0;"></span>
+          <button id="collabTimelineClose"
+            style="background:none;border:none;color:#94a3b8;font-size:1.4rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="collabTimelineEmpty" style="color:#64748b;text-align:center;padding:2rem;" hidden></div>
+        <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('collabTimelineClose').addEventListener('click', () => {
+      modal.hidden = true;
+      const c = echarts.getInstanceByDom(document.getElementById('collabTimelineChart'));
+      if (c && !c.isDisposed()) c.dispose();
+    });
+
+    // Fecha ao clicar fora
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.hidden = true;
+        const c = echarts.getInstanceByDom(document.getElementById('collabTimelineChart'));
+        if (c && !c.isDisposed()) c.dispose();
+      }
+    });
+  }
+
+  // 5. Atualiza título
+  modal.hidden = false;
+  document.getElementById('collabTimelineTitle').textContent =
+    _t('collab.timeline_title') + collaboratorName;
+
+  // 6. Sem dados
+  const emptyEl = document.getElementById('collabTimelineEmpty');
+  const chartEl = document.getElementById('collabTimelineChart');
+  if (!rows.length) {
+    emptyEl.textContent = _t('collab.timeline_empty');
+    emptyEl.hidden = false;
+    chartEl.style.display = 'none';
+    return;
+  }
+  emptyEl.hidden = true;
+  chartEl.style.display = '';
+
+  // 7. Renderiza gráfico
+  const existingChart = echarts.getInstanceByDom(chartEl);
+  if (existingChart && !existingChart.isDisposed()) existingChart.dispose();
+
+  const tc = echarts.init(chartEl, 'dark');
+  const cycles = rows.map(r => r.cycle_name);
+
+  tc.setOption({
+    backgroundColor: 'transparent',
+    legend: {
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h')],
+      top: 8, left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+    },
+    grid: { top: 44, right: '4%', bottom: 48, left: '4%', containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: '#1e293b',
+      borderColor: '#475569',
+      textStyle: { color: '#e2e8f0' },
+    },
+    xAxis: {
+      type: 'category',
+      data: cycles,
+      axisLabel: { color: '#94a3b8', fontSize: 10, rotate: 30 },
+    },
+    yAxis: {
+      type: 'value',
+      name: 'h',
+      axisLabel: { color: '#94a3b8', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
+    series: [
+      {
+        name: _t('ch.normal_h'),
+        type: 'bar',
+        stack: 'total',
+        data: rows.map(r => +r.normal_hours.toFixed(2)),
+        itemStyle: { color: '#3b82f6' },
+      },
+      {
+        name: _t('ch.extra_h'),
+        type: 'bar',
+        stack: 'total',
+        data: rows.map(r => +r.extra_hours.toFixed(2)),
+        itemStyle: { color: '#f59e0b' },
+      },
+      {
+        name: _t('ch.standby_h'),
+        type: 'bar',
+        stack: 'total',
+        data: rows.map(r => +r.standby_hours.toFixed(2)),
+        itemStyle: { color: '#8b5cf6' },
+      },
+    ],
+  });
+}
 // ---------------------------------------------------------------------------
 // Stats row (effort tab)
 // ---------------------------------------------------------------------------
