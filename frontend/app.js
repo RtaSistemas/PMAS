@@ -89,8 +89,6 @@ const _LANG = {
     'tt.over_budget':'Acima do orçado','tt.utilization':'Utilização','tt.total_hours':'Total horas',
     'tt.project':'Projeto','tt.consumed':'Consumido','tt.actual_cost_lbl':'Custo real',
     'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
-    'collab.timeline_title': 'Evolução por Ciclo — ',
-    'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -177,8 +175,6 @@ const _LANG = {
     'tt.over_budget':'Above budget','tt.utilization':'Utilization','tt.total_hours':'Total hours',
     'tt.project':'Project','tt.consumed':'Consumed','tt.actual_cost_lbl':'Actual cost',
     'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
-    'collab.timeline_title': 'Cycle Evolution — ',
-    'collab.timeline_empty': 'No data found for this collaborator.',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -485,12 +481,6 @@ async function _renderEffortTab() {
     const ch = _getOrCreateChart('effortChart');
     ch.setOption(_buildEffortOption(data, _stackMode), true);
     ch.resize();
-    ch.off('click');
-ch.on('click', async (params) => {
-  if (params && params.name) {
-    await _openCollabTimelineModal(params.name);
-  }
-  });
 
     // Budget chart
     if (bva.length > 0) {
