@@ -1198,92 +1198,110 @@ function _buildTrendsOption(trends) {
 }
 
 // ---------------------------------------------------------------------------
-// Modal: Timeline de horas do colaborador por ciclo
+// Collaborator Timeline Modal
 // ---------------------------------------------------------------------------
-async function _openCollabTimelineModal(collabId, collabName) {
-  // ── Abre o modal e define o título ───────────────────────────────────────
-  const modal     = document.getElementById('collabTimelineModal');
-  const titleEl   = document.getElementById('collabTimelineTitle');
-  const chartEl   = document.getElementById('collabTimelineChart');
-  const loadingEl = document.getElementById('collabTimelineLoading');
-  const emptyEl   = document.getElementById('collabTimelineEmpty');
+async function _openCollabTimelineModal(collaboratorName) {
+  // 1. Pega filtros ativos da tela
+  const pepCodes  = pepMs.getValues();
+  const pepDescs  = pepDescMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
 
-  titleEl.textContent = collabName;
-  if (loadingEl) loadingEl.hidden = false;
-  if (emptyEl)   emptyEl.hidden   = true;
-  modal.hidden = false;
+  // 2. Monta query string
+  const p = new URLSearchParams();
+  p.set('collaborator_name', collaboratorName);
+  pepCodes.forEach(c => p.append('pep_code', c));
+  pepDescs.forEach(d => p.append('pep_description', d));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
 
-  // ── Dispose de instância anterior ────────────────────────────────────────
-  if (_charts['collabTimelineChart'] && !_charts['collabTimelineChart'].isDisposed()) {
-    _charts['collabTimelineChart'].dispose();
-    delete _charts['collabTimelineChart'];
-  }
-
-  // ── Busca dados: horas por ciclo para este colaborador ───────────────────
-  let trends = [];
+  // 3. Chama o endpoint
+  let rows = [];
   try {
-    const p = new URLSearchParams({ collaborator_id: collabId });
-    trends = await apiFetch(`/api/analytics/trends?${p}`);
+    rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`);
   } catch (err) {
-    notify(`Erro ao carregar timeline de ${collabName}`, 'error');
-    if (loadingEl) loadingEl.hidden = true;
+    notify('Erro ao carregar timeline do colaborador.', 'error');
     return;
   }
 
-  if (loadingEl) loadingEl.hidden = true;
+  // 4. Função auxiliar de fechar
+  function _closeCollabModal() {
+    const chartEl = document.getElementById('collabTimelineChart');
+    const c = echarts.getInstanceByDom(chartEl);
+    if (c && !c.isDisposed()) c.dispose();
+    chartEl.style.display = 'none';
+    modal.style.display = 'none';
+  }
 
-  if (!trends || trends.length === 0) {
-    if (emptyEl) emptyEl.hidden = false;
+  // 5. Cria modal apenas uma vez
+  let modal = document.getElementById('collabTimelineModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'collabTimelineModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:9999;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,0.7);
+    `;
+    modal.innerHTML = `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;
+                  padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <span id="collabTimelineTitle"
+            style="font-size:1rem;font-weight:600;color:#e2e8f0;"></span>
+          <button id="collabTimelineClose"
+            style="background:none;border:none;color:#94a3b8;font-size:1.4rem;
+                   cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <div id="collabTimelineEmpty"
+          style="color:#64748b;text-align:center;padding:2rem;" hidden></div>
+        <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('collabTimelineClose').addEventListener('click', () => {
+      _closeCollabModal();
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) _closeCollabModal();
+    });
+  }
+
+  // 6. Exibe o modal
+  modal.style.display = 'flex';
+
+  // 7. Atualiza título
+  document.getElementById('collabTimelineTitle').textContent =
+    _t('collab.timeline_title') + collaboratorName;
+
+  // 8. Sem dados
+  const emptyEl = document.getElementById('collabTimelineEmpty');
+  const chartEl = document.getElementById('collabTimelineChart');
+
+  if (!rows.length) {
+    emptyEl.textContent = _t('collab.timeline_empty');
+    emptyEl.hidden = false;
+    chartEl.style.display = 'none';
     return;
   }
 
-  // ── Calcula altura dinâmica proporcional ao nº de ciclos ─────────────────
-  const chartHeight = Math.max(360, Math.min(trends.length, 30) * 52 + 100);
-  chartEl.style.height = `${chartHeight}px`;
+  emptyEl.hidden = true;
+  chartEl.style.display = '';
 
-  // ── Renderiza o gráfico ───────────────────────────────────────────────────
-  const chart = echarts.init(chartEl, 'dark');
-  _charts['collabTimelineChart'] = chart;
-  chart.setOption(_buildCollabTimelineOption(trends, collabName), true);
-  chart.resize();
-}
+  // 9. Destrói instância anterior se existir
+  const existing = echarts.getInstanceByDom(chartEl);
+  if (existing && !existing.isDisposed()) existing.dispose();
 
-// ---------------------------------------------------------------------------
-// Fecha o modal e descarta a instância do gráfico
-// ---------------------------------------------------------------------------
-function _closeCollabTimelineModal() {
-  document.getElementById('collabTimelineModal').hidden = true;
-  if (_charts['collabTimelineChart'] && !_charts['collabTimelineChart'].isDisposed()) {
-    _charts['collabTimelineChart'].dispose();
-    delete _charts['collabTimelineChart'];
-  }
-}
+  // 10. Renderiza gráfico
+  const tc = echarts.init(chartEl, 'dark');
+  const cycles = rows.map(r => r.cycle_name);
 
-// ---------------------------------------------------------------------------
-// Builder do gráfico de timeline — barras horizontais empilhadas por ciclo
-// com labels de segmento + linha de total (mesmas otimizações do _buildEffortOption)
-// ---------------------------------------------------------------------------
-function _buildCollabTimelineOption(trends, collabName) {
-  // ── Dados base ────────────────────────────────────────────────────────────
-  const cycles   = trends.map(d => d.cycle_name);
-  const normals  = trends.map(d => +( d.normal_hours  ?? 0).toFixed(2));
-  const extras   = trends.map(d => +( d.extra_hours   ?? 0).toFixed(2));
-  const standbys = trends.map(d => +( d.standby_hours ?? 0).toFixed(2));
-
-  // ── Totais por ciclo (para a linha de total) ──────────────────────────────
-  const totals   = trends.map((d, i) =>
-    +(normals[i] + extras[i] + standbys[i]).toFixed(2)
-  );
-
-  // ── Ciclo com maior total (destaque em vermelho) ──────────────────────────
-  const maxTotal = Math.max(...totals);
-
-  return {
+  tc.setOption({
     backgroundColor: 'transparent',
-
-    // ── Legenda ───────────────────────────────────────────────────────────
     legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('stat.total')],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h')],
       top: 8,
       left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
@@ -1291,17 +1309,7 @@ function _buildCollabTimelineOption(trends, collabName) {
       itemWidth: 14,
       itemHeight: 10,
     },
-
-    // ── Grid — margem direita ampliada para labels da linha de total ───────
-    grid: {
-      top: 44,
-      right: '9%',
-      bottom: 28,
-      left: '2%',
-      containLabel: true,
-    },
-
-    // ── Tooltip enriquecido (exclui a série de total para não duplicar) ────
+    grid: { top: 44, right: '4%', bottom: 56, left: '4%', containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -1309,138 +1317,64 @@ function _buildCollabTimelineOption(trends, collabName) {
       borderColor: '#475569',
       textStyle: { color: '#e2e8f0' },
       formatter: params => {
-        const bars = params.filter(p => p.seriesName !== _t('stat.total'));
-        let html   = `<b>${params[0].axisValue}</b><br/>`;
-        let total  = 0;
-        bars.forEach(p => {
+        let html = `<b>${params[0].axisValue}</b><br/>`;
+        let total = 0;
+        params.forEach(p => {
           if (p.value > 0) {
-            html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
+            html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
             total += p.value;
           }
         });
-        html += `<hr style="border-color:#334155;margin:4px 0"/>`;
-        html += `Total: <b>${total.toFixed(1)}h</b>`;
+        html += `<hr style="border-color:#334155;margin:4px 0"/>Total: <b>${total.toFixed(1)}h</b>`;
         return html;
       },
     },
-
-    // ── Eixo X (valores em horas) ─────────────────────────────────────────
     xAxis: {
-      type: 'value',
-      name: _t('ch.hours'),
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: {
-        color: '#94a3b8',
-        fontSize: 11,
-        formatter: v => `${v}h`,
-      },
-      splitLine: { lineStyle: { color: '#1e293b' } },
-    },
-
-    // ── Eixo Y (ciclos) ───────────────────────────────────────────────────
-    yAxis: {
       type: 'category',
       data: cycles,
-      axisTick: { show: false },
       axisLabel: {
-        color: '#e2e8f0',
+        color: '#94a3b8',
         fontSize: 10,
-        lineHeight: 16,
-        // Rich text: nome do ciclo + breakdown N/E/S/∑ na linha de baixo
-        formatter: (name, idx) => {
-          const n = normals[idx]  ?? 0;
-          const e = extras[idx]   ?? 0;
-          const s = standbys[idx] ?? 0;
-          const t = (n + e + s).toFixed(1);
-          const nm = name.length > 28 ? name.slice(0, 27) + '…' : name;
-          return `{nm|${nm}}\n{hr|N:${n.toFixed(1)}h  E:${e.toFixed(1)}h  S:${s.toFixed(1)}h  ∑${t}h}`;
-        },
-        rich: {
-          nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
-          hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
-        },
+        rotate: 30,
       },
+      axisLine: { lineStyle: { color: '#334155' } },
     },
-
-    // ── Séries ────────────────────────────────────────────────────────────
+    yAxis: {
+      type: 'value',
+      name: 'h',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
     series: [
-
-      // Barra: Horas Normais
       {
         name: _t('ch.normal_h'),
         type: 'bar',
         stack: 'total',
-        data: normals,
+        data: rows.map(r => +r.normal_hours.toFixed(2)),
         itemStyle: { color: '#3b82f6' },
-        barMaxWidth: 32,
-        // Label visível dentro do segmento quando ≥ 10h (evita poluição visual)
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
+        barMaxWidth: 48,
       },
-
-      // Barra: Horas Extras
       {
         name: _t('ch.extra_h'),
         type: 'bar',
         stack: 'total',
-        data: extras,
+        data: rows.map(r => +r.extra_hours.toFixed(2)),
         itemStyle: { color: '#f59e0b' },
-        barMaxWidth: 32,
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
+        barMaxWidth: 48,
       },
-
-      // Barra: Sobreaviso
       {
         name: _t('ch.standby_h'),
         type: 'bar',
         stack: 'total',
-        data: standbys,
+        data: rows.map(r => +r.standby_hours.toFixed(2)),
         itemStyle: { color: '#8b5cf6' },
-        barMaxWidth: 32,
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-      },
-
-      // Linha de Total — verde tracejada com pico em vermelho
-      {
-        name: _t('stat.total'),
-        type: 'line',
-        data: totals,
-        symbol: 'circle',
-        symbolSize: p => totals[p] === maxTotal ? 10 : 6,
-        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
-        itemStyle: {
-          color: p => p.value === maxTotal ? '#f87171' : '#10b981',
-        },
-        label: {
-          show: true,
-          position: 'right',
-          fontSize: 10,
-          fontWeight: 600,
-          color: p => p.value === maxTotal ? '#f87171' : '#10b981',
-          formatter: p => `${p.value.toFixed(1)}h`,
-        },
-        z: 10,
+        barMaxWidth: 48,
       },
     ],
-  };
+  });
 }
+
 // ---------------------------------------------------------------------------
 // Stats row (effort tab)
 // ---------------------------------------------------------------------------
