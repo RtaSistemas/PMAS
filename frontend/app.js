@@ -1109,7 +1109,16 @@ async function _openCollabTimelineModal(collaboratorName) {
     return;
   }
 
-  // 4. Cria/reutiliza modal
+  // 4. Função auxiliar de fechar
+  function _closeCollabModal() {
+    const chartEl = document.getElementById('collabTimelineChart');
+    const c = echarts.getInstanceByDom(chartEl);
+    if (c && !c.isDisposed()) c.dispose();
+    chartEl.style.display = 'none';
+    modal.style.display = 'none';
+  }
+
+  // 5. Cria modal apenas uma vez
   let modal = document.getElementById('collabTimelineModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -1123,53 +1132,54 @@ async function _openCollabTimelineModal(collaboratorName) {
       <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;
                   padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <span id="collabTimelineTitle" style="font-size:1rem;font-weight:600;color:#e2e8f0;"></span>
+          <span id="collabTimelineTitle"
+            style="font-size:1rem;font-weight:600;color:#e2e8f0;"></span>
           <button id="collabTimelineClose"
-            style="background:none;border:none;color:#94a3b8;font-size:1.4rem;cursor:pointer;">✕</button>
+            style="background:none;border:none;color:#94a3b8;font-size:1.4rem;
+                   cursor:pointer;line-height:1;">✕</button>
         </div>
-        <div id="collabTimelineEmpty" style="color:#64748b;text-align:center;padding:2rem;" hidden></div>
+        <div id="collabTimelineEmpty"
+          style="color:#64748b;text-align:center;padding:2rem;" hidden></div>
         <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
       </div>
     `;
     document.body.appendChild(modal);
 
     document.getElementById('collabTimelineClose').addEventListener('click', () => {
-      modal.hidden = true;
-      const c = echarts.getInstanceByDom(document.getElementById('collabTimelineChart'));
-      if (c && !c.isDisposed()) c.dispose();
+      _closeCollabModal();
     });
 
-    // Fecha ao clicar fora
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.hidden = true;
-        const c = echarts.getInstanceByDom(document.getElementById('collabTimelineChart'));
-        if (c && !c.isDisposed()) c.dispose();
-      }
+      if (e.target === modal) _closeCollabModal();
     });
   }
 
-  // 5. Atualiza título
-  modal.hidden = false;
+  // 6. Exibe o modal
+  modal.style.display = 'flex';
+
+  // 7. Atualiza título
   document.getElementById('collabTimelineTitle').textContent =
     _t('collab.timeline_title') + collaboratorName;
 
-  // 6. Sem dados
+  // 8. Sem dados
   const emptyEl = document.getElementById('collabTimelineEmpty');
   const chartEl = document.getElementById('collabTimelineChart');
+
   if (!rows.length) {
     emptyEl.textContent = _t('collab.timeline_empty');
     emptyEl.hidden = false;
     chartEl.style.display = 'none';
     return;
   }
+
   emptyEl.hidden = true;
   chartEl.style.display = '';
 
-  // 7. Renderiza gráfico
-  const existingChart = echarts.getInstanceByDom(chartEl);
-  if (existingChart && !existingChart.isDisposed()) existingChart.dispose();
+  // 9. Destrói instância anterior se existir
+  const existing = echarts.getInstanceByDom(chartEl);
+  if (existing && !existing.isDisposed()) existing.dispose();
 
+  // 10. Renderiza gráfico
   const tc = echarts.init(chartEl, 'dark');
   const cycles = rows.map(r => r.cycle_name);
 
@@ -1177,25 +1187,47 @@ async function _openCollabTimelineModal(collaboratorName) {
     backgroundColor: 'transparent',
     legend: {
       data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h')],
-      top: 8, left: 'center',
+      top: 8,
+      left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24,
+      itemWidth: 14,
+      itemHeight: 10,
     },
-    grid: { top: 44, right: '4%', bottom: 48, left: '4%', containLabel: true },
+    grid: { top: 44, right: '4%', bottom: 56, left: '4%', containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       backgroundColor: '#1e293b',
       borderColor: '#475569',
       textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        let html = `<b>${params[0].axisValue}</b><br/>`;
+        let total = 0;
+        params.forEach(p => {
+          if (p.value > 0) {
+            html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
+            total += p.value;
+          }
+        });
+        html += `<hr style="border-color:#334155;margin:4px 0"/>Total: <b>${total.toFixed(1)}h</b>`;
+        return html;
+      },
     },
     xAxis: {
       type: 'category',
       data: cycles,
-      axisLabel: { color: '#94a3b8', fontSize: 10, rotate: 30 },
+      axisLabel: {
+        color: '#94a3b8',
+        fontSize: 10,
+        rotate: 30,
+      },
+      axisLine: { lineStyle: { color: '#334155' } },
     },
     yAxis: {
       type: 'value',
       name: 'h',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
       axisLabel: { color: '#94a3b8', fontSize: 10 },
       splitLine: { lineStyle: { color: '#1e293b' } },
     },
@@ -1206,6 +1238,7 @@ async function _openCollabTimelineModal(collaboratorName) {
         stack: 'total',
         data: rows.map(r => +r.normal_hours.toFixed(2)),
         itemStyle: { color: '#3b82f6' },
+        barMaxWidth: 48,
       },
       {
         name: _t('ch.extra_h'),
@@ -1213,6 +1246,7 @@ async function _openCollabTimelineModal(collaboratorName) {
         stack: 'total',
         data: rows.map(r => +r.extra_hours.toFixed(2)),
         itemStyle: { color: '#f59e0b' },
+        barMaxWidth: 48,
       },
       {
         name: _t('ch.standby_h'),
@@ -1220,6 +1254,7 @@ async function _openCollabTimelineModal(collaboratorName) {
         stack: 'total',
         data: rows.map(r => +r.standby_hours.toFixed(2)),
         itemStyle: { color: '#8b5cf6' },
+        barMaxWidth: 48,
       },
     ],
   });
