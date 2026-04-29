@@ -679,6 +679,13 @@ function _buildEffortOption(data, stacked) {
       containLabel: true,
     },
 
+    toolbox: {feature: {
+      dataView: { show: true, readOnly: false },
+      restore: { show: true },
+      saveAsImage: { show: true }
+      }
+    },
+
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -740,6 +747,10 @@ function _buildEffortOption(data, stacked) {
       {
         name: _t('ch.normal_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
         stack,
         data: slice.map(r => +r.normal_hours.toFixed(2)),
         itemStyle: { color: '#3b82f6' },
@@ -758,6 +769,10 @@ function _buildEffortOption(data, stacked) {
       {
         name: _t('ch.extra_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
         stack,
         data: slice.map(r => +r.extra_hours.toFixed(2)),
         itemStyle: { color: '#f59e0b' },
@@ -775,6 +790,10 @@ function _buildEffortOption(data, stacked) {
       {
         name: _t('ch.standby_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
         stack,
         data: slice.map(r => +r.standby_hours.toFixed(2)),
         itemStyle: { color: '#8b5cf6' },
@@ -793,9 +812,8 @@ function _buildEffortOption(data, stacked) {
         name: _t('stat.total'),
         type: 'line',
         data: totals,
-        symbol: 'circle',
         symbolSize: p => totals[p] === maxTotal ? 10 : 6,
-        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
+        lineStyle: { color: '#10b981', width: 1, type: 'dashed' },
         itemStyle: {
           color: p => p.value === maxTotal ? '#f87171' : '#10b981',
         },
@@ -1329,6 +1347,13 @@ async function _openCollabTimelineModal(collaboratorName) {
         return html;
       },
     },
+    toolbox: {feature: {
+      dataView: { show: true, readOnly: false },
+      magicType: { show: true, type: ['stack'] },
+      restore: { show: true },
+      saveAsImage: { show: true }
+      }
+    },
     xAxis: {
       type: 'category',
       data: cycles,
@@ -1350,6 +1375,17 @@ async function _openCollabTimelineModal(collaboratorName) {
       {
         name: _t('ch.normal_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
+        label: {
+          show: true,
+          position: 'inside',
+          fontSize: 9,
+          color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
+        },
         stack: 'total',
         data: rows.map(r => +r.normal_hours.toFixed(2)),
         itemStyle: { color: '#3b82f6' },
@@ -1358,6 +1394,17 @@ async function _openCollabTimelineModal(collaboratorName) {
       {
         name: _t('ch.extra_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
+        label: {
+          show: true,
+          position: 'inside',
+          fontSize: 9,
+          color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
+        },
         stack: 'total',
         data: rows.map(r => +r.extra_hours.toFixed(2)),
         itemStyle: { color: '#f59e0b' },
@@ -1366,6 +1413,17 @@ async function _openCollabTimelineModal(collaboratorName) {
       {
         name: _t('ch.standby_h'),
         type: 'bar',
+        showBackground: true,
+        backgroundStyle: {
+          color: 'rgba(180, 180, 180, 0.01)'
+        },
+        label: {
+          show: true,
+          position: 'inside',
+          fontSize: 9,
+          color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
+        },
         stack: 'total',
         data: rows.map(r => +r.standby_hours.toFixed(2)),
         itemStyle: { color: '#8b5cf6' },
