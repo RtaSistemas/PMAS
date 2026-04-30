@@ -926,7 +926,7 @@ function _buildRadarOption(items) {
       radius: '60%',
       axisName: { color: '#94a3b8', fontSize: 10 },
       splitLine: { lineStyle: { color: '#334155' } },
-      splitArea: { areaStyle: { color: ['rgba(30,41,59,0.4)', 'rgba(30,41,59,0.1)'] } },
+      splitArea: { areaStyle: { color: ['rgba(15, 23, 42, 0.95)', 'rgba(51, 65, 85, 0.30)'] } },
       axisLine: { lineStyle: { color: '#475569' } },
     },
     series: [{
@@ -936,53 +936,101 @@ function _buildRadarOption(items) {
           name: _t('ch.hours'),
           value: items.map(d => +(d.total_hours / maxH * 100).toFixed(1)),
           itemStyle: { color: '#3b82f6' },
-          lineStyle: { color: '#3b82f6', width: 2 },
+          lineStyle: { color: '#3b82f6', width: 1 },
           areaStyle: { color: 'rgba(59,130,246,0.15)' },
         },
         {
           name: _t('ch.cost'),
           value: items.map(d => +(d.actual_cost / maxC * 100).toFixed(1)),
           itemStyle: { color: '#f59e0b' },
-          lineStyle: { color: '#f59e0b', width: 2 },
+          lineStyle: { color: '#f59e0b', width: 1 },
           areaStyle: { color: 'rgba(245,158,11,0.15)' },
         },
       ],
     }],
-    graphic: [
-      // Painel esquerdo — horas por PEP
+
+graphic: [
+  // Painel esquerdo — horas por PEP
+  {
+    type: 'group',
+    left: 4,
+    top: TOP,
+    children: [
+      // Caixa única contornando todos os itens
       {
-        type: 'group',
-        left: 4,
-        top: TOP,
-        children: items.map((d, i) => ({
-          type: 'text',
-          y: i * LINE_H,
-          style: {
-            text: `${abbrev(d.pep_description)}: ${d.total_hours.toFixed(1)}h`,
-            fill: '#3b82f6',
-            fontSize: 10,
-            textAlign: 'left',
-          },
-        })),
+        type: 'rect',
+        y: -8,
+        shape: {
+          x: 0,
+          y: 0,
+          width: 220,
+          height: items.length * LINE_H + 8,
+          r: 3,
+        },
+        style: {
+          fill: 'transparent',
+          stroke: '#5470c6',
+          lineWidth: 0.8,
+        },
+        z: 0,
       },
-      // Painel direito — custo por PEP
-      {
-        type: 'group',
-        right: 4,
-        top: TOP,
-        children: items.map((d, i) => ({
-          type: 'text',
-          y: i * LINE_H,
-          style: {
-            text: `${abbrev(d.pep_description)}: ${fmtR(d.actual_cost)}`,
-            fill: '#f59e0b',
-            fontSize: 10,
-            textAlign: 'right',
-          },
-        })),
-      },
+      // Textos
+      ...items.map((d, i) => ({
+        type: 'text',
+        x: 6,
+        y: i * LINE_H,
+        z: 1,
+        style: {
+          text: `${d.pep_description}: ${d.total_hours.toFixed(1)}h`,
+          fill: '#94a3b8',
+          fontSize: 10,
+          textAlign: 'left',
+        },
+      })),
     ],
-  };
+  },
+
+  // Painel direito — custo por PEP
+  {
+    type: 'group',
+    right: 4,
+    top: TOP,
+    children: [
+      // Caixa única contornando todos os itens
+      {
+        type: 'rect',
+        y: -8,
+        shape: {
+          x: -220,
+          y: 0,
+          width: 245,
+          height: items.length * LINE_H + 8,
+          r: 3,
+        },
+        style: {
+          fill: 'transparent',
+          stroke: '#f59e0b',
+          lineWidth: 0.8,
+        },
+        z: 0,
+      },
+      // Textos
+      ...items.map((d, i) => ({
+        type: 'text',
+        x: -214,
+        y: i * LINE_H,
+        z: 1,
+        style: {
+          text: `${d.pep_description}: ${fmtR(d.actual_cost)}`,
+          fill: '#94a3b8',
+          fontSize: 10,
+          textAlign: 'left',
+        },
+      })),
+    ],
+  },
+],
+};
 }
 
 function _buildTreemapOption(health, evmMode = false) {
