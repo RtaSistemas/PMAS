@@ -3,24 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PMAS — Dashboard de Timesheet</title>
+  <title>PMAS — Dashboard de Gestão de Projetos</title>
+  <link rel="icon" type="image/png" href="/static/assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
 
-<!-- Login overlay -->
+<!-- SVG icon sprite (reutilizado no header e login) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ico-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="12" width="4" height="9" rx="0.5"/>
+    <rect x="10" y="7"  width="4" height="14" rx="0.5"/>
+    <rect x="17" y="3"  width="4" height="18" rx="0.5"/>
+    <polyline points="3,14 10,9 17,5" stroke="#00f0a0" stroke-width="1.5"/>
+  </symbol>
+</svg>
+
+<!-- ================================================================ -->
+<!-- Login overlay                                                      -->
+<!-- ================================================================ -->
 <div id="loginOverlay">
   <div class="login-card">
-    <div class="login-logo">PMAS</div>
-    <p class="login-sub">Project Management Assistant System</p>
-    <form id="loginForm" autocomplete="on">
+    <div class="login-brand">
+      <div class="login-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="12" width="4" height="9" rx="0.5" fill="white" stroke="none" opacity=".8"/>
+          <rect x="10" y="7"  width="4" height="14" rx="0.5" fill="white" stroke="none"/>
+          <rect x="17" y="3"  width="4" height="18" rx="0.5" fill="white" stroke="none" opacity=".7"/>
+          <polyline points="5,13 12,8 19,4" stroke="#00f0a0" stroke-width="1.8" fill="none"/>
+        </svg>
+      </div>
+      <div class="login-logo">PMAS</div>
+      <p class="login-sub">Project Management Assistant System</p>
+    </div>
+    <div class="login-divider"></div>
+    <form id="loginForm" autocomplete="on" style="display:flex;flex-direction:column;gap:1rem">
       <div class="login-field">
-        <label for="loginUsername">Utilizador</label>
+        <label for="loginUsername">Usuário</label>
         <input id="loginUsername" type="text" autocomplete="username" required placeholder="admin" />
       </div>
       <div class="login-field">
-        <label for="loginPassword">Password</label>
+        <label for="loginPassword">Senha</label>
         <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••" />
       </div>
       <button type="submit" class="btn btn-primary login-btn">Entrar</button>
@@ -29,12 +53,26 @@
   </div>
 </div>
 
-<!-- App shell -->
+<!-- ================================================================ -->
+<!-- App shell                                                          -->
+<!-- ================================================================ -->
 <div id="appShell" hidden>
 
 <header>
-  <h1>PMAS <span class="header-sub">— Project Management Assistant System</span></h1>
-  <span class="badge">Timesheet</span>
+  <div class="header-brand">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round">
+        <rect x="3" y="12" width="4" height="9" rx="0.5" fill="white" stroke="none" opacity=".8"/>
+        <rect x="10" y="7"  width="4" height="14" rx="0.5" fill="white" stroke="none"/>
+        <rect x="17" y="3"  width="4" height="18" rx="0.5" fill="white" stroke="none" opacity=".7"/>
+        <polyline points="5,13 12,8 19,4" stroke="#00f0a0" stroke-width="2" fill="none"/>
+      </svg>
+    </div>
+    <span class="header-name">PMAS</span>
+  </div>
+  <div class="header-sep"></div>
+  <span class="header-sub">Gestão de Projetos</span>
+  <span class="header-badge">Analytics</span>
   <div class="header-actions">
     <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Importar CSV ou XLSX">
       <span data-i18n="btn.import_ts">⬆ Importar</span>
