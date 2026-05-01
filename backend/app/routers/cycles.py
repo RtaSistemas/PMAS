@@ -117,8 +117,14 @@ def import_cycles(file: UploadFile, db: DbSession):
             db.add(Cycle(name=name, start_date=start, end_date=end, is_quarantine=False))
             created += 1
         except Exception as exc:
+            db.rollback()
+            created = 0
             errors.append(f"Linha {i + 2}: {exc}")
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=f"Erro ao persistir ciclos: {exc}")
     return {"created": created, "updated": 0, "errors": errors}
 
 

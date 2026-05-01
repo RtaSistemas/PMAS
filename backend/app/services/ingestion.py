@@ -40,93 +40,98 @@ def ingest_file(
     cycle_cache: dict[date, Cycle] = {}
     quarantine_cycles_created = 0
 
-    for _, row in df.iterrows():
-        name = str(row[_COL_COLLABORATOR]).strip()
-        if name not in collab_cache:
-            collab_cache[name] = _get_or_create_collaborator(db, name)
+    try:
+        for _, row in df.iterrows():
+            name = str(row[_COL_COLLABORATOR]).strip()
+            if name not in collab_cache:
+                collab_cache[name] = _get_or_create_collaborator(db, name)
 
-        record_date: date = _parse_date(row[_COL_DATE])
-        if record_date not in cycle_cache:
-            cycle, created = _resolve_cycle(db, record_date)
-            cycle_cache[record_date] = cycle
-            if created:
-                quarantine_cycles_created += 1
+            record_date: date = _parse_date(row[_COL_DATE])
+            if record_date not in cycle_cache:
+                cycle, created = _resolve_cycle(db, record_date)
+                cycle_cache[record_date] = cycle
+                if created:
+                    quarantine_cycles_created += 1
 
-    # Collect (collaborator_id, cycle_id) pairs touched by this upload
-    affected_pairs: set[tuple[int, int]] = set()
-    for _, row in df.iterrows():
-        collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
-        cycle = cycle_cache[_parse_date(row[_COL_DATE])]
-        affected_pairs.add((collab.id, cycle.id))
+        # Collect (collaborator_id, cycle_id) pairs touched by this upload
+        affected_pairs: set[tuple[int, int]] = set()
+        for _, row in df.iterrows():
+            collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
+            cycle = cycle_cache[_parse_date(row[_COL_DATE])]
+            affected_pairs.add((collab.id, cycle.id))
 
-    # RBAC: non-admins may not modify closed cycles
-    if user_role != "admin":
-        checked: set[int] = set()
-        closed_names: list[str] = []
-        for _, cycle_id in affected_pairs:
-            if cycle_id in checked:
+        # RBAC: non-admins may not modify closed cycles
+        if user_role != "admin":
+            checked: set[int] = set()
+            closed_names: list[str] = []
+            for _, cycle_id in affected_pairs:
+                if cycle_id in checked:
+                    continue
+                checked.add(cycle_id)
+                c = db.get(Cycle, cycle_id)
+                if c and c.is_closed:
+                    closed_names.append(c.name)
+            if closed_names:
+                raise ClosedCycleError(closed_names)
+
+        # DELETE existing records for all affected (collaborator, cycle) pairs
+        for collab_id, cycle_id in affected_pairs:
+            db.query(TimesheetRecord).filter(
+                TimesheetRecord.collaborator_id == collab_id,
+                TimesheetRecord.cycle_id == cycle_id,
+            ).delete(synchronize_session=False)
+
+        # INSERT fresh records (intra-batch dedup only)
+        seen_keys: set[tuple] = set()
+        inserted = 0
+        skipped = 0
+
+        for _, row in df.iterrows():
+            collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
+            record_date = _parse_date(row[_COL_DATE])
+            cycle = cycle_cache[record_date]
+
+            normal_h = extra_h = standby_h = 0.0
+            total_h = float(row[_COL_HOURS])
+
+            if _is_yes(row.get(_COL_EXTRA, "")):
+                extra_h = total_h
+                hour_type = "extra"
+            elif _is_yes(row.get(_COL_STANDBY, "")):
+                standby_h = total_h
+                hour_type = "standby"
+            else:
+                normal_h = total_h
+                hour_type = "normal"
+
+            pep_code   = _str_or_none(row.get(_COL_PEP_CODE))
+            pep_desc   = _str_or_none(row.get(_COL_PEP_DESC))
+            start_time = _str_or_none(row.get(_COL_START_TIME))
+
+            key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
+            if key in seen_keys:
+                skipped += 1
                 continue
-            checked.add(cycle_id)
-            c = db.get(Cycle, cycle_id)
-            if c and c.is_closed:
-                closed_names.append(c.name)
-        if closed_names:
-            raise ClosedCycleError(closed_names)
 
-    # DELETE existing records for all affected (collaborator, cycle) pairs
-    for collab_id, cycle_id in affected_pairs:
-        db.query(TimesheetRecord).filter(
-            TimesheetRecord.collaborator_id == collab_id,
-            TimesheetRecord.cycle_id == cycle_id,
-        ).delete(synchronize_session=False)
+            seen_keys.add(key)
+            db.add(TimesheetRecord(
+                collaborator_id=collab.id,
+                cycle_id=cycle.id,
+                record_date=record_date,
+                pep_wbs=pep_code,
+                pep_description=pep_desc,
+                normal_hours=normal_h,
+                extra_hours=extra_h,
+                standby_hours=standby_h,
+                cost_per_hour=_lookup_rate(db, collab, record_date),
+            ))
+            inserted += 1
 
-    # INSERT fresh records (intra-batch dedup only)
-    seen_keys: set[tuple] = set()
-    inserted = 0
-    skipped = 0
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
-    for _, row in df.iterrows():
-        collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
-        record_date = _parse_date(row[_COL_DATE])
-        cycle = cycle_cache[record_date]
-
-        normal_h = extra_h = standby_h = 0.0
-        total_h = float(row[_COL_HOURS])
-
-        if _is_yes(row.get(_COL_EXTRA, "")):
-            extra_h = total_h
-            hour_type = "extra"
-        elif _is_yes(row.get(_COL_STANDBY, "")):
-            standby_h = total_h
-            hour_type = "standby"
-        else:
-            normal_h = total_h
-            hour_type = "normal"
-
-        pep_code   = _str_or_none(row.get(_COL_PEP_CODE))
-        pep_desc   = _str_or_none(row.get(_COL_PEP_DESC))
-        start_time = _str_or_none(row.get(_COL_START_TIME))
-
-        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
-        if key in seen_keys:
-            skipped += 1
-            continue
-
-        seen_keys.add(key)
-        db.add(TimesheetRecord(
-            collaborator_id=collab.id,
-            cycle_id=cycle.id,
-            record_date=record_date,
-            pep_wbs=pep_code,
-            pep_description=pep_desc,
-            normal_hours=normal_h,
-            extra_hours=extra_h,
-            standby_hours=standby_h,
-            cost_per_hour=_lookup_rate(db, collab, record_date),
-        ))
-        inserted += 1
-
-    db.commit()
     log.info(
         "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, %d ciclos de quarentena.",
         inserted, skipped, quarantine_cycles_created,
@@ -207,6 +212,9 @@ def _resolve_cycle(db: Session, record_date: date) -> tuple[Cycle, bool]:
 def _parse_date(value) -> date:
     if isinstance(value, date):
         return value
+    if isinstance(value, (int, float)):
+        # Excel stores dates as days since 1899-12-30
+        return date(1899, 12, 30) + timedelta(days=int(value))
     return pd.to_datetime(str(value), dayfirst=True).date()
 
 
