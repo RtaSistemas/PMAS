@@ -7,7 +7,7 @@ from io import BytesIO
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from backend.app.models import Collaborator, Cycle, RateCard, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, Project, RateCard, TimesheetRecord
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +25,12 @@ class ClosedCycleError(Exception):
     def __init__(self, cycle_names: list[str]) -> None:
         self.cycle_names = cycle_names
         super().__init__(f"Ciclos fechados: {', '.join(cycle_names)}")
+
+
+class LockedProjectError(Exception):
+    def __init__(self, project_names: list[str]) -> None:
+        self.project_names = project_names
+        super().__init__(f"Projetos encerrados/suspensos: {', '.join(project_names)}")
 
 
 def ingest_file(
@@ -73,6 +79,23 @@ def ingest_file(
                     closed_names.append(c.name)
             if closed_names:
                 raise ClosedCycleError(closed_names)
+
+        # Block ingestion into encerrado/suspenso projects
+        pep_codes_in_file = {
+            _str_or_none(row.get(_COL_PEP_CODE))
+            for _, row in df.iterrows()
+        } - {None}
+        if pep_codes_in_file:
+            locked = (
+                db.query(Project)
+                .filter(
+                    Project.pep_wbs.in_(pep_codes_in_file),
+                    Project.status.in_(["encerrado", "suspenso"]),
+                )
+                .all()
+            )
+            if locked:
+                raise LockedProjectError([p.name or p.pep_wbs for p in locked])
 
         # DELETE existing records for all affected (collaborator, cycle) pairs
         for collab_id, cycle_id in affected_pairs:
