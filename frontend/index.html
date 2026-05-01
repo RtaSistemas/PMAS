@@ -122,6 +122,7 @@
       <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
       <button class="atab-btn" data-atab="trends" data-i18n="atab.trends">Tendências</button>
       <button class="atab-btn" data-atab="allocation" data-i18n="atab.allocation">Alocação</button>
+      <button class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>
     </nav>
 
     <!-- ============================================================ -->
@@ -219,6 +220,28 @@
           Nenhum dado encontrado.
         </div>
         <div id="allocationMatrix" style="overflow-x:auto;padding:.5rem 0"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Sub-tab: Previsão de Conclusão (EVM)                         -->
+    <!-- ============================================================ -->
+    <div id="atab-forecast" class="atab-section" hidden>
+      <div class="card chart-panel">
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="forecast.title">Previsão de Conclusão</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <label for="forecastPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
+            <select id="forecastPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:200px">
+              <option value="" data-i18n="forecast.select_pep">— selecione um PEP —</option>
+            </select>
+          </div>
+        </div>
+        <div id="forecastEmpty" class="chart-empty" hidden data-i18n="forecast.empty">
+          Selecione um PEP para visualizar a previsão de conclusão.
+        </div>
+        <div id="forecastKpis" class="stats-row" style="margin:.75rem 0" hidden></div>
+        <div id="forecastChart" style="width:100%;height:420px"></div>
       </div>
     </div>
 
