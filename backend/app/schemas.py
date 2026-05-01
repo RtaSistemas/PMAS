@@ -206,6 +206,14 @@ class TrendItem(BaseModel):
     actual_cost: float
 
 
+class AllocationItem(BaseModel):
+    collaborator: str
+    pep_wbs: str | None
+    pep_description: str | None
+    total_hours: float
+    actual_cost: float
+
+
 class UploadOut(BaseModel):
     status: str
     records_inserted: int

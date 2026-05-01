@@ -121,6 +121,7 @@
       <button class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
       <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
       <button class="atab-btn" data-atab="trends" data-i18n="atab.trends">Tendências</button>
+      <button class="atab-btn" data-atab="allocation" data-i18n="atab.allocation">Alocação</button>
     </nav>
 
     <!-- ============================================================ -->
@@ -200,6 +201,24 @@
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Sub-tab: Alocação (Colaborador × Projeto)                    -->
+    <!-- ============================================================ -->
+    <div id="atab-allocation" class="atab-section" hidden>
+      <div class="card chart-panel">
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="atab.allocation">Alocação</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <button id="allocToggleBtn" class="btn btn-secondary btn-sm">Horas</button>
+          </div>
+        </div>
+        <div id="allocationEmpty" class="chart-empty" hidden data-i18n="allocation.empty">
+          Nenhum dado encontrado.
+        </div>
+        <div id="allocationMatrix" style="overflow-x:auto;padding:.5rem 0"></div>
       </div>
     </div>
 

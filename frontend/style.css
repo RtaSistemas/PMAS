@@ -477,5 +477,41 @@ select.form-select option { background: var(--card); }
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
+/* Allocation matrix */
+.alloc-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+.alloc-matrix thead th {
+  padding: .45rem .7rem;
+  text-align: right;
+  color: var(--text-2);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 1;
+}
+.alloc-matrix thead th:first-child { text-align: left; }
+.alloc-matrix tbody td {
+  padding: .4rem .7rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .15s;
+}
+.alloc-matrix tbody tr:hover td { filter: brightness(1.15); }
+.alloc-name { text-align: left !important; color: var(--text-1); font-weight: 500; }
+.alloc-zero { color: var(--text-3) !important; }
+.alloc-total { font-weight: 600; color: var(--primary-light); }
+.alloc-footer td {
+  font-weight: 700;
+  color: var(--text-1);
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+}
+
 /* ── Logout / misc ───────────────────────────────────────────── */
 .logout-btn { font-size: 0.75rem; }

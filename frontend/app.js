@@ -11,7 +11,10 @@ const _LANG = {
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
     'btn.load':'Carregar','btn.clear':'Limpar',
-    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências',
+    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação',
+    'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
+    'allocation.collaborator':'Colaborador','allocation.total':'Total',
+    'allocation.btn_h':'Horas','allocation.btn_r':'R$',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
@@ -99,7 +102,10 @@ const _LANG = {
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
     'btn.load':'Load','btn.clear':'Clear',
-    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends',
+    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends','atab.allocation':'Allocation',
+    'allocation.empty':'No data found for the selected filters.',
+    'allocation.collaborator':'Collaborator','allocation.total':'Total',
+    'allocation.btn_h':'Hours','allocation.btn_r':'R$',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
@@ -217,9 +223,10 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:    ['effortChart', 'budgetChart', 'radarChart'],
-  portfolio: ['treemapChart', 'bulletChart'],
-  trends:    ['trendsChart'],
+  effort:     ['effortChart', 'budgetChart', 'radarChart'],
+  portfolio:  ['treemapChart', 'bulletChart'],
+  trends:     ['trendsChart'],
+  allocation: [],
 };
 
 function _disposeTabCharts(tabId) {
@@ -410,6 +417,9 @@ clearBtn.addEventListener('click', () => {
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   _disposeTabCharts('trends');
+  _disposeTabCharts('allocation');
+  document.getElementById('allocationMatrix').innerHTML = '';
+  _showEmpty('allocationEmpty', false);
   document.getElementById('effortStats').innerHTML = '';
   document.getElementById('budgetPanel').hidden  = true;
   document.getElementById('bulletPanel').hidden  = true;
@@ -422,9 +432,10 @@ clearBtn.addEventListener('click', () => {
 // Analytics — render dispatcher
 // ---------------------------------------------------------------------------
 async function _renderActiveTab() {
-  if (_activeATab === 'effort')    await _renderEffortTab();
-  if (_activeATab === 'portfolio') await _renderPortfolioTab();
-  if (_activeATab === 'trends')    await _renderTrendsTab();
+  if (_activeATab === 'effort')     await _renderEffortTab();
+  if (_activeATab === 'portfolio')  await _renderPortfolioTab();
+  if (_activeATab === 'trends')     await _renderTrendsTab();
+  if (_activeATab === 'allocation') await _renderAllocationTab();
 }
 
 function _showEmpty(id, show) {
@@ -620,6 +631,114 @@ async function _renderTrendsTab() {
 document.getElementById('trendsPepSelect').addEventListener('change', () => {
   if (_activeATab === 'trends') _renderTrendsTab();
 });
+
+// ---------------------------------------------------------------------------
+// Alocação — Matriz Colaborador × Projeto
+// ---------------------------------------------------------------------------
+
+let _allocEvmMode = false;
+
+document.getElementById('allocToggleBtn').addEventListener('click', () => {
+  _allocEvmMode = !_allocEvmMode;
+  document.getElementById('allocToggleBtn').textContent = _allocEvmMode ? _t('allocation.btn_r') : _t('allocation.btn_h');
+  if (_activeATab === 'allocation') _renderAllocationTab();
+});
+
+async function _renderAllocationTab() {
+  const cycleIds  = cycleMs.getValues();
+  const collabIds = collaboratorMs.getValues();
+  const pepCodes  = pepMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
+
+  const p = new URLSearchParams();
+  cycleIds.forEach(id  => p.append('cycle_id', id));
+  collabIds.forEach(id => p.append('collaborator_id', id));
+  pepCodes.forEach(c   => p.append('pep_wbs', c));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to', dateTo);
+
+  const emptyEl  = document.getElementById('allocationEmpty');
+  const matrixEl = document.getElementById('allocationMatrix');
+
+  try {
+    const data = await apiFetch(`/api/allocation?${p}`);
+
+    if (!data.length) {
+      _showEmpty('allocationEmpty', true);
+      matrixEl.innerHTML = '';
+      return;
+    }
+    _showEmpty('allocationEmpty', false);
+
+    // Collect unique PEPs
+    const pepLabels = {};
+    data.forEach(d => {
+      if (d.pep_wbs) pepLabels[d.pep_wbs] = d.pep_description || d.pep_wbs;
+    });
+
+    // Build value map: matrix[collaborator][pep_wbs] = value
+    const collabTotals = {};
+    const pepTotals    = {};
+    const matrix       = {};
+
+    data.forEach(d => {
+      const pep = d.pep_wbs || '__none__';
+      const val = _allocEvmMode ? d.actual_cost : d.total_hours;
+      if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
+      matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
+      collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
+      pepTotals[pep] = (pepTotals[pep] || 0) + val;
+    });
+
+    const sortedCollabs = Object.keys(collabTotals).sort((a, b) => collabTotals[b] - collabTotals[a]);
+    const sortedPeps    = Object.keys(pepTotals).sort((a, b) => pepTotals[b] - pepTotals[a]);
+    const grandTotal    = Object.values(collabTotals).reduce((a, b) => a + b, 0);
+    const maxVal        = Math.max(...Object.values(collabTotals));
+
+    const fmt = v => _allocEvmMode
+      ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${v.toFixed(1)}h`;
+
+    const cellBg = v => {
+      if (!v) return '';
+      const ratio = v / maxVal;
+      const a = (0.08 + ratio * 0.72).toFixed(2);
+      return `background:rgba(14,165,233,${a})`;
+    };
+
+    let html = '<table class="alloc-matrix"><thead><tr>';
+    html += `<th>${_t('allocation.collaborator')}</th>`;
+    sortedPeps.forEach(pep => {
+      const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+      const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
+      html += `<th title="${escHtml(label)}">${escHtml(short)}</th>`;
+    });
+    html += `<th>${_t('allocation.total')}</th></tr></thead><tbody>`;
+
+    sortedCollabs.forEach(collab => {
+      html += `<tr><td class="alloc-name">${escHtml(collab)}</td>`;
+      sortedPeps.forEach(pep => {
+        const v = matrix[collab]?.[pep] || 0;
+        html += v
+          ? `<td style="${cellBg(v)}">${fmt(v)}</td>`
+          : `<td class="alloc-zero">—</td>`;
+      });
+      html += `<td class="alloc-total">${fmt(collabTotals[collab] || 0)}</td></tr>`;
+    });
+
+    html += `<tr class="alloc-footer"><td>${_t('allocation.total')}</td>`;
+    sortedPeps.forEach(pep => {
+      html += `<td>${fmt(pepTotals[pep] || 0)}</td>`;
+    });
+    html += `<td class="alloc-total">${fmt(grandTotal)}</td></tr>`;
+    html += '</tbody></table>';
+
+    matrixEl.innerHTML = html;
+  } catch (err) {
+    notify(`Erro: ${err.message}`, 'error');
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Chart option builders

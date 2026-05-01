@@ -8,8 +8,8 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Cycle, GlobalConfig, Project, TimesheetRecord
-from backend.app.schemas import PortfolioHealthItem, TrendItem
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
+from backend.app.schemas import AllocationItem, PortfolioHealthItem, TrendItem
 
 router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_current_user)])
 
@@ -143,6 +143,67 @@ def get_trends(
             "extra_hours": r.extra_hours or 0.0,
             "standby_hours": r.standby_hours or 0.0,
             "actual_cost": r.actual_cost or 0.0,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/allocation", summary="Matriz horas/custo por colaborador × PEP", response_model=list[AllocationItem])
+def get_allocation(
+    db: DbSession,
+    cycle_id: List[int] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+    pep_wbs: List[str] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 1.0
+
+    q = (
+        db.query(
+            Collaborator.name.label("collaborator"),
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
+                )
+            ).label("actual_cost"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+    )
+    if cycle_id:
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
+    if collaborator_id:
+        q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
+    if pep_wbs:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
+
+    rows = (
+        q.group_by(Collaborator.name, TimesheetRecord.pep_wbs, TimesheetRecord.pep_description)
+        .order_by(Collaborator.name)
+        .all()
+    )
+    return [
+        {
+            "collaborator": r.collaborator,
+            "pep_wbs": r.pep_wbs,
+            "pep_description": r.pep_description,
+            "total_hours": round(r.total_hours or 0.0, 2),
+            "actual_cost": round(r.actual_cost or 0.0, 2),
         }
         for r in rows
     ]
