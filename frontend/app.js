@@ -506,7 +506,7 @@ async function _renderEffortTab() {
 
     // Radar chart
     const rp = new URLSearchParams(p);
-    if (cycleIds.length > 0) rp.set('cycle_id', cycleIds[0]);
+    cycleIds.forEach(id => rp.append('cycle_id', id));
     const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
     if (radarItems.length >= 3) {
       document.getElementById('radarPanel').hidden = false;
@@ -532,7 +532,7 @@ async function _renderPortfolioTab() {
   const dateFrom = document.getElementById('dateFromInput').value;
   const dateTo   = document.getElementById('dateToInput').value;
   const p = new URLSearchParams();
-  if (cycleIds.length > 0) p.set('cycle_id', cycleIds[0]);
+  cycleIds.forEach(id => p.append('cycle_id', id));
   pepCodes.forEach(c => p.append('pep_wbs', c));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
@@ -1187,14 +1187,15 @@ function _buildBulletOption(withBudget, evmMode = false) {
 }
 
 function _buildTrendsOption(trends) {
-  const cats    = trends.map(d => d.cycle_name);
-  const normals = trends.map(d => +d.normal_hours.toFixed(2));
-  const extras  = trends.map(d => +d.extra_hours.toFixed(2));
-  const costs   = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
+  const cats     = trends.map(d => d.cycle_name);
+  const normals  = trends.map(d => +d.normal_hours.toFixed(2));
+  const extras   = trends.map(d => +d.extra_hours.toFixed(2));
+  const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
+  const costs    = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.actual_cost')],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('ch.actual_cost')],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
@@ -1252,6 +1253,13 @@ function _buildTrendsOption(trends) {
         lineStyle: { color: '#f59e0b', width: 2.5 },
         itemStyle: { color: '#f59e0b' },
         areaStyle: { color: 'rgba(245,158,11,0.10)' },
+      },
+      {
+        name: _t('ch.standby_h'), type: 'line', yAxisIndex: 0,
+        data: standbys, smooth: true, symbol: 'circle', symbolSize: 7,
+        lineStyle: { color: '#a855f7', width: 2.5 },
+        itemStyle: { color: '#a855f7' },
+        areaStyle: { color: 'rgba(168,85,247,0.10)' },
       },
       {
         name: _t('ch.actual_cost'), type: 'line', yAxisIndex: 1,

@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_
 @router.get("/portfolio-health", summary="Horas consumidas por PEP com budget da tabela Project", response_model=list[PortfolioHealthItem])
 def get_portfolio_health(
     db: DbSession,
-    cycle_id: Optional[int] = None,
+    cycle_id: List[int] = Query(default=[]),
     pep_wbs: List[str] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
@@ -46,8 +46,8 @@ def get_portfolio_health(
         )
         .filter(TimesheetRecord.pep_wbs.isnot(None))
     )
-    if cycle_id is not None:
-        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
+    if cycle_id:
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
     if date_from is not None:
