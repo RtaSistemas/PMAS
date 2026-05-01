@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Cycle, TimesheetRecord
 from backend.app.schemas import CycleIn, CycleOut, ImportResultOut
 
@@ -61,7 +62,7 @@ def list_cycles(db: DbSession):
 
 
 @router.post("", summary="Criar ciclo", status_code=201, response_model=CycleOut)
-def create_cycle(body: CycleIn, db: DbSession):
+def create_cycle(body: CycleIn, db: DbSession, current_user: CurrentUser):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
     _check_overlap(db, body.start_date, body.end_date)
@@ -72,13 +73,15 @@ def create_cycle(body: CycleIn, db: DbSession):
         is_quarantine=False,
     )
     db.add(cycle)
+    db.flush()
+    log_audit(db, current_user, "create", "cycle", cycle.id, {"name": cycle.name})
     db.commit()
     db.refresh(cycle)
     return _cycle_to_dict(cycle, 0)
 
 
 @router.put("/{cycle_id}", summary="Atualizar ciclo", response_model=CycleOut)
-def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
+def update_cycle(cycle_id: int, body: CycleIn, db: DbSession, current_user: CurrentUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -88,6 +91,7 @@ def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
     cycle.name = body.name
     cycle.start_date = body.start_date
     cycle.end_date = body.end_date
+    log_audit(db, current_user, "update", "cycle", cycle_id, body.model_dump())
     db.commit()
     db.refresh(cycle)
     counts = _cycle_record_counts(db)
@@ -100,6 +104,7 @@ def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
     cycle.is_closed = not cycle.is_closed
+    log_audit(db, _admin, "toggle_status", "cycle", cycle_id, {"is_closed": cycle.is_closed})
     db.commit()
     db.refresh(cycle)
     counts = _cycle_record_counts(db)
@@ -107,7 +112,7 @@ def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
 
 
 @router.post("/import", summary="Importar ciclos via CSV", response_model=ImportResultOut)
-def import_cycles(file: UploadFile, db: DbSession):
+def import_cycles(file: UploadFile, db: DbSession, current_user: CurrentUser):
     try:
         raw = file.file.read()
         df = pd.read_csv(io.BytesIO(raw))
@@ -147,6 +152,8 @@ def import_cycles(file: UploadFile, db: DbSession):
             created = 0
             errors.append(f"Linha {i + 2}: {exc}")
     try:
+        if created:
+            log_audit(db, current_user, "import", "cycle", detail={"created": created, "errors": len(errors)})
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -155,7 +162,7 @@ def import_cycles(file: UploadFile, db: DbSession):
 
 
 @router.delete("/{cycle_id}", summary="Excluir ciclo", status_code=204)
-def delete_cycle(cycle_id: int, db: DbSession):
+def delete_cycle(cycle_id: int, db: DbSession, current_user: CurrentUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -167,5 +174,6 @@ def delete_cycle(cycle_id: int, db: DbSession):
             status_code=409,
             detail=f"Ciclo possui {count} registro(s). Remova os registros antes de excluir o ciclo.",
         )
+    log_audit(db, current_user, "delete", "cycle", cycle_id, {"name": cycle.name})
     db.delete(cycle)
     db.commit()

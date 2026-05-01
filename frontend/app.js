@@ -101,6 +101,11 @@ const _LANG = {
     'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
     'collab.timeline_title': 'Evolução por Ciclo — ',
     'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
+    'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
+    'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
+    'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
+    'auditlog.th.entity':'Entidade','auditlog.th.id':'ID','auditlog.th.detail':'Detalhe',
+    'no_audit':'Nenhum evento registrado.',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -199,6 +204,11 @@ const _LANG = {
     'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
     'collab.timeline_title': 'Cycle Evolution — ',
     'collab.timeline_empty': 'No data found for this collaborator.',
+    'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
+    'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
+    'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
+    'auditlog.th.entity':'Entity','auditlog.th.id':'ID','auditlog.th.detail':'Detail',
+    'no_audit':'No events recorded.',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -224,7 +234,7 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'projects') loadProjectsTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
-    if (btn.dataset.tab === 'admin')    loadUsersTable();
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); }
   });
 });
 
@@ -2567,6 +2577,52 @@ async function deleteUser(id, username) {
     loadUsersTable();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+// ---------------------------------------------------------------------------
+// Audit Log (Admin tab)
+// ---------------------------------------------------------------------------
+
+async function loadAuditLog() {
+  const entity = document.getElementById('auditEntityFilter').value;
+  const action = document.getElementById('auditActionFilter').value;
+  const params = new URLSearchParams({ limit: 200 });
+  if (entity) params.set('entity', entity);
+  if (action) params.set('action', action);
+  try {
+    const rows = await apiFetch(`/api/audit-log?${params}`);
+    _renderAuditLog(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderAuditLog(rows) {
+  const tbody = document.getElementById('auditBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_audit')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+    let detail = '';
+    if (r.detail) {
+      try {
+        const obj = JSON.parse(r.detail);
+        detail = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', ');
+      } catch { detail = r.detail; }
+    }
+    return `<tr>
+      <td style="white-space:nowrap">${escHtml(when)}</td>
+      <td>${escHtml(r.username || '—')}</td>
+      <td><code>${escHtml(r.action)}</code></td>
+      <td>${escHtml(r.entity)}</td>
+      <td style="text-align:right">${r.entity_id ?? '—'}</td>
+      <td style="font-size:.78rem;color:#94a3b8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('auditRefreshBtn').addEventListener('click', loadAuditLog);
+document.getElementById('auditEntityFilter').addEventListener('change', loadAuditLog);
+document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
 
 // ---------------------------------------------------------------------------
 // Boot

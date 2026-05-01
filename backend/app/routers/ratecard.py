@@ -6,8 +6,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Collaborator, GlobalConfig, RateCard, SeniorityLevel
 from backend.app.schemas import (
     CollaboratorSeniorityIn, GlobalConfigIn, GlobalConfigOut,
@@ -106,7 +107,7 @@ def list_rate_cards(db: DbSession, seniority_level_id: Optional[int] = None):
 
 
 @router.post("/rate-cards", status_code=201, response_model=IdOut)
-def create_rate_card(body: RateCardIn, db: DbSession):
+def create_rate_card(body: RateCardIn, db: DbSession, current_user: CurrentUser):
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
     if not db.get(SeniorityLevel, body.seniority_level_id):
@@ -118,12 +119,14 @@ def create_rate_card(body: RateCardIn, db: DbSession):
         valid_from=body.valid_from,
         valid_to=body.valid_to,
     )
-    db.add(card); db.commit(); db.refresh(card)
+    db.add(card); db.flush()
+    log_audit(db, current_user, "create", "rate_card", card.id, body.model_dump())
+    db.commit(); db.refresh(card)
     return {"id": card.id}
 
 
 @router.put("/rate-cards/{card_id}", response_model=IdOut)
-def update_rate_card(card_id: int, body: RateCardIn, db: DbSession):
+def update_rate_card(card_id: int, body: RateCardIn, db: DbSession, current_user: CurrentUser):
     card = db.get(RateCard, card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
@@ -134,15 +137,18 @@ def update_rate_card(card_id: int, body: RateCardIn, db: DbSession):
     card.hourly_rate = body.hourly_rate
     card.valid_from = body.valid_from
     card.valid_to = body.valid_to
+    log_audit(db, current_user, "update", "rate_card", card_id, body.model_dump())
     db.commit(); db.refresh(card)
     return {"id": card.id}
 
 
 @router.delete("/rate-cards/{card_id}", status_code=204)
-def delete_rate_card(card_id: int, db: DbSession):
+def delete_rate_card(card_id: int, db: DbSession, current_user: CurrentUser):
     card = db.get(RateCard, card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
+    log_audit(db, current_user, "delete", "rate_card", card_id,
+              {"seniority_level_id": card.seniority_level_id, "hourly_rate": card.hourly_rate})
     db.delete(card); db.commit()
 
 

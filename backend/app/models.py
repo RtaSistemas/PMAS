@@ -4,6 +4,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     Date,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -115,3 +116,16 @@ class GlobalConfig(Base):
     id = Column(Integer, primary_key=True)          # singleton — always id=1
     extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
     standby_hours_multiplier = Column(Float, default=1.0, nullable=False)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id        = Column(Integer, primary_key=True)
+    user_id   = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    username  = Column(String, nullable=True)
+    action    = Column(String, nullable=False)
+    entity    = Column(String, nullable=False, index=True)
+    entity_id = Column(Integer, nullable=True)
+    detail    = Column(String, nullable=True)
+    timestamp = Column(DateTime, nullable=False)

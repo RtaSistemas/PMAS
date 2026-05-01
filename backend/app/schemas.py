@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, date as DateType
+from datetime import date, date as DateType, datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -263,3 +263,13 @@ class UserOut(BaseModel):
     id: int
     username: str
     role: str
+
+
+class AuditLogItem(BaseModel):
+    id: int
+    username: str | None
+    action: str
+    entity: str
+    entity_id: int | None
+    detail: str | None
+    timestamp: datetime

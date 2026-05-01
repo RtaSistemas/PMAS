@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import User
@@ -30,6 +31,8 @@ def create_user(body: UserCreateIn, db: DbSession, _admin: AdminUser):
         role=body.role,
     )
     db.add(user)
+    db.flush()
+    log_audit(db, _admin, "create", "user", user.id, {"username": user.username, "role": user.role})
     db.commit()
     db.refresh(user)
     return user
@@ -53,6 +56,7 @@ def change_password(
         if not verify_password(body.current_password, target.hashed_password):
             raise HTTPException(status_code=400, detail="Senha atual incorreta.")
     target.hashed_password = hash_password(body.new_password)
+    log_audit(db, current_user, "change_password", "user", user_id, {"target_username": target.username})
     db.commit()
     db.refresh(target)
     return target
@@ -65,5 +69,6 @@ def delete_user(user_id: int, db: DbSession, admin: AdminUser):
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     if target.id == admin.id:
         raise HTTPException(status_code=409, detail="Não é possível excluir o próprio usuário.")
+    log_audit(db, admin, "delete", "user", user_id, {"username": target.username})
     db.delete(target)
     db.commit()
