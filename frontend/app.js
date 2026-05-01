@@ -2048,12 +2048,12 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
 // Auth helpers
 // ---------------------------------------------------------------------------
 function _authHeaders(extra = {}) {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
 }
 
 function _getTokenPayload() {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   if (!token) return null;
   try { return JSON.parse(atob(token.split('.')[1])); } catch (_) { return null; }
 }
@@ -2064,7 +2064,7 @@ function _isAdmin() {
 }
 
 function _handleUnauthorized() {
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
 }
@@ -2126,7 +2126,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       return;
     }
     const { access_token } = await res.json();
-    localStorage.setItem('access_token', access_token);
+    sessionStorage.setItem('access_token', access_token);
     document.getElementById('loginOverlay').setAttribute('hidden', '');
     document.getElementById('appShell').removeAttribute('hidden');
     _bootApp();
@@ -2136,7 +2136,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
 });
@@ -2240,7 +2240,7 @@ function _bootApp() {
   _renderActiveTab();
 }
 
-if (localStorage.getItem('access_token')) {
+if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');
   _bootApp();
