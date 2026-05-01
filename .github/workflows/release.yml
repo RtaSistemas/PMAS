@@ -75,6 +75,7 @@ jobs:
           pyinstaller `
             --onefile `
             --name pmas-windows-x64 `
+            --icon assets\icon.ico `
             --add-data "frontend;frontend" `
             --hidden-import uvicorn.logging `
             --hidden-import uvicorn.loops `

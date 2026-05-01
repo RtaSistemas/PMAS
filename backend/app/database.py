@@ -6,7 +6,7 @@ import sys
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 log = logging.getLogger(__name__)
@@ -28,6 +28,13 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
+
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragmas(dbapi_conn, _):
+    dbapi_conn.execute("PRAGMA journal_mode=WAL")
+    dbapi_conn.execute("PRAGMA synchronous=NORMAL")
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

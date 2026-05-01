@@ -16,6 +16,22 @@ from backend.app.schemas import CycleIn, CycleOut, ImportResultOut
 router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(get_current_user)])
 
 
+def _check_overlap(db: Session, start, end, exclude_id: int | None = None) -> None:
+    q = db.query(Cycle).filter(
+        Cycle.is_quarantine == False,  # noqa: E712
+        Cycle.start_date <= end,
+        Cycle.end_date >= start,
+    )
+    if exclude_id is not None:
+        q = q.filter(Cycle.id != exclude_id)
+    conflict = q.first()
+    if conflict:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Datas sobrepostas com o ciclo '{conflict.name}' ({conflict.start_date} — {conflict.end_date}).",
+        )
+
+
 def _cycle_record_counts(db: Session) -> dict[int, int]:
     rows = (
         db.query(TimesheetRecord.cycle_id, func.count(TimesheetRecord.id))
@@ -48,6 +64,7 @@ def list_cycles(db: DbSession):
 def create_cycle(body: CycleIn, db: DbSession):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
+    _check_overlap(db, body.start_date, body.end_date)
     cycle = Cycle(
         name=body.name,
         start_date=body.start_date,
@@ -67,6 +84,7 @@ def update_cycle(cycle_id: int, body: CycleIn, db: DbSession):
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
+    _check_overlap(db, body.start_date, body.end_date, exclude_id=cycle_id)
     cycle.name = body.name
     cycle.start_date = body.start_date
     cycle.end_date = body.end_date
@@ -114,11 +132,25 @@ def import_cycles(file: UploadFile, db: DbSession):
                 continue
             if db.query(Cycle).filter(Cycle.name == name).first():
                 continue
+            overlap = db.query(Cycle).filter(
+                Cycle.is_quarantine == False,  # noqa: E712
+                Cycle.start_date <= end,
+                Cycle.end_date >= start,
+            ).first()
+            if overlap:
+                errors.append(f"Linha {i + 2}: sobreposição com ciclo '{overlap.name}'")
+                continue
             db.add(Cycle(name=name, start_date=start, end_date=end, is_quarantine=False))
             created += 1
         except Exception as exc:
+            db.rollback()
+            created = 0
             errors.append(f"Linha {i + 2}: {exc}")
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=f"Erro ao persistir ciclos: {exc}")
     return {"created": created, "updated": 0, "errors": errors}
 
 

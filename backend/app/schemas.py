@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date as DateType
+from datetime import date, date as DateType
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -204,6 +204,39 @@ class TrendItem(BaseModel):
     extra_hours: float
     standby_hours: float
     actual_cost: float
+
+
+class AllocationItem(BaseModel):
+    collaborator: str
+    pep_wbs: str | None
+    pep_description: str | None
+    total_hours: float
+    actual_cost: float
+
+
+class BurnHistoryPoint(BaseModel):
+    cycle_name: str
+    cycle_start: date
+    period_hours: float
+    period_cost: float
+    cumulative_hours: float
+    cumulative_cost: float
+
+
+class ForecastOut(BaseModel):
+    pep_wbs: str
+    pep_description: str | None
+    budget_hours: float | None
+    budget_cost: float | None
+    consumed_hours: float
+    actual_cost: float
+    remaining_hours: float | None
+    cpi: float | None
+    eac: float | None
+    avg_hours_per_cycle: float
+    estimated_cycles_to_complete: float | None
+    estimated_completion_cycle: str | None
+    history: list[BurnHistoryPoint]
 
 
 class UploadOut(BaseModel):

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
+import secrets
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -10,7 +12,19 @@ from jose import JWTError, jwt
 from backend.app.database import DbSession
 from backend.app.models import User
 
-SECRET_KEY = os.getenv("PMAS_SECRET_KEY", "dev-secret-change-in-production")
+log = logging.getLogger(__name__)
+
+_env_secret = os.getenv("PMAS_SECRET_KEY")
+if _env_secret:
+    SECRET_KEY = _env_secret
+else:
+    SECRET_KEY = secrets.token_hex(32)
+    log.warning(
+        "PMAS_SECRET_KEY não definida — usando chave aleatória. "
+        "Sessões serão invalidadas ao reiniciar o servidor. "
+        "Defina PMAS_SECRET_KEY para persistência de sessão."
+    )
+
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")

@@ -11,7 +11,17 @@ const _LANG = {
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
     'btn.load':'Carregar','btn.clear':'Limpar',
-    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências',
+    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação','atab.forecast':'Previsão',
+    'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
+    'allocation.collaborator':'Colaborador','allocation.total':'Total',
+    'allocation.btn_h':'Horas','allocation.btn_r':'R$',
+    'forecast.title':'Previsão de Conclusão (EVM)',
+    'forecast.select_pep':'— selecione um PEP —',
+    'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
+    'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
+    'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
+    'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
+    'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
@@ -99,7 +109,17 @@ const _LANG = {
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
     'btn.load':'Load','btn.clear':'Clear',
-    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends',
+    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends','atab.allocation':'Allocation','atab.forecast':'Forecast',
+    'allocation.empty':'No data found for the selected filters.',
+    'allocation.collaborator':'Collaborator','allocation.total':'Total',
+    'allocation.btn_h':'Hours','allocation.btn_r':'R$',
+    'forecast.title':'Completion Forecast (EVM)',
+    'forecast.select_pep':'— select a PEP —',
+    'forecast.empty':'Select a PEP to view the completion forecast.',
+    'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
+    'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
+    'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
+    'forecast.no_budget':'No budget registered for this PEP.',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
@@ -217,9 +237,11 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:    ['effortChart', 'budgetChart', 'radarChart'],
-  portfolio: ['treemapChart', 'bulletChart'],
-  trends:    ['trendsChart'],
+  effort:     ['effortChart', 'budgetChart', 'radarChart'],
+  portfolio:  ['treemapChart', 'bulletChart'],
+  trends:     ['trendsChart'],
+  allocation: [],
+  forecast:   ['forecastChart'],
 };
 
 function _disposeTabCharts(tabId) {
@@ -260,7 +282,8 @@ atabBtns.forEach(btn => {
     btn.classList.add('active');
     _activeATab = btn.dataset.atab;
     document.getElementById(`atab-${_activeATab}`).hidden = false;
-    if (_activeATab === 'trends') _populateTrendsPepSelect();
+    if (_activeATab === 'trends')   _populateTrendsPepSelect();
+    if (_activeATab === 'forecast') _populateForecastPepSelect();
     _renderActiveTab();
   });
 });
@@ -410,6 +433,13 @@ clearBtn.addEventListener('click', () => {
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   _disposeTabCharts('trends');
+  _disposeTabCharts('allocation');
+  document.getElementById('allocationMatrix').innerHTML = '';
+  _showEmpty('allocationEmpty', false);
+  _disposeTabCharts('forecast');
+  document.getElementById('forecastKpis').hidden = true;
+  document.getElementById('forecastKpis').innerHTML = '';
+  _showEmpty('forecastEmpty', true);
   document.getElementById('effortStats').innerHTML = '';
   document.getElementById('budgetPanel').hidden  = true;
   document.getElementById('bulletPanel').hidden  = true;
@@ -422,9 +452,11 @@ clearBtn.addEventListener('click', () => {
 // Analytics — render dispatcher
 // ---------------------------------------------------------------------------
 async function _renderActiveTab() {
-  if (_activeATab === 'effort')    await _renderEffortTab();
-  if (_activeATab === 'portfolio') await _renderPortfolioTab();
-  if (_activeATab === 'trends')    await _renderTrendsTab();
+  if (_activeATab === 'effort')     await _renderEffortTab();
+  if (_activeATab === 'portfolio')  await _renderPortfolioTab();
+  if (_activeATab === 'trends')     await _renderTrendsTab();
+  if (_activeATab === 'allocation') await _renderAllocationTab();
+  if (_activeATab === 'forecast')   await _renderForecastTab();
 }
 
 function _showEmpty(id, show) {
@@ -506,7 +538,7 @@ async function _renderEffortTab() {
 
     // Radar chart
     const rp = new URLSearchParams(p);
-    if (cycleIds.length > 0) rp.set('cycle_id', cycleIds[0]);
+    cycleIds.forEach(id => rp.append('cycle_id', id));
     const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
     if (radarItems.length >= 3) {
       document.getElementById('radarPanel').hidden = false;
@@ -532,7 +564,7 @@ async function _renderPortfolioTab() {
   const dateFrom = document.getElementById('dateFromInput').value;
   const dateTo   = document.getElementById('dateToInput').value;
   const p = new URLSearchParams();
-  if (cycleIds.length > 0) p.set('cycle_id', cycleIds[0]);
+  cycleIds.forEach(id => p.append('cycle_id', id));
   pepCodes.forEach(c => p.append('pep_wbs', c));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
@@ -620,6 +652,305 @@ async function _renderTrendsTab() {
 document.getElementById('trendsPepSelect').addEventListener('change', () => {
   if (_activeATab === 'trends') _renderTrendsTab();
 });
+
+// ---------------------------------------------------------------------------
+// Alocação — Matriz Colaborador × Projeto
+// ---------------------------------------------------------------------------
+
+let _allocEvmMode = false;
+
+document.getElementById('allocToggleBtn').addEventListener('click', () => {
+  _allocEvmMode = !_allocEvmMode;
+  document.getElementById('allocToggleBtn').textContent = _allocEvmMode ? _t('allocation.btn_r') : _t('allocation.btn_h');
+  if (_activeATab === 'allocation') _renderAllocationTab();
+});
+
+async function _renderAllocationTab() {
+  const cycleIds  = cycleMs.getValues();
+  const collabIds = collaboratorMs.getValues();
+  const pepCodes  = pepMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
+
+  const p = new URLSearchParams();
+  cycleIds.forEach(id  => p.append('cycle_id', id));
+  collabIds.forEach(id => p.append('collaborator_id', id));
+  pepCodes.forEach(c   => p.append('pep_wbs', c));
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to', dateTo);
+
+  const emptyEl  = document.getElementById('allocationEmpty');
+  const matrixEl = document.getElementById('allocationMatrix');
+
+  try {
+    const data = await apiFetch(`/api/allocation?${p}`);
+
+    if (!data.length) {
+      _showEmpty('allocationEmpty', true);
+      matrixEl.innerHTML = '';
+      return;
+    }
+    _showEmpty('allocationEmpty', false);
+
+    // Collect unique PEPs
+    const pepLabels = {};
+    data.forEach(d => {
+      if (d.pep_wbs) pepLabels[d.pep_wbs] = d.pep_description || d.pep_wbs;
+    });
+
+    // Build value map: matrix[collaborator][pep_wbs] = value
+    const collabTotals = {};
+    const pepTotals    = {};
+    const matrix       = {};
+
+    data.forEach(d => {
+      const pep = d.pep_wbs || '__none__';
+      const val = _allocEvmMode ? d.actual_cost : d.total_hours;
+      if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
+      matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
+      collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
+      pepTotals[pep] = (pepTotals[pep] || 0) + val;
+    });
+
+    const sortedCollabs = Object.keys(collabTotals).sort((a, b) => collabTotals[b] - collabTotals[a]);
+    const sortedPeps    = Object.keys(pepTotals).sort((a, b) => pepTotals[b] - pepTotals[a]);
+    const grandTotal    = Object.values(collabTotals).reduce((a, b) => a + b, 0);
+    const maxVal        = Math.max(...Object.values(collabTotals));
+
+    const fmt = v => _allocEvmMode
+      ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${v.toFixed(1)}h`;
+
+    const cellBg = v => {
+      if (!v) return '';
+      const ratio = v / maxVal;
+      const a = (0.08 + ratio * 0.72).toFixed(2);
+      return `background:rgba(14,165,233,${a})`;
+    };
+
+    let html = '<table class="alloc-matrix"><thead><tr>';
+    html += `<th>${_t('allocation.collaborator')}</th>`;
+    sortedPeps.forEach(pep => {
+      const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+      const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
+      html += `<th title="${escHtml(label)}">${escHtml(short)}</th>`;
+    });
+    html += `<th>${_t('allocation.total')}</th></tr></thead><tbody>`;
+
+    sortedCollabs.forEach(collab => {
+      html += `<tr><td class="alloc-name">${escHtml(collab)}</td>`;
+      sortedPeps.forEach(pep => {
+        const v = matrix[collab]?.[pep] || 0;
+        html += v
+          ? `<td style="${cellBg(v)}">${fmt(v)}</td>`
+          : `<td class="alloc-zero">—</td>`;
+      });
+      html += `<td class="alloc-total">${fmt(collabTotals[collab] || 0)}</td></tr>`;
+    });
+
+    html += `<tr class="alloc-footer"><td>${_t('allocation.total')}</td>`;
+    sortedPeps.forEach(pep => {
+      html += `<td>${fmt(pepTotals[pep] || 0)}</td>`;
+    });
+    html += `<td class="alloc-total">${fmt(grandTotal)}</td></tr>`;
+    html += '</tbody></table>';
+
+    matrixEl.innerHTML = html;
+  } catch (err) {
+    notify(`Erro: ${err.message}`, 'error');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Previsão de Conclusão (EVM)
+// ---------------------------------------------------------------------------
+
+async function _populateForecastPepSelect() {
+  const sel = document.getElementById('forecastPepSelect');
+  const current = sel.value;
+  try {
+    const peps = await apiFetch('/api/peps');
+    sel.innerHTML = `<option value="">${_t('forecast.select_pep')}</option>` +
+      peps.map(p => `<option value="${escHtml(p.code)}">${escHtml(p.code)}${p.descriptions[0] ? ' — ' + escHtml(p.descriptions[0]) : ''}</option>`).join('');
+    if (peps.some(p => p.code === current)) sel.value = current;
+  } catch (_) { /* non-critical */ }
+}
+
+document.getElementById('forecastPepSelect').addEventListener('change', () => {
+  if (_activeATab === 'forecast') _renderForecastTab();
+});
+
+function _buildForecastKpis(fc) {
+  const fmtH = h => `${(+h).toFixed(1)}h`;
+  const fmtR = v => `R$ ${(+v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+
+  const pct = fc.budget_hours
+    ? `${Math.min(fc.consumed_hours / fc.budget_hours * 100, 999).toFixed(1)}%`
+    : '—';
+  const over = fc.budget_hours != null && fc.consumed_hours > fc.budget_hours;
+
+  const cpiVal = fc.cpi != null ? (+fc.cpi).toFixed(2) : '—';
+  const cpiCls = fc.cpi == null ? 'neutral' : fc.cpi >= 1.0 ? 'green' : fc.cpi >= 0.9 ? 'amber' : 'red';
+
+  const completionVal = fc.estimated_completion_cycle
+    || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
+
+  const cards = [
+    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),     cls: 'blue'              },
+    { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
+                                                              lbl: _t('forecast.remaining'),    cls: over ? 'red' : 'neutral' },
+    { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
+    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls              },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral'           },
+    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'            },
+  ];
+  return cards.map(({ val, lbl, cls }) =>
+    `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${escHtml(lbl)}</div></div>`
+  ).join('');
+}
+
+function _buildForecastOption(fc) {
+  const history  = fc.history || [];
+  const avg      = fc.avg_hours_per_cycle || 0;
+  const lastCum  = history.length ? history.at(-1).cumulative_hours : 0;
+  const budget   = fc.budget_hours;
+
+  const projCount = budget && avg > 0
+    ? Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14)
+    : 6;
+
+  const projCats = Array.from({ length: projCount }, (_, i) => `▸${i + 1}`);
+  const projVals = [];
+  for (let i = 1; i <= projCount; i++) {
+    const v = lastCum + avg * i;
+    projVals.push(+((budget ? Math.min(v, budget) : v)).toFixed(2));
+  }
+
+  const historyCats = history.map(h => h.cycle_name);
+  const historyVals = history.map(h => h.cumulative_hours);
+  const allCats = [...historyCats, ...projCats];
+  const n = historyVals.length;
+
+  // Realized series: historical values, null for projected slots
+  const realizedData = [...historyVals, ...Array(projCount).fill(null)];
+
+  // Projection series: null up to last historical, then projected values (bridged from last historical)
+  const projectionData = [
+    ...Array(n - 1).fill(null),
+    historyVals.at(-1) ?? 0,
+    ...projVals,
+  ];
+
+  // Budget flat line
+  const budgetData = budget ? allCats.map(() => budget) : null;
+
+  const series = [
+    {
+      name: _t('forecast.realized'),
+      type: 'line', yAxisIndex: 0,
+      data: realizedData,
+      smooth: false, symbol: 'circle', symbolSize: 6,
+      lineStyle: { color: '#0ea5e9', width: 2.5 },
+      itemStyle: { color: '#0ea5e9' },
+      areaStyle: { color: 'rgba(14,165,233,0.10)' },
+      connectNulls: false,
+    },
+    {
+      name: _t('forecast.projection'),
+      type: 'line', yAxisIndex: 0,
+      data: projectionData,
+      smooth: false, symbol: 'circle', symbolSize: 5,
+      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
+      itemStyle: { color: '#94a3b8' },
+      connectNulls: false,
+    },
+  ];
+  if (budgetData) {
+    series.push({
+      name: _t('forecast.budget_line'),
+      type: 'line', yAxisIndex: 0,
+      data: budgetData,
+      symbol: 'none',
+      lineStyle: { color: '#f59e0b', width: 1.5, type: 'dashed' },
+      itemStyle: { color: '#f59e0b' },
+    });
+  }
+
+  const legendData = budgetData
+    ? [_t('forecast.realized'), _t('forecast.projection'), _t('forecast.budget_line')]
+    : [_t('forecast.realized'), _t('forecast.projection')];
+
+  return {
+    backgroundColor: 'transparent',
+    legend: {
+      data: legendData, top: 8, left: 'center',
+      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      itemGap: 24, itemWidth: 18, itemHeight: 10,
+    },
+    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e293b', borderColor: '#475569',
+      textStyle: { color: '#e2e8f0' },
+      formatter: params => {
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
+        params.forEach(p => {
+          if (p.value == null) return;
+          html += `${p.marker} ${p.seriesName}: <b>${(+p.value).toFixed(1)}h</b><br>`;
+        });
+        return html;
+      },
+    },
+    xAxis: {
+      type: 'category', data: allCats,
+      axisLabel: { color: '#94a3b8', rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
+      axisTick: { alignWithLabel: true },
+    },
+    yAxis: {
+      type: 'value', name: _t('ch.hours'),
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#334155' } },
+    },
+    series,
+  };
+}
+
+async function _renderForecastTab() {
+  await _populateForecastPepSelect();
+  const pep      = document.getElementById('forecastPepSelect').value;
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
+
+  const kpisEl  = document.getElementById('forecastKpis');
+  const emptyEl = document.getElementById('forecastEmpty');
+
+  if (!pep) {
+    _showEmpty('forecastEmpty', true);
+    kpisEl.hidden = true;
+    _disposeTabCharts('forecast');
+    return;
+  }
+
+  const p = new URLSearchParams({ pep_wbs: pep });
+  if (dateFrom) p.set('date_from', dateFrom);
+  if (dateTo)   p.set('date_to',   dateTo);
+
+  try {
+    const fc = await apiFetch(`/api/forecast?${p}`);
+    _showEmpty('forecastEmpty', false);
+    kpisEl.hidden = false;
+    kpisEl.innerHTML = _buildForecastKpis(fc);
+    const chart = _getOrCreateChart('forecastChart');
+    chart.setOption(_buildForecastOption(fc), true);
+    chart.resize();
+  } catch (err) {
+    _showEmpty('forecastEmpty', true);
+    kpisEl.hidden = true;
+    _disposeTabCharts('forecast');
+    if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Chart option builders
@@ -1187,14 +1518,15 @@ function _buildBulletOption(withBudget, evmMode = false) {
 }
 
 function _buildTrendsOption(trends) {
-  const cats    = trends.map(d => d.cycle_name);
-  const normals = trends.map(d => +d.normal_hours.toFixed(2));
-  const extras  = trends.map(d => +d.extra_hours.toFixed(2));
-  const costs   = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
+  const cats     = trends.map(d => d.cycle_name);
+  const normals  = trends.map(d => +d.normal_hours.toFixed(2));
+  const extras   = trends.map(d => +d.extra_hours.toFixed(2));
+  const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
+  const costs    = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.actual_cost')],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('ch.actual_cost')],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
@@ -1252,6 +1584,13 @@ function _buildTrendsOption(trends) {
         lineStyle: { color: '#f59e0b', width: 2.5 },
         itemStyle: { color: '#f59e0b' },
         areaStyle: { color: 'rgba(245,158,11,0.10)' },
+      },
+      {
+        name: _t('ch.standby_h'), type: 'line', yAxisIndex: 0,
+        data: standbys, smooth: true, symbol: 'circle', symbolSize: 7,
+        lineStyle: { color: '#a855f7', width: 2.5 },
+        itemStyle: { color: '#a855f7' },
+        areaStyle: { color: 'rgba(168,85,247,0.10)' },
       },
       {
         name: _t('ch.actual_cost'), type: 'line', yAxisIndex: 1,
@@ -2048,12 +2387,12 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
 // Auth helpers
 // ---------------------------------------------------------------------------
 function _authHeaders(extra = {}) {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
 }
 
 function _getTokenPayload() {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   if (!token) return null;
   try { return JSON.parse(atob(token.split('.')[1])); } catch (_) { return null; }
 }
@@ -2064,7 +2403,7 @@ function _isAdmin() {
 }
 
 function _handleUnauthorized() {
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
 }
@@ -2126,7 +2465,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       return;
     }
     const { access_token } = await res.json();
-    localStorage.setItem('access_token', access_token);
+    sessionStorage.setItem('access_token', access_token);
     document.getElementById('loginOverlay').setAttribute('hidden', '');
     document.getElementById('appShell').removeAttribute('hidden');
     _bootApp();
@@ -2136,7 +2475,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
 });
@@ -2240,7 +2579,7 @@ function _bootApp() {
   _renderActiveTab();
 }
 
-if (localStorage.getItem('access_token')) {
+if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');
   _bootApp();

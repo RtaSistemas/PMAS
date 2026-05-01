@@ -14,7 +14,7 @@ from backend.app.database import DbSession, init_db
 from backend.app.deps import CurrentUser
 from backend.app.schemas import UploadOut
 from backend.app.routers import analytics, auth, cycles, dashboard, projects, ratecard, reference, users
-from backend.app.services.ingestion import ClosedCycleError, ingest_file
+from backend.app.services.ingestion import ClosedCycleError, LockedProjectError, ingest_file
 
 log = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ app.add_middleware(
         "http://127.0.0.1:8000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth.router)
@@ -85,6 +85,8 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
         summary = ingest_file(contents, fname, db, user_role=current_user.role)
     except ClosedCycleError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LockedProjectError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
