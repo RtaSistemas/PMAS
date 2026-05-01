@@ -410,6 +410,45 @@
         <tbody id="usersBody"><tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
+
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title" data-i18n="auditlog.title">Log de Auditoria</h2>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <select id="auditEntityFilter" class="filter-select" style="min-width:130px">
+            <option value="" data-i18n="auditlog.filter.all_entity">Todas entidades</option>
+            <option value="user">user</option>
+            <option value="cycle">cycle</option>
+            <option value="project">project</option>
+            <option value="rate_card">rate_card</option>
+            <option value="timesheet">timesheet</option>
+          </select>
+          <select id="auditActionFilter" class="filter-select" style="min-width:130px">
+            <option value="" data-i18n="auditlog.filter.all_action">Todas ações</option>
+            <option value="create">create</option>
+            <option value="update">update</option>
+            <option value="delete">delete</option>
+            <option value="import">import</option>
+            <option value="change_password">change_password</option>
+            <option value="toggle_status">toggle_status</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="auditRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
+        </div>
+      </div>
+      <table class="data-table" id="auditTable">
+        <thead>
+          <tr>
+            <th data-i18n="auditlog.th.when">Quando</th>
+            <th data-i18n="auditlog.th.user">Usuário</th>
+            <th data-i18n="auditlog.th.action">Ação</th>
+            <th data-i18n="auditlog.th.entity">Entidade</th>
+            <th data-i18n="auditlog.th.id">ID</th>
+            <th data-i18n="auditlog.th.detail">Detalhe</th>
+          </tr>
+        </thead>
+        <tbody id="auditBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+      </table>
+    </div>
   </section>
 
 </main>
