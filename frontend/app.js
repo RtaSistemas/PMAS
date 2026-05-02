@@ -993,6 +993,9 @@ function _buildForecastOption(fc) {
         return html;
       },
     },
+    toolbox: _toolbox({
+      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
+    }),
     xAxis: {
       type: 'category', data: allCats,
       axisLabel: { color: '#94a3b8', rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
@@ -1128,6 +1131,25 @@ function _buildEffortTitle(payload, cycleCount) {
   return t;
 }
 
+// ---------------------------------------------------------------------------
+// Toolbox padrão ECharts — garante consistência visual em todos os gráficos.
+// extra: objeto com features adicionais (magicType, dataZoom, etc.)
+// ---------------------------------------------------------------------------
+function _toolbox(extra = {}) {
+  return {
+    right: 10,
+    top: 10,
+    iconStyle: { color: '#7ba0c0' },          // --text-2
+    emphasis: { iconStyle: { color: '#0ea5e9' } }, // --primary no hover
+    feature: {
+      dataView:    { readOnly: true, title: 'Ver Dados',     lang: ['Dados do Gráfico', 'Fechar', 'Atualizar'] },
+      restore:     { title: 'Restaurar' },
+      saveAsImage: { title: 'Salvar Imagem', pixelRatio: 2 },
+      ...extra,
+    },
+  };
+}
+
 function _buildEffortOption(data, stacked) {
   const MAX        = 40;
   const slice      = data.length > MAX ? data.slice(0, MAX) : data;
@@ -1173,12 +1195,9 @@ function _buildEffortOption(data, stacked) {
       containLabel: true,
     },
 
-    toolbox: {feature: {
-      dataView: { show: true, readOnly: false },
-      restore: { show: true },
-      saveAsImage: { show: true }
-      }
-    },
+    toolbox: _toolbox({
+      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
+    }),
 
     tooltip: {
       trigger: 'axis',
@@ -1533,6 +1552,7 @@ function _buildTreemapOption(health, evmMode = false) {
     : v.toFixed(1) + 'h';
   return {
     backgroundColor: 'transparent',
+    toolbox: _toolbox(),
     tooltip: {
       trigger: 'item',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
@@ -1613,7 +1633,8 @@ function _buildBulletOption(withBudget, evmMode = false) {
     : v => `${v}h`;
   return {
     backgroundColor: 'transparent',
-    grid: { top: 16, right: '10%', bottom: 16, left: '2%', containLabel: true },
+    toolbox: _toolbox(),
+    grid: { top: 46, right: '10%', bottom: 16, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'none' },
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
@@ -1686,6 +1707,9 @@ function _buildTrendsOption(trends) {
   const costs    = trends.map(d => +((d.actual_cost ?? 0) * _currencyFactor).toFixed(2));
   return {
     backgroundColor: 'transparent',
+    toolbox: _toolbox({
+      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
+    }),
     legend: {
       data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('ch.actual_cost')],
       top: 8, left: 'center',
@@ -1895,13 +1919,7 @@ async function _openCollabTimelineModal(collaboratorName) {
         return html;
       },
     },
-    toolbox: {feature: {
-      dataView: { show: true, readOnly: false },
-      magicType: { show: true, type: ['stack'] },
-      restore: { show: true },
-      saveAsImage: { show: true }
-      }
-    },
+    toolbox: _toolbox(),
     xAxis: {
       type: 'category',
       data: cycles,
@@ -1990,6 +2008,9 @@ function _buildCpiOption(trends) {
   const cpiSeries = trends.map(d => d.cpi != null ? +d.cpi.toFixed(3) : null);
   return {
     backgroundColor: 'transparent',
+    toolbox: _toolbox({
+      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
+    }),
     tooltip: {
       trigger: 'axis',
       formatter: params => {
