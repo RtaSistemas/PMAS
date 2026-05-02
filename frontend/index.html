@@ -84,6 +84,13 @@
 </header>
 
 <div id="notification"></div>
+<div id="anomalyPanel" hidden style="margin:0 1.5rem .5rem;padding:.75rem 1rem;background:#422006;border:1px solid #92400e;border-radius:.5rem;font-size:.85rem;color:#fcd34d">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+    <strong data-i18n="anomaly.title">⚠ Alertas de Anomalia na Importação</strong>
+    <button onclick="document.getElementById('anomalyPanel').hidden=true" style="background:none;border:none;color:#fcd34d;cursor:pointer;font-size:1.1rem">✕</button>
+  </div>
+  <ul id="anomalyList" style="margin:0;padding-left:1.2rem"></ul>
+</div>
 
 <nav class="app-tabs">
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
@@ -263,7 +270,13 @@
           <button class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
-      <input type="text" id="cycleSearch" class="table-search-input" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem">
+        <input type="text" id="cycleSearch" class="table-search-input" style="flex:1;margin-bottom:0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#94a3b8;white-space:nowrap;cursor:pointer">
+          <input type="checkbox" id="showArchivedCycles" />
+          <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
+        </label>
+      </div>
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>

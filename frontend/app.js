@@ -85,6 +85,9 @@ const _LANG = {
     'ch.cycle_axis':'Ciclo','ch.cost_axis':'Custo Real (R$)',
     'badge.quarantine':'Quarentena','badge.regular':'Regular',
     'title.lock':'Bloquear ciclo','title.unlock':'Desbloquear ciclo',
+    'title.archive':'Arquivar ciclo','title.restore':'Restaurar ciclo',
+    'cycles.show_archived':'Mostrar arquivados',
+    'anomaly.title':'⚠ Alertas de Anomalia na Importação',
     'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
     'stat.total':'Total','stat.collabs':'Colaboradores',
     'stat.budgeted':'Orçado (PEPs c/ budget)','stat.vs_budget':'Realizado vs Orçado',
@@ -188,6 +191,9 @@ const _LANG = {
     'ch.cycle_axis':'Cycle','ch.cost_axis':'Actual Cost (R$)',
     'badge.quarantine':'Quarantine','badge.regular':'Regular',
     'title.lock':'Lock cycle','title.unlock':'Unlock cycle',
+    'title.archive':'Archive cycle','title.restore':'Restore cycle',
+    'cycles.show_archived':'Show archived',
+    'anomaly.title':'⚠ Ingestion Anomaly Alerts',
     'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
     'stat.total':'Total','stat.collabs':'Collaborators',
     'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
@@ -409,6 +415,14 @@ csvInput.addEventListener('change', async () => {
     if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
     if (json.quarantine_cycles_created > 0) msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s).`;
     notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
+    const warnings = json.warnings || [];
+    const panel = document.getElementById('anomalyPanel');
+    if (warnings.length) {
+      document.getElementById('anomalyList').innerHTML = warnings.map(w => `<li>${escHtml(w)}</li>`).join('');
+      panel.hidden = false;
+    } else {
+      panel.hidden = true;
+    }
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -1870,8 +1884,10 @@ let _cycleEditId = null;
 let _allCycles   = [];
 
 async function loadCyclesTable() {
+  const showArchived = document.getElementById('showArchivedCycles')?.checked;
+  const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
   try {
-    _allCycles = await apiFetch('/api/cycles');
+    _allCycles = await apiFetch(url);
     _renderCyclesTable(_allCycles);
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -1884,14 +1900,15 @@ function _renderCyclesTable(cycles) {
   }
   const admin = _isAdmin();
   tbody.innerHTML = cycles.map(c => `
-    <tr>
-      <td>${escHtml(c.name)}</td>
+    <tr style="${!c.is_active ? 'opacity:.5' : ''}">
+      <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
       <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? _t('badge.quarantine') : _t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
+        ${admin ? `<button class="btn btn-sm btn-secondary" onclick="toggleCycleArchive(${c.id}, ${c.is_active})" title="${c.is_active ? _t('title.archive') : _t('title.restore')}">${c.is_active ? '📦' : '↩'}</button>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
@@ -1906,6 +1923,18 @@ async function toggleCycleLock(id, isClosed) {
     loadCyclesTable();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+async function toggleCycleArchive(id, isActive) {
+  const label = isActive ? 'Arquivar' : 'Restaurar';
+  if (!confirm(`${label} este ciclo?`)) return;
+  try {
+    await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
+    loadCyclesTable();
+    loadDashboardCycles();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('showArchivedCycles').addEventListener('change', loadCyclesTable);
 
 function openCycleModal(id = null) {
   _cycleEditId = id;

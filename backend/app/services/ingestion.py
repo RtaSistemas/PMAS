@@ -45,6 +45,7 @@ def ingest_file(
     collab_cache: dict[str, Collaborator] = {}
     cycle_cache: dict[date, Cycle] = {}
     quarantine_cycles_created = 0
+    pep_codes_in_file: set[str] = set()
 
     try:
         for _, row in df.iterrows():
@@ -155,14 +156,17 @@ def ingest_file(
         db.rollback()
         raise
 
+    warnings = _detect_anomalies(df, pep_codes_in_file, db)
+
     log.info(
-        "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, %d ciclos de quarentena.",
-        inserted, skipped, quarantine_cycles_created,
+        "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, %d ciclos de quarentena, %d alertas.",
+        inserted, skipped, quarantine_cycles_created, len(warnings),
     )
     return {
         "records_inserted": inserted,
         "records_skipped": skipped,
         "quarantine_cycles_created": quarantine_cycles_created,
+        "warnings": warnings,
     }
 
 
@@ -173,6 +177,48 @@ def ingest_csv(file_bytes: bytes, db: Session) -> dict:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session) -> list[str]:
+    warnings: list[str] = []
+
+    # Vectorized weekend check (weekday 5=Sat, 6=Sun)
+    dates_parsed = pd.to_datetime(df[_COL_DATE], errors="coerce", dayfirst=True)
+    weekend_mask = dates_parsed.dt.weekday.isin([5, 6])
+    if weekend_mask.any():
+        weekend_collabs = df.loc[weekend_mask, _COL_COLLABORATOR].unique().tolist()
+        warnings.append(
+            f"Registros em fim de semana detectados para: {', '.join(str(c) for c in weekend_collabs[:10])}"
+            + (" e outros." if len(weekend_collabs) > 10 else ".")
+        )
+
+    # Hours > 24 in a single day per collaborator (vectorized groupby)
+    df_work = df.copy()
+    df_work["_date_key"] = dates_parsed.dt.date
+    df_work["_hours"] = pd.to_numeric(df[_COL_HOURS], errors="coerce").fillna(0)
+    daily_totals = df_work.groupby([_COL_COLLABORATOR, "_date_key"])["_hours"].sum()
+    over24 = daily_totals[daily_totals > 24]
+    if not over24.empty:
+        cases = [f"{collab} em {d}" for (collab, d) in over24.index[:10]]
+        warnings.append(
+            f"Horas > 24h/dia detectadas: {'; '.join(cases)}"
+            + (" e outros." if len(over24) > 10 else ".")
+        )
+
+    # PEP codes not registered in Project table
+    if pep_codes_in_file:
+        registered = {
+            p.pep_wbs
+            for p in db.query(Project).filter(Project.pep_wbs.in_(pep_codes_in_file)).all()
+        }
+        unregistered = sorted(pep_codes_in_file - registered)
+        if unregistered:
+            warnings.append(
+                f"Códigos PEP sem cadastro em Projetos: {', '.join(unregistered[:20])}"
+                + (" e outros." if len(unregistered) > 20 else ".")
+            )
+
+    return warnings
+
 
 def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
     if filename.lower().endswith((".xlsx", ".xls")):

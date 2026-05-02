@@ -79,6 +79,7 @@ class CycleOut(BaseModel):
     end_date: DateType
     is_quarantine: bool
     is_closed: bool
+    is_active: bool
     record_count: int
 
 
@@ -244,6 +245,7 @@ class UploadOut(BaseModel):
     records_inserted: int
     records_skipped: int
     quarantine_cycles_created: int
+    warnings: List[str] = []
 
 
 class PepRadarItem(BaseModel):
