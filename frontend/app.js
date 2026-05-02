@@ -237,6 +237,32 @@ function _applyI18n() {
 }
 
 // ---------------------------------------------------------------------------
+// Multi-currency display (UI-only conversion, no backend calls)
+// ---------------------------------------------------------------------------
+let _currencyFactor = 1;
+let _currencySymbol = 'R$';
+
+function _fmtCost(rawValue) {
+  const v = rawValue * _currencyFactor;
+  return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function _applyConversion(factor, symbol) {
+  _currencyFactor = factor > 0 ? factor : 1;
+  _currencySymbol = symbol || 'R$';
+}
+
+function _onCurrencyChange() {
+  const factor = parseFloat(document.getElementById('currencyFactor').value);
+  const symbol = document.getElementById('currencySymbol').value.trim();
+  _applyConversion(factor, symbol);
+  _renderActiveTab();
+}
+
+document.getElementById('currencyFactor').addEventListener('change', _onCurrencyChange);
+document.getElementById('currencySymbol').addEventListener('change', _onCurrencyChange);
+
+// ---------------------------------------------------------------------------
 // Top-level tab navigation
 // ---------------------------------------------------------------------------
 const tabBtns     = document.querySelectorAll('.tab-btn');
@@ -283,7 +309,7 @@ function _disposeTabCharts(tabId) {
 
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
-    _charts[id] = echarts.init(document.getElementById(id), 'dark');
+    _charts[id] = echarts.init(document.getElementById(id), 'dark', { renderer: 'svg' });
   }
   return _charts[id];
 }
@@ -831,7 +857,7 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 
 function _buildForecastKpis(fc) {
   const fmtH = h => `${(+h).toFixed(1)}h`;
-  const fmtR = v => `R$ ${(+v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+  const fmtR = v => _fmtCost(v);
 
   const pct = fc.budget_hours
     ? `${Math.min(fc.consumed_hours / fc.budget_hours * 100, 999).toFixed(1)}%`
@@ -1355,7 +1381,7 @@ function _buildRadarOption(items) {
   const maxC   = Math.max(...items.map(d => d.actual_cost), 1);
   const totalH = items.reduce((s, d) => s + d.total_hours, 0);
   const totalC = items.reduce((s, d) => s + d.actual_cost, 0);
-  const fmtR   = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const fmtR   = v => _fmtCost(v);
   const abbrev = s => s.length > 20 ? s.slice(0, 19) + '…' : s;
   const LINE_H = 17;
   const TOP    = 44;   // abaixo do título
@@ -1502,8 +1528,8 @@ graphic: [
 }
 
 function _buildTreemapOption(health, evmMode = false) {
-  const fmtVal = v => evmMode
-    ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+  const fmtVal = (v, raw = false) => evmMode
+    ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
     : v.toFixed(1) + 'h';
   return {
     backgroundColor: 'transparent',
@@ -1518,10 +1544,10 @@ function _buildTreemapOption(health, evmMode = false) {
         if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
-        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
+        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed, true)}</b>`;
         if (budget != null) {
           const pct = (consumed / budget * 100).toFixed(1);
-          html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
+          html += `<br>${_t('ch.budget')}: ${fmtVal(budget, true)} (${pct}% ${_t('tt.utilized')})`;
         }
         if (!d.is_registered) html += `<br><span style="color:#f59e0b">${_t('tt.pep_not_reg')}</span>`;
         return html;
@@ -1537,9 +1563,9 @@ function _buildTreemapOption(health, evmMode = false) {
         show: true, fontSize: 11, color: '#f1f5f9',
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
-          const val = d ? (evmMode ? d.actual_cost : d.consumed_hours) : 0;
+          const val = d ? (evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours) : 0;
           const valStr = evmMode
-            ? 'R$' + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
+            ? _currencySymbol + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
             : val.toFixed(0) + 'h';
           const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
@@ -1551,8 +1577,8 @@ function _buildTreemapOption(health, evmMode = false) {
         upperLabel: { show: false },
       }],
       data: health.map(d => {
-        const consumed = evmMode ? d.actual_cost : d.consumed_hours;
-        const budget   = evmMode ? d.budget_cost : d.budget_hours;
+        const consumed = evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours;
+        const budget   = evmMode ? (d.budget_cost ?? null) && d.budget_cost * _currencyFactor : d.budget_hours;
         return {
           name: d.pep_wbs,
           value: consumed,
@@ -1574,16 +1600,16 @@ function _buildTreemapOption(health, evmMode = false) {
 
 function _buildBulletOption(withBudget, evmMode = false) {
   const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
-  const budgets = withBudget.map(d => (evmMode ? d.budget_cost : d.budget_hours) || 0);
+  const budgets = withBudget.map(d => (evmMode ? (d.budget_cost || 0) * _currencyFactor : d.budget_hours) || 0);
   const actuals = withBudget.map((d, i) => {
-    const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+    const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
     const color = pct >= 1.0 ? '#f87171' : pct >= 0.75 ? '#f59e0b' : '#3b82f6';
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
-  const unit = evmMode ? 'R$' : 'h';
+  const unit = evmMode ? _currencySymbol : 'h';
   const fmtAx = evmMode
-    ? v => v >= 1000 ? `R$${(v/1000).toFixed(0)}k` : `R$${v.toFixed(0)}`
+    ? v => v >= 1000 ? `${_currencySymbol}${(v/1000).toFixed(0)}k` : `${_currencySymbol}${v.toFixed(0)}`
     : v => `${v}h`;
   return {
     backgroundColor: 'transparent',
@@ -1595,9 +1621,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         const b = budgets[params[0].dataIndex];
         const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
-        const fmtV = v => evmMode
-          ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-          : v.toFixed(1) + 'h';
+        const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
@@ -1659,7 +1683,7 @@ function _buildTrendsOption(trends) {
   const normals  = trends.map(d => +d.normal_hours.toFixed(2));
   const extras   = trends.map(d => +d.extra_hours.toFixed(2));
   const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
-  const costs    = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
+  const costs    = trends.map(d => +((d.actual_cost ?? 0) * _currencyFactor).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
@@ -1677,7 +1701,7 @@ function _buildTrendsOption(trends) {
         let totalHours = 0;
         params.forEach(p => {
           if (p.seriesName === _t('ch.actual_cost')) {
-            html += `${p.marker} ${p.seriesName}: <b>R$ ${p.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b><br>`;
+            html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value / _currencyFactor)}</b><br>`;
           } else {
             html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
             totalHours += p.value;
@@ -1701,9 +1725,9 @@ function _buildTrendsOption(trends) {
         splitLine: { lineStyle: { color: '#334155' } },
       },
       {
-        type: 'value', name: 'R$',
+        type: 'value', name: _currencySymbol,
         nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `R$${(v/1000).toFixed(0)}k` },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${_currencySymbol}${(v/1000).toFixed(0)}k` },
         splitLine: { show: false },
       },
     ],
@@ -1837,7 +1861,7 @@ async function _openCollabTimelineModal(collaboratorName) {
   if (existing && !existing.isDisposed()) existing.dispose();
 
   // 10. Renderiza gráfico
-  const tc = echarts.init(chartEl, 'dark');
+  const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   const cycles = rows.map(r => r.cycle_name);
 
   tc.setOption({

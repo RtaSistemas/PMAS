@@ -78,6 +78,13 @@
       <span data-i18n="btn.import_ts">⬆ Importar</span>
       <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
     </label>
+    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .5rem">
+      <input type="text" id="currencySymbol" value="R$" maxlength="4"
+        style="width:2.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+      <span style="color:#475569;font-size:.85rem">×</span>
+      <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
+        style="width:4rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+    </div>
     <button id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
   </div>
