@@ -1332,9 +1332,11 @@ function _buildEffortOption(data, stacked) {
       {
         name: _t('stat.total'),
         type: 'line',
+        color: '#10b981',       // fixed color → legend icon shows green
+        legendIcon: 'circle',   // avoids dashed-line artifact in legend
         data: totals,
-        symbolSize: p => totals[p] === maxTotal ? 10 : 6,
-        lineStyle: { color: '#10b981', width: 1, type: 'dashed' },
+        symbolSize: val => val === maxTotal ? 10 : 6,
+        lineStyle: { width: 1, type: 'dashed' },
         itemStyle: {
           color: p => p.value === maxTotal ? '#f87171' : '#10b981',
         },
