@@ -9,7 +9,7 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord
 from backend.app.schemas import AllocationItem, BurnHistoryPoint, ForecastOut, PortfolioHealthItem, TrendItem
 
 router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_current_user)])
@@ -137,16 +137,89 @@ def get_trends(
 
     rows = q.group_by(Cycle.id).order_by(Cycle.start_date).all()
 
-    return [
-        {
+    # Weighted CPI: aggregate EV and AC only for PEPs that have budget_hours + budget_cost
+    # and (when pep_wbs filter is set) match the filter.
+    budgeted_projects = (
+        db.query(Project)
+        .filter(Project.budget_hours.isnot(None), Project.budget_cost.isnot(None))
+    )
+    if pep_wbs:
+        budgeted_projects = budgeted_projects.filter(Project.pep_wbs.in_(pep_wbs))
+    budgeted_projects = {p.pep_wbs: p for p in budgeted_projects.all()}
+
+    # Per-cycle consumed hours for budgeted PEPs
+    if budgeted_projects:
+        cpi_q = (
+            db.query(
+                Cycle.id.label("cycle_id"),
+                TimesheetRecord.pep_wbs,
+                func.sum(
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                ).label("consumed_hours"),
+                func.sum(
+                    TimesheetRecord.cost_per_hour * (
+                        TimesheetRecord.normal_hours
+                        + TimesheetRecord.extra_hours * em
+                        + TimesheetRecord.standby_hours * sm
+                    )
+                ).label("actual_cost"),
+            )
+            .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+            .filter(
+                Cycle.is_quarantine == False,  # noqa: E712
+                TimesheetRecord.pep_wbs.in_(list(budgeted_projects.keys())),
+            )
+        )
+        if date_from is not None:
+            cpi_q = cpi_q.filter(TimesheetRecord.record_date >= date_from)
+        if date_to is not None:
+            cpi_q = cpi_q.filter(TimesheetRecord.record_date <= date_to)
+        cpi_rows = cpi_q.group_by(Cycle.id, TimesheetRecord.pep_wbs).all()
+
+        # Build cumulative consumed_hours per (cycle_id, pep_wbs) for EV calculation
+        from collections import defaultdict
+        cycle_pep_consumed: dict[tuple, float] = defaultdict(float)
+        cycle_pep_ac: dict[tuple, float] = defaultdict(float)
+        for cr in cpi_rows:
+            cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.consumed_hours or 0.0
+            cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)] += cr.actual_cost or 0.0
+
+        # Map cycle name → cycle id
+        cycle_id_map = {r.cycle_name: None for r in rows}
+        for c in db.query(Cycle).filter(Cycle.name.in_(list(cycle_id_map.keys()))).all():
+            cycle_id_map[c.name] = c.id
+    else:
+        cycle_id_map = {}
+        cycle_pep_consumed = {}
+        cycle_pep_ac = {}
+
+    result = []
+    for r in rows:
+        cpi = None
+        if budgeted_projects and cycle_id_map.get(r.cycle_name):
+            cid = cycle_id_map[r.cycle_name]
+            total_ev = 0.0
+            total_ac = 0.0
+            for pep_code, proj in budgeted_projects.items():
+                consumed = cycle_pep_consumed.get((cid, pep_code), 0.0)
+                ac = cycle_pep_ac.get((cid, pep_code), 0.0)
+                if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost:
+                    ev = (consumed / proj.budget_hours) * proj.budget_cost
+                    total_ev += ev
+                    total_ac += ac
+            if total_ac > 0:
+                cpi = round(total_ev / total_ac, 3)
+        result.append({
             "cycle_name": r.cycle_name,
             "normal_hours": r.normal_hours or 0.0,
             "extra_hours": r.extra_hours or 0.0,
             "standby_hours": r.standby_hours or 0.0,
             "actual_cost": r.actual_cost or 0.0,
-        }
-        for r in rows
-    ]
+            "cpi": cpi,
+        })
+    return result
 
 
 @router.get("/allocation", summary="Matriz horas/custo por colaborador × PEP", response_model=list[AllocationItem])
@@ -263,12 +336,28 @@ def get_forecast(
     if not rows:
         raise HTTPException(status_code=404, detail="Nenhum dado encontrado para este PEP.")
 
+    # Load planned hours per cycle for this project (keyed by cycle start_date for alignment)
+    plan_by_cycle_start: dict = {}
+    if project:
+        plan_rows = (
+            db.query(ProjectCyclePlan, Cycle.start_date)
+            .join(Cycle, ProjectCyclePlan.cycle_id == Cycle.id)
+            .filter(ProjectCyclePlan.project_id == project.id)
+            .all()
+        )
+        plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
+
     history = []
     cum_h = 0.0
     cum_c = 0.0
+    cum_ph = 0.0
+    has_plan = bool(plan_by_cycle_start)
     for r in rows:
         cum_h += r.period_hours or 0.0
         cum_c += r.period_cost or 0.0
+        ph = plan_by_cycle_start.get(r.cycle_start)
+        if ph is not None:
+            cum_ph += ph
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -276,6 +365,8 @@ def get_forecast(
             "period_cost": round(r.period_cost or 0.0, 2),
             "cumulative_hours": round(cum_h, 2),
             "cumulative_cost": round(cum_c, 2),
+            "planned_hours": round(ph, 2) if ph is not None else None,
+            "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
         })
 
     consumed_hours = cum_h

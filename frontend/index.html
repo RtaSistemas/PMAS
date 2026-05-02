@@ -210,6 +210,12 @@
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
       </div>
+      <div class="card chart-panel" id="cpiChartCard" hidden>
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
+        </div>
+        <div id="cpiChart" style="width:100%;height:260px"></div>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -249,6 +255,22 @@
         </div>
         <div id="forecastKpis" class="stats-row" style="margin:.75rem 0" hidden></div>
         <div id="forecastChart" style="width:100%;height:420px"></div>
+      </div>
+
+      <div class="card" id="planCard" hidden>
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas/Ciclo)</h2>
+          <button class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+        </div>
+        <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem" data-i18n="plan.hint">Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.</p>
+        <table class="data-table" id="planTable">
+          <thead><tr>
+            <th data-i18n="plan.th.cycle">Ciclo</th>
+            <th style="text-align:right" data-i18n="plan.th.hours">Horas Planejadas</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="planBody"></tbody>
+        </table>
       </div>
     </div>
 

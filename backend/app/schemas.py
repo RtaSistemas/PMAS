@@ -105,6 +105,19 @@ class PepOut(BaseModel):
     total_records: int
 
 
+class ProjectCyclePlanIn(BaseModel):
+    cycle_id: int
+    planned_hours: float = Field(ge=0)
+
+
+class ProjectCyclePlanOut(BaseModel):
+    id: int
+    project_id: int
+    cycle_id: int
+    cycle_name: str
+    planned_hours: float
+
+
 class SeniorityLevelOut(BaseModel):
     id: int
     name: str
@@ -205,6 +218,7 @@ class TrendItem(BaseModel):
     extra_hours: float
     standby_hours: float
     actual_cost: float
+    cpi: float | None = None
 
 
 class AllocationItem(BaseModel):
@@ -222,6 +236,8 @@ class BurnHistoryPoint(BaseModel):
     period_cost: float
     cumulative_hours: float
     cumulative_cost: float
+    planned_hours: float | None = None
+    cumulative_planned_hours: float | None = None
 
 
 class ForecastOut(BaseModel):
