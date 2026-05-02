@@ -14,7 +14,7 @@ from backend.app.database import DbSession, init_db
 from backend.app.deps import CurrentUser
 from backend.app.schemas import UploadOut
 from backend.app.audit import log_audit
-from backend.app.routers import analytics, auditlog, auth, cycles, dashboard, projects, ratecard, reference, users
+from backend.app.routers import analytics, auditlog, auth, cycles, dashboard, plans, projects, ratecard, reference, users
 from backend.app.services.ingestion import ClosedCycleError, LockedProjectError, ingest_file
 
 log = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ app.include_router(users.router)
 app.include_router(auditlog.router)
 app.include_router(cycles.router)
 app.include_router(projects.router)
+app.include_router(plans.router)
 app.include_router(dashboard.router)
 app.include_router(reference.router)
 app.include_router(analytics.router)

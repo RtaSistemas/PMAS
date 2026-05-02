@@ -21,6 +21,7 @@ const _LANG = {
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
     'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
+    'forecast.pv_line':'VP (Valor Planejado)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
@@ -85,6 +86,9 @@ const _LANG = {
     'ch.cycle_axis':'Ciclo','ch.cost_axis':'Custo Real (R$)',
     'badge.quarantine':'Quarentena','badge.regular':'Regular',
     'title.lock':'Bloquear ciclo','title.unlock':'Desbloquear ciclo',
+    'title.archive':'Arquivar ciclo','title.restore':'Restaurar ciclo',
+    'cycles.show_archived':'Mostrar arquivados',
+    'anomaly.title':'⚠ Alertas de Anomalia na Importação',
     'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
     'stat.total':'Total','stat.collabs':'Colaboradores',
     'stat.budgeted':'Orçado (PEPs c/ budget)','stat.vs_budget':'Realizado vs Orçado',
@@ -106,6 +110,11 @@ const _LANG = {
     'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
     'auditlog.th.entity':'Entidade','auditlog.th.id':'ID','auditlog.th.detail':'Detalhe',
     'no_audit':'Nenhum evento registrado.',
+    'cpi.title':'IDP — Índice de Desempenho de Custo por Ciclo',
+    'plan.title':'Baseline de Planejamento (Horas/Ciclo)',
+    'plan.btn_add':'+ Adicionar ciclo','plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
+    'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
+    'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -124,6 +133,7 @@ const _LANG = {
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
     'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
+    'forecast.pv_line':'PV (Planned Value)',
     'forecast.no_budget':'No budget registered for this PEP.',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
@@ -188,6 +198,9 @@ const _LANG = {
     'ch.cycle_axis':'Cycle','ch.cost_axis':'Actual Cost (R$)',
     'badge.quarantine':'Quarantine','badge.regular':'Regular',
     'title.lock':'Lock cycle','title.unlock':'Unlock cycle',
+    'title.archive':'Archive cycle','title.restore':'Restore cycle',
+    'cycles.show_archived':'Show archived',
+    'anomaly.title':'⚠ Ingestion Anomaly Alerts',
     'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
     'stat.total':'Total','stat.collabs':'Collaborators',
     'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
@@ -209,6 +222,11 @@ const _LANG = {
     'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
     'auditlog.th.entity':'Entity','auditlog.th.id':'ID','auditlog.th.detail':'Detail',
     'no_audit':'No events recorded.',
+    'cpi.title':'CPI — Cost Performance Index per Cycle',
+    'plan.title':'Planning Baseline (Hours/Cycle)',
+    'plan.btn_add':'+ Add cycle','plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
+    'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
+    'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -217,6 +235,32 @@ function _applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = _t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = _t(el.dataset.i18nPh); });
 }
+
+// ---------------------------------------------------------------------------
+// Multi-currency display (UI-only conversion, no backend calls)
+// ---------------------------------------------------------------------------
+let _currencyFactor = 1;
+let _currencySymbol = 'R$';
+
+function _fmtCost(rawValue) {
+  const v = rawValue * _currencyFactor;
+  return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function _applyConversion(factor, symbol) {
+  _currencyFactor = factor > 0 ? factor : 1;
+  _currencySymbol = symbol || 'R$';
+}
+
+function _onCurrencyChange() {
+  const factor = parseFloat(document.getElementById('currencyFactor').value);
+  const symbol = document.getElementById('currencySymbol').value.trim();
+  _applyConversion(factor, symbol);
+  _renderActiveTab();
+}
+
+document.getElementById('currencyFactor').addEventListener('change', _onCurrencyChange);
+document.getElementById('currencySymbol').addEventListener('change', _onCurrencyChange);
 
 // ---------------------------------------------------------------------------
 // Top-level tab navigation
@@ -249,7 +293,7 @@ const _charts = {};
 const CHARTS_PER_TAB = {
   effort:     ['effortChart', 'budgetChart', 'radarChart'],
   portfolio:  ['treemapChart', 'bulletChart'],
-  trends:     ['trendsChart'],
+  trends:     ['trendsChart', 'cpiChart'],
   allocation: [],
   forecast:   ['forecastChart'],
 };
@@ -265,7 +309,7 @@ function _disposeTabCharts(tabId) {
 
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
-    _charts[id] = echarts.init(document.getElementById(id), 'dark');
+    _charts[id] = echarts.init(document.getElementById(id), 'dark', { renderer: 'svg' });
   }
   return _charts[id];
 }
@@ -409,6 +453,14 @@ csvInput.addEventListener('change', async () => {
     if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
     if (json.quarantine_cycles_created > 0) msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s).`;
     notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
+    const warnings = json.warnings || [];
+    const panel = document.getElementById('anomalyPanel');
+    if (warnings.length) {
+      document.getElementById('anomalyList').innerHTML = warnings.map(w => `<li>${escHtml(w)}</li>`).join('');
+      panel.hidden = false;
+    } else {
+      panel.hidden = true;
+    }
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -656,6 +708,19 @@ async function _renderTrendsTab() {
     const tc = _getOrCreateChart('trendsChart');
     tc.setOption(_buildTrendsOption(trends), true);
     tc.resize();
+
+    // CPI chart — only if at least one cycle has a cpi value
+    const cpiData = trends.filter(t => t.cpi != null);
+    const cpiCard = document.getElementById('cpiChartCard');
+    if (cpiData.length) {
+      cpiCard.hidden = false;
+      const cpiChart = _getOrCreateChart('cpiChart');
+      cpiChart.setOption(_buildCpiOption(trends), true);
+      cpiChart.resize();
+    } else {
+      cpiCard.hidden = true;
+      if (_charts['cpiChart']) { _charts['cpiChart'].dispose(); delete _charts['cpiChart']; }
+    }
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
@@ -792,7 +857,7 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 
 function _buildForecastKpis(fc) {
   const fmtH = h => `${(+h).toFixed(1)}h`;
-  const fmtR = v => `R$ ${(+v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+  const fmtR = v => _fmtCost(v);
 
   const pct = fc.budget_hours
     ? `${Math.min(fc.consumed_hours / fc.budget_hours * 100, 999).toFixed(1)}%`
@@ -854,6 +919,12 @@ function _buildForecastOption(fc) {
   // Budget flat line
   const budgetData = budget ? allCats.map(() => budget) : null;
 
+  // Planned Value (PV) curve — only if history contains cumulative_planned_hours
+  const hasPV = history.some(h => h.cumulative_planned_hours != null);
+  const pvData = hasPV
+    ? [...history.map(h => h.cumulative_planned_hours ?? null), ...Array(projCount).fill(null)]
+    : null;
+
   const series = [
     {
       name: _t('forecast.realized'),
@@ -875,6 +946,17 @@ function _buildForecastOption(fc) {
       connectNulls: false,
     },
   ];
+  if (pvData) {
+    series.push({
+      name: _t('forecast.pv_line'),
+      type: 'line', yAxisIndex: 0,
+      data: pvData,
+      symbol: 'none',
+      lineStyle: { color: '#a78bfa', width: 2, type: 'dotted' },
+      itemStyle: { color: '#a78bfa' },
+      connectNulls: true,
+    });
+  }
   if (budgetData) {
     series.push({
       name: _t('forecast.budget_line'),
@@ -886,9 +968,9 @@ function _buildForecastOption(fc) {
     });
   }
 
-  const legendData = budgetData
-    ? [_t('forecast.realized'), _t('forecast.projection'), _t('forecast.budget_line')]
-    : [_t('forecast.realized'), _t('forecast.projection')];
+  const legendData = [_t('forecast.realized'), _t('forecast.projection')];
+  if (pvData) legendData.push(_t('forecast.pv_line'));
+  if (budgetData) legendData.push(_t('forecast.budget_line'));
 
   return {
     backgroundColor: 'transparent',
@@ -954,13 +1036,84 @@ async function _renderForecastTab() {
     const chart = _getOrCreateChart('forecastChart');
     chart.setOption(_buildForecastOption(fc), true);
     chart.resize();
+    _currentForecastPep = pep;
+    await _renderPlanTable(pep);
+    document.getElementById('planCard').hidden = false;
   } catch (err) {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
+    document.getElementById('planCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Plan management (ProjectCyclePlan)
+// ---------------------------------------------------------------------------
+let _currentForecastPep = null;
+let _planProjectId = null;
+
+async function _renderPlanTable(pep_wbs) {
+  // Resolve project_id from pep_wbs
+  try {
+    const projects = await apiFetch('/api/projects');
+    const proj = projects.find(p => p.pep_wbs === pep_wbs);
+    _planProjectId = proj ? proj.id : null;
+  } catch { _planProjectId = null; }
+
+  const tbody = document.getElementById('planBody');
+  if (!_planProjectId) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} (PEP não cadastrado)</td></tr>`;
+    return;
+  }
+  try {
+    const plans = await apiFetch(`/api/projects/${_planProjectId}/plans`);
+    if (!plans.length) {
+      tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = plans.map(pl => `
+      <tr>
+        <td>${escHtml(pl.cycle_name)}</td>
+        <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button></td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function deletePlan(cycle_id) {
+  if (!_planProjectId) return;
+  if (!confirm('Remover esta linha do baseline?')) return;
+  try {
+    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
+    await _renderPlanTable(_currentForecastPep);
+    _renderForecastTab();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
+  if (!_planProjectId) return;
+  // Build a select of all available active cycles not yet planned
+  try {
+    const [allCycles, existingPlans] = await Promise.all([
+      apiFetch('/api/cycles?include_archived=false'),
+      apiFetch(`/api/projects/${_planProjectId}/plans`),
+    ]);
+    const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
+    const available = allCycles.filter(c => !plannedCycleIds.has(c.id) && !c.is_quarantine);
+    if (!available.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
+    const cycleId = parseInt(prompt(
+      'ID do ciclo:\n' + available.map(c => `${c.id} — ${c.name}`).join('\n')
+    ));
+    if (!cycleId || isNaN(cycleId)) return;
+    const hours = parseFloat(prompt('Horas planejadas para este ciclo:'));
+    if (isNaN(hours) || hours < 0) return;
+    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycleId}`, 'PUT', { cycle_id: cycleId, planned_hours: hours });
+    await _renderPlanTable(_currentForecastPep);
+    _renderForecastTab();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
 
 // ---------------------------------------------------------------------------
 // Chart option builders
@@ -1228,7 +1381,7 @@ function _buildRadarOption(items) {
   const maxC   = Math.max(...items.map(d => d.actual_cost), 1);
   const totalH = items.reduce((s, d) => s + d.total_hours, 0);
   const totalC = items.reduce((s, d) => s + d.actual_cost, 0);
-  const fmtR   = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const fmtR   = v => _fmtCost(v);
   const abbrev = s => s.length > 20 ? s.slice(0, 19) + '…' : s;
   const LINE_H = 17;
   const TOP    = 44;   // abaixo do título
@@ -1375,8 +1528,8 @@ graphic: [
 }
 
 function _buildTreemapOption(health, evmMode = false) {
-  const fmtVal = v => evmMode
-    ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+  const fmtVal = (v, raw = false) => evmMode
+    ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
     : v.toFixed(1) + 'h';
   return {
     backgroundColor: 'transparent',
@@ -1391,10 +1544,10 @@ function _buildTreemapOption(health, evmMode = false) {
         if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
-        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
+        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed, true)}</b>`;
         if (budget != null) {
           const pct = (consumed / budget * 100).toFixed(1);
-          html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
+          html += `<br>${_t('ch.budget')}: ${fmtVal(budget, true)} (${pct}% ${_t('tt.utilized')})`;
         }
         if (!d.is_registered) html += `<br><span style="color:#f59e0b">${_t('tt.pep_not_reg')}</span>`;
         return html;
@@ -1410,9 +1563,9 @@ function _buildTreemapOption(health, evmMode = false) {
         show: true, fontSize: 11, color: '#f1f5f9',
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
-          const val = d ? (evmMode ? d.actual_cost : d.consumed_hours) : 0;
+          const val = d ? (evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours) : 0;
           const valStr = evmMode
-            ? 'R$' + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
+            ? _currencySymbol + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
             : val.toFixed(0) + 'h';
           const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
@@ -1424,8 +1577,8 @@ function _buildTreemapOption(health, evmMode = false) {
         upperLabel: { show: false },
       }],
       data: health.map(d => {
-        const consumed = evmMode ? d.actual_cost : d.consumed_hours;
-        const budget   = evmMode ? d.budget_cost : d.budget_hours;
+        const consumed = evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours;
+        const budget   = evmMode ? (d.budget_cost ?? null) && d.budget_cost * _currencyFactor : d.budget_hours;
         return {
           name: d.pep_wbs,
           value: consumed,
@@ -1447,16 +1600,16 @@ function _buildTreemapOption(health, evmMode = false) {
 
 function _buildBulletOption(withBudget, evmMode = false) {
   const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
-  const budgets = withBudget.map(d => (evmMode ? d.budget_cost : d.budget_hours) || 0);
+  const budgets = withBudget.map(d => (evmMode ? (d.budget_cost || 0) * _currencyFactor : d.budget_hours) || 0);
   const actuals = withBudget.map((d, i) => {
-    const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+    const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
     const color = pct >= 1.0 ? '#f87171' : pct >= 0.75 ? '#f59e0b' : '#3b82f6';
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
-  const unit = evmMode ? 'R$' : 'h';
+  const unit = evmMode ? _currencySymbol : 'h';
   const fmtAx = evmMode
-    ? v => v >= 1000 ? `R$${(v/1000).toFixed(0)}k` : `R$${v.toFixed(0)}`
+    ? v => v >= 1000 ? `${_currencySymbol}${(v/1000).toFixed(0)}k` : `${_currencySymbol}${v.toFixed(0)}`
     : v => `${v}h`;
   return {
     backgroundColor: 'transparent',
@@ -1468,9 +1621,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         const b = budgets[params[0].dataIndex];
         const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
-        const fmtV = v => evmMode
-          ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-          : v.toFixed(1) + 'h';
+        const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
@@ -1532,7 +1683,7 @@ function _buildTrendsOption(trends) {
   const normals  = trends.map(d => +d.normal_hours.toFixed(2));
   const extras   = trends.map(d => +d.extra_hours.toFixed(2));
   const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
-  const costs    = trends.map(d => +(d.actual_cost ?? 0).toFixed(2));
+  const costs    = trends.map(d => +((d.actual_cost ?? 0) * _currencyFactor).toFixed(2));
   return {
     backgroundColor: 'transparent',
     legend: {
@@ -1550,7 +1701,7 @@ function _buildTrendsOption(trends) {
         let totalHours = 0;
         params.forEach(p => {
           if (p.seriesName === _t('ch.actual_cost')) {
-            html += `${p.marker} ${p.seriesName}: <b>R$ ${p.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b><br>`;
+            html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value / _currencyFactor)}</b><br>`;
           } else {
             html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
             totalHours += p.value;
@@ -1574,9 +1725,9 @@ function _buildTrendsOption(trends) {
         splitLine: { lineStyle: { color: '#334155' } },
       },
       {
-        type: 'value', name: 'R$',
+        type: 'value', name: _currencySymbol,
         nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `R$${(v/1000).toFixed(0)}k` },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${_currencySymbol}${(v/1000).toFixed(0)}k` },
         splitLine: { show: false },
       },
     ],
@@ -1710,7 +1861,7 @@ async function _openCollabTimelineModal(collaboratorName) {
   if (existing && !existing.isDisposed()) existing.dispose();
 
   // 10. Renderiza gráfico
-  const tc = echarts.init(chartEl, 'dark');
+  const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   const cycles = rows.map(r => r.cycle_name);
 
   tc.setOption({
@@ -1831,6 +1982,55 @@ async function _openCollabTimelineModal(collaboratorName) {
 }
 
 // ---------------------------------------------------------------------------
+// CPI trend chart
+// ---------------------------------------------------------------------------
+function _buildCpiOption(trends) {
+  const cats = trends.map(d => d.cycle_name);
+  // connectNulls: true bridges cycles with no CPI value
+  const cpiSeries = trends.map(d => d.cpi != null ? +d.cpi.toFixed(3) : null);
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      formatter: params => {
+        const p = params[0];
+        if (p.value == null) return `${p.name}<br/>IDP: —`;
+        const color = p.value >= 1 ? '#4ade80' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
+        return `${p.name}<br/>IDP: <b style="color:${color}">${p.value.toFixed(3)}</b>`;
+      },
+    },
+    grid: { left: 60, right: 20, top: 20, bottom: 50 },
+    xAxis: { type: 'category', data: cats, axisLabel: { color: '#94a3b8', fontSize: 10, rotate: 30 } },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#94a3b8', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
+    series: [{
+      type: 'line',
+      data: cpiSeries,
+      connectNulls: true,
+      smooth: false,
+      lineStyle: { color: '#60a5fa', width: 2 },
+      itemStyle: {
+        color: params => {
+          const v = params.value;
+          if (v == null) return '#60a5fa';
+          return v >= 1 ? '#4ade80' : v >= 0.9 ? '#fbbf24' : '#f87171';
+        },
+      },
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: '#94a3b8', type: 'dashed', width: 1 },
+        label: { formatter: 'IDP = 1.0', color: '#94a3b8', fontSize: 10 },
+        data: [{ yAxis: 1.0 }],
+      },
+    }],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Stats row (effort tab)
 // ---------------------------------------------------------------------------
 function _buildStatsRow(data, budgetData = []) {
@@ -1870,8 +2070,10 @@ let _cycleEditId = null;
 let _allCycles   = [];
 
 async function loadCyclesTable() {
+  const showArchived = document.getElementById('showArchivedCycles')?.checked;
+  const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
   try {
-    _allCycles = await apiFetch('/api/cycles');
+    _allCycles = await apiFetch(url);
     _renderCyclesTable(_allCycles);
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -1884,14 +2086,15 @@ function _renderCyclesTable(cycles) {
   }
   const admin = _isAdmin();
   tbody.innerHTML = cycles.map(c => `
-    <tr>
-      <td>${escHtml(c.name)}</td>
+    <tr style="${!c.is_active ? 'opacity:.5' : ''}">
+      <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
       <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? _t('badge.quarantine') : _t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
+        ${admin ? `<button class="btn btn-sm btn-secondary" onclick="toggleCycleArchive(${c.id}, ${c.is_active})" title="${c.is_active ? _t('title.archive') : _t('title.restore')}">${c.is_active ? '📦' : '↩'}</button>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
@@ -1906,6 +2109,18 @@ async function toggleCycleLock(id, isClosed) {
     loadCyclesTable();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+async function toggleCycleArchive(id, isActive) {
+  const label = isActive ? 'Arquivar' : 'Restaurar';
+  if (!confirm(`${label} este ciclo?`)) return;
+  try {
+    await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
+    loadCyclesTable();
+    loadDashboardCycles();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('showArchivedCycles').addEventListener('change', loadCyclesTable);
 
 function openCycleModal(id = null) {
   _cycleEditId = id;

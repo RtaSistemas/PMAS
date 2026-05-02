@@ -78,12 +78,26 @@
       <span data-i18n="btn.import_ts">⬆ Importar</span>
       <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
     </label>
+    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .5rem">
+      <input type="text" id="currencySymbol" value="R$" maxlength="4"
+        style="width:2.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+      <span style="color:#475569;font-size:.85rem">×</span>
+      <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
+        style="width:4rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+    </div>
     <button id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
   </div>
 </header>
 
 <div id="notification"></div>
+<div id="anomalyPanel" hidden style="margin:0 1.5rem .5rem;padding:.75rem 1rem;background:#422006;border:1px solid #92400e;border-radius:.5rem;font-size:.85rem;color:#fcd34d">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+    <strong data-i18n="anomaly.title">⚠ Alertas de Anomalia na Importação</strong>
+    <button onclick="document.getElementById('anomalyPanel').hidden=true" style="background:none;border:none;color:#fcd34d;cursor:pointer;font-size:1.1rem">✕</button>
+  </div>
+  <ul id="anomalyList" style="margin:0;padding-left:1.2rem"></ul>
+</div>
 
 <nav class="app-tabs">
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
@@ -203,6 +217,12 @@
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
       </div>
+      <div class="card chart-panel" id="cpiChartCard" hidden>
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
+        </div>
+        <div id="cpiChart" style="width:100%;height:260px"></div>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -243,6 +263,22 @@
         <div id="forecastKpis" class="stats-row" style="margin:.75rem 0" hidden></div>
         <div id="forecastChart" style="width:100%;height:420px"></div>
       </div>
+
+      <div class="card" id="planCard" hidden>
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas/Ciclo)</h2>
+          <button class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+        </div>
+        <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem" data-i18n="plan.hint">Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.</p>
+        <table class="data-table" id="planTable">
+          <thead><tr>
+            <th data-i18n="plan.th.cycle">Ciclo</th>
+            <th style="text-align:right" data-i18n="plan.th.hours">Horas Planejadas</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="planBody"></tbody>
+        </table>
+      </div>
     </div>
 
   </section>
@@ -263,7 +299,13 @@
           <button class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
-      <input type="text" id="cycleSearch" class="table-search-input" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem">
+        <input type="text" id="cycleSearch" class="table-search-input" style="flex:1;margin-bottom:0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#94a3b8;white-space:nowrap;cursor:pointer">
+          <input type="checkbox" id="showArchivedCycles" />
+          <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
+        </label>
+      </div>
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>

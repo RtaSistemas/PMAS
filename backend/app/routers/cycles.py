@@ -50,13 +50,17 @@ def _cycle_to_dict(c: Cycle, record_count: int = 0) -> dict:
         "end_date": c.end_date,
         "is_quarantine": c.is_quarantine,
         "is_closed": c.is_closed,
+        "is_active": c.is_active,
         "record_count": record_count,
     }
 
 
 @router.get("", summary="Listar ciclos", response_model=list[CycleOut])
-def list_cycles(db: DbSession):
-    cycles = db.query(Cycle).order_by(Cycle.start_date).all()
+def list_cycles(db: DbSession, include_archived: bool = False):
+    q = db.query(Cycle)
+    if not include_archived:
+        q = q.filter(Cycle.is_active == True)  # noqa: E712
+    cycles = q.order_by(Cycle.start_date).all()
     counts = _cycle_record_counts(db)
     return [_cycle_to_dict(c, counts.get(c.id, 0)) for c in cycles]
 
@@ -105,6 +109,19 @@ def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
     cycle.is_closed = not cycle.is_closed
     log_audit(db, _admin, "toggle_status", "cycle", cycle_id, {"is_closed": cycle.is_closed})
+    db.commit()
+    db.refresh(cycle)
+    counts = _cycle_record_counts(db)
+    return _cycle_to_dict(cycle, counts.get(cycle.id, 0))
+
+
+@router.patch("/{cycle_id}/toggle-archive", summary="Arquivar/restaurar ciclo", response_model=CycleOut)
+def toggle_cycle_archive(cycle_id: int, db: DbSession, _admin: AdminUser):
+    cycle = db.get(Cycle, cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
+    cycle.is_active = not cycle.is_active
+    log_audit(db, _admin, "toggle_archive", "cycle", cycle_id, {"is_active": cycle.is_active})
     db.commit()
     db.refresh(cycle)
     counts = _cycle_record_counts(db)

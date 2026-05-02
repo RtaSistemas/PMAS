@@ -58,6 +58,7 @@ class Cycle(Base):
     end_date = Column(Date, nullable=False)
     is_quarantine = Column(Boolean, default=False, nullable=False)
     is_closed = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
 
     records = relationship("TimesheetRecord", back_populates="cycle")
 
@@ -99,6 +100,24 @@ class Project(Base):
     budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)
+
+    plans = relationship("ProjectCyclePlan", back_populates="project", cascade="all, delete-orphan")
+
+
+class ProjectCyclePlan(Base):
+    __tablename__ = "project_cycle_plan"
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False)
+    cycle_id = Column(Integer, ForeignKey("cycle.id", ondelete="CASCADE"), nullable=False)
+    planned_hours = Column(Float, nullable=False)
+
+    project = relationship("Project", back_populates="plans")
+    cycle = relationship("Cycle")
+
+    __table_args__ = (
+        Index("ix_project_cycle_plan_unique", "project_id", "cycle_id", unique=True),
+    )
 
 
 class User(Base):

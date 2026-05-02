@@ -122,5 +122,9 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE cycle ADD COLUMN is_closed BOOLEAN NOT NULL DEFAULT 0"
                 ))
+            if "is_active" not in cy_cols:
+                conn.execute(text(
+                    "ALTER TABLE cycle ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
+                ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)

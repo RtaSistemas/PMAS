@@ -79,6 +79,7 @@ class CycleOut(BaseModel):
     end_date: DateType
     is_quarantine: bool
     is_closed: bool
+    is_active: bool
     record_count: int
 
 
@@ -102,6 +103,19 @@ class PepOut(BaseModel):
     code: str
     descriptions: List[str]
     total_records: int
+
+
+class ProjectCyclePlanIn(BaseModel):
+    cycle_id: int
+    planned_hours: float = Field(ge=0)
+
+
+class ProjectCyclePlanOut(BaseModel):
+    id: int
+    project_id: int
+    cycle_id: int
+    cycle_name: str
+    planned_hours: float
 
 
 class SeniorityLevelOut(BaseModel):
@@ -204,6 +218,7 @@ class TrendItem(BaseModel):
     extra_hours: float
     standby_hours: float
     actual_cost: float
+    cpi: float | None = None
 
 
 class AllocationItem(BaseModel):
@@ -221,6 +236,8 @@ class BurnHistoryPoint(BaseModel):
     period_cost: float
     cumulative_hours: float
     cumulative_cost: float
+    planned_hours: float | None = None
+    cumulative_planned_hours: float | None = None
 
 
 class ForecastOut(BaseModel):
@@ -244,6 +261,7 @@ class UploadOut(BaseModel):
     records_inserted: int
     records_skipped: int
     quarantine_cycles_created: int
+    warnings: List[str] = []
 
 
 class PepRadarItem(BaseModel):
