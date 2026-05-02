@@ -1,0 +1,230 @@
+Colaborador,Data,Horas totais (decimal),Hora extra,Hora sobreaviso,Código PEP,PEP
+Ana Lima,08/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,07/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,09/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,10/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,08/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,09/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,07/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,10/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,07/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,08/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,09/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,10/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,07/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,08/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,09/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,10/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,14/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,16/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,15/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,17/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,18/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,14/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,16/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,17/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,15/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,18/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,14/04/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,15/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,16/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,17/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,18/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,14/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,15/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,16/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,17/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,18/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,23/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,22/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,24/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,25/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,23/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,24/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,22/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,25/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,22/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,23/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,24/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,25/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,22/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,23/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,24/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,25/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,28/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,30/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,29/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Bruno Costa,28/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,30/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,29/04/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,28/04/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,29/04/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,30/04/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,28/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,29/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,30/04/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,05/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,07/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,06/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,08/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,09/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,05/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,07/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,08/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,06/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,09/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,05/05/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,06/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,07/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,08/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,09/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,05/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,06/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,07/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,08/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,09/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,12/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,14/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,13/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,15/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,16/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,12/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,14/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,15/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,13/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,16/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,12/05/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,13/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,14/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,15/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,16/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,12/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,13/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,14/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,15/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,16/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,19/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,21/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,20/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,22/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,23/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,19/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,21/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,22/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,20/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,23/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,19/05/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,20/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,21/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,22/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,23/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,19/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,20/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,21/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,22/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,23/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,26/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,28/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,27/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,29/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,30/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,26/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,28/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,29/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,27/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,30/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,26/05/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,27/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,28/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,29/05/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,30/05/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,26/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,27/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,28/05/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,29/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,30/05/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,02/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,04/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,03/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,05/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,06/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,02/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,04/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,05/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,03/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,06/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,02/06/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,03/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,04/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,05/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,06/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,02/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,03/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,04/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,05/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,06/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,09/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,11/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,10/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,12/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,13/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,09/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,11/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,12/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,10/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,13/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,09/06/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,10/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,11/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,12/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,13/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,09/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,10/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,11/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,12/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,13/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,16/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,18/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,17/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,19/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,20/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,16/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,18/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,19/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,17/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,20/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,16/06/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,17/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,18/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,19/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,20/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,16/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,17/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,18/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,19/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,20/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,23/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,25/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Ana Lima,24/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Ana Lima,26/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,27/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,23/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,25/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,26/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,24/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Bruno Costa,27/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Carla Dias,23/06/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Carla Dias,24/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,25/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,26/06/2025,8.0,Não,Não,P-INF-002,Modernização de Infraestrutura
+Carla Dias,27/06/2025,9.0,Sim,Não,P-INF-002,Modernização de Infraestrutura
+Diego Santos,23/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,24/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,25/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Diego Santos,26/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Diego Santos,27/06/2025,8.0,Não,Não,P-BI-004,Inteligência de Negócio
+Ana Lima,30/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,30/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Carla Dias,30/06/2025,8.0,Não,Não,P-RH-003,Portal do Colaborador
+Diego Santos,30/06/2025,8.0,Não,Não,P-CRM-001,Sistema de Gestão de Clientes
+Bruno Costa,20/04/2025,6.0,Sim,Não,P-CRM-001,Sistema de Gestão de Clientes
