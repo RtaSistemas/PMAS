@@ -320,6 +320,16 @@ const _ro = new ResizeObserver(() => {
 });
 _ro.observe(document.querySelector('main'));
 
+// Print hooks — hide toolbox icons before printing (SVG renderer embeds them
+// as <path> elements inside <svg>, so @media print CSS cannot target them).
+// Restore immediately after the print dialog closes.
+window.addEventListener('beforeprint', () => {
+  Object.values(_charts).forEach(c => { try { if (!c.isDisposed()) c.setOption({ toolbox: { show: false } }); } catch (_) {} });
+});
+window.addEventListener('afterprint', () => {
+  Object.values(_charts).forEach(c => { try { if (!c.isDisposed()) c.setOption({ toolbox: { show: true  } }); } catch (_) {} });
+});
+
 // Sub-tab state
 let _activeATab = 'effort';
 let _stackMode  = true;   // true = stacked, false = grouped
@@ -1139,8 +1149,6 @@ function _toolbox(extra = {}) {
   return {
     right: 10,
     top: 10,
-    iconStyle: { color: '#7ba0c0' },          // --text-2
-    emphasis: { iconStyle: { color: '#0ea5e9' } }, // --primary no hover
     feature: {
       dataView:    { readOnly: true, title: 'Ver Dados',     lang: ['Dados do Gráfico', 'Fechar', 'Atualizar'] },
       restore:     { title: 'Restaurar' },
@@ -1406,6 +1414,7 @@ function _buildRadarOption(items) {
   const TOP    = 44;   // abaixo do título
   return {
     backgroundColor: 'transparent',
+    toolbox: _toolbox(),
     title: {
       text: `Total  ·  ${totalH.toFixed(1)}h  |  ${fmtR(totalC)}`,
       top: 6,
