@@ -250,6 +250,8 @@ class ForecastOut(BaseModel):
     remaining_hours: float | None
     cpi: float | None
     eac: float | None
+    spi: float | None = None
+    sv: float | None = None
     avg_hours_per_cycle: float
     estimated_cycles_to_complete: float | None
     estimated_completion_cycle: str | None

@@ -22,6 +22,7 @@ const _LANG = {
     'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
     'forecast.pv_line':'VP (Valor Planejado)',
+    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
@@ -134,6 +135,7 @@ const _LANG = {
     'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
     'forecast.pv_line':'PV (Planned Value)',
+    'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
     'forecast.no_budget':'No budget registered for this PEP.',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
@@ -877,6 +879,11 @@ function _buildForecastKpis(fc) {
   const cpiVal = fc.cpi != null ? (+fc.cpi).toFixed(2) : '—';
   const cpiCls = fc.cpi == null ? 'neutral' : fc.cpi >= 1.0 ? 'green' : fc.cpi >= 0.9 ? 'amber' : 'red';
 
+  const spiVal = fc.spi != null ? (+fc.spi).toFixed(2) : '—';
+  const spiCls = fc.spi == null ? 'neutral' : fc.spi >= 1.0 ? 'green' : fc.spi >= 0.9 ? 'amber' : 'red';
+  const svFmt  = fc.sv != null ? (fc.sv >= 0 ? '+' : '') + fmtR(fc.sv) : '—';
+  const svCls  = fc.sv == null ? 'neutral' : fc.sv >= 0 ? 'green' : 'red';
+
   const completionVal = fc.estimated_completion_cycle
     || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
 
@@ -887,6 +894,8 @@ function _buildForecastKpis(fc) {
     { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
     { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls              },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral'           },
+    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls              },
+    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls               },
     { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'            },
   ];
   return cards.map(({ val, lbl, cls }) =>
