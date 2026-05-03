@@ -7,7 +7,14 @@ from io import BytesIO
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from backend.app.models import Collaborator, Cycle, Project, RateCard, TimesheetRecord
+from backend.app.models import (
+    Collaborator,
+    Cycle,
+    Project,
+    RateCard,
+    TimesheetRecord,
+    UserProjectAccess,
+)
 
 log = logging.getLogger(__name__)
 
@@ -33,13 +40,41 @@ class LockedProjectError(Exception):
         super().__init__(f"Projetos encerrados/suspensos: {', '.join(project_names)}")
 
 
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
 def ingest_file(
     file_bytes: bytes,
     filename: str,
     db: Session,
     user_role: str = "admin",
+    user_id: int | None = None,
 ) -> dict:
     df = _load_dataframe(file_bytes, filename)
+    ingest_warnings: list[str] = []
+
+    # Layer 1: Authorization filter (read-only, outside transaction)
+    # Determine which named PEP codes are present in the file.
+    pep_codes_raw: set[str] = set()
+    if _COL_PEP_CODE in df.columns:
+        pep_codes_raw = {_str_or_none(v) for v in df[_COL_PEP_CODE]} - {None}
+
+    # Auth filter only applies when there is a concrete user_id.
+    # user_id=None means system-level or test call — behaves like admin for filtering.
+    if pep_codes_raw and user_id is not None:
+        authorized = _authorized_peps(db, user_id, user_role, pep_codes_raw)
+        unauthorized = pep_codes_raw - authorized
+        if unauthorized:
+            mask = df[_COL_PEP_CODE].apply(lambda v: _str_or_none(v) not in unauthorized)
+            n_discarded = int((~mask).sum())
+            df = df[mask].copy()
+            top = sorted(unauthorized)[:5]
+            suffix = f" e {len(unauthorized) - 5} outros." if len(unauthorized) > 5 else "."
+            ingest_warnings.append(
+                f"{n_discarded} linha(s) descartadas — sem permissão nos PEPs: "
+                f"{', '.join(top)}{suffix}"
+            )
 
     # Pass 1: resolve collaborators and cycles
     collab_cache: dict[str, Collaborator] = {}
@@ -60,32 +95,24 @@ def ingest_file(
                 if created:
                     quarantine_cycles_created += 1
 
-        # Collect (collaborator_id, cycle_id) pairs touched by this upload
-        affected_pairs: set[tuple[int, int]] = set()
-        for _, row in df.iterrows():
-            collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
-            cycle = cycle_cache[_parse_date(row[_COL_DATE])]
-            affected_pairs.add((collab.id, cycle.id))
-
-        # RBAC: non-admins may not modify closed cycles
+        # Layer 2: RBAC — non-admins cannot write to closed cycles
         if user_role != "admin":
-            checked: set[int] = set()
             closed_names: list[str] = []
-            for _, cycle_id in affected_pairs:
-                if cycle_id in checked:
-                    continue
-                checked.add(cycle_id)
-                c = db.get(Cycle, cycle_id)
-                if c and c.is_closed:
-                    closed_names.append(c.name)
+            seen_cycle_ids: set[int] = set()
+            for cycle in cycle_cache.values():
+                if cycle.id not in seen_cycle_ids and cycle.is_closed:
+                    closed_names.append(cycle.name)
+                seen_cycle_ids.add(cycle.id)
             if closed_names:
                 raise ClosedCycleError(closed_names)
 
-        # Block ingestion into encerrado/suspenso projects
+        # Collect PEP codes that will actually be processed (post-auth-filter)
         pep_codes_in_file = {
             _str_or_none(row.get(_COL_PEP_CODE))
             for _, row in df.iterrows()
         } - {None}
+
+        # Block ingestion into encerrado/suspenso projects
         if pep_codes_in_file:
             locked = (
                 db.query(Project)
@@ -98,14 +125,46 @@ def ingest_file(
             if locked:
                 raise LockedProjectError([p.name or p.pep_wbs for p in locked])
 
-        # DELETE existing records for all affected (collaborator, cycle) pairs
-        for collab_id, cycle_id in affected_pairs:
-            db.query(TimesheetRecord).filter(
-                TimesheetRecord.collaborator_id == collab_id,
-                TimesheetRecord.cycle_id == cycle_id,
-            ).delete(synchronize_session=False)
+        # Layer 3: Surgical DELETE by (pep_wbs, cycle_id)
+        #
+        # Unit of replacement = (PEP, cycle) block, not (collaborator, cycle).
+        # Guarantees:
+        #   - PM-A uploading PEP-A never touches PEP-B rows in the same cycle.
+        #   - Collaborators absent from the new CSV have their old rows removed.
+        #   - NULL-pep rows fall back to (collaborator, cycle) to avoid clobbering
+        #     un-coded entries from other users.
 
-        # INSERT fresh records (intra-batch dedup only)
+        pep_cycle_scope: set[tuple[str | None, int]] = set()
+        for _, row in df.iterrows():
+            pep = _str_or_none(row.get(_COL_PEP_CODE))
+            cycle = cycle_cache[_parse_date(row[_COL_DATE])]
+            pep_cycle_scope.add((pep, cycle.id))
+
+        # Named PEPs: delete the entire (pep_wbs, cycle) block
+        for pep_code, cycle_id in pep_cycle_scope:
+            if pep_code is not None:
+                db.query(TimesheetRecord).filter(
+                    TimesheetRecord.pep_wbs == pep_code,
+                    TimesheetRecord.cycle_id == cycle_id,
+                ).delete(synchronize_session=False)
+
+        # NULL-pep rows: scoped to (collaborator, cycle, pep_wbs IS NULL)
+        null_by_cycle: dict[int, set[int]] = {}
+        for _, row in df.iterrows():
+            if _str_or_none(row.get(_COL_PEP_CODE)) is None:
+                collab_id = collab_cache[str(row[_COL_COLLABORATOR]).strip()].id
+                cycle_id = cycle_cache[_parse_date(row[_COL_DATE])].id
+                null_by_cycle.setdefault(cycle_id, set()).add(collab_id)
+
+        for cycle_id, collab_ids in null_by_cycle.items():
+            for collab_id in collab_ids:
+                db.query(TimesheetRecord).filter(
+                    TimesheetRecord.collaborator_id == collab_id,
+                    TimesheetRecord.cycle_id == cycle_id,
+                    TimesheetRecord.pep_wbs.is_(None),
+                ).delete(synchronize_session=False)
+
+        # INSERT fresh records (intra-batch dedup)
         seen_keys: set[tuple] = set()
         inserted = 0
         skipped = 0
@@ -156,22 +215,66 @@ def ingest_file(
         db.rollback()
         raise
 
-    warnings = _detect_anomalies(df, pep_codes_in_file, db)
+    ingest_warnings.extend(_detect_anomalies(df, pep_codes_in_file, db))
 
     log.info(
-        "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, %d ciclos de quarentena, %d alertas.",
-        inserted, skipped, quarantine_cycles_created, len(warnings),
+        "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, "
+        "%d ciclos de quarentena, %d alertas.",
+        inserted, skipped, quarantine_cycles_created, len(ingest_warnings),
     )
     return {
         "records_inserted": inserted,
         "records_skipped": skipped,
         "quarantine_cycles_created": quarantine_cycles_created,
-        "warnings": warnings,
+        "warnings": ingest_warnings,
     }
 
 
 def ingest_csv(file_bytes: bytes, db: Session) -> dict:
     return ingest_file(file_bytes, "file.csv", db)
+
+
+# ---------------------------------------------------------------------------
+# Authorization
+# ---------------------------------------------------------------------------
+
+def _authorized_peps(
+    db: Session,
+    user_id: int | None,
+    user_role: str,
+    pep_codes: set[str],
+) -> set[str]:
+    """Return the subset of pep_codes the calling user may write.
+
+    Admin  -> unrestricted (all codes).
+    Others -> PEPs where they are manager_id (auto) OR have an ACL grant (manual).
+    """
+    if user_role == "admin" or not pep_codes:
+        return set(pep_codes)
+    if user_id is None:
+        return set()
+
+    # Auto-access: user is the registered project manager
+    managed: set[str] = {
+        p.pep_wbs
+        for p in db.query(Project)
+        .filter(Project.pep_wbs.in_(pep_codes), Project.manager_id == user_id)
+        .all()
+    }
+
+    # Delegated access: explicit ACL entry granted by an admin
+    delegated: set[str] = {
+        p.pep_wbs
+        for p in db.query(Project)
+        .join(UserProjectAccess, UserProjectAccess.project_id == Project.id)
+        .filter(
+            Project.pep_wbs.in_(pep_codes),
+            UserProjectAccess.user_id == user_id,
+        )
+        .all()
+    }
+
+    return managed | delegated
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +284,6 @@ def ingest_csv(file_bytes: bytes, db: Session) -> dict:
 def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session) -> list[str]:
     warnings: list[str] = []
 
-    # Vectorized weekend check (weekday 5=Sat, 6=Sun)
     dates_parsed = pd.to_datetime(df[_COL_DATE], errors="coerce", dayfirst=True)
     weekend_mask = dates_parsed.dt.weekday.isin([5, 6])
     if weekend_mask.any():
@@ -191,7 +293,6 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
             + (" e outros." if len(weekend_collabs) > 10 else ".")
         )
 
-    # Hours > 24 in a single day per collaborator (vectorized groupby)
     df_work = df.copy()
     df_work["_date_key"] = dates_parsed.dt.date
     df_work["_hours"] = pd.to_numeric(df[_COL_HOURS], errors="coerce").fillna(0)
@@ -204,7 +305,6 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
             + (" e outros." if len(over24) > 10 else ".")
         )
 
-    # PEP codes not registered in Project table
     if pep_codes_in_file:
         registered = {
             p.pep_wbs
@@ -282,7 +382,6 @@ def _parse_date(value) -> date:
     if isinstance(value, date):
         return value
     if isinstance(value, (int, float)):
-        # Excel stores dates as days since 1899-12-30
         return date(1899, 12, 30) + timedelta(days=int(value))
     return pd.to_datetime(str(value), dayfirst=True).date()
 
