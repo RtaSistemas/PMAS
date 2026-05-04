@@ -113,7 +113,8 @@ const _LANG = {
     'no_audit':'Nenhum evento registrado.',
     'cpi.title':'IDP — Índice de Desempenho de Custo por Ciclo',
     'plan.title':'Baseline de Planejamento (Horas/Ciclo)',
-    'plan.btn_add':'+ Adicionar ciclo','plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
+    'plan.btn_add':'+ Adicionar ciclo','plan.btn_export':'↓ Exportar CSV','plan.btn_import':'↑ Importar CSV',
+    'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
     'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
     'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
   },
@@ -226,7 +227,8 @@ const _LANG = {
     'no_audit':'No events recorded.',
     'cpi.title':'CPI — Cost Performance Index per Cycle',
     'plan.title':'Planning Baseline (Hours/Cycle)',
-    'plan.btn_add':'+ Add cycle','plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
+    'plan.btn_add':'+ Add cycle','plan.btn_export':'↓ Export CSV','plan.btn_import':'↑ Import CSV',
+    'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
     'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
     'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
   },
@@ -910,7 +912,7 @@ function _buildForecastOption(fc) {
   const budget   = fc.budget_hours;
 
   const projCount = budget && avg > 0
-    ? Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14)
+    ? Math.max(0, Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14))
     : 6;
 
   const projCats = Array.from({ length: projCount }, (_, i) => `▸${i + 1}`);
@@ -1135,6 +1137,46 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+document.getElementById('exportPlanBtn').addEventListener('click', async () => {
+  if (!_planProjectId) return;
+  try {
+    const res = await fetch(`/api/projects/${_planProjectId}/plans/export`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const disp = res.headers.get('Content-Disposition') || '';
+    const match = disp.match(/filename="([^"]+)"/);
+    const fname = match ? match[1] : 'baseline.csv';
+    const url = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), { href: url, download: fname }).click();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify(`Erro ao exportar: ${e.message}`, 'error'); }
+});
+
+document.getElementById('importPlanFile').addEventListener('change', async function () {
+  const file = this.files[0];
+  if (!file) return;
+  this.value = '';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/projects/plans/import', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Baseline importado: ${data.created} criados, ${data.updated} atualizados` +
+      (data.errors.length ? ` — ${data.errors.length} erro(s)` : '');
+    notify(msg, data.errors.length ? 'warning' : 'success');
+    if (data.errors.length) console.warn('Erros na importação de baseline:', data.errors);
+    await _renderPlanTable(_currentForecastPep);
+    _renderForecastTab();
+  } catch (e) { notify(`Erro ao importar: ${e.message}`, 'error'); }
 });
 
 // ---------------------------------------------------------------------------

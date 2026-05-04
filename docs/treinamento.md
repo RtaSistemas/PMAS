@@ -365,7 +365,31 @@ Acesse **Ciclos → + Novo Ciclo**. Cadastre os 12 meses do ano:
 
 ---
 
-### 1.8 Verificando o Dashboard de Esforço (Q1)
+### 1.8 Importar Baseline de Planejamento (EVM)
+
+O baseline define quantas horas eram **planejadas** para cada ciclo. Sem ele, o PMAS não consegue calcular VP (Valor Planejado), IDP/SPI e Variação de Prazo.
+
+1. Acesse **Dashboard → Previsão** e selecione qualquer PEP
+2. Desça até o card **Baseline de Planejamento (Horas/Ciclo)**
+3. Clique em **↑ Importar CSV**
+4. Selecione `samples/treinamento/baseline_2025.csv`
+
+O arquivo define as horas planejadas para os 4 projetos em todos os ciclos 2025 de uma só vez:
+
+| Projeto | Distribuição | Total planejado |
+|---|---|---|
+| P-CRM-001 | ~233 h/mês × 12 | 2.800 h |
+| P-INF-002 | 150 h/mês × 12 | 1.800 h |
+| P-RH-003 | 100 h/mês × 6 (Jan–Jun) | 600 h |
+| P-BI-004 | ~333 h/mês × 9 (Abr–Dez) | 3.000 h |
+
+> Após importar, selecione P-INF-002 na aba Previsão e observe: o IDP/SPI aparece em **vermelho** (< 1,0) indicando que o projeto está atrasado em relação ao planejado — mesmo que em Q1 o ritmo pareça normal, as horas extras de crise em Q3 elevaram o custo real acima do valor agregado.
+
+Para exportar o baseline de um projeto específico (backup ou conferência), clique em **↓ Exportar CSV**.
+
+---
+
+### 1.9 Verificando o Dashboard de Esforço (Q1)  
 
 ```mermaid
 flowchart LR
@@ -593,16 +617,18 @@ gantt
 
 | Projeto | Horas consumidas | Orçamento | Custo real | Orçamento R$ | CPI |
 |---|---|---|---|---|---|
-| CRM | 2.896 h | 2.800 h | R$ 297.360 | R$ 300.000 | 1,04 |
-| INF | 1.948 h | 1.800 h | R$ 156.270 | R$ 160.000 | **1,11** |
+| CRM | 2.896 h | 2.800 h | R$ 299.040 | R$ 300.000 | 1,04 |
+| INF | 1.948 h | 1.800 h | R$ 207.153 | R$ 160.000 | **0,84** |
 | RH | 498 h | 600 h | R$ 30.660 | R$ 40.000 | 1,08 |
 | BI | 2.264 h | 3.000 h | R$ 215.680 | R$ 250.000 | **0,87** |
 
+> **Nota:** O custo real inclui os multiplicadores de hora extra (×2) e sobreaviso (×0,33) aplicados pelo PMAS no momento da ingestão.
+>
 > **Interpretação:**
-> - CRM: leve estouro de horas (103%), mas custo dentro do orçamento (CPI=1,04) — **sucesso**
-> - INF: estouro de horas (108%) porém custo abaixo do orçamento (CPI=1,11) — a equipe júnior durante a crise foi mais barata que o previsto, **mas o prazo sofreu impacto**
+> - CRM: leve estouro de horas (103%), custo praticamente no limite (CPI=1,04) — **sucesso**
+> - INF: estouro de horas (108%) E estouro de custo (CPI=0,84) — 812 h de hora extra a ×2 duplicaram o impacto financeiro da crise; **lição aprendida**: acionar a revisão de escopo em Q2
 > - RH: projeto suspenso com 83% das horas e custo sob controle (CPI=1,08) — **decisão correta de suspensão**
-> - BI: horas dentro do orçamento (75%) mas custo acima do esperado (CPI=0,87) — equipe sênior consumiu mais R$ por hora que o planejado; **monitorar em 2026**
+> - BI: horas dentro do orçamento (75%) mas custo acima do esperado (CPI=0,87) — equipe sênior consumiu mais R$/h que o planejado; **monitorar em 2026**
 
 ---
 
