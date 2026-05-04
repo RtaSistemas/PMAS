@@ -96,12 +96,15 @@ class Project(Base):
     name = Column(String, nullable=True)
     client = Column(String, nullable=True)
     manager = Column(String, nullable=True)
+    manager_id = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
     budget_hours = Column(Float, nullable=True)
     budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)
 
     plans = relationship("ProjectCyclePlan", back_populates="project", cascade="all, delete-orphan")
+    user_access = relationship("UserProjectAccess", back_populates="project", cascade="all, delete-orphan")
+    manager_user = relationship("User", foreign_keys=[manager_id], back_populates="managed_projects")
 
 
 class ProjectCyclePlan(Base):
@@ -128,6 +131,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user")
 
+    managed_projects = relationship("Project", foreign_keys="Project.manager_id", back_populates="manager_user")
+    project_access = relationship("UserProjectAccess", back_populates="user", cascade="all, delete-orphan")
+
 
 class GlobalConfig(Base):
     __tablename__ = "global_config"
@@ -148,3 +154,19 @@ class AuditLog(Base):
     entity_id = Column(Integer, nullable=True)
     detail    = Column(String, nullable=True)
     timestamp = Column(DateTime, nullable=False)
+
+
+class UserProjectAccess(Base):
+    """Explicit ACL: delegates upload permission on a project to a user."""
+    __tablename__ = "user_project_access"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("user.id",    ondelete="CASCADE"), nullable=False)
+    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False)
+
+    user    = relationship("User",    back_populates="project_access")
+    project = relationship("Project", back_populates="user_access")
+
+    __table_args__ = (
+        Index("ix_user_project_access_unique", "user_id", "project_id", unique=True),
+    )

@@ -19,6 +19,7 @@ class ProjectIn(BaseModel):
     name: Optional[str] = None
     client: Optional[str] = None
     manager: Optional[str] = None
+    manager_id: Optional[int] = None
     budget_hours: Optional[float] = Field(default=None, ge=0)
     budget_cost: Optional[float] = Field(default=None, ge=0)
     status: Literal["ativo", "suspenso", "encerrado"] = "ativo"
@@ -89,9 +90,22 @@ class ProjectOut(BaseModel):
     name: Optional[str] = None
     client: Optional[str] = None
     manager: Optional[str] = None
+    manager_id: Optional[int] = None
     budget_hours: Optional[float] = None
     budget_cost: Optional[float] = None
     status: str
+
+
+class UserProjectAccessIn(BaseModel):
+    user_id: int
+
+
+class UserProjectAccessOut(BaseModel):
+    id: int
+    user_id: int
+    username: str
+    project_id: int
+    pep_wbs: str
 
 
 class CollaboratorOut(BaseModel):
@@ -250,6 +264,8 @@ class ForecastOut(BaseModel):
     remaining_hours: float | None
     cpi: float | None
     eac: float | None
+    spi: float | None = None
+    sv: float | None = None
     avg_hours_per_cycle: float
     estimated_cycles_to_complete: float | None
     estimated_completion_cycle: str | None

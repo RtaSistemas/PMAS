@@ -703,17 +703,22 @@ class TestAnalytics:
         assert client.get("/api/forecast?pep_wbs=NONE-999").status_code == 404
 
     def test_forecast_returns_evm_metrics(self, client, db_session):
-        # ForecastOut fields: consumed_hours, actual_cost, cpi, eac, history
+        # ForecastOut fields: consumed_hours, actual_cost, cpi, eac, spi, sv, history
         self._seed_evm(db_session)
         r = client.get("/api/forecast?pep_wbs=EVM-001")
         assert r.status_code == 200
         d = r.json()
         assert "cpi" in d
         assert "eac" in d
+        assert "spi" in d
+        assert "sv" in d
         assert "consumed_hours" in d
         assert "actual_cost" in d
         assert d["consumed_hours"] == pytest.approx(70.0)
         assert isinstance(d["history"], list)
+        # spi/sv are None when no plan baseline exists
+        assert d["spi"] is None
+        assert d["sv"] is None
 
 
 # ===========================================================================
@@ -760,17 +765,32 @@ class TestPlans:
         assert client.get(f"/api/projects/{p.id}/plans").json() == []
 
     def test_plan_appears_in_forecast_pv(self, client, db_session):
-        """Planned hours in ProjectCyclePlan surface as cumulative_planned_hours in /api/forecast."""
+        """Planned hours in ProjectCyclePlan surface as cumulative_planned_hours and enable SPI/SV."""
         cy1 = _mk_cycle(db_session, "Jan/2026", 2026, 1)
         cy2 = _mk_cycle(db_session, "Feb/2026", 2026, 2)
         p = _mk_project(db_session, "PLAN-PV", budget_h=100.0, budget_cost=10000.0)
         co = _mk_collab(db_session, "pv_collab")
+        # collaborator has a rate so actual_cost > 0 (required for cpi/spi)
+        from datetime import date as _date
+        sl = _mk_level(db_session, "Sr-pv")
+        _mk_rate(db_session, sl, 100.0, _date(2026, 1, 1))
+        co.seniority_level_id = sl.id
+        db_session.commit()
         _mk_record(db_session, cy1, co, "PLAN-PV", normal=30.0)
         client.put(f"/api/projects/{p.id}/plans/{cy1.id}", json={"cycle_id": cy1.id, "planned_hours": 40.0})
         client.put(f"/api/projects/{p.id}/plans/{cy2.id}", json={"cycle_id": cy2.id, "planned_hours": 30.0})
         r = client.get("/api/forecast?pep_wbs=PLAN-PV")
-        history = r.json()["history"]
+        assert r.status_code == 200
+        d = r.json()
+        history = d["history"]
         assert any(h.get("planned_hours") is not None for h in history)
+        # With plan + budget + actual_cost: SPI and SV must be populated
+        # consumed=30h out of 100h budget_h → EV = 30% × 10000 = 3000
+        # planned=40h out of 100h budget_h → PV = 40% × 10000 = 4000
+        # SPI = EV/PV = 3000/4000 = 0.75 (behind schedule)
+        # SV  = EV - PV = -1000
+        assert d["spi"] == pytest.approx(0.75, abs=0.01)
+        assert d["sv"] == pytest.approx(-1000.0, abs=1.0)
 
 
 # ===========================================================================

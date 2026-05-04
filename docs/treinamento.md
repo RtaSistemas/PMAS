@@ -62,6 +62,184 @@ flowchart TD
 
 ---
 
+## Fluxo de Ingestão de Timesheet
+
+A importação de ponto é a operação central do PMAS. Cada CSV/XLSX passa por **três camadas de validação** antes de qualquer dado ser gravado no banco, e o sistema nunca descarta dados silenciosamente sem aviso.
+
+### Visão geral
+
+```mermaid
+flowchart TD
+    A([Arquivo CSV / XLSX]) --> B[Carregar DataFrame\nvia pandas]
+    B --> C{Colunas obrigatórias\npresentes?}
+    C -->|Faltam colunas| ERR1([Erro 422\ndescreve quais colunas faltam])
+    C -->|OK| D
+
+    subgraph "Camada 1 — Filtro de Autorização"
+        D[Coletar PEPs do arquivo] --> E{user_id\nfornecido?}
+        E -->|Não — chamada\nde sistema/teste| F[Passa tudo sem filtro]
+        E -->|Sim| G{Perfil?}
+        G -->|admin| F
+        G -->|Gestor do projeto\nmanager_id| F
+        G -->|Acesso ACL\ndelegado por admin| F
+        G -->|Sem permissão| H[Linhas descartadas\nsilenciosamente]
+        H --> WARN1[Aviso adicionado\nà resposta]
+    end
+
+    F --> PASS1[Pass 1 — Resolver entidades]
+    WARN1 --> PASS1
+
+    subgraph "Pass 1 — Pré-processamento"
+        PASS1 --> COL{Colaborador\nexiste?}
+        COL -->|Não| COL2[Cria Collaborator\nno banco]
+        COL -->|Sim| COL3[Reutiliza]
+        COL2 & COL3 --> CYC{Ciclo cobre\na data?}
+        CYC -->|Sim| CYC2[Reutiliza ciclo]
+        CYC -->|Não| CYC3[Cria ciclo de\nQuarentena automático]
+    end
+
+    CYC2 & CYC3 --> L2
+
+    subgraph "Camada 2 — RBAC"
+        L2{Usuário é admin?} -->|Não| L2B{Algum ciclo\nno arquivo está fechado?}
+        L2B -->|Sim| ERR2([Erro 403\nClosedCycleError])
+        L2B -->|Não| L3
+        L2 -->|Sim| L3
+    end
+
+    subgraph "Camada 3 — Projeto Bloqueado"
+        L3{PEP com status\nencerrado / suspenso?} -->|Sim| ERR3([Erro 422\nLockedProjectError])
+        L3 -->|Não| DEL
+    end
+
+    subgraph "DELETE Cirúrgico"
+        DEL[Calcular escopo\npep_wbs × cycle_id] --> DEL_PEP[PEP nomeado →\napaga por pep_wbs + cycle_id]
+        DEL --> DEL_NULL[PEP nulo →\napaga por collaborator + cycle\n+ pep_wbs IS NULL]
+    end
+
+    DEL_PEP & DEL_NULL --> INS
+
+    subgraph "INSERT com EVM Freeze"
+        INS[Para cada linha\ndo CSV / XLSX] --> RATE[Lookup RateCard\ncolaborador + data]
+        RATE --> FREEZE[cost_per_hour congelado\nno registro]
+        FREEZE --> DEDUP{Chave duplicada\nno mesmo lote?}
+        DEDUP -->|Sim| SKIP[Linha ignorada\nskipped++]
+        DEDUP -->|Não| SAVE[db.add TimesheetRecord\ninserted++]
+    end
+
+    SAVE & SKIP --> COMMIT[COMMIT]
+    COMMIT --> ANOM
+
+    subgraph "Detecção de Anomalias — pós-commit"
+        ANOM[Analisar DataFrame] --> W1{Registro em\nfim de semana?}
+        W1 -->|Sim| WA1[Aviso: colaboradores\ncom entrada no weekend]
+        ANOM --> W2{Soma diária\n> 24h?}
+        W2 -->|Sim| WA2[Aviso: colaborador + data]
+        ANOM --> W3{PEP não cadastrado\nem Projetos?}
+        W3 -->|Sim| WA3[Aviso: lista de\ncódigos PEP]
+    end
+
+    WA1 & WA2 & WA3 --> RET([Retorno: records_inserted\nrecords_skipped\nquarantine_cycles_created\nwarnings])
+```
+
+---
+
+### Camada 1 — Filtro de Autorização
+
+Antes de tocar no banco, o sistema verifica se o usuário tem permissão para cada código PEP presente no arquivo:
+
+| Perfil | Acesso |
+|---|---|
+| `admin` | Todos os PEPs, sem restrição |
+| Gestor de projeto | PEPs onde ele é o `manager_id` (automático) |
+| Usuário com ACL delegada | PEPs onde um admin concedeu acesso explicitamente |
+| Demais usuários | Linhas descartadas silenciosamente — o upload **não é rejeitado** |
+
+> O upload nunca falha por falta de autorização em PEPs individuais. O sistema processa o que pode e informa o que descartou no campo `warnings` da resposta.
+
+---
+
+### Camada 2 — RBAC (Controle por Função)
+
+Usuários que não são `admin` **não podem gravar** em ciclos fechados. Se qualquer data do arquivo pertencer a um ciclo marcado como fechado, a ingestão inteira é revertida com erro `403 ClosedCycleError`.
+
+---
+
+### Camada 3 — Projetos Bloqueados
+
+Projetos com status `encerrado` ou `suspenso` recusam novos lançamentos. Qualquer PEP nessa situação presente no arquivo causa erro `422 LockedProjectError` e a operação é revertida integralmente.
+
+---
+
+### DELETE cirúrgico — isolamento entre gestores
+
+O PMAS usa **(pep_wbs, cycle_id)** como unidade de substituição, não `(colaborador, ciclo)`. Isso garante:
+
+1. **PM-A fazendo upload do PEP-A** nunca apaga linhas do PEP-B no mesmo ciclo.
+2. **Colaboradores removidos do CSV** têm suas linhas antigas excluídas automaticamente (sem registros órfãos).
+3. **Linhas sem PEP** (`pep_wbs IS NULL`) usam `(colaborador, ciclo, pep_wbs IS NULL)` para evitar que um upload anule entradas de outro usuário sem código de projeto.
+
+```mermaid
+flowchart LR
+    subgraph "Ciclo Janeiro/2025 — antes do upload"
+        A1["PEP-A\nAna, Bruno"]
+        B1["PEP-B\nCarla"]
+    end
+
+    Upload["Upload PM-A\n(apenas PEP-A com Ana)"]
+
+    subgraph "Ciclo Janeiro/2025 — depois do upload"
+        A2["PEP-A\nAna (atualizado)"]
+        B2["PEP-B\nCarla (intocado)"]
+    end
+
+    Upload -->|"DELETE pep_wbs='PEP-A', cycle_id=1"| A1
+    Upload -->|"INSERT Ana atualizado"| A2
+    B1 -.->|"nenhuma alteração"| B2
+```
+
+---
+
+### Congelamento da tarifa — EVM Freeze
+
+Na etapa de INSERT, para cada linha o sistema executa `_lookup_rate(colaborador, data_do_registro)`:
+
+1. Busca o nível de senioridade associado ao colaborador
+2. Busca a `RateCard` vigente naquela data (`valid_from ≤ data ≤ valid_to`)
+3. Salva o valor em `cost_per_hour` — **imutável após a ingestão**
+
+Alterações futuras na tabela de tarifas não afetam registros já importados.
+
+```mermaid
+sequenceDiagram
+    participant CSV
+    participant Ingestion
+    participant RateCard
+    participant DB
+
+    CSV->>Ingestion: linha: Ana Lima, 15/03/2025, 8h
+    Ingestion->>RateCard: lookup(Ana Lima, 15/03/2025)
+    RateCard-->>Ingestion: R$ 120,00/h (Sênior, vigente em mar/2025)
+    Ingestion->>DB: INSERT cost_per_hour = 120.0 (congelado)
+    Note over DB: Reajuste em abr/2025 para R$ 130/h<br/>não altera o registro de março
+```
+
+---
+
+### Detecção de anomalias — pós-commit
+
+Após o commit, o sistema analisa o DataFrame original e pode gerar avisos adicionais (sem reverter a ingestão):
+
+| Anomalia | Condição | Exemplo de aviso |
+|---|---|---|
+| Registro em fim de semana | `weekday` sábado (5) ou domingo (6) | `"Registros em fim de semana detectados para: Bruno Costa."` |
+| Horas > 24h por dia | Soma por colaborador + data > 24h | `"Horas > 24h/dia detectadas: Carla Dias em 2025-02-10."` |
+| PEP não cadastrado | Código PEP no CSV sem registro em Projetos | `"Códigos PEP sem cadastro em Projetos: P-XX-999."` |
+
+Esses avisos aparecem no campo `warnings` da resposta da API e são exibidos no frontend após o upload.
+
+---
+
 ## Módulo 1 — Configuração Inicial e Baseline (Q1: Jan–Mar 2025)
 
 **Objetivo:** Configurar a estrutura completa do sistema antes do primeiro upload de ponto.
@@ -478,19 +656,7 @@ O PMAS usa filtros cascateados na tela de Dashboard:
 
 ### Padrão EVM Freeze
 
-```mermaid
-sequenceDiagram
-    participant CSV
-    participant Ingestion
-    participant RateCard
-    participant DB
-
-    CSV->>Ingestion: upload (colaborador, data, horas)
-    Ingestion->>RateCard: lookup(colaborador, data)
-    RateCard-->>Ingestion: hourly_rate (vigente na data)
-    Ingestion->>DB: salva cost_per_hour congelado
-    Note over DB: Alterações futuras na tarifa\nNÃO afetam registros históricos
-```
+A tarifa é congelada no campo `cost_per_hour` no momento da ingestão — reajustes futuros na tabela de tarifas não afetam registros já importados. Veja o diagrama completo e a explicação detalhada em [Fluxo de Ingestão de Timesheet → Congelamento da tarifa](#congelamento-da-tarifa--evm-freeze).
 
 ### Ciclos de Quarentena
 
@@ -516,7 +682,7 @@ Se você importar um CSV com datas fora dos ciclos cadastrados:
 ## FAQ do Treinamento
 
 **P: Posso reimportar o mesmo CSV?**
-R: Sim. O sistema substitui todos os registros do par (colaborador, ciclo) — é idempotente por colaborador/ciclo.
+R: Sim. O sistema é idempotente: para PEPs nomeados, substitui todos os registros do bloco `(pep_wbs, ciclo)`. Isso significa que um re-upload do CSV de PEP-A nunca altera registros de PEP-B no mesmo ciclo, e colaboradores removidos do CSV têm suas linhas antigas excluídas automaticamente.
 
 **P: O que acontece com registros duplicados no mesmo CSV?**
 R: Linhas 100% idênticas são desduplicadas automaticamente (apenas a primeira é inserida).

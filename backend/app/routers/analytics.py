@@ -380,10 +380,18 @@ def get_forecast(
 
     cpi = None
     eac = None
-    if budget_hours and budget_cost and consumed_hours > 0 and actual_cost > 0:
-        ev = (consumed_hours / budget_hours) * budget_cost
-        cpi = round(ev / actual_cost, 3)
-        eac = round(budget_cost / cpi, 2) if cpi > 0 else None
+    spi = None
+    sv = None
+
+    if budget_hours and budget_cost and consumed_hours > 0:
+        ev_val = (consumed_hours / budget_hours) * budget_cost
+        if actual_cost > 0:
+            cpi = round(ev_val / actual_cost, 3)
+            eac = round(budget_cost / cpi, 2) if cpi > 0 else None
+        if has_plan and cum_ph > 0:
+            pv_val = (cum_ph / budget_hours) * budget_cost
+            spi = round(ev_val / pv_val, 3) if pv_val > 0 else None
+            sv = round(ev_val - pv_val, 2)
 
     remaining_hours = round(budget_hours - consumed_hours, 2) if budget_hours is not None else None
 
@@ -415,6 +423,8 @@ def get_forecast(
         "remaining_hours": remaining_hours,
         "cpi": cpi,
         "eac": eac,
+        "spi": spi,
+        "sv": sv,
         "avg_hours_per_cycle": round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
         "estimated_completion_cycle": est_completion,

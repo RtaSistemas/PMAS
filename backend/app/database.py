@@ -117,6 +117,10 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
                 ))
+            if "manager_id" not in p_cols:
+                conn.execute(text(
+                    "ALTER TABLE project ADD COLUMN manager_id INTEGER REFERENCES user(id)"
+                ))
             cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
             if "is_closed" not in cy_cols:
                 conn.execute(text(
