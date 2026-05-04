@@ -134,8 +134,6 @@
     <nav class="analytics-tabs">
       <button class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
       <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
-      <button class="atab-btn" data-atab="trends" data-i18n="atab.trends">Tendências</button>
-      <button class="atab-btn" data-atab="allocation" data-i18n="atab.allocation">Alocação</button>
       <button class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>
     </nav>
 
@@ -157,16 +155,20 @@
         </div>
         <div id="effortChart" style="width:100%;height:500px"></div>
       </div>
-      <div class="card chart-panel" id="radarPanel" hidden>
+      <div class="card chart-panel">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="radar.title">Horas e Custo por PEP — Radar</span>
-          <span class="panel-note" data-i18n="radar.note">Valores normalizados · passe o mouse para ver totais absolutos</span>
+          <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
         </div>
-        <div id="radarChart" style="width:100%;height:440px"></div>
+        <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
+          Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
+        </div>
+        <div id="trendsChart" style="width:100%;height:440px"></div>
       </div>
-      <div class="card chart-panel" id="budgetPanel" hidden>
-        <div class="panel-title" data-i18n="budget.title">Orçado vs. Realizado por PEP</div>
-        <div id="budgetChart" style="width:100%;height:300px"></div>
+      <div class="card chart-panel" id="cpiChartCard" hidden>
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
+        </div>
+        <div id="cpiChart" style="width:100%;height:260px"></div>
       </div>
     </div>
 
@@ -196,39 +198,13 @@
         </div>
         <div id="bulletChart" style="width:100%;height:300px"></div>
       </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- Sub-tab: Tendências                                          -->
-    <!-- ============================================================ -->
-    <div id="atab-trends" class="atab-section" hidden>
-      <div class="card chart-panel">
+      <div class="card chart-panel" id="radarPanel" hidden>
         <div class="panel-header">
-          <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
-          <div style="display:flex;align-items:center;gap:0.5rem">
-            <label for="trendsPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
-            <select id="trendsPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:160px">
-              <option value="" data-i18n="trends.all">Todos</option>
-            </select>
-          </div>
+          <span class="panel-title" data-i18n="radar.title">Horas e Custo por PEP — Radar</span>
+          <span class="panel-note" data-i18n="radar.note">Valores normalizados · passe o mouse para ver totais absolutos</span>
         </div>
-        <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
-          Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
-        </div>
-        <div id="trendsChart" style="width:100%;height:440px"></div>
+        <div id="radarChart" style="width:100%;height:440px"></div>
       </div>
-      <div class="card chart-panel" id="cpiChartCard" hidden>
-        <div class="panel-header">
-          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
-        </div>
-        <div id="cpiChart" style="width:100%;height:260px"></div>
-      </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- Sub-tab: Alocação (Colaborador × Projeto)                    -->
-    <!-- ============================================================ -->
-    <div id="atab-allocation" class="atab-section" hidden>
       <div class="card chart-panel">
         <div class="panel-header">
           <span class="panel-title" data-i18n="atab.allocation">Alocação</span>
