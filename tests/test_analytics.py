@@ -201,6 +201,25 @@ class TestTrends:
         assert names_to_hours["MA1"] == 6.0
         assert names_to_hours["MA2"] == 9.0
 
+    def test_filter_by_pep_description(self, client, db_session):
+        cy = _cycle(db_session, "PD1", 2026, 7)
+        co = _collab(db_session, "Olivia")
+        _rec(db_session, cy, co, "PA", desc="Alpha Desc", normal=10.0, day=1)
+        _rec(db_session, cy, co, "PB", desc="Beta Desc",  normal=5.0,  day=2)
+        result = client.get("/api/trends?pep_description=Alpha+Desc").json()
+        assert len(result) == 1
+        assert result[0]["normal_hours"] == 10.0
+
+    def test_filter_by_collaborator_id(self, client, db_session):
+        cy = _cycle(db_session, "CID1", 2026, 8)
+        co1 = _collab(db_session, "Paula")
+        co2 = _collab(db_session, "Rafael")
+        _rec(db_session, cy, co1, "P1", normal=8.0, day=1)
+        _rec(db_session, cy, co2, "P1", normal=4.0, day=2)
+        result = client.get(f"/api/trends?collaborator_id={co1.id}").json()
+        assert len(result) == 1
+        assert result[0]["normal_hours"] == 8.0
+
 
 # ===========================================================================
 # /api/dashboard/pep-radar

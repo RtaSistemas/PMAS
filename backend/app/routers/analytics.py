@@ -102,6 +102,8 @@ def get_portfolio_health(
 def get_trends(
     db: DbSession,
     pep_wbs: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
@@ -130,6 +132,11 @@ def get_trends(
     )
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        q = q.filter(Collaborator.id.in_(collaborator_id))
     if date_from is not None:
         q = q.filter(TimesheetRecord.record_date >= date_from)
     if date_to is not None:
@@ -172,6 +179,11 @@ def get_trends(
                 TimesheetRecord.pep_wbs.in_(list(budgeted_projects.keys())),
             )
         )
+        if pep_description:
+            cpi_q = cpi_q.filter(TimesheetRecord.pep_description.in_(pep_description))
+        if collaborator_id:
+            cpi_q = cpi_q.join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+            cpi_q = cpi_q.filter(Collaborator.id.in_(collaborator_id))
         if date_from is not None:
             cpi_q = cpi_q.filter(TimesheetRecord.record_date >= date_from)
         if date_to is not None:

@@ -589,8 +589,8 @@ async function _renderEffortTab() {
       if (params && params.name) await _openCollabTimelineModal(params.name);
     });
 
-    // Trends + CPI charts (use main PEP filter, no local select)
-    await _renderTrendsCharts(pepCodes, dateFrom, dateTo);
+    // Trends + CPI charts — full filter passthrough with cycle window logic
+    await _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo);
 
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
@@ -668,13 +668,48 @@ async function _renderPortfolioTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Trends + CPI helper — called from both _renderEffortTab and directly
 // ---------------------------------------------------------------------------
-async function _renderTrendsCharts(pepCodes, dateFrom, dateTo) {
+// Compute date window for Queima/IDP when cycles are selected.
+// Returns {dateFrom, dateTo} covering selected cycles ±1 neighbor.
+// If no cycles selected, returns the manually entered date range unchanged.
+// ---------------------------------------------------------------------------
+function _computeTrendsWindow(cycleIds, dateFrom, dateTo) {
+  if (!cycleIds.length) return { dateFrom, dateTo };
+
+  const sorted = [..._allCycles]
+    .filter(c => !c.is_quarantine)
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+  if (!sorted.length) return { dateFrom, dateTo };
+
+  const indices = cycleIds
+    .map(id => sorted.findIndex(c => String(c.id) === String(id)))
+    .filter(i => i >= 0);
+
+  if (!indices.length) return { dateFrom, dateTo };
+
+  const minIdx = Math.min(...indices);
+  const maxIdx = Math.max(...indices);
+  const prevIdx = Math.max(0, minIdx - 1);
+  const nextIdx = Math.min(sorted.length - 1, maxIdx + 1);
+
+  return {
+    dateFrom: sorted[prevIdx].start_date,
+    dateTo:   sorted[nextIdx].end_date,
+  };
+}
+
+// Trends + CPI helper — called from _renderEffortTab
+// ---------------------------------------------------------------------------
+async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo) {
+  const { dateFrom: wFrom, dateTo: wTo } = _computeTrendsWindow(cycleIds, dateFrom, dateTo);
+
   const p = new URLSearchParams();
-  pepCodes.forEach(c => p.append('pep_wbs', c));
-  if (dateFrom) p.set('date_from', dateFrom);
-  if (dateTo)   p.set('date_to',   dateTo);
+  pepCodes.forEach(c   => p.append('pep_wbs', c));
+  pepDescs.forEach(d   => p.append('pep_description', d));
+  collabIds.forEach(id => p.append('collaborator_id', id));
+  if (wFrom) p.set('date_from', wFrom);
+  if (wTo)   p.set('date_to',   wTo);
 
   try {
     const trends = await apiFetch(`/api/trends?${p}`);
