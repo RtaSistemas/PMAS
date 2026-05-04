@@ -599,13 +599,19 @@ async function _renderEffortTab() {
 // Saúde do Portfólio
 // ---------------------------------------------------------------------------
 async function _renderPortfolioTab() {
-  const cycleIds = cycleMs.getValues();
-  const pepCodes = pepMs.getValues();
-  const dateFrom = document.getElementById('dateFromInput').value;
-  const dateTo   = document.getElementById('dateToInput').value;
+  const cycleIds  = cycleMs.getValues();
+  const pepCodes  = pepMs.getValues();
+  const pepDescs  = pepDescMs.getValues();
+  const collabIds = collaboratorMs.getValues();
+  const dateFrom  = document.getElementById('dateFromInput').value;
+  const dateTo    = document.getElementById('dateToInput').value;
+
+  // Single params object shared by all four portfolio charts
   const p = new URLSearchParams();
-  cycleIds.forEach(id => p.append('cycle_id', id));
-  pepCodes.forEach(c => p.append('pep_wbs', c));
+  cycleIds.forEach(id  => p.append('cycle_id', id));
+  pepCodes.forEach(c   => p.append('pep_wbs', c));
+  pepDescs.forEach(d   => p.append('pep_description', d));
+  collabIds.forEach(id => p.append('collaborator_id', id));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
@@ -644,10 +650,8 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = true;
     }
 
-    // Radar — needs cycle_id params too
-    const rp = new URLSearchParams(p);
-    cycleIds.forEach(id => rp.append('cycle_id', id));
-    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
+    // Radar — same params as the other charts (pep_wbs, pep_description, collaborator_id, cycle_id)
+    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${p}`).catch(() => []);
     if (radarItems.length >= 3) {
       document.getElementById('radarPanel').hidden = false;
       const rc = _getOrCreateChart('radarChart');
@@ -763,6 +767,7 @@ async function _renderAllocationTab() {
   const cycleIds  = cycleMs.getValues();
   const collabIds = collaboratorMs.getValues();
   const pepCodes  = pepMs.getValues();
+  const pepDescs  = pepDescMs.getValues();
   const dateFrom  = document.getElementById('dateFromInput').value;
   const dateTo    = document.getElementById('dateToInput').value;
 
@@ -770,6 +775,7 @@ async function _renderAllocationTab() {
   cycleIds.forEach(id  => p.append('cycle_id', id));
   collabIds.forEach(id => p.append('collaborator_id', id));
   pepCodes.forEach(c   => p.append('pep_wbs', c));
+  pepDescs.forEach(d   => p.append('pep_description', d));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to', dateTo);
 

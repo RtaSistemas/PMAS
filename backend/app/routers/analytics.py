@@ -20,6 +20,8 @@ def get_portfolio_health(
     db: DbSession,
     cycle_id: List[int] = Query(default=[]),
     pep_wbs: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
@@ -51,6 +53,11 @@ def get_portfolio_health(
         q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        q = q.filter(Collaborator.id.in_(collaborator_id))
     if date_from is not None:
         q = q.filter(TimesheetRecord.record_date >= date_from)
     if date_to is not None:
@@ -240,6 +247,7 @@ def get_allocation(
     cycle_id: List[int] = Query(default=[]),
     collaborator_id: List[int] = Query(default=[]),
     pep_wbs: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
@@ -273,6 +281,8 @@ def get_allocation(
         q = q.filter(TimesheetRecord.collaborator_id.in_(collaborator_id))
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
     if date_from is not None:
         q = q.filter(TimesheetRecord.record_date >= date_from)
     if date_to is not None:

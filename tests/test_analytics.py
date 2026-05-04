@@ -122,6 +122,25 @@ class TestPortfolioHealth:
         result = client.get("/api/portfolio-health").json()
         assert all(r["pep_wbs"] is not None for r in result)
 
+    def test_filter_by_pep_description(self, client, db_session):
+        cy = _cycle(db_session, "PHPD", 2026, 10)
+        co = _collab(db_session, "Ivan")
+        _rec(db_session, cy, co, "PA", desc="Alvo",  normal=10.0, day=1)
+        _rec(db_session, cy, co, "PB", desc="Outro", normal=5.0,  day=2)
+        result = client.get("/api/portfolio-health?pep_description=Alvo").json()
+        assert len(result) == 1
+        assert result[0]["pep_wbs"] == "PA"
+
+    def test_filter_by_collaborator_id(self, client, db_session):
+        cy = _cycle(db_session, "PHCI", 2026, 11)
+        co1 = _collab(db_session, "Julia")
+        co2 = _collab(db_session, "Karl")
+        _rec(db_session, cy, co1, "P1", normal=8.0, day=1)
+        _rec(db_session, cy, co2, "P1", normal=4.0, day=2)
+        result = client.get(f"/api/portfolio-health?collaborator_id={co1.id}").json()
+        assert len(result) == 1
+        assert result[0]["consumed_hours"] == 8.0
+
 
 # ===========================================================================
 # /api/trends
@@ -276,3 +295,50 @@ class TestPepRadar:
             _rec(db_session, cy, co, f"P{i}", desc=f"Desc{i}", normal=float(i + 1))
         result = client.get("/api/dashboard/pep-radar").json()
         assert len(result) == 12
+
+    def test_filter_by_pep_wbs(self, client, db_session):
+        cy = _cycle(db_session, "R6", 2026, 7)
+        co = _collab(db_session, "Frank")
+        _rec(db_session, cy, co, "WANT",   desc="Target",  normal=8.0, day=1)
+        _rec(db_session, cy, co, "IGNORE", desc="Discard", normal=5.0, day=2)
+        result = client.get("/api/dashboard/pep-radar?pep_wbs=WANT").json()
+        assert len(result) == 1
+        assert result[0]["pep_description"] == "Target"
+
+    def test_multiple_cycle_ids(self, client, db_session):
+        c1 = _cycle(db_session, "R7a", 2026, 8)
+        c2 = _cycle(db_session, "R7b", 2026, 9)
+        c3 = _cycle(db_session, "R7c", 2026, 10)
+        co = _collab(db_session, "Grace")
+        _rec(db_session, c1, co, "P1", desc="Wanted", normal=4.0)
+        _rec(db_session, c2, co, "P1", desc="Wanted", normal=4.0)
+        _rec(db_session, c3, co, "P2", desc="Other",  normal=8.0)
+        result = client.get(f"/api/dashboard/pep-radar?cycle_id={c1.id}&cycle_id={c2.id}").json()
+        descs = {r["pep_description"] for r in result}
+        assert "Wanted" in descs
+        assert "Other" not in descs
+
+
+# ===========================================================================
+# /api/allocation — pep_description filter
+# ===========================================================================
+
+class TestAllocationFilters:
+    def test_filter_by_pep_description(self, client, db_session):
+        cy  = _cycle(db_session, "AL1", 2026, 1)
+        co1 = _collab(db_session, "Sandra")
+        co2 = _collab(db_session, "Tiago")
+        _rec(db_session, cy, co1, "PA", desc="Alvo",  normal=8.0, day=1)
+        _rec(db_session, cy, co2, "PB", desc="Outro", normal=4.0, day=2)
+        result = client.get("/api/allocation?pep_description=Alvo").json()
+        assert all(r["pep_description"] == "Alvo" for r in result)
+        assert len(result) == 1
+
+    def test_filter_by_collaborator_id(self, client, db_session):
+        cy  = _cycle(db_session, "AL2", 2026, 2)
+        co1 = _collab(db_session, "Ursula")
+        co2 = _collab(db_session, "Vitor")
+        _rec(db_session, cy, co1, "P1", normal=6.0, day=1)
+        _rec(db_session, cy, co2, "P1", normal=3.0, day=2)
+        result = client.get(f"/api/allocation?collaborator_id={co1.id}").json()
+        assert all(r["collaborator"] == "Ursula" for r in result)
