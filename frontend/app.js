@@ -910,7 +910,7 @@ function _buildForecastOption(fc) {
   const budget   = fc.budget_hours;
 
   const projCount = budget && avg > 0
-    ? Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14)
+    ? Math.max(0, Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14))
     : 6;
 
   const projCats = Array.from({ length: projCount }, (_, i) => `▸${i + 1}`);

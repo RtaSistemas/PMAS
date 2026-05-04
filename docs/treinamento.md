@@ -593,16 +593,18 @@ gantt
 
 | Projeto | Horas consumidas | Orçamento | Custo real | Orçamento R$ | CPI |
 |---|---|---|---|---|---|
-| CRM | 2.896 h | 2.800 h | R$ 297.360 | R$ 300.000 | 1,04 |
-| INF | 1.948 h | 1.800 h | R$ 156.270 | R$ 160.000 | **1,11** |
+| CRM | 2.896 h | 2.800 h | R$ 299.040 | R$ 300.000 | 1,04 |
+| INF | 1.948 h | 1.800 h | R$ 207.153 | R$ 160.000 | **0,84** |
 | RH | 498 h | 600 h | R$ 30.660 | R$ 40.000 | 1,08 |
 | BI | 2.264 h | 3.000 h | R$ 215.680 | R$ 250.000 | **0,87** |
 
+> **Nota:** O custo real inclui os multiplicadores de hora extra (×2) e sobreaviso (×0,33) aplicados pelo PMAS no momento da ingestão.
+>
 > **Interpretação:**
-> - CRM: leve estouro de horas (103%), mas custo dentro do orçamento (CPI=1,04) — **sucesso**
-> - INF: estouro de horas (108%) porém custo abaixo do orçamento (CPI=1,11) — a equipe júnior durante a crise foi mais barata que o previsto, **mas o prazo sofreu impacto**
+> - CRM: leve estouro de horas (103%), custo praticamente no limite (CPI=1,04) — **sucesso**
+> - INF: estouro de horas (108%) E estouro de custo (CPI=0,84) — 812 h de hora extra a ×2 duplicaram o impacto financeiro da crise; **lição aprendida**: acionar a revisão de escopo em Q2
 > - RH: projeto suspenso com 83% das horas e custo sob controle (CPI=1,08) — **decisão correta de suspensão**
-> - BI: horas dentro do orçamento (75%) mas custo acima do esperado (CPI=0,87) — equipe sênior consumiu mais R$ por hora que o planejado; **monitorar em 2026**
+> - BI: horas dentro do orçamento (75%) mas custo acima do esperado (CPI=0,87) — equipe sênior consumiu mais R$/h que o planejado; **monitorar em 2026**
 
 ---
 
