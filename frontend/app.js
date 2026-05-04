@@ -1212,9 +1212,7 @@ function _buildEffortOption(data, stacked) {
       containLabel: true,
     },
 
-    toolbox: _toolbox({
-      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
-    }),
+    toolbox: _toolbox(),
 
     tooltip: {
       trigger: 'axis',
@@ -1354,8 +1352,11 @@ function _buildEffortOption(data, stacked) {
           position: 'right',
           fontSize: 10,
           fontWeight: 600,
-          color: p => p.value === maxTotal ? '#f87171' : '#10b981',
-          formatter: p => `${p.value.toFixed(1)}h`,
+          color: '#10b981',
+          formatter: p => p.value === maxTotal
+            ? `{peak|${p.value.toFixed(1)}h}`
+            : `${p.value.toFixed(1)}h`,
+          rich: { peak: { color: '#f87171', fontWeight: 700 } },
         },
         z: 10,
       },
@@ -1939,7 +1940,9 @@ async function _openCollabTimelineModal(collaboratorName) {
         return html;
       },
     },
-    toolbox: _toolbox(),
+    toolbox: _toolbox({
+      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
+    }),
     xAxis: {
       type: 'category',
       data: cycles,

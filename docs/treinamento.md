@@ -429,14 +429,14 @@ flowchart TD
 
 **O que você verá no final de Q2 (acumulado Jan–Jun):**
 
-| Projeto | Horas consumidas (aprox.) | Orçamento (h) | % consumido |
+| Projeto | Horas consumidas | Orçamento (h) | % consumido |
 |---|---|---|---|
-| CRM | ~1.768 h | 2.800 h | ~63% |
-| INF | ~1.274 h | 1.800 h | ~71% |
-| RH | ~520 h | 600 h | ~87% |
-| BI | ~624 h | 3.000 h | ~21% |
+| CRM | 1.632 h | 2.800 h | 58% |
+| INF | 1.159 h | 1.800 h | 64% |
+| RH | 498 h | 600 h | 83% |
+| BI | 536 h | 3.000 h | 18% |
 
-> **Sinal de alerta:** O INF já consumiu 71% do orçamento no meio do ano. O RH está em 87% — risco de estouro. Discuta ações corretivas com o grupo.
+> **Sinal de alerta:** O INF já consumiu 64% do orçamento no meio do ano. O RH está em 83% — risco de estouro se o ritmo continuar. Discuta ações corretivas com o grupo.
 
 ---
 
@@ -506,10 +506,10 @@ flowchart LR
 
 | Projeto | Consumido (h) | Orçamento (h) | % | Status |
 |---|---|---|---|---|
-| CRM | ~2.704 h | 2.800 h | ~97% | ⚠️ Atenção |
-| INF | ~2.002 h | 1.800 h | ~111% | 🔴 Estourado |
-| RH | ~520 h | 600 h | ~87% | ✅ Dentro |
-| BI | ~1.144 h | 3.000 h | ~38% | ✅ Saudável |
+| CRM | 2.520 h | 2.800 h | 90% | ⚠️ Atenção |
+| INF | 1.852 h | 1.800 h | 103% | 🔴 Estourado |
+| RH | 498 h | 600 h | 83% | ✅ Dentro |
+| BI | 1.008 h | 3.000 h | 34% | ✅ Saudável |
 
 > **Badge visual:** O PMAS exibe badges coloridos na tabela de projetos:
 > - 🔴 **Estourado** (≥ 100% do orçamento)
@@ -591,18 +591,18 @@ gantt
 
 ### 4.4 Resumo de Desempenho ao Final do Ano
 
-| Projeto | Horas consumidas | Orçamento | Custo real (aprox.) | Orçamento R$ | CPI |
+| Projeto | Horas consumidas | Orçamento | Custo real | Orçamento R$ | CPI |
 |---|---|---|---|---|---|
-| CRM | ~3.088 h | 2.800 h | ~R$ 290.000 | R$ 300.000 | ~1,03 |
-| INF | ~2.098 h | 1.800 h | ~R$ 178.000 | R$ 160.000 | **~0,90** |
-| RH | ~520 h | 600 h | ~R$ 33.000 | R$ 40.000 | ~1,21 |
-| BI | ~2.488 h | 3.000 h | ~R$ 175.000 | R$ 250.000 | ~1,43 |
+| CRM | 2.896 h | 2.800 h | R$ 297.360 | R$ 300.000 | 1,04 |
+| INF | 1.948 h | 1.800 h | R$ 156.270 | R$ 160.000 | **1,11** |
+| RH | 498 h | 600 h | R$ 30.660 | R$ 40.000 | 1,08 |
+| BI | 2.264 h | 3.000 h | R$ 215.680 | R$ 250.000 | **0,87** |
 
 > **Interpretação:**
-> - CRM: entregue com custo dentro do orçamento (CPI ≈ 1,0) — **sucesso**
-> - INF: estouro de custo, CPI < 1 — **lição aprendida**: necessidade de revisão de escopo em Q2
-> - RH: projeto suspenso saudável (CPI > 1) — **decisão correta de suspensão**
-> - BI: projeto em crescimento saudável, CPI excelente — **candidato a expansão em 2026**
+> - CRM: leve estouro de horas (103%), mas custo dentro do orçamento (CPI=1,04) — **sucesso**
+> - INF: estouro de horas (108%) porém custo abaixo do orçamento (CPI=1,11) — a equipe júnior durante a crise foi mais barata que o previsto, **mas o prazo sofreu impacto**
+> - RH: projeto suspenso com 83% das horas e custo sob controle (CPI=1,08) — **decisão correta de suspensão**
+> - BI: horas dentro do orçamento (75%) mas custo acima do esperado (CPI=0,87) — equipe sênior consumiu mais R$ por hora que o planejado; **monitorar em 2026**
 
 ---
 
