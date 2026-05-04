@@ -267,7 +267,13 @@
       <div class="card" id="planCard" hidden>
         <div class="section-header">
           <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas/Ciclo)</h2>
-          <button class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <button class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
+            <label class="btn btn-secondary btn-sm" id="importPlanLabel" style="cursor:pointer;margin:0" data-i18n="plan.btn_import">↑ Importar CSV
+              <input type="file" id="importPlanFile" accept=".csv" style="display:none">
+            </label>
+            <button class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+          </div>
         </div>
         <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem" data-i18n="plan.hint">Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.</p>
         <table class="data-table" id="planTable">

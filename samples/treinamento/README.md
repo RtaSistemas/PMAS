@@ -10,6 +10,17 @@ Arquivos CSV simulando 12 meses de operação (2025) para uso no workshop.
 | `ponto_q2_2025.csv` | Abr–Jun 2025 | 229 | `20/04`: Bruno Costa (domingo) |
 | `ponto_q3_2025.csv` | Jul–Set 2025 | 244 | Horas extras de crise (INF) |
 | `ponto_q4_2025.csv` | Out–Dez 2025 | 228 | INF supervisão mínima |
+| `baseline_2025.csv` | Ano todo | 39 linhas | Baseline EVM para todos os projetos |
+
+### Formato do baseline_2025.csv
+
+```
+pep_wbs,cycle_name,planned_hours
+P-CRM-001,Janeiro 2025,233
+...
+```
+
+Importe via **Previsão → Importar CSV** na interface do PMAS após cadastrar os ciclos.
 
 ## Equipe e Tarifas
 

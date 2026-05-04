@@ -365,7 +365,31 @@ Acesse **Ciclos → + Novo Ciclo**. Cadastre os 12 meses do ano:
 
 ---
 
-### 1.8 Verificando o Dashboard de Esforço (Q1)
+### 1.8 Importar Baseline de Planejamento (EVM)
+
+O baseline define quantas horas eram **planejadas** para cada ciclo. Sem ele, o PMAS não consegue calcular VP (Valor Planejado), IDP/SPI e Variação de Prazo.
+
+1. Acesse **Dashboard → Previsão** e selecione qualquer PEP
+2. Desça até o card **Baseline de Planejamento (Horas/Ciclo)**
+3. Clique em **↑ Importar CSV**
+4. Selecione `samples/treinamento/baseline_2025.csv`
+
+O arquivo define as horas planejadas para os 4 projetos em todos os ciclos 2025 de uma só vez:
+
+| Projeto | Distribuição | Total planejado |
+|---|---|---|
+| P-CRM-001 | ~233 h/mês × 12 | 2.800 h |
+| P-INF-002 | 150 h/mês × 12 | 1.800 h |
+| P-RH-003 | 100 h/mês × 6 (Jan–Jun) | 600 h |
+| P-BI-004 | ~333 h/mês × 9 (Abr–Dez) | 3.000 h |
+
+> Após importar, selecione P-INF-002 na aba Previsão e observe: o IDP/SPI aparece em **vermelho** (< 1,0) indicando que o projeto está atrasado em relação ao planejado — mesmo que em Q1 o ritmo pareça normal, as horas extras de crise em Q3 elevaram o custo real acima do valor agregado.
+
+Para exportar o baseline de um projeto específico (backup ou conferência), clique em **↓ Exportar CSV**.
+
+---
+
+### 1.9 Verificando o Dashboard de Esforço (Q1)  
 
 ```mermaid
 flowchart LR
