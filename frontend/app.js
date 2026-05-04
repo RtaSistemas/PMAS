@@ -295,10 +295,8 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'budgetChart', 'radarChart'],
-  portfolio:  ['treemapChart', 'bulletChart'],
-  trends:     ['trendsChart', 'cpiChart'],
-  allocation: [],
+  effort:     ['effortChart', 'trendsChart', 'cpiChart'],
+  portfolio:  ['treemapChart', 'bulletChart', 'radarChart'],
   forecast:   ['forecastChart'],
 };
 
@@ -350,7 +348,6 @@ atabBtns.forEach(btn => {
     btn.classList.add('active');
     _activeATab = btn.dataset.atab;
     document.getElementById(`atab-${_activeATab}`).hidden = false;
-    if (_activeATab === 'trends')   _populateTrendsPepSelect();
     if (_activeATab === 'forecast') _populateForecastPepSelect();
     _renderActiveTab();
   });
@@ -508,8 +505,6 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
-  _disposeTabCharts('trends');
-  _disposeTabCharts('allocation');
   document.getElementById('allocationMatrix').innerHTML = '';
   _showEmpty('allocationEmpty', false);
   _disposeTabCharts('forecast');
@@ -517,7 +512,6 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('forecastKpis').innerHTML = '';
   _showEmpty('forecastEmpty', true);
   document.getElementById('effortStats').innerHTML = '';
-  document.getElementById('budgetPanel').hidden  = true;
   document.getElementById('bulletPanel').hidden  = true;
   _showEmpty('effortEmpty',    false);
   _showEmpty('portfolioEmpty', false);
@@ -528,11 +522,9 @@ clearBtn.addEventListener('click', () => {
 // Analytics — render dispatcher
 // ---------------------------------------------------------------------------
 async function _renderActiveTab() {
-  if (_activeATab === 'effort')     await _renderEffortTab();
-  if (_activeATab === 'portfolio')  await _renderPortfolioTab();
-  if (_activeATab === 'trends')     await _renderTrendsTab();
-  if (_activeATab === 'allocation') await _renderAllocationTab();
-  if (_activeATab === 'forecast')   await _renderForecastTab();
+  if (_activeATab === 'effort')    await _renderEffortTab();
+  if (_activeATab === 'portfolio') await _renderPortfolioTab();
+  if (_activeATab === 'forecast')  await _renderForecastTab();
 }
 
 function _showEmpty(id, show) {
@@ -582,7 +574,6 @@ async function _renderEffortTab() {
     if (data.length === 0) {
       _showEmpty('effortEmpty', true);
       _disposeTabCharts('effort');
-      document.getElementById('budgetPanel').hidden = true;
       return;
     }
     _showEmpty('effortEmpty', false);
@@ -595,39 +586,12 @@ async function _renderEffortTab() {
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
-      if (params && params.name) {
-        await _openCollabTimelineModal(params.name);
-      }
+      if (params && params.name) await _openCollabTimelineModal(params.name);
     });
 
-    // Budget chart
-    if (bva.length > 0) {
-      document.getElementById('budgetPanel').hidden = false;
-      document.getElementById('budgetChart').style.height =
-        `${Math.max(220, bva.length * 56 + 80)}px`;
-      const bch = _getOrCreateChart('budgetChart');
-      bch.setOption(_buildBudgetOption(bva), true);
-      bch.resize();
-    } else {
-      document.getElementById('budgetPanel').hidden = true;
-    }
+    // Trends + CPI charts (use main PEP filter, no local select)
+    await _renderTrendsCharts(pepCodes, dateFrom, dateTo);
 
-    // Radar chart
-    const rp = new URLSearchParams(p);
-    cycleIds.forEach(id => rp.append('cycle_id', id));
-    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
-    if (radarItems.length >= 3) {
-      document.getElementById('radarPanel').hidden = false;
-      const rc = _getOrCreateChart('radarChart');
-      rc.setOption(_buildRadarOption(radarItems), true);
-      rc.resize();
-    } else {
-      document.getElementById('radarPanel').hidden = true;
-      if (_charts['radarChart'] && !_charts['radarChart'].isDisposed()) {
-        _charts['radarChart'].dispose();
-        delete _charts['radarChart'];
-      }
-    }
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
@@ -679,33 +643,36 @@ async function _renderPortfolioTab() {
     } else {
       document.getElementById('bulletPanel').hidden = true;
     }
+
+    // Radar — needs cycle_id params too
+    const rp = new URLSearchParams(p);
+    cycleIds.forEach(id => rp.append('cycle_id', id));
+    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${rp}`).catch(() => []);
+    if (radarItems.length >= 3) {
+      document.getElementById('radarPanel').hidden = false;
+      const rc = _getOrCreateChart('radarChart');
+      rc.setOption(_buildRadarOption(radarItems), true);
+      rc.resize();
+    } else {
+      document.getElementById('radarPanel').hidden = true;
+      if (_charts['radarChart'] && !_charts['radarChart'].isDisposed()) {
+        _charts['radarChart'].dispose();
+        delete _charts['radarChart'];
+      }
+    }
+
+    // Allocation matrix — last item in portfolio
+    await _renderAllocationTab();
+
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
 }
 
 // ---------------------------------------------------------------------------
-// Tendências
+// Trends + CPI helper — called from both _renderEffortTab and directly
 // ---------------------------------------------------------------------------
-async function _populateTrendsPepSelect() {
-  const sel = document.getElementById('trendsPepSelect');
-  const current = sel.value;
-  try {
-    const peps = await apiFetch('/api/peps');
-    sel.innerHTML = `<option value="">${_t('trends.all')}</option>` +
-      peps.map(p => `<option value="${escHtml(p.code)}">${escHtml(p.code)}${p.descriptions[0] ? ' — ' + escHtml(p.descriptions[0]) : ''}</option>`).join('');
-    if (peps.some(p => p.code === current)) sel.value = current;
-  } catch (_) { /* non-critical */ }
-}
-
-async function _renderTrendsTab() {
-  const localPep  = document.getElementById('trendsPepSelect').value;
-  const dateFrom  = document.getElementById('dateFromInput').value;
-  const dateTo    = document.getElementById('dateToInput').value;
+async function _renderTrendsCharts(pepCodes, dateFrom, dateTo) {
   const p = new URLSearchParams();
-  if (localPep) {
-    p.append('pep_wbs', localPep);
-  } else {
-    pepMs.getValues().forEach(c => p.append('pep_wbs', c));
-  }
+  pepCodes.forEach(c => p.append('pep_wbs', c));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
@@ -714,7 +681,13 @@ async function _renderTrendsTab() {
 
     if (!trends.length) {
       _showEmpty('trendsEmpty', true);
-      _disposeTabCharts('trends');
+      if (_charts['trendsChart'] && !_charts['trendsChart'].isDisposed()) {
+        _charts['trendsChart'].dispose(); delete _charts['trendsChart'];
+      }
+      document.getElementById('cpiChartCard').hidden = true;
+      if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
+        _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
+      }
       return;
     }
     _showEmpty('trendsEmpty', false);
@@ -723,24 +696,21 @@ async function _renderTrendsTab() {
     tc.setOption(_buildTrendsOption(trends), true);
     tc.resize();
 
-    // CPI chart — only if at least one cycle has a cpi value
-    const cpiData = trends.filter(t => t.cpi != null);
     const cpiCard = document.getElementById('cpiChartCard');
+    const cpiData = trends.filter(t => t.cpi != null);
     if (cpiData.length) {
       cpiCard.hidden = false;
-      const cpiChart = _getOrCreateChart('cpiChart');
-      cpiChart.setOption(_buildCpiOption(trends), true);
-      cpiChart.resize();
+      const cc = _getOrCreateChart('cpiChart');
+      cc.setOption(_buildCpiOption(trends), true);
+      cc.resize();
     } else {
       cpiCard.hidden = true;
-      if (_charts['cpiChart']) { _charts['cpiChart'].dispose(); delete _charts['cpiChart']; }
+      if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
+        _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
+      }
     }
-  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+  } catch (err) { notify(`Erro ao carregar tendências: ${err.message}`, 'error'); }
 }
-
-document.getElementById('trendsPepSelect').addEventListener('change', () => {
-  if (_activeATab === 'trends') _renderTrendsTab();
-});
 
 // ---------------------------------------------------------------------------
 // Alocação — Matriz Colaborador × Projeto
@@ -751,7 +721,7 @@ let _allocEvmMode = false;
 document.getElementById('allocToggleBtn').addEventListener('click', () => {
   _allocEvmMode = !_allocEvmMode;
   document.getElementById('allocToggleBtn').textContent = _allocEvmMode ? _t('allocation.btn_r') : _t('allocation.btn_h');
-  if (_activeATab === 'allocation') _renderAllocationTab();
+  if (_activeATab === 'portfolio') _renderAllocationTab();
 });
 
 async function _renderAllocationTab() {
@@ -1418,44 +1388,6 @@ function _buildEffortSeriesOnly(stacked) {
   };
 }
 
-function _buildBudgetOption(budgetData) {
-  const labels  = budgetData.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 30)}` : ''));
-  const budgets = budgetData.map(d => +(d.budget_hours.toFixed(2)));
-  const actuals = budgetData.map((d, i) => ({
-    value: +(d.actual_hours.toFixed(2)),
-    itemStyle: { color: d.actual_hours > budgets[i] ? '#f87171' : '#34d399' },
-  }));
-  return {
-    backgroundColor: 'transparent',
-    legend: {
-      data: [_t('ch.budget'), _t('ch.actual')], top: 8, left: 'center',
-      textStyle: { color: '#cbd5e1', fontSize: 12 }, itemGap: 24, itemWidth: 14, itemHeight: 10,
-    },
-    grid: { top: 44, right: '3%', bottom: 28, left: '2%', containLabel: true },
-    tooltip: {
-      trigger: 'axis', axisPointer: { type: 'shadow' },
-      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
-      formatter: params => {
-        const bVal = params.find(p => p.seriesName === _t('ch.budget'))?.value ?? 0;
-        const aVal = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
-        const pct  = bVal > 0 ? ` (${(aVal / bVal * 100).toFixed(1)}%)` : '';
-        let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue.replace('\n', ' — ')}</div>`;
-        params.forEach(p => {
-          const extra = p.seriesName === _t('ch.actual') ? pct : '';
-          html += `<div>${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b>${extra}</div>`;
-        });
-        if (bVal > 0 && aVal > bVal) html += `<div style="color:#f87171;font-size:11px;margin-top:4px">⚠ ${_t('tt.over_budget')}</div>`;
-        return html;
-      },
-    },
-    xAxis: { type: 'value', name: _t('ch.hours'), nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` }, splitLine: { lineStyle: { color: '#1e293b' } } },
-    yAxis: { type: 'category', data: labels, axisTick: { show: false }, axisLabel: { color: '#e2e8f0', fontSize: 10, lineHeight: 16 } },
-    series: [
-      { name: _t('ch.budget'), type: 'bar', data: budgets, itemStyle: { color: '#22d3ee' }, barMaxWidth: 28, barGap: '10%' },
-      { name: _t('ch.actual'), type: 'bar', data: actuals,                                  barMaxWidth: 28, barGap: '10%' },
-    ],
-  };
-}
 
 function _buildRadarOption(items) {
   const maxH   = Math.max(...items.map(d => d.total_hours), 1);
@@ -1767,34 +1699,36 @@ function _buildTrendsOption(trends) {
   const normals  = trends.map(d => +d.normal_hours.toFixed(2));
   const extras   = trends.map(d => +d.extra_hours.toFixed(2));
   const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
-  const costs    = trends.map(d => +((d.actual_cost ?? 0) * _currencyFactor).toFixed(2));
+  const totals   = trends.map((d, i) => +(normals[i] + extras[i] + standbys[i]).toFixed(2));
+  const maxTotal = Math.max(...totals);
+
   return {
     backgroundColor: 'transparent',
     toolbox: _toolbox({
-      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
+      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
     }),
     legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('ch.actual_cost')],
+      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('stat.total')],
       top: 8, left: 'center',
       textStyle: { color: '#cbd5e1', fontSize: 12 },
-      itemGap: 24, itemWidth: 18, itemHeight: 10,
+      itemGap: 24, itemWidth: 14, itemHeight: 10,
     },
-    grid: { top: 44, right: '8%', bottom: 48, left: '2%', containLabel: true },
+    grid: { top: 44, right: '6%', bottom: 56, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
+      axisPointer: { type: 'shadow' },
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
       formatter: params => {
+        const bars = params.filter(p => p.seriesName !== _t('stat.total'));
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
-        let totalHours = 0;
-        params.forEach(p => {
-          if (p.seriesName === _t('ch.actual_cost')) {
-            html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value / _currencyFactor)}</b><br>`;
-          } else {
-            html += `${p.marker} ${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
-            totalHours += p.value;
+        let total = 0;
+        bars.forEach(p => {
+          if (p.value > 0) {
+            html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
+            total += p.value;
           }
         });
-        html += `<div style="border-top:1px solid #475569;padding-top:4px;margin-top:4px">${_t('tt.total_hours')}: <b>${totalHours.toFixed(1)}h</b></div>`;
+        html += `<hr style="border-color:#334155;margin:4px 0">Total: <b>${total.toFixed(1)}h</b>`;
         return html;
       },
     },
@@ -1803,48 +1737,49 @@ function _buildTrendsOption(trends) {
       data: cats,
       axisLabel: { color: '#94a3b8', rotate: cats.length > 6 ? 30 : 0, fontSize: 11 },
       axisTick: { alignWithLabel: true },
+      axisLine: { lineStyle: { color: '#334155' } },
     },
-    yAxis: [
-      {
-        type: 'value', name: _t('ch.hours'),
-        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
-        splitLine: { lineStyle: { color: '#334155' } },
-      },
-      {
-        type: 'value', name: _currencySymbol,
-        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${_currencySymbol}${(v/1000).toFixed(0)}k` },
-        splitLine: { show: false },
-      },
-    ],
+    yAxis: {
+      type: 'value', name: 'h',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+    },
     series: [
       {
-        name: _t('ch.normal_h'), type: 'line', yAxisIndex: 0,
-        data: normals, smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: '#3b82f6', width: 2.5 },
-        itemStyle: { color: '#3b82f6' },
-        areaStyle: { color: 'rgba(59,130,246,0.12)' },
+        name: _t('ch.normal_h'), type: 'bar', stack: 'total',
+        data: normals, itemStyle: { color: '#3b82f6' }, barMaxWidth: 48,
+        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
       },
       {
-        name: _t('ch.extra_h'), type: 'line', yAxisIndex: 0,
-        data: extras, smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: '#f59e0b', width: 2.5 },
-        itemStyle: { color: '#f59e0b' },
-        areaStyle: { color: 'rgba(245,158,11,0.10)' },
+        name: _t('ch.extra_h'), type: 'bar', stack: 'total',
+        data: extras, itemStyle: { color: '#f59e0b' }, barMaxWidth: 48,
+        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
       },
       {
-        name: _t('ch.standby_h'), type: 'line', yAxisIndex: 0,
-        data: standbys, smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: '#a855f7', width: 2.5 },
-        itemStyle: { color: '#a855f7' },
-        areaStyle: { color: 'rgba(168,85,247,0.10)' },
+        name: _t('ch.standby_h'), type: 'bar', stack: 'total',
+        data: standbys, itemStyle: { color: '#8b5cf6' }, barMaxWidth: 48,
+        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
+          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
       },
       {
-        name: _t('ch.actual_cost'), type: 'line', yAxisIndex: 1,
-        data: costs, smooth: true, symbol: 'diamond', symbolSize: 8,
-        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
-        itemStyle: { color: '#10b981' },
+        name: _t('stat.total'), type: 'line',
+        color: '#10b981', legendIcon: 'circle',
+        data: totals,
+        symbolSize: val => val === maxTotal ? 10 : 6,
+        lineStyle: { width: 1, type: 'dashed' },
+        itemStyle: { color: p => p.value === maxTotal ? '#f87171' : '#10b981' },
+        label: {
+          show: true, position: 'top', fontSize: 10, fontWeight: 600,
+          color: '#10b981',
+          formatter: p => p.value === maxTotal
+            ? `{peak|${p.value.toFixed(1)}h}`
+            : `${p.value.toFixed(1)}h`,
+          rich: { peak: { color: '#f87171', fontWeight: 700 } },
+        },
+        z: 10,
       },
     ],
   };
