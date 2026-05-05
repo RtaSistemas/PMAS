@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
+import pytest
+
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
 
 
 def _cycle(db, name, y, m):
@@ -342,3 +344,80 @@ class TestAllocationFilters:
         _rec(db_session, cy, co2, "P1", normal=3.0, day=2)
         result = client.get(f"/api/allocation?collaborator_id={co1.id}").json()
         assert all(r["collaborator"] == "Ursula" for r in result)
+
+
+# ===========================================================================
+# /api/allocation — full coverage
+# ===========================================================================
+
+class TestAllocation:
+    def test_empty(self, client):
+        assert client.get("/api/allocation").json() == []
+
+    def test_returns_expected_fields(self, client, db_session):
+        cy = _cycle(db_session, "AL3", 2026, 3)
+        co = _collab(db_session, "Walter")
+        _rec(db_session, cy, co, "P1", desc="Desc1", normal=8.0, day=5)
+        result = client.get("/api/allocation").json()
+        assert len(result) == 1
+        item = result[0]
+        assert item["collaborator"] == "Walter"
+        assert item["pep_wbs"] == "P1"
+        assert item["pep_description"] == "Desc1"
+        assert item["total_hours"] == 8.0
+
+    def test_actual_cost_uses_multipliers(self, client, db_session):
+        from backend.app.models import GlobalConfig
+        cfg = db_session.get(GlobalConfig, 1)
+        if cfg is None:
+            cfg = GlobalConfig(id=1, extra_hours_multiplier=2.0, standby_hours_multiplier=1.5)
+            db_session.add(cfg)
+        else:
+            cfg.extra_hours_multiplier = 2.0
+            cfg.standby_hours_multiplier = 1.5
+        db_session.commit()
+
+        cy = _cycle(db_session, "AL4", 2026, 4)
+        co = _collab(db_session, "Xavier")
+        r = TimesheetRecord(
+            collaborator_id=co.id, cycle_id=cy.id,
+            record_date=date(2026, 4, 10),
+            pep_wbs="P1", pep_description="D",
+            normal_hours=4.0, extra_hours=2.0, standby_hours=1.0,
+            cost_per_hour=10.0,
+        )
+        db_session.add(r); db_session.commit()
+        result = client.get("/api/allocation").json()
+        item = next(x for x in result if x["collaborator"] == "Xavier")
+        # actual_cost = 10 * (4 + 2*2.0 + 1*1.5) = 10 * 9.5 = 95.0
+        assert item["total_hours"] == pytest.approx(7.0)
+        assert item["actual_cost"] == pytest.approx(95.0)
+
+    def test_filter_by_cycle_id(self, client, db_session):
+        c1 = _cycle(db_session, "AL5a", 2026, 5)
+        c2 = _cycle(db_session, "AL5b", 2026, 6)
+        co = _collab(db_session, "Yasmin")
+        _rec(db_session, c1, co, "PA", desc="Want",   normal=8.0, day=1)
+        _rec(db_session, c2, co, "PB", desc="Ignore", normal=4.0, day=1)
+        result = client.get(f"/api/allocation?cycle_id={c1.id}").json()
+        assert len(result) == 1
+        assert result[0]["pep_wbs"] == "PA"
+
+    def test_filter_by_pep_wbs(self, client, db_session):
+        cy  = _cycle(db_session, "AL6", 2026, 7)
+        co  = _collab(db_session, "Zoe")
+        _rec(db_session, cy, co, "WANT",   desc="Target",  normal=8.0, day=1)
+        _rec(db_session, cy, co, "IGNORE", desc="Discard", normal=4.0, day=2)
+        result = client.get("/api/allocation?pep_wbs=WANT").json()
+        assert len(result) == 1
+        assert result[0]["pep_wbs"] == "WANT"
+
+    def test_groups_by_collaborator_and_pep(self, client, db_session):
+        cy = _cycle(db_session, "AL7", 2026, 8)
+        co = _collab(db_session, "Alice2")
+        _rec(db_session, cy, co, "P1", desc="D1", normal=4.0, day=1)
+        _rec(db_session, cy, co, "P1", desc="D1", normal=6.0, day=2)
+        result = client.get("/api/allocation").json()
+        items = [x for x in result if x["collaborator"] == "Alice2"]
+        assert len(items) == 1
+        assert items[0]["total_hours"] == pytest.approx(10.0)

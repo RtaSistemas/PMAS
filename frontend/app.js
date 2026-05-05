@@ -27,14 +27,19 @@ const _LANG = {
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
-    'radar.title':'Horas e Custo por PEP — Radar',
-    'radar.note':'Valores normalizados · passe o mouse para ver totais absolutos',
+    'scatter.title':'Eficiência de Custo por PEP',
+    'scatter.note':'Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio',
+    'scatter.empty':'Nenhum dado de PEP disponível para os filtros selecionados.',
     'portfolio.treemap_h':'Distribuição de Horas por PEP (Treemap)',
     'portfolio.treemap_r':'Custo Real por PEP (Treemap)',
     'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
     'portfolio.note':'Blocos cinzas = PEP sem projeto cadastrado',
     'btn.view_hours':'Vista: Horas','btn.view_cost':'Vista: R$',
+    'btn.view_cpi':'Ver: CPI por PEP','btn.hide_cpi':'Ocultar CPI por PEP',
     'bullet.title':'Orçado vs. Realizado — Bullet Chart',
+    'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
+    'pepcpi.note':'Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos',
+    'pepcpi.empty':'Sem dados de budget. Defina budget_cost nos projetos para habilitar o rastreamento de CPI.',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
     'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
@@ -146,14 +151,19 @@ const _LANG = {
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
-    'radar.title':'Hours & Cost by PEP — Radar',
-    'radar.note':'Normalized values · hover for absolute totals',
+    'scatter.title':'Cost Efficiency by PEP',
+    'scatter.note':'Bubble size = budget utilization · Color = CPI health · Dashed line = portfolio avg R$/h',
+    'scatter.empty':'No PEP data available for selected filters.',
     'portfolio.treemap_h':'Hour Distribution by PEP (Treemap)',
     'portfolio.treemap_r':'Actual Cost by PEP (Treemap)',
     'portfolio.empty':'No hour data found for the selected filters.',
     'portfolio.note':'Gray blocks = PEP without registered project',
     'btn.view_hours':'View: Hours','btn.view_cost':'View: R$',
+    'btn.view_cpi':'View: CPI per PEP','btn.hide_cpi':'Hide CPI per PEP',
     'bullet.title':'Budget vs. Actual — Bullet Chart',
+    'pepcpi.title':'CPI per PEP by Cycle',
+    'pepcpi.note':'Budget / Actual Cost per cycle · Reference line at 1.0 · Requires budget_cost on projects',
+    'pepcpi.empty':'No budget data found. Set budget_cost on projects to enable CPI tracking.',
     'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
     'trends.all':'All',
     'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
@@ -305,8 +315,8 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'cpiChart'],
-  portfolio:  ['treemapChart', 'bulletChart', 'radarChart'],
+  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart'],
+  portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart'],
 };
 
@@ -346,6 +356,7 @@ window.addEventListener('afterprint', () => {
 let _activeATab = 'effort';
 let _stackMode  = true;   // true = stacked, false = grouped
 let _evmMode    = false;  // false = hours, true = R$
+let _pepCpiMode = false;  // false = hidden, true = per-PEP CPI panel visible
 
 const atabBtns     = document.querySelectorAll('.atab-btn');
 const atabSections = document.querySelectorAll('.atab-section');
@@ -367,6 +378,13 @@ document.getElementById('evmToggleBtn').addEventListener('click', () => {
   _evmMode = !_evmMode;
   document.getElementById('evmToggleBtn').textContent = _evmMode ? _t('btn.view_cost') : _t('btn.view_hours');
   _renderPortfolioTab();
+});
+
+document.getElementById('cpiToggleBtn').addEventListener('click', () => {
+  _pepCpiMode = !_pepCpiMode;
+  document.getElementById('cpiToggleBtn').textContent =
+    _pepCpiMode ? _t('btn.hide_cpi') : _t('btn.view_cpi');
+  if (_activeATab === 'effort') _renderActiveTab();
 });
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
@@ -513,6 +531,12 @@ clearBtn.addEventListener('click', () => {
   pepDataCache = {};
   _evmMode = false;
   document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
+  _pepCpiMode = false;
+  document.getElementById('cpiToggleBtn').textContent = _t('btn.view_cpi');
+  document.getElementById('pepCpiPanel').hidden = true;
+  _showEmpty('pepCpiEmpty', false);
+  document.getElementById('scatterPanel').hidden = true;
+  _showEmpty('scatterEmpty', false);
   _disposeTabCharts('effort');
   _disposeTabCharts('portfolio');
   document.getElementById('allocationMatrix').innerHTML = '';
@@ -660,18 +684,27 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = true;
     }
 
-    // Radar — same params as the other charts (pep_wbs, pep_description, collaborator_id, cycle_id)
-    const radarItems = await apiFetch(`/api/dashboard/pep-radar?${p}`).catch(() => []);
-    if (radarItems.length >= 3) {
-      document.getElementById('radarPanel').hidden = false;
-      const rc = _getOrCreateChart('radarChart');
-      rc.setOption(_buildRadarOption(radarItems), true);
-      rc.resize();
+    // Scatter — same params as the other charts
+    const scatterItems = await apiFetch(`/api/dashboard/pep-radar?${p}`).catch(() => []);
+    if (scatterItems.length >= 2) {
+      _showEmpty('scatterEmpty', false);
+      document.getElementById('scatterPanel').hidden = false;
+      document.getElementById('scatterChart').style.height = '460px';
+      const sc = _getOrCreateChart('scatterChart');
+      sc.setOption(_buildScatterOption(scatterItems), true);
+      sc.resize();
+      const stotalH = scatterItems.reduce((s, d) => s + d.total_hours, 0);
+      const stotalC = scatterItems.reduce((s, d) => s + d.actual_cost * _currencyFactor, 0);
+      const savgRate = stotalH > 0 ? stotalC / stotalH : 0;
+      const smaxH = Math.max(...scatterItems.map(d => d.total_hours)) * 1.15;
+      const smaxC = Math.max(...scatterItems.map(d => d.actual_cost * _currencyFactor)) * 1.15;
+      _drawScatterRefLine(sc, savgRate, smaxH, smaxC);
     } else {
-      document.getElementById('radarPanel').hidden = true;
-      if (_charts['radarChart'] && !_charts['radarChart'].isDisposed()) {
-        _charts['radarChart'].dispose();
-        delete _charts['radarChart'];
+      _showEmpty('scatterEmpty', scatterItems.length === 0);
+      document.getElementById('scatterPanel').hidden = true;
+      if (_charts['scatterChart'] && !_charts['scatterChart'].isDisposed()) {
+        _charts['scatterChart'].dispose();
+        delete _charts['scatterChart'];
       }
     }
 
@@ -757,6 +790,66 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
         _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
       }
+    }
+
+    // Per-PEP CPI panel (toggle-controlled)
+    if (!_pepCpiMode) {
+      document.getElementById('pepCpiPanel').hidden = true;
+      return;
+    }
+    // When no specific cycles are selected, use all non-quarantine cycles
+    const effectiveCycleIds = cycleIds.length > 0
+      ? cycleIds
+      : (_allCycles || []).filter(c => !c.is_quarantine).map(c => c.id);
+
+    if (!effectiveCycleIds.length) {
+      _showEmpty('pepCpiEmpty', true);
+      document.getElementById('pepCpiPanel').hidden = false;
+      return;
+    }
+    try {
+      const cycleNameMap = {};
+      (_allCycles || []).forEach(c => { cycleNameMap[c.id] = c.name; });
+
+      const healthByCycle = await Promise.all(
+        effectiveCycleIds.map(id =>
+          apiFetch(`/api/portfolio-health?cycle_id=${id}`)
+            .then(items => ({ cycleId: id, items }))
+            .catch(() => ({ cycleId: id, items: [] }))
+        )
+      );
+
+      const pepMap = {};
+      healthByCycle.forEach(({ cycleId, items: hItems }) => {
+        const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
+        hItems.forEach(d => {
+          if (d.budget_cost == null || d.budget_cost === 0 || d.actual_cost === 0) return;
+          if (!pepMap[d.pep_wbs]) {
+            pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
+          }
+          const cpiVal = +(d.budget_cost / d.actual_cost).toFixed(3);
+          pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
+        });
+      });
+
+      const peps = Object.entries(pepMap);
+      const allCycleNames = effectiveCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
+
+      if (!peps.length) {
+        _showEmpty('pepCpiEmpty', true);
+        document.getElementById('pepCpiPanel').hidden = false;
+        if (_charts['pepCpiChart'] && !_charts['pepCpiChart'].isDisposed()) {
+          _charts['pepCpiChart'].dispose(); delete _charts['pepCpiChart'];
+        }
+        return;
+      }
+      _showEmpty('pepCpiEmpty', false);
+      document.getElementById('pepCpiPanel').hidden = false;
+      const pcc = _getOrCreateChart('pepCpiChart');
+      pcc.setOption(_buildPepCpiOption(peps, allCycleNames), true);
+      pcc.resize();
+    } catch (err) {
+      notify(`CPI por PEP — erro: ${err.message}`, 'error');
     }
   } catch (err) { notify(`Erro ao carregar tendências: ${err.message}`, 'error'); }
 }
@@ -1440,156 +1533,134 @@ function _buildEffortSeriesOnly(stacked) {
 }
 
 
-function _buildRadarOption(items) {
-  const maxH   = Math.max(...items.map(d => d.total_hours), 1);
-  const maxC   = Math.max(...items.map(d => d.actual_cost), 1);
-  const totalH = items.reduce((s, d) => s + d.total_hours, 0);
-  const totalC = items.reduce((s, d) => s + d.actual_cost, 0);
-  const fmtR   = v => _fmtCost(v);
-  const abbrev = s => s.length > 20 ? s.slice(0, 19) + '…' : s;
-  const LINE_H = 17;
-  const TOP    = 44;   // abaixo do título
+function _buildScatterOption(items) {
+  const totalH  = items.reduce((s, d) => s + d.total_hours, 0);
+  const totalC  = items.reduce((s, d) => s + d.actual_cost, 0);
+  const avgRate = totalH > 0 ? totalC / totalH : 0;             // raw R$/h for color comparison
+  const maxH    = Math.max(...items.map(d => d.total_hours)) * 1.15 || 1;
+  const maxC    = Math.max(...items.map(d => d.actual_cost * _currencyFactor)) * 1.15 || 1;
+  const minH    = Math.min(...items.map(d => d.total_hours));
+
+  const colorOf = d => {
+    const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
+    if (rph === 0 || avgRate === 0) return '#64748b';
+    if (rph <= avgRate)             return '#3b82f6';   // normal-hours blue
+    if (rph <= avgRate * 1.1)       return '#f59e0b';   // project amber
+    return '#f87171';                                   // project red
+  };
+
+  const sizeOf = d => {
+    const range = (maxH / 1.15) - minH || 1;
+    return 18 + ((d.total_hours - minH) / range) * 38;
+  };
+
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Radar'),
-    title: {
-      text: `Total  ·  ${totalH.toFixed(1)}h  |  ${fmtR(totalC)}`,
-      top: 6,
-      left: 'center',
-      textStyle: { color: '#e2e8f0', fontSize: 12, fontWeight: 600 },
-    },
-    legend: {
-      data: [_t('ch.hours'), _t('ch.cost')],
-      bottom: 4,
-      textStyle: { color: '#cbd5e1', fontSize: 12 },
-      itemGap: 24,
-    },
+    toolbox: _toolbox({}, 'PMAS-Scatter'),
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
-      formatter: params => {
-        const isCost = params.name === _t('ch.cost');
-        let html = `<b>${escHtml(params.name)}</b><br>`;
-        (params.data.value || []).forEach((_, i) => {
-          if (i >= items.length) return;
-          const d = items[i];
-          const raw = isCost ? fmtR(d.actual_cost) : `${d.total_hours.toFixed(1)}h`;
-          html += `<span style="color:#94a3b8">${escHtml(d.pep_description)}</span>: <b>${raw}</b><br>`;
-        });
-        return html;
+      backgroundColor: '#1e293b',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      formatter: p => {
+        const d   = p.data._raw;
+        const rph = d.total_hours > 0 ? (d.actual_cost / d.total_hours).toFixed(2) : '—';
+        const vs  = avgRate > 0
+          ? ((d.actual_cost / d.total_hours - avgRate) / avgRate * 100).toFixed(1)
+          : '—';
+        const sign = parseFloat(vs) >= 0 ? '+' : '';
+        return [
+          `<b>${escHtml(d.pep_description)}</b>`,
+          `Horas: <b>${d.total_hours.toFixed(0)}h</b>`,
+          `Custo real: <b>${_fmtCost(d.actual_cost)}</b>`,
+          `R$/hora: <b>${_fmtCost(parseFloat(rph))}</b> (${sign}${vs}% vs avg)`,
+        ].join('<br/>');
       },
     },
-    radar: {
-      indicator: items.map(d => ({ name: d.pep_description, max: 100 })),
-      center: ['50%', '50%'],
-      radius: '60%',
-      axisName: { color: '#94a3b8', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#334155' } },
-      splitArea: { areaStyle: { color: ['rgba(15, 23, 42, 0.95)', 'rgba(51, 65, 85, 0.30)'] } },
-      axisLine: { lineStyle: { color: '#475569' } },
+    legend: { show: false },
+    grid: { top: 56, bottom: 48, left: 72, right: 24, containLabel: false },
+    xAxis: {
+      name: 'Horas Consumidas',
+      nameLocation: 'middle', nameGap: 32,
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', formatter: v => v + 'h' },
+      axisLine:  { lineStyle: { color: '#334155' } },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+      min: 0, max: maxH,
+    },
+    yAxis: {
+      name: 'Custo Real',
+      nameLocation: 'middle', nameGap: 56,
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: {
+        color: '#94a3b8',
+        formatter: v => v >= 1000
+          ? `${_currencySymbol} ${(v / 1000).toFixed(0)}k`
+          : `${_currencySymbol} ${v.toFixed(0)}`,
+      },
+      axisLine:  { lineStyle: { color: '#334155' } },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+      min: 0, max: maxC,
     },
     series: [{
-      type: 'radar',
-      data: [
+      type: 'scatter',
+      symbolSize: (val, params) => sizeOf(params.data._raw),
+      data: items.map(d => ({
+        value: [d.total_hours, d.actual_cost * _currencyFactor],
+        itemStyle: {
+          color: colorOf(d),
+          opacity: 0.82,
+          borderColor: '#0f172a',
+          borderWidth: 2,
+        },
+        label: {
+          show: true,
+          formatter: d.pep_description.length > 20
+            ? d.pep_description.slice(0, 19) + '…'
+            : d.pep_description,
+          color: '#e2e8f0',
+          fontSize: 10,
+          fontWeight: 600,
+          position: 'top',
+          distance: 6,
+        },
+        _raw: d,
+      })),
+      emphasis: {
+        scale: 1.15,
+        itemStyle: { borderWidth: 3, borderColor: '#e2e8f0' },
+      },
+    }],
+  };
+}
+
+function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
+  const p0 = chart.convertToPixel({ gridIndex: 0 }, [0, 0]);
+  const p1 = chart.convertToPixel({ gridIndex: 0 }, [maxH, Math.min(maxH * avgRate, maxC)]);
+  if (!p0 || !p1) return;
+  chart.setOption({
+    graphic: [{
+      type: 'group',
+      children: [
         {
-          name: _t('ch.hours'),
-          value: items.map(d => +(d.total_hours / maxH * 100).toFixed(1)),
-          itemStyle: { color: '#3b82f6' },
-          lineStyle: { color: '#3b82f6', width: 1 },
-          areaStyle: { color: 'rgba(59,130,246,0.15)' },
+          type: 'line',
+          shape: { x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1] },
+          style: { stroke: '#475569', lineWidth: 1.5, lineDash: [6, 4] },
+          z: 0,
         },
         {
-          name: _t('ch.cost'),
-          value: items.map(d => +(d.actual_cost / maxC * 100).toFixed(1)),
-          itemStyle: { color: '#f59e0b' },
-          lineStyle: { color: '#f59e0b', width: 1 },
-          areaStyle: { color: 'rgba(245,158,11,0.15)' },
+          type: 'text',
+          x: p1[0] - 60, y: p1[1] - 16,
+          style: {
+            text: `avg ${_currencySymbol} ${avgRate.toFixed(0)}/h`,
+            fill: '#64748b',
+            fontSize: 10,
+          },
+          z: 0,
         },
       ],
     }],
-
-graphic: [
-  // Painel esquerdo — horas por PEP
-  {
-    type: 'group',
-    left: 4,
-    top: TOP,
-    children: [
-      // Caixa única contornando todos os itens
-      {
-        type: 'rect',
-        y: -8,
-        shape: {
-          x: 0,
-          y: 0,
-          width: 220,
-          height: items.length * LINE_H + 8,
-          r: 3,
-        },
-        style: {
-          fill: 'transparent',
-          stroke: '#5470c6',
-          lineWidth: 0.8,
-        },
-        z: 0,
-      },
-      // Textos
-      ...items.map((d, i) => ({
-        type: 'text',
-        x: 6,
-        y: i * LINE_H,
-        z: 1,
-        style: {
-          text: `${d.pep_description}: ${d.total_hours.toFixed(1)}h`,
-          fill: '#94a3b8',
-          fontSize: 10,
-          textAlign: 'left',
-        },
-      })),
-    ],
-  },
-
-  // Painel direito — custo por PEP
-  {
-    type: 'group',
-    right: 4,
-    top: TOP,
-    children: [
-      // Caixa única contornando todos os itens
-      {
-        type: 'rect',
-        y: -8,
-        shape: {
-          x: -220,
-          y: 0,
-          width: 245,
-          height: items.length * LINE_H + 8,
-          r: 3,
-        },
-        style: {
-          fill: 'transparent',
-          stroke: '#f59e0b',
-          lineWidth: 0.8,
-        },
-        z: 0,
-      },
-      // Textos
-      ...items.map((d, i) => ({
-        type: 'text',
-        x: -214,
-        y: i * LINE_H,
-        z: 1,
-        style: {
-          text: `${d.pep_description}: ${fmtR(d.actual_cost)}`,
-          fill: '#94a3b8',
-          fontSize: 10,
-          textAlign: 'left',
-        },
-      })),
-    ],
-  },
-],
-};
+  });
 }
 
 function _buildTreemapOption(health, evmMode = false) {
@@ -2067,7 +2138,7 @@ function _buildCpiOption(trends) {
       formatter: params => {
         const p = params[0];
         if (p.value == null) return `${p.name}<br/>IDP: —`;
-        const color = p.value >= 1 ? '#4ade80' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
+        const color = p.value >= 1 ? '#3b82f6' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
         return `${p.name}<br/>IDP: <b style="color:${color}">${p.value.toFixed(3)}</b>`;
       },
     },
@@ -2083,12 +2154,12 @@ function _buildCpiOption(trends) {
       data: cpiSeries,
       connectNulls: true,
       smooth: false,
-      lineStyle: { color: '#60a5fa', width: 2 },
+      lineStyle: { color: '#3b82f6', width: 2 },
       itemStyle: {
         color: params => {
           const v = params.value;
-          if (v == null) return '#60a5fa';
-          return v >= 1 ? '#4ade80' : v >= 0.9 ? '#fbbf24' : '#f87171';
+          if (v == null) return '#3b82f6';
+          return v >= 1 ? '#3b82f6' : v >= 0.9 ? '#fbbf24' : '#f87171';
         },
       },
       label: {
@@ -2099,11 +2170,11 @@ function _buildCpiOption(trends) {
         formatter: params => {
           if (params.value == null) return '';
           const v = params.value;
-          const style = v >= 1 ? 'green' : v >= 0.9 ? 'amber' : 'red';
+          const style = v >= 1 ? 'good' : v >= 0.9 ? 'amber' : 'red';
           return `{${style}|${v.toFixed(2)}}`;
         },
         rich: {
-          green: { color: '#4ade80', fontWeight: 700, fontSize: 10 },
+          good: { color: '#3b82f6', fontWeight: 700, fontSize: 10 },
           amber: { color: '#fbbf24', fontWeight: 700, fontSize: 10 },
           red:   { color: '#f87171', fontWeight: 700, fontSize: 10 },
         },
@@ -2116,6 +2187,88 @@ function _buildCpiOption(trends) {
         data: [{ yAxis: 1.0 }],
       },
     }],
+  };
+}
+
+const _PEP_CPI_COLORS = [
+  '#3b82f6', '#f59e0b', '#10b981', '#a78bfa',
+  '#f43f5e', '#06b6d4', '#fb923c', '#84cc16',
+];
+
+function _buildPepCpiOption(peps, allCycleNames) {
+  const series = peps.map(([wbs, { desc, points }], i) => {
+    const dataMap = Object.fromEntries(points.map(p => [p.cycleName, p.cpi]));
+    const data    = allCycleNames.map(n => dataMap[n] ?? null);
+    const color   = _PEP_CPI_COLORS[i % _PEP_CPI_COLORS.length];
+    return {
+      name: `${wbs} — ${desc}`,
+      type: 'line',
+      data,
+      connectNulls: false,
+      smooth: false,
+      symbol: 'circle', symbolSize: 7,
+      lineStyle: { color, width: 2.5 },
+      itemStyle: { color },
+      emphasis: { focus: 'series' },
+    };
+  });
+
+  return {
+    backgroundColor: 'transparent',
+    toolbox: _toolbox({}, 'PMAS-CPI-PEP'),
+    title: {
+      text: _t('pepcpi.title'),
+      textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 600 },
+      left: 'center', top: 8,
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e293b',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      formatter: params => {
+        const header = `<b>${escHtml(params[0]?.axisValue)}</b><br/>`;
+        const lines  = params
+          .filter(p => p.value != null)
+          .map(p => {
+            const cpiVal = p.value;
+            const color  = cpiVal >= 1.0 ? '#3b82f6' : cpiVal >= 0.9 ? '#f59e0b' : '#ef4444';
+            const dot    = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
+            return `${dot}${escHtml(p.seriesName)}: <b style="color:${color}">${cpiVal.toFixed(2)}</b>`;
+          })
+          .join('<br/>');
+        return header + lines;
+      },
+    },
+    legend: {
+      bottom: 0,
+      textStyle: { color: '#94a3b8', fontSize: 10 },
+      itemWidth: 14, itemHeight: 3,
+    },
+    grid: { top: 48, bottom: 64, left: 48, right: 16, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: allCycleNames,
+      axisLabel: { color: '#94a3b8', fontSize: 10, rotate: allCycleNames.length > 6 ? 30 : 0 },
+      axisLine:  { lineStyle: { color: '#334155' } },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      name: 'CPI',
+      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: '#94a3b8', formatter: v => v.toFixed(2) },
+      axisLine:  { lineStyle: { color: '#334155' } },
+      splitLine: { lineStyle: { color: '#1e293b' } },
+      min: v => Math.max(0, +(v.min - 0.15).toFixed(1)),
+      max: v => +(v.max + 0.15).toFixed(1),
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: '#64748b', type: 'dashed', width: 1.5 },
+        data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: '#64748b', fontSize: 10 } }],
+      },
+    },
+    series,
   };
 }
 

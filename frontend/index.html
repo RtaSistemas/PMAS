@@ -158,11 +158,22 @@
       <div class="card chart-panel">
         <div class="panel-header">
           <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
+          <button id="cpiToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_cpi">Ver: CPI por PEP</button>
         </div>
         <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
+      </div>
+      <div class="card chart-panel" id="pepCpiPanel" hidden style="margin-top:0">
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="pepcpi.title">CPI por PEP ao longo dos Ciclos</span>
+          <span class="panel-note"  data-i18n="pepcpi.note">Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos</span>
+        </div>
+        <div id="pepCpiEmpty" class="chart-empty" hidden data-i18n="pepcpi.empty">
+          Sem dados de budget. Defina budget_cost nos projetos para habilitar o rastreamento de CPI.
+        </div>
+        <div id="pepCpiChart" style="width:100%;height:360px"></div>
       </div>
       <div class="card chart-panel" id="cpiChartCard" hidden>
         <div class="panel-header">
@@ -198,12 +209,15 @@
         </div>
         <div id="bulletChart" style="width:100%;height:300px"></div>
       </div>
-      <div class="card chart-panel" id="radarPanel" hidden>
+      <div class="card chart-panel" id="scatterPanel" hidden>
         <div class="panel-header">
-          <span class="panel-title" data-i18n="radar.title">Horas e Custo por PEP — Radar</span>
-          <span class="panel-note" data-i18n="radar.note">Valores normalizados · passe o mouse para ver totais absolutos</span>
+          <span class="panel-title" data-i18n="scatter.title">Eficiência de Custo por PEP</span>
+          <span class="panel-note"  data-i18n="scatter.note">Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio</span>
         </div>
-        <div id="radarChart" style="width:100%;height:440px"></div>
+        <div id="scatterEmpty" class="chart-empty" hidden data-i18n="scatter.empty">
+          Nenhum dado de PEP disponível para os filtros selecionados.
+        </div>
+        <div id="scatterChart" style="width:100%;height:460px"></div>
       </div>
       <div class="card chart-panel">
         <div class="panel-header">
