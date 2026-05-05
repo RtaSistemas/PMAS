@@ -1565,7 +1565,7 @@ function _buildScatterOption(items) {
           : '—';
         const sign = parseFloat(vs) >= 0 ? '+' : '';
         return [
-          `<b>${escHtml(d.pep_wbs)}</b> — ${escHtml(d.pep_description ?? '')}`,
+          `<b>${escHtml(d.pep_description)}</b>`,
           `Horas: <b>${d.total_hours.toFixed(0)}h</b>`,
           `Custo real: <b>${_fmtCost(d.actual_cost)}</b>`,
           `R$/hora: <b>${_fmtCost(parseFloat(rph))}</b> (${sign}${vs}% vs avg)`,
@@ -1608,7 +1608,9 @@ function _buildScatterOption(items) {
         },
         label: {
           show: true,
-          formatter: d.pep_wbs,
+          formatter: d.pep_description.length > 20
+            ? d.pep_description.slice(0, 19) + '…'
+            : d.pep_description,
           color: '#e2e8f0',
           fontSize: 10,
           fontWeight: 600,
