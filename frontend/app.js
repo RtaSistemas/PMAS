@@ -55,6 +55,7 @@ const _LANG = {
     'config.title':'Fatores Globais de Custo',
     'config.extra_lbl':'Multiplicador — Hora Extra',
     'config.standby_lbl':'Multiplicador — Hora Sobreaviso',
+    'config.anomaly_lbl':'Máx. Horas/Dia (Alerta Anomalia)',
     'btn.save_config':'Salvar fatores',
     'team.title':'Colaboradores','btn.assign_all':'Atribuir a todos',
     'team.th.name':'Nome','team.th.seniority':'Senioridade','team.th.rate':'Taxa atual (R$/h)',
@@ -112,6 +113,10 @@ const _LANG = {
     'auditlog.th.entity':'Entidade','auditlog.th.id':'ID','auditlog.th.detail':'Detalhe',
     'no_audit':'Nenhum evento registrado.',
     'cpi.title':'IDP — Índice de Desempenho de Custo por Ciclo',
+    'toolbox.save':'Salvar Imagem','toolbox.restore':'Restaurar','toolbox.data_view':'Ver Dados',
+    'toolbox.data_view_lang':['Dados do Gráfico','Fechar','Atualizar'],
+    'toolbox.zoom':'Zoom','toolbox.zoom_back':'Desfazer Zoom',
+    'toolbox.stack':'Empilhado','toolbox.tiled':'Lado a Lado',
     'plan.title':'Baseline de Planejamento (Horas/Ciclo)',
     'plan.btn_add':'+ Adicionar ciclo','plan.btn_export':'↓ Exportar CSV','plan.btn_import':'↑ Importar CSV',
     'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
@@ -169,6 +174,7 @@ const _LANG = {
     'config.title':'Global Cost Factors',
     'config.extra_lbl':'Multiplier — Overtime',
     'config.standby_lbl':'Multiplier — Standby',
+    'config.anomaly_lbl':'Max. Hours/Day (Anomaly Alert)',
     'btn.save_config':'Save factors',
     'team.title':'Collaborators','btn.assign_all':'Assign to all',
     'team.th.name':'Name','team.th.seniority':'Seniority','team.th.rate':'Current rate (R$/h)',
@@ -226,6 +232,10 @@ const _LANG = {
     'auditlog.th.entity':'Entity','auditlog.th.id':'ID','auditlog.th.detail':'Detail',
     'no_audit':'No events recorded.',
     'cpi.title':'CPI — Cost Performance Index per Cycle',
+    'toolbox.save':'Save Image','toolbox.restore':'Restore','toolbox.data_view':'View Data',
+    'toolbox.data_view_lang':['Chart Data','Close','Refresh'],
+    'toolbox.zoom':'Zoom','toolbox.zoom_back':'Undo Zoom',
+    'toolbox.stack':'Stacked','toolbox.tiled':'Side by Side',
     'plan.title':'Planning Baseline (Hours/Cycle)',
     'plan.btn_add':'+ Add cycle','plan.btn_export':'↓ Export CSV','plan.btn_import':'↑ Import CSV',
     'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
@@ -1026,8 +1036,8 @@ function _buildForecastOption(fc) {
       },
     },
     toolbox: _toolbox({
-      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
-    }),
+      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
+    }, 'PMAS-IDP'),
     xAxis: {
       type: 'category', data: allCats,
       axisLabel: { color: '#94a3b8', rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
@@ -1207,14 +1217,14 @@ function _buildEffortTitle(payload, cycleCount) {
 // Toolbox padrão ECharts — garante consistência visual em todos os gráficos.
 // extra: objeto com features adicionais (magicType, dataZoom, etc.)
 // ---------------------------------------------------------------------------
-function _toolbox(extra = {}) {
+function _toolbox(extra = {}, name = 'PMAS') {
   return {
     right: 10,
     top: 10,
     feature: {
-      dataView:    { readOnly: true, title: 'Ver Dados',     lang: ['Dados do Gráfico', 'Fechar', 'Atualizar'] },
-      restore:     { title: 'Restaurar' },
-      saveAsImage: { title: 'Salvar Imagem', pixelRatio: 2 },
+      dataView:    { readOnly: true, title: _t('toolbox.data_view'), lang: _t('toolbox.data_view_lang') },
+      restore:     { title: _t('toolbox.restore') },
+      saveAsImage: { title: _t('toolbox.save'), name, pixelRatio: 2 },
       ...extra,
     },
   };
@@ -1265,7 +1275,7 @@ function _buildEffortOption(data, stacked) {
       containLabel: true,
     },
 
-    toolbox: _toolbox(),
+    toolbox: _toolbox({}, 'PMAS-Esforco'),
 
     tooltip: {
       trigger: 'axis',
@@ -1441,7 +1451,7 @@ function _buildRadarOption(items) {
   const TOP    = 44;   // abaixo do título
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox(),
+    toolbox: _toolbox({}, 'PMAS-Radar'),
     title: {
       text: `Total  ·  ${totalH.toFixed(1)}h  |  ${fmtR(totalC)}`,
       top: 6,
@@ -1588,7 +1598,7 @@ function _buildTreemapOption(health, evmMode = false) {
     : v.toFixed(1) + 'h';
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox(),
+    toolbox: _toolbox({}, 'PMAS-Treemap'),
     tooltip: {
       trigger: 'item',
       backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
@@ -1669,7 +1679,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
     : v => `${v}h`;
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox(),
+    toolbox: _toolbox({}, 'PMAS-Bullet'),
     grid: { top: 46, right: '10%', bottom: 16, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'none' },
@@ -1746,8 +1756,8 @@ function _buildTrendsOption(trends) {
   return {
     backgroundColor: 'transparent',
     toolbox: _toolbox({
-      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
-    }),
+      magicType: { type: ['stack', 'tiled'], title: { stack: _t('toolbox.stack'), tiled: _t('toolbox.tiled') } },
+    }, 'PMAS-Queima'),
     legend: {
       data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('stat.total')],
       top: 8, left: 'center',
@@ -1959,8 +1969,8 @@ async function _openCollabTimelineModal(collaboratorName) {
       },
     },
     toolbox: _toolbox({
-      magicType: { type: ['stack', 'tiled'], title: { stack: 'Empilhado', tiled: 'Lado a Lado' } },
-    }),
+      magicType: { type: ['stack', 'tiled'], title: { stack: _t('toolbox.stack'), tiled: _t('toolbox.tiled') } },
+    }, 'PMAS-Esforco'),
     xAxis: {
       type: 'category',
       data: cycles,
@@ -2050,8 +2060,8 @@ function _buildCpiOption(trends) {
   return {
     backgroundColor: 'transparent',
     toolbox: _toolbox({
-      dataZoom: { title: { zoom: 'Dar Zoom', back: 'Restaurar Zoom' } },
-    }),
+      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
+    }, 'PMAS-Previsao'),
     tooltip: {
       trigger: 'axis',
       formatter: params => {
@@ -2079,6 +2089,23 @@ function _buildCpiOption(trends) {
           const v = params.value;
           if (v == null) return '#60a5fa';
           return v >= 1 ? '#4ade80' : v >= 0.9 ? '#fbbf24' : '#f87171';
+        },
+      },
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 10,
+        fontWeight: 600,
+        formatter: params => {
+          if (params.value == null) return '';
+          const v = params.value;
+          const style = v >= 1 ? 'green' : v >= 0.9 ? 'amber' : 'red';
+          return `{${style}|${v.toFixed(2)}}`;
+        },
+        rich: {
+          green: { color: '#4ade80', fontWeight: 700, fontSize: 10 },
+          amber: { color: '#fbbf24', fontWeight: 700, fontSize: 10 },
+          red:   { color: '#f87171', fontWeight: 700, fontSize: 10 },
         },
       },
       markLine: {
@@ -2641,22 +2668,25 @@ async function loadGlobalConfig() {
     const cfg = await apiFetch('/api/config');
     document.getElementById('extraMultiplierInput').value   = cfg.extra_hours_multiplier;
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
+    document.getElementById('anomalyMaxHoursInput').value   = cfg.anomaly_max_daily_hours;
   } catch (e) { /* non-critical, leave placeholders */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
+  const am  = parseFloat(document.getElementById('anomalyMaxHoursInput').value);
   const msg = document.getElementById('configMsg');
-  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
+  if (isNaN(em) || isNaN(sm) || isNaN(am) || em <= 0 || sm <= 0 || am <= 0) {
     msg.style.color = '#ef4444';
-    msg.textContent = 'Os multiplicadores devem ser números positivos.';
+    msg.textContent = 'Os valores devem ser números positivos.';
     return;
   }
   try {
     await apiFetchJSON('/api/config', 'PUT', {
       extra_hours_multiplier: em,
       standby_hours_multiplier: sm,
+      anomaly_max_daily_hours: am,
     });
     msg.style.color = '#22c55e';
     msg.textContent = 'Fatores salvos com sucesso.';

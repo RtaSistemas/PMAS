@@ -88,8 +88,14 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
     try:
         summary = ingest_file(contents, fname, db, user_role=current_user.role, user_id=current_user.id)
         log_audit(db, current_user, "import", "timesheet", detail={
-            "file": fname, **summary,
+            "file": fname,
+            "records_inserted": summary["records_inserted"],
+            "records_skipped": summary["records_skipped"],
+            "quarantine_cycles_created": summary["quarantine_cycles_created"],
+            "warnings": summary["warnings"],
         })
+        for w in summary.get("anomaly_warnings", []):
+            log_audit(db, current_user, "anomaly", "timesheet", detail={"file": fname, "warning": w})
         db.commit()
     except ClosedCycleError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
