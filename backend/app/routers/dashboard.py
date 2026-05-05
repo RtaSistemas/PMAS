@@ -124,8 +124,8 @@ def _base_query(db: Session):
 @router.get("/pep-radar", summary="Horas e custo por PEP (descrição) para radar chart", response_model=list[PepRadarItem])
 def get_pep_radar(
     db: DbSession,
-    cycle_id: Optional[int] = None,
-    pep_code: List[str] = Query(default=[]),
+    cycle_id: List[int] = Query(default=[]),
+    pep_wbs: List[str] = Query(default=[]),
     pep_description: List[str] = Query(default=[]),
     collaborator_id: List[int] = Query(default=[]),
     date_from: Optional[DateType] = None,
@@ -154,10 +154,10 @@ def get_pep_radar(
         .filter(TimesheetRecord.pep_description.isnot(None))
     )
 
-    if cycle_id is not None:
-        q = q.filter(TimesheetRecord.cycle_id == cycle_id)
-    if pep_code:
-        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    if cycle_id:
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
+    if pep_wbs:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
     if pep_description:
         q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
     if collaborator_id:
@@ -185,10 +185,10 @@ def get_pep_radar(
             "total_hours": round(r.total_hours or 0.0, 2),
             "actual_cost": round(r.actual_cost or 0.0, 2),
         }
-        for r in rows          # ← última linha atual do get_pep_radar
-    ]                          # ← fecha o return [] do get_pep_radar
-                               # ← linha em branco
-                               # ← linha em branco
+        for r in rows
+    ]
+
+
 @router.get(
     "/collaborator-timeline",
     summary="Horas por colaborador distribuídas por ciclo",
