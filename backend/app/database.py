@@ -130,5 +130,11 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE cycle ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
                 ))
+            gc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(global_config)"))}
+            if "anomaly_max_daily_hours" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN anomaly_max_daily_hours FLOAT NOT NULL DEFAULT 24.0"
+                ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)

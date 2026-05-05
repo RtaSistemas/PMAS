@@ -16,7 +16,7 @@
                  │ HTTP / REST (Bearer token)
 ┌────────────────▼────────────────────────────┐
 │  FastAPI  (Python 3.11+)                    │
-│  8 routers · Pydantic v2 · python-jose JWT  │
+│  11 routers · Pydantic v2 · python-jose JWT │
 └────────────────┬────────────────────────────┘
                  │ SQLAlchemy ORM
 ┌────────────────▼────────────────────────────┐
@@ -31,9 +31,11 @@
 |---|---|---|
 | Ingestion service | `services/ingestion.py` | Parse CSV/XLSX, resolve cycles, freeze `cost_per_hour` |
 | Auth | `routers/auth.py` + `deps.py` | JWT HS256, 8h expiry, bcrypt |
-| Dashboard | `routers/dashboard.py` | Hour aggregation, budget vs actual |
-| Analytics | `routers/analytics.py` | Portfolio health, trends, allocation matrix, EVM forecast |
-| RateCard | `routers/ratecard.py` | Seniority levels, rate cards, team, global config |
+| Dashboard | `routers/dashboard.py` | Hour aggregation, budget vs actual, PEP radar, collaborator timeline |
+| Analytics | `routers/analytics.py` | Portfolio health, trends (CPI), allocation matrix, EVM forecast |
+| Plans | `routers/plans.py` | Baseline planning: `ProjectCyclePlan` CRUD and CSV import/export |
+| ACL | `routers/acl.py` | Delegated project upload permissions (`UserProjectAccess`) |
+| RateCard | `routers/ratecard.py` | Seniority levels, rate cards, team, global config (multipliers + anomaly threshold) |
 | Audit | `audit.py` + `routers/auditlog.py` | Append-only audit trail, all write endpoints |
 | DB init | `database.py` → `init_db()` | `create_all` + `_migrate_columns()` + seed admin/config |
 
@@ -52,11 +54,19 @@
 - `is_closed` cycles block non-admin timesheet uploads (raises `ClosedCycleError` → HTTP 403)
 - Dates outside all registered cycles auto-create a quarantine cycle (month-scoped); quarantine cycles excluded from Trends and Forecast charts
 - Cycles with records cannot be deleted
+- `is_active = false` marks a cycle as inactive (cosmetic flag, does not block ingestion)
 
 ### Projects
 - `pep_wbs` is a unique business key
 - `status ∈ {ativo, suspenso, encerrado}`; ingestion into `suspenso`/`encerrado` projects is blocked (raises `LockedProjectError` → HTTP 422)
 - `budget_hours` and `budget_cost` are optional; used for EVM metrics
+- `manager_id` links the project to a `User` (auto-grants upload access for that user)
+- `manager` is a free-text legacy field (kept alongside `manager_id`)
+
+### Upload Authorization (PEP-level ACL)
+- Admin users: unrestricted — all PEP codes accepted
+- Non-admin users: upload is accepted only for PEPs where the user is the registered `manager_id` **or** has an explicit `UserProjectAccess` grant
+- Rows for unauthorized PEPs are silently discarded before ingestion with a warning returned in `UploadOut.warnings`
 
 ### Rate Cards
 - Each rate card is scoped to a `SeniorityLevel` + date range (`valid_from` / `valid_to`)
@@ -69,21 +79,36 @@
 - Subsequent rate changes do **not** retroactively alter stored records
 - `actual_cost = Σ cost_per_hour × (normal_h + extra_h × extra_multiplier + standby_h × standby_multiplier)`
 - Global multipliers: `extra_hours_multiplier` (default 1.5), `standby_hours_multiplier` (default 1.0); singleton `GlobalConfig(id=1)`
+- `anomaly_max_daily_hours` (default 24.0): threshold for the anomaly detector — configurable by admin
 
 ### EVM Formulas
 - `EV = (consumed_hours / budget_hours) × budget_cost`
 - `CPI = EV / actual_cost`
 - `EAC = budget_cost / CPI`
-- `avg_hours_per_cycle` = mean of last 3 historical cycles
+- `PV = (cumulative_planned_hours / budget_hours) × budget_cost`
+- `SPI = EV / PV` (requires baseline planned hours per cycle)
+- `SV = EV − PV`
+- `avg_hours_per_cycle` = mean of the last 3 historical cycles for the PEP
 - `estimated_cycles_to_complete = remaining_hours / avg_hours_per_cycle`
 
 ### Ingestion Deduplication
-- On upload: existing `TimesheetRecord` rows for all `(collaborator_id, cycle_id)` pairs present in the file are **deleted and replaced**
-- Intra-batch dedup key: `(collaborator_id, cycle_id, record_date, pep_code, pep_desc, hour_type, start_time)`
+- **Layer 1 (auth filter):** rows for unauthorized PEPs are dropped before any write
+- **Layer 2 (RBAC):** non-admins cannot write to closed cycles → 403
+- **Layer 3 (surgical DELETE):** unit of replacement is `(pep_wbs, cycle_id)` — all existing records for that PEP+cycle block are deleted before inserting the new file's rows. For null-pep rows the scope is `(collaborator_id, cycle_id, pep_wbs IS NULL)`. This means uploading PEP-A never touches PEP-B rows in the same cycle.
+- **Intra-batch dedup key:** `(collaborator_id, cycle_id, record_date, pep_wbs, pep_description, hour_type, start_time)`
+
+### Anomaly Detection
+After each successful ingestion, `_detect_anomalies()` checks for:
+1. Records on weekends
+2. Collaborators with total daily hours exceeding `anomaly_max_daily_hours`
+3. PEP codes with no matching `Project` row
+
+Warnings are returned in `UploadOut.warnings` and each one is also logged as a separate `AuditLog` row with `action="anomaly"`.
 
 ### Audit Log
 - Every write operation appends an `AuditLog` row via `log_audit()` before the caller's `db.commit()`
 - `username` is denormalized at write time; `user_id` FK has `ON DELETE SET NULL`
+- Known `action` values: `create`, `update`, `delete`, `import`, `anomaly`, `grant_access`, `revoke_access`
 - Readable only by admin via `GET /api/audit-log`
 
 ---
@@ -117,7 +142,8 @@ flowchart TD
     U[Upload CSV/XLSX] --> LD[Load DataFrame\npandas]
     LD --> V{Required cols?}
     V -- missing --> E1[422 Error]
-    V -- ok --> P1[Pass 1: resolve\nCollaborator + Cycle rows]
+    V -- ok --> AF[Auth filter\nnon-admin: drop unauthorized PEP rows]
+    AF --> P1[Pass 1: resolve\nCollaborator + Cycle rows]
     P1 --> QC{Date in cycle?}
     QC -- no --> QQ[Create quarantine cycle]
     QC -- yes --> RBAC{user role?}
@@ -125,9 +151,9 @@ flowchart TD
     RBAC -- non-admin + closed cycle --> E2[403 ClosedCycleError]
     RBAC -- ok --> PL{PEP status check}
     PL -- encerrado/suspenso --> E3[422 LockedProjectError]
-    PL -- ok --> DEL[DELETE existing records\nfor affected collab×cycle pairs]
+    PL -- ok --> DEL[DELETE existing records\nfor affected pep_wbs×cycle blocks]
     DEL --> INS[INSERT TimesheetRecord rows\nwith frozen cost_per_hour]
-    INS --> AUD[log_audit + db.commit]
+    INS --> AUD[log_audit import + anomaly entries\ndb.commit]
     AUD --> R[UploadOut response]
 ```
 
@@ -152,8 +178,9 @@ flowchart LR
     TR --> FC[forecast\nGROUP BY cycle for pep_wbs\ncumulative burn + EVM]
     PH --> PRJ[(Project)]
     FC --> PRJ
+    FC --> PCP[(ProjectCyclePlan)]
     PH --> FE[Frontend\nTreemap + Bullet chart]
-    TRD --> FE2[Frontend\nLine chart]
+    TRD --> FE2[Frontend\nLine chart + CPI]
     AL --> FE3[Frontend\nHeatmap matrix]
     FC --> FE4[Frontend\nS-curve + KPI cards]
 ```
@@ -185,8 +212,13 @@ erDiagram
     SeniorityLevel ||--o{ Collaborator : "assigned to"
     Collaborator ||--o{ TimesheetRecord : "creates"
     Cycle ||--o{ TimesheetRecord : "scopes"
+    Cycle ||--o{ ProjectCyclePlan : "scopes"
     Project }o--o{ TimesheetRecord : "referenced by pep_wbs"
+    Project ||--o{ ProjectCyclePlan : "has baseline"
+    Project ||--o{ UserProjectAccess : "grants"
     User ||--o{ AuditLog : "generates (SET NULL on delete)"
+    User ||--o{ Project : "manages (manager_id)"
+    User ||--o{ UserProjectAccess : "receives"
 ```
 
 ### Tables
@@ -226,6 +258,7 @@ erDiagram
 | end_date | DATE | NOT NULL |
 | is_quarantine | BOOLEAN | NOT NULL DEFAULT false |
 | is_closed | BOOLEAN | NOT NULL DEFAULT false |
+| is_active | BOOLEAN | NOT NULL DEFAULT true |
 
 **`timesheet_record`**
 
@@ -252,10 +285,22 @@ Composite index: `(cycle_id, collaborator_id)`
 | pep_wbs | VARCHAR | UNIQUE NOT NULL INDEX |
 | name | VARCHAR | NULL |
 | client | VARCHAR | NULL |
-| manager | VARCHAR | NULL |
+| manager | VARCHAR | NULL (free-text, legacy) |
+| manager_id | INTEGER | FK → user ON DELETE SET NULL, NULL |
 | budget_hours | FLOAT | NULL |
 | budget_cost | FLOAT | NULL |
 | status | VARCHAR | NOT NULL DEFAULT 'ativo' ∈ {ativo,suspenso,encerrado} |
+
+**`project_cycle_plan`**
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | INTEGER | PK |
+| project_id | INTEGER | FK → project ON DELETE CASCADE, NOT NULL |
+| cycle_id | INTEGER | FK → cycle ON DELETE CASCADE, NOT NULL |
+| planned_hours | FLOAT | NOT NULL |
+
+Unique index: `(project_id, cycle_id)`
 
 **`user`**
 
@@ -266,12 +311,23 @@ Composite index: `(cycle_id, collaborator_id)`
 | hashed_password | VARCHAR | NOT NULL (bcrypt) |
 | role | VARCHAR | NOT NULL DEFAULT 'user' ∈ {admin,user} |
 
+**`user_project_access`**
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | INTEGER | PK |
+| user_id | INTEGER | FK → user ON DELETE CASCADE, NOT NULL |
+| project_id | INTEGER | FK → project ON DELETE CASCADE, NOT NULL |
+
+Unique index: `(user_id, project_id)`
+
 **`global_config`** (singleton id=1)
 
 | Column | Type | Default |
 |---|---|---|
 | extra_hours_multiplier | FLOAT | 1.5 |
 | standby_hours_multiplier | FLOAT | 1.0 |
+| anomaly_max_daily_hours | FLOAT | 24.0 |
 
 **`audit_log`**
 
@@ -320,13 +376,13 @@ python -m uvicorn backend.app.main:app --reload
 
 - Database: `pmas.db` created at project root (dev) or adjacent to executable (frozen)
 - `init_db()` runs on startup: `create_all` → `_migrate_columns()` → seed `admin/admin` user → seed `GlobalConfig`
-- `_migrate_columns()` applies `ALTER TABLE` for `cost_per_hour`, `seniority_level_id`, `budget_cost`, `is_closed` — safe to run on existing databases
+- `_migrate_columns()` applies `ALTER TABLE` for: `cost_per_hour` (timesheet_record), `seniority_level_id` (collaborator), `budget_cost` + `manager_id` (project), `is_closed` + `is_active` (cycle), `anomaly_max_daily_hours` (global_config) — safe to run on existing databases
 
 ### Test
 
 ```bash
 pip install pytest httpx
-pytest tests/ -v        # 170 tests, in-memory SQLite StaticPool
+pytest tests/ -v        # 294 tests, in-memory SQLite StaticPool
 ```
 
 ---
@@ -364,12 +420,28 @@ pytest tests/ -v        # 170 tests, in-memory SQLite StaticPool
 | POST | `/import` | user | CSV → `ImportResultOut` |
 | DELETE | `/{project_id}` | user | 204 |
 
+#### Project Plans `/api/projects` (plans router)
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/{project_id}/plans` | user | List baseline plans for a project |
+| PUT | `/{project_id}/plans/{cycle_id}` | user | Upsert planned hours for a cycle |
+| DELETE | `/{project_id}/plans/{cycle_id}` | user | Delete a plan entry |
+| GET | `/{project_id}/plans/export` | user | Download baseline as CSV |
+| POST | `/plans/import` | user | Bulk import baseline from CSV (`pep_wbs`, `cycle_name`, `planned_hours`) |
+
+#### Project ACL `/api/projects` (acl router)
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/{project_id}/access` | user | List users with explicit upload access |
+| POST | `/{project_id}/access` | **admin** | Grant access (`{user_id}`) → `UserProjectAccessOut 201` |
+| DELETE | `/{project_id}/access/{user_id}` | **admin** | Revoke access; 204 |
+
 #### Dashboard `/api/dashboard`
 | Method | Path | Query params |
 |---|---|---|
-| GET | `` | `pep_code[]`, `pep_description[]`, `collaborator_id[]`, `date_from`, `date_to` |
+| GET | `` | `pep_wbs[]`, `pep_description[]`, `collaborator_id[]`, `date_from`, `date_to` |
 | GET | `/{cycle_id}` | same + cycle scoped |
-| GET | `/pep-radar` | filters → top-12 PEPs by hours |
+| GET | `/pep-radar` | `cycle_id[]`, `pep_wbs[]`, `pep_description[]`, `collaborator_id[]`, `date_from`, `date_to` → top-12 PEPs by hours |
 | GET | `/collaborator-timeline` | `collaborator_name` + filters → hours per cycle |
 
 #### Reference `/api`
@@ -381,10 +453,10 @@ pytest tests/ -v        # 170 tests, in-memory SQLite StaticPool
 #### Analytics `/api`
 | Method | Path | Query params | Notes |
 |---|---|---|---|
-| GET | `/portfolio-health` | `cycle_id[]`, `pep_wbs[]`, `date_from`, `date_to` | Joined with `Project`; includes `actual_cost` |
-| GET | `/trends` | `pep_wbs[]`, `date_from`, `date_to` | Chronological by cycle; quarantine excluded |
-| GET | `/allocation` | `cycle_id[]`, `collaborator_id[]`, `pep_wbs[]`, `date_from`, `date_to` | Collaborator × PEP matrix |
-| GET | `/forecast` | `pep_wbs` (required), `date_from`, `date_to` | EVM: CPI, EAC, burn history, projected completion |
+| GET | `/portfolio-health` | `cycle_id[]`, `pep_wbs[]`, `pep_description[]`, `collaborator_id[]`, `date_from`, `date_to` | Joined with `Project`; includes `actual_cost`, sorted by `consumed_hours` desc |
+| GET | `/trends` | `pep_wbs[]`, `pep_description[]`, `collaborator_id[]`, `date_from`, `date_to` | Chronological by cycle; quarantine excluded; includes `actual_cost` and per-cycle `cpi` |
+| GET | `/allocation` | `cycle_id[]`, `collaborator_id[]`, `pep_wbs[]`, `pep_description[]`, `date_from`, `date_to` | Collaborator × PEP matrix |
+| GET | `/forecast` | `pep_wbs` (required), `date_from`, `date_to` | EVM: CPI, EAC, SPI, SV, burn history, projected completion cycle |
 
 #### RateCard `/api`
 | Method | Path | Auth |
@@ -417,17 +489,19 @@ pytest tests/ -v        # 170 tests, in-memory SQLite StaticPool
 
 | Function | Module | Signature summary |
 |---|---|---|
-| `ingest_file` | `services/ingestion.py` | `(bytes, filename, Session, user_role) → dict` — full ingestion pipeline |
+| `ingest_file` | `services/ingestion.py` | `(bytes, filename, Session, user_role, user_id?) → dict` — full ingestion pipeline |
 | `_lookup_rate` | `services/ingestion.py` | `(Session, Collaborator, date) → float` — EVM rate freeze |
 | `_resolve_cycle` | `services/ingestion.py` | `(Session, date) → (Cycle, created: bool)` — auto-quarantine |
+| `_detect_anomalies` | `services/ingestion.py` | `(DataFrame, set[str], Session, max_daily_hours) → list[str]` — weekend/over-limit/unregistered PEP checks |
 | `_parse_date` | `services/ingestion.py` | handles `date`, Excel serial int, string with `dayfirst=True` |
+| `_authorized_peps` | `services/ingestion.py` | `(Session, user_id, user_role, set[str]) → set[str]` — ACL filter |
 | `log_audit` | `audit.py` | `(Session, User, action, entity, entity_id?, detail?) → None` |
 | `init_db` | `database.py` | `create_all` + migrate + seed — called in lifespan |
 | `_migrate_columns` | `database.py` | `PRAGMA table_info` + `ALTER TABLE` for post-initial columns |
 | `get_current_user` | `deps.py` | JWT decode → `User`; used as `Depends` on all routers |
 | `require_admin` | `deps.py` | Wraps `get_current_user`; 403 if `role != admin` |
 
-### Expected CSV Columns
+### Expected CSV Columns (timesheet upload)
 
 | Column | Required | Notes |
 |---|---|---|
@@ -438,4 +512,4 @@ pytest tests/ -v        # 170 tests, in-memory SQLite StaticPool
 | `Hora sobreaviso` | No | same truth values → `standby_hours` |
 | `Código PEP` | No | → `pep_wbs` |
 | `PEP` | No | → `pep_description` |
-| `Hora Inicial [H]` | No | Part of dedup key |
+| `Hora Inicial [H]` | No | Part of intra-batch dedup key |

@@ -232,6 +232,7 @@ def update_config(body: GlobalConfigIn, db: DbSession, _admin: AdminUser):
     cfg = _get_or_init_config(db)
     cfg.extra_hours_multiplier = body.extra_hours_multiplier
     cfg.standby_hours_multiplier = body.standby_hours_multiplier
+    cfg.anomaly_max_daily_hours = body.anomaly_max_daily_hours
     db.commit()
     db.refresh(cfg)
     return cfg

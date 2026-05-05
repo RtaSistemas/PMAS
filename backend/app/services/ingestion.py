@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from backend.app.models import (
     Collaborator,
     Cycle,
+    GlobalConfig,
     Project,
     RateCard,
     TimesheetRecord,
@@ -215,7 +216,10 @@ def ingest_file(
         db.rollback()
         raise
 
-    ingest_warnings.extend(_detect_anomalies(df, pep_codes_in_file, db))
+    cfg = db.get(GlobalConfig, 1)
+    max_daily_hours = cfg.anomaly_max_daily_hours if cfg else 24.0
+    anomaly_warnings = _detect_anomalies(df, pep_codes_in_file, db, max_daily_hours)
+    ingest_warnings.extend(anomaly_warnings)
 
     log.info(
         "Ingestão concluída: %d inseridos, %d duplicatas ignoradas, "
@@ -227,6 +231,7 @@ def ingest_file(
         "records_skipped": skipped,
         "quarantine_cycles_created": quarantine_cycles_created,
         "warnings": ingest_warnings,
+        "anomaly_warnings": anomaly_warnings,
     }
 
 
@@ -281,7 +286,7 @@ def _authorized_peps(
 # Private helpers
 # ---------------------------------------------------------------------------
 
-def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session) -> list[str]:
+def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session, max_daily_hours: float = 24.0) -> list[str]:
     warnings: list[str] = []
 
     dates_parsed = pd.to_datetime(df[_COL_DATE], errors="coerce", dayfirst=True)
@@ -297,12 +302,12 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
     df_work["_date_key"] = dates_parsed.dt.date
     df_work["_hours"] = pd.to_numeric(df[_COL_HOURS], errors="coerce").fillna(0)
     daily_totals = df_work.groupby([_COL_COLLABORATOR, "_date_key"])["_hours"].sum()
-    over24 = daily_totals[daily_totals > 24]
-    if not over24.empty:
-        cases = [f"{collab} em {d}" for (collab, d) in over24.index[:10]]
+    over_limit = daily_totals[daily_totals > max_daily_hours]
+    if not over_limit.empty:
+        cases = [f"{collab} em {d}" for (collab, d) in over_limit.index[:10]]
         warnings.append(
-            f"Horas > 24h/dia detectadas: {'; '.join(cases)}"
-            + (" e outros." if len(over24) > 10 else ".")
+            f"Horas > {max_daily_hours:.0f}h/dia detectadas: {'; '.join(cases)}"
+            + (" e outros." if len(over_limit) > 10 else ".")
         )
 
     if pep_codes_in_file:
