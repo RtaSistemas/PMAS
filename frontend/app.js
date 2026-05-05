@@ -694,10 +694,10 @@ async function _renderPortfolioTab() {
       sc.setOption(_buildScatterOption(scatterItems), true);
       sc.resize();
       const stotalH = scatterItems.reduce((s, d) => s + d.total_hours, 0);
-      const stotalC = scatterItems.reduce((s, d) => s + d.actual_cost, 0);
+      const stotalC = scatterItems.reduce((s, d) => s + d.actual_cost * _currencyFactor, 0);
       const savgRate = stotalH > 0 ? stotalC / stotalH : 0;
       const smaxH = Math.max(...scatterItems.map(d => d.total_hours)) * 1.15;
-      const smaxC = Math.max(...scatterItems.map(d => d.actual_cost)) * 1.15;
+      const smaxC = Math.max(...scatterItems.map(d => d.actual_cost * _currencyFactor)) * 1.15;
       _drawScatterRefLine(sc, savgRate, smaxH, smaxC);
     } else {
       _showEmpty('scatterEmpty', scatterItems.length === 0);
@@ -797,7 +797,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       document.getElementById('pepCpiPanel').hidden = true;
       return;
     }
-    if (!cycleIds.length) {
+    // When no specific cycles are selected, use all non-quarantine cycles
+    const effectiveCycleIds = cycleIds.length > 0
+      ? cycleIds
+      : (_allCycles || []).filter(c => !c.is_quarantine).map(c => c.id);
+
+    if (!effectiveCycleIds.length) {
       _showEmpty('pepCpiEmpty', true);
       document.getElementById('pepCpiPanel').hidden = false;
       return;
@@ -807,7 +812,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       (_allCycles || []).forEach(c => { cycleNameMap[c.id] = c.name; });
 
       const healthByCycle = await Promise.all(
-        cycleIds.map(id =>
+        effectiveCycleIds.map(id =>
           apiFetch(`/api/portfolio-health?cycle_id=${id}`)
             .then(items => ({ cycleId: id, items }))
             .catch(() => ({ cycleId: id, items: [] }))
@@ -828,7 +833,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       });
 
       const peps = Object.entries(pepMap);
-      const allCycleNames = cycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
+      const allCycleNames = effectiveCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
 
       if (!peps.length) {
         _showEmpty('pepCpiEmpty', true);
@@ -1531,17 +1536,17 @@ function _buildEffortSeriesOnly(stacked) {
 function _buildScatterOption(items) {
   const totalH  = items.reduce((s, d) => s + d.total_hours, 0);
   const totalC  = items.reduce((s, d) => s + d.actual_cost, 0);
-  const avgRate = totalH > 0 ? totalC / totalH : 0;
+  const avgRate = totalH > 0 ? totalC / totalH : 0;             // raw R$/h for color comparison
   const maxH    = Math.max(...items.map(d => d.total_hours)) * 1.15 || 1;
-  const maxC    = Math.max(...items.map(d => d.actual_cost)) * 1.15 || 1;
+  const maxC    = Math.max(...items.map(d => d.actual_cost * _currencyFactor)) * 1.15 || 1;
   const minH    = Math.min(...items.map(d => d.total_hours));
 
   const colorOf = d => {
     const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
     if (rph === 0 || avgRate === 0) return '#64748b';
-    if (rph <= avgRate)             return '#22c55e';
-    if (rph <= avgRate * 1.1)       return '#f59e0b';
-    return '#ef4444';
+    if (rph <= avgRate)             return '#10b981';   // project emerald
+    if (rph <= avgRate * 1.1)       return '#f59e0b';   // project amber
+    return '#f87171';                                   // project red
   };
 
   const sizeOf = d => {
@@ -1589,7 +1594,9 @@ function _buildScatterOption(items) {
       nameTextStyle: { color: '#94a3b8', fontSize: 11 },
       axisLabel: {
         color: '#94a3b8',
-        formatter: v => v >= 1000 ? 'R$' + (v / 1000).toFixed(0) + 'k' : 'R$' + v.toFixed(0),
+        formatter: v => v >= 1000
+          ? `${_currencySymbol} ${(v / 1000).toFixed(0)}k`
+          : `${_currencySymbol} ${v.toFixed(0)}`,
       },
       axisLine:  { lineStyle: { color: '#334155' } },
       splitLine: { lineStyle: { color: '#1e293b' } },
@@ -1599,7 +1606,7 @@ function _buildScatterOption(items) {
       type: 'scatter',
       symbolSize: (val, params) => sizeOf(params.data._raw),
       data: items.map(d => ({
-        value: [d.total_hours, d.actual_cost],
+        value: [d.total_hours, d.actual_cost * _currencyFactor],
         itemStyle: {
           color: colorOf(d),
           opacity: 0.82,
@@ -1645,7 +1652,7 @@ function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
           type: 'text',
           x: p1[0] - 60, y: p1[1] - 16,
           style: {
-            text: `avg R$${avgRate.toFixed(0)}/h`,
+            text: `avg ${_currencySymbol} ${avgRate.toFixed(0)}/h`,
             fill: '#64748b',
             fontSize: 10,
           },
