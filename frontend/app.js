@@ -1597,7 +1597,7 @@ function _buildScatterOption(items) {
     },
     series: [{
       type: 'scatter',
-      symbolSize: d => sizeOf(d._raw),
+      symbolSize: (val, params) => sizeOf(params.data._raw),
       data: items.map(d => ({
         value: [d.total_hours, d.actual_cost],
         itemStyle: {
