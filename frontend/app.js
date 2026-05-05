@@ -1544,7 +1544,7 @@ function _buildScatterOption(items) {
   const colorOf = d => {
     const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
     if (rph === 0 || avgRate === 0) return '#64748b';
-    if (rph <= avgRate)             return '#10b981';   // project emerald
+    if (rph <= avgRate)             return '#3b82f6';   // normal-hours blue
     if (rph <= avgRate * 1.1)       return '#f59e0b';   // project amber
     return '#f87171';                                   // project red
   };
@@ -2138,7 +2138,7 @@ function _buildCpiOption(trends) {
       formatter: params => {
         const p = params[0];
         if (p.value == null) return `${p.name}<br/>IDP: —`;
-        const color = p.value >= 1 ? '#4ade80' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
+        const color = p.value >= 1 ? '#3b82f6' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
         return `${p.name}<br/>IDP: <b style="color:${color}">${p.value.toFixed(3)}</b>`;
       },
     },
@@ -2154,12 +2154,12 @@ function _buildCpiOption(trends) {
       data: cpiSeries,
       connectNulls: true,
       smooth: false,
-      lineStyle: { color: '#60a5fa', width: 2 },
+      lineStyle: { color: '#3b82f6', width: 2 },
       itemStyle: {
         color: params => {
           const v = params.value;
-          if (v == null) return '#60a5fa';
-          return v >= 1 ? '#4ade80' : v >= 0.9 ? '#fbbf24' : '#f87171';
+          if (v == null) return '#3b82f6';
+          return v >= 1 ? '#3b82f6' : v >= 0.9 ? '#fbbf24' : '#f87171';
         },
       },
       label: {
@@ -2170,11 +2170,11 @@ function _buildCpiOption(trends) {
         formatter: params => {
           if (params.value == null) return '';
           const v = params.value;
-          const style = v >= 1 ? 'green' : v >= 0.9 ? 'amber' : 'red';
+          const style = v >= 1 ? 'good' : v >= 0.9 ? 'amber' : 'red';
           return `{${style}|${v.toFixed(2)}}`;
         },
         rich: {
-          green: { color: '#4ade80', fontWeight: 700, fontSize: 10 },
+          good: { color: '#3b82f6', fontWeight: 700, fontSize: 10 },
           amber: { color: '#fbbf24', fontWeight: 700, fontSize: 10 },
           red:   { color: '#f87171', fontWeight: 700, fontSize: 10 },
         },
@@ -2232,7 +2232,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
           .filter(p => p.value != null)
           .map(p => {
             const cpiVal = p.value;
-            const color  = cpiVal >= 1.0 ? '#22c55e' : cpiVal >= 0.9 ? '#f59e0b' : '#ef4444';
+            const color  = cpiVal >= 1.0 ? '#3b82f6' : cpiVal >= 0.9 ? '#f59e0b' : '#ef4444';
             const dot    = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
             return `${dot}${escHtml(p.seriesName)}: <b style="color:${color}">${cpiVal.toFixed(2)}</b>`;
           })

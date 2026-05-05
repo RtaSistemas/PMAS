@@ -367,7 +367,7 @@ select.form-select option { background: var(--card); }
   font-size: 0.62rem; color: var(--text-3); text-transform: uppercase;
   margin-top: 0.2rem; letter-spacing: 0.05em; font-weight: 600;
 }
-.stat-card.blue   .val { color: var(--primary); }
+.stat-card.blue   .val { color: #3b82f6; }
 .stat-card.amber  .val { color: var(--amber); }
 .stat-card.violet .val { color: var(--violet); }
 .stat-card.green  .val { color: var(--green); }
