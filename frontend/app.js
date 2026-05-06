@@ -99,6 +99,10 @@ const _LANG = {
     'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
     'stat.total':'Total','stat.collabs':'Colaboradores',
     'stat.budgeted':'Orçado (PEPs c/ budget)','stat.vs_budget':'Realizado vs Orçado',
+    'stat.cost_normal':'Custo Horas Normais','stat.cost_extra':'Custo Horas Extras',
+    'stat.cost_standby':'Custo Sobreaviso','stat.cost_total':'Custo Total Real',
+    'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Budget (R$)',
+    'stat.vs_budget_cost':'Realizado vs Budget',
     'budget.exceeded':'Estourado','budget.warning':'Atenção ≥90%',
     'lbl.admin':'Admin','lbl.user':'Usuário',
     'loading':'Carregando…','no_cycles':'Nenhum ciclo encontrado.',
@@ -223,6 +227,10 @@ const _LANG = {
     'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
     'stat.total':'Total','stat.collabs':'Collaborators',
     'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
+    'stat.cost_normal':'Normal Hours Cost','stat.cost_extra':'Overtime Cost',
+    'stat.cost_standby':'Standby Cost','stat.cost_total':'Total Actual Cost',
+    'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
+    'stat.vs_budget_cost':'Actual vs Budget',
     'budget.exceeded':'Exceeded','budget.warning':'Warning ≥90%',
     'lbl.admin':'Admin','lbl.user':'User',
     'loading':'Loading…','no_cycles':'No cycles found.',
@@ -546,6 +554,7 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('forecastKpis').innerHTML = '';
   _showEmpty('forecastEmpty', true);
   document.getElementById('effortStats').innerHTML = '';
+  document.getElementById('portfolioStats').innerHTML = '';
   document.getElementById('bulletPanel').hidden  = true;
   _showEmpty('effortEmpty',    false);
   _showEmpty('portfolioEmpty', false);
@@ -650,7 +659,17 @@ async function _renderPortfolioTab() {
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    const health = await apiFetch(`/api/portfolio-health?${p}`);
+    const [health, trends] = await Promise.all([
+      apiFetch(`/api/portfolio-health?${p}`),
+      apiFetch(`/api/trends?${p}`).catch(() => []),
+    ]);
+
+    // Stats row — rendered before the empty-state guard so it clears on no data
+    const statsEl = document.getElementById('portfolioStats');
+    statsEl.innerHTML = '';
+    if (health.length > 0) {
+      statsEl.appendChild(_buildPortfolioStatsRow(health, trends));
+    }
 
     if (!health.length) {
       _showEmpty('portfolioEmpty', true);
@@ -2299,6 +2318,56 @@ function _buildStatsRow(data, budgetData = []) {
   }
   cards.forEach(({ val, lbl, cls }) => {
     const card = document.createElement('div'); card.className = `stat-card ${cls}`;
+    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    row.appendChild(card);
+  });
+  return row;
+}
+
+// ---------------------------------------------------------------------------
+// Stats row (portfolio tab) — KPIs de custo proporcional
+// ---------------------------------------------------------------------------
+function _buildPortfolioStatsRow(health, trends) {
+  const totalCost   = health.reduce((s, d) => s + (d.actual_cost || 0), 0);
+  const totalBudget = health
+    .filter(d => d.budget_cost != null)
+    .reduce((s, d) => s + d.budget_cost, 0);
+  const pepsActive  = health.filter(d => d.consumed_hours > 0).length;
+
+  let normalH = 0, extraH = 0, standbyH = 0;
+  (trends || []).forEach(r => {
+    normalH  += r.normal_hours  || 0;
+    extraH   += r.extra_hours   || 0;
+    standbyH += r.standby_hours || 0;
+  });
+  const totalH = normalH + extraH + standbyH;
+
+  const costNormal  = totalH > 0 ? totalCost * (normalH  / totalH) : 0;
+  const costExtra   = totalH > 0 ? totalCost * (extraH   / totalH) : 0;
+  const costStandby = totalH > 0 ? totalCost * (standbyH / totalH) : 0;
+
+  const pct  = totalBudget > 0 ? (totalCost / totalBudget * 100).toFixed(1) : '—';
+  const over = totalBudget > 0 && totalCost > totalBudget;
+
+  const cards = [
+    { val: _fmtCost(costNormal),  lbl: _t('stat.cost_normal'),    cls: 'blue'    },
+    { val: _fmtCost(costExtra),   lbl: _t('stat.cost_extra'),     cls: 'amber'   },
+    { val: _fmtCost(costStandby), lbl: _t('stat.cost_standby'),   cls: 'violet'  },
+    { val: _fmtCost(totalCost),   lbl: _t('stat.cost_total'),     cls: 'green'   },
+    { val: pepsActive,            lbl: _t('stat.peps_active'),    cls: 'neutral' },
+  ];
+  if (totalBudget > 0) {
+    cards.push(
+      { val: _fmtCost(totalBudget),             lbl: _t('stat.budget_cost'),    cls: 'neutral'             },
+      { val: pct !== '—' ? `${pct}%` : '—',    lbl: _t('stat.vs_budget_cost'), cls: over ? 'red' : 'green' },
+    );
+  }
+
+  const row = document.createElement('div');
+  row.className = 'stats-row';
+  cards.forEach(({ val, lbl, cls }) => {
+    const card = document.createElement('div');
+    card.className = `stat-card ${cls}`;
     card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
