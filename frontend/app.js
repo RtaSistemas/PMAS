@@ -717,7 +717,7 @@ async function _renderPortfolioTab() {
     if (scatterItems.length >= 2) {
       _showEmpty('scatterEmpty', false);
       document.getElementById('scatterPanel').hidden = false;
-      document.getElementById('scatterChart').style.height = '460px';
+      document.getElementById('scatterChart').style.height = '690px';
       const sc = _getOrCreateChart('scatterChart');
       sc.setOption(_buildScatterOption(scatterItems), true);
       sc.resize();
