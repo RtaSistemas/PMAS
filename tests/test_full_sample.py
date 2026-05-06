@@ -1072,7 +1072,7 @@ class TestFullLifecycle:
         collab_name = "Life Collab"
 
         # ---- 5. Upload timesheets ----------------------------------------
-        data_jan = _csv([(collab_name, "15/01/2026", 40.0, 0, 0, "LIFE-001", "Lifecycle Proj")])
+        data_jan = _csv([(collab_name, "15/01/2026", 20.0, 0, 0, "LIFE-001", "Lifecycle Proj")])
         r_jan = client.post("/api/upload-timesheet", files={"file": ("jan.csv", data_jan, "text/csv")})
         assert r_jan.json()["records_inserted"] >= 1
 
@@ -1081,7 +1081,7 @@ class TestFullLifecycle:
         co.seniority_level_id = sl.id
         db_session.commit()
 
-        data_feb = _csv([(collab_name, "15/02/2026", 30.0, 0, 0, "LIFE-001", "Lifecycle Proj")])
+        data_feb = _csv([(collab_name, "15/02/2026", 15.0, 0, 0, "LIFE-001", "Lifecycle Proj")])
         r_feb = client.post("/api/upload-timesheet", files={"file": ("feb.csv", data_feb, "text/csv")})
         assert r_feb.json()["records_inserted"] >= 1
 
@@ -1094,17 +1094,17 @@ class TestFullLifecycle:
         # ---- 7. Check portfolio health -----------------------------------
         health = client.get("/api/portfolio-health?pep_wbs=LIFE-001").json()
         item = next(x for x in health if x["pep_wbs"] == "LIFE-001")
-        assert item["consumed_hours"] == 70.0
+        assert item["consumed_hours"] == 35.0   # 20h Jan + 15h Feb
         assert item["budget_hours"] == 80.0
 
         # ---- 8. Check trends (TrendItem has normal/extra/standby_hours, no total_hours) ----
         trends = client.get("/api/trends?pep_wbs=LIFE-001").json()
         total_h = sum(t["normal_hours"] + t["extra_hours"] + t["standby_hours"] for t in trends)
-        assert total_h == 70.0
+        assert total_h == 35.0
 
         # ---- 9. Forecast EVM metrics (ForecastOut has consumed_hours, not ev/ac) ---------
         forecast = client.get("/api/forecast?pep_wbs=LIFE-001").json()
-        assert forecast["consumed_hours"] == pytest.approx(70.0)
+        assert forecast["consumed_hours"] == pytest.approx(35.0)
         history = forecast["history"]
         assert any(h.get("planned_hours") is not None for h in history)
 
@@ -1116,7 +1116,7 @@ class TestFullLifecycle:
         # Analytics are unaffected by archiving
         health_after = client.get("/api/portfolio-health?pep_wbs=LIFE-001").json()
         item_after = next(x for x in health_after if x["pep_wbs"] == "LIFE-001")
-        assert item_after["consumed_hours"] == 70.0
+        assert item_after["consumed_hours"] == 35.0
 
         # ---- 11. Audit trail has entries ---------------------------------
         log = client.get("/api/audit-log").json()

@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from backend.app.models import Collaborator, Cycle, TimesheetRecord
-from backend.app.services.ingestion import _str_or_none, ingest_file
+from backend.app.services.ingestion import _safe_hours, _str_or_none, ingest_file
 
 
 def _csv(*rows: dict) -> bytes:
@@ -325,3 +325,184 @@ class TestSurgicalDeletion:
         assert db_session.query(TimesheetRecord).filter(
             TimesheetRecord.pep_wbs.is_(None)
         ).count() == 2  # Anon User (new) + Other Anon (untouched)
+
+
+# ===========================================================================
+# Tests for Issue #70: _safe_hours unit tests
+# ===========================================================================
+
+class TestSafeHours:
+    """Unit tests for _safe_hours — no DB required."""
+
+    def _w(self):
+        return []
+
+    def test_valid_float(self):
+        w = self._w()
+        assert _safe_hours(8.0, 2, "col", w) == 8.0
+        assert not w
+
+    def test_none_is_silent_zero(self):
+        w = self._w()
+        assert _safe_hours(None, 2, "col", w) == 0.0
+        assert not w  # None is silently treated as 0 — no warning
+
+    def test_empty_string_warns(self):
+        w = self._w()
+        assert _safe_hours("", 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_nan_string_warns(self):
+        w = self._w()
+        assert _safe_hours("nan", 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_dash_string_warns(self):
+        w = self._w()
+        assert _safe_hours("—", 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_comma_decimal_parsed_silently(self):
+        w = self._w()
+        assert _safe_hours("8,5", 2, "col", w) == 8.5
+        assert not w
+
+    def test_non_numeric_string_warns(self):
+        w = self._w()
+        assert _safe_hours("abc", 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_nan_float_warns(self):
+        import math as _math
+        w = self._w()
+        assert _safe_hours(float("nan"), 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_inf_float_warns(self):
+        w = self._w()
+        assert _safe_hours(float("inf"), 2, "col", w) == 0.0
+        assert len(w) == 1
+
+    def test_negative_warns(self):
+        w = self._w()
+        assert _safe_hours(-3.0, 2, "col", w) == 0.0
+        assert "negativas" in w[0]
+
+    def test_hard_cap_warns(self):
+        w = self._w()
+        assert _safe_hours(25.0, 2, "col", w) == 0.0
+        assert "absurdo" in w[0]
+
+    def test_exactly_at_cap_is_valid(self):
+        w = self._w()
+        assert _safe_hours(24.0, 2, "col", w) == 24.0
+        assert not w
+
+    def test_zero_is_valid_no_warning(self):
+        w = self._w()
+        assert _safe_hours(0.0, 2, "col", w) == 0.0
+        assert not w  # 0 is a valid float (guard in INSERT loop, not in _safe_hours)
+
+
+# ===========================================================================
+# Tests for Issue #70: ingestion hardening (integration)
+# ===========================================================================
+
+class TestIngestionHardening:
+    """Integration tests for all Phase-1 and Phase-2 hardening behaviors."""
+
+    def test_empty_hours_row_is_skipped(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Horas totais (decimal)": ""}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["records_skipped"] == 1
+        assert db_session.query(TimesheetRecord).count() == 0
+
+    def test_nan_hours_row_is_skipped(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Horas totais (decimal)": float("nan")}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["records_skipped"] == 1
+        assert db_session.query(TimesheetRecord).count() == 0
+
+    def test_comma_decimal_hours_parsed(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Horas totais (decimal)": "8,5"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        r = db_session.query(TimesheetRecord).first()
+        assert r.normal_hours == 8.5
+
+    def test_negative_hours_row_is_skipped(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Horas totais (decimal)": -3.0}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["records_skipped"] == 1
+        assert any("negativas" in w for w in summary["warnings"])
+
+    def test_hard_cap_hours_row_is_skipped(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Horas totais (decimal)": 25.0}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["records_skipped"] == 1
+        assert any("absurdo" in w for w in summary["warnings"])
+
+    def test_invalid_hours_row_with_valid_rows_no_rollback(self, db_session, sample_cycle):
+        """Invalid hours in one row must not roll back the entire upload."""
+        bad_row  = {**BASE_ROW, "Horas totais (decimal)": "—"}
+        good_row = {**BASE_ROW, "Colaborador": "Maria Souza"}
+        summary = ingest_file(_csv(bad_row, good_row), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        assert summary["records_skipped"] == 1
+
+    def test_invalid_collab_name_row_is_filtered(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Colaborador": "nan"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert any("colaborador inválido" in w for w in summary["warnings"])
+        assert db_session.query(Collaborator).count() == 0
+
+    def test_invalid_collab_single_char_filtered(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Colaborador": "X"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert any("colaborador inválido" in w for w in summary["warnings"])
+
+    def test_high_volume_warning_emitted(self, db_session, sample_cycle):
+        from unittest.mock import patch
+        with patch("backend.app.services.ingestion._MAX_ROWS_WARNING", 2):
+            rows = [BASE_ROW, BASE_ROW, BASE_ROW]  # 3 > threshold of 2
+            summary = ingest_file(_csv(*rows), "t.csv", db_session)
+        assert any("volume elevado" in w for w in summary["warnings"])
+
+    def test_extra_and_standby_conflict_classifies_as_extra(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Hora extra": "Sim", "Hora sobreaviso": "Sim"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        r = db_session.query(TimesheetRecord).first()
+        assert r.extra_hours == 8.0
+        assert r.standby_hours == 0.0
+        assert any("Sobreaviso simultaneamente" in w for w in summary["warnings"])
+
+    def test_future_date_warning(self, db_session):
+        row = {**BASE_ROW, "Data": "15/01/2099"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert any("futuras" in w for w in summary["warnings"])
+
+    def test_suspicious_pep_format_warns(self, db_session, sample_cycle):
+        row = {**BASE_ROW, "Código PEP": "abc"}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert any("formato suspeito" in w for w in summary["warnings"])
+
+    def test_valid_pep_format_no_suspicious_warning(self, db_session, sample_cycle):
+        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
+        assert not any("formato suspeito" in w for w in summary["warnings"])
+
+    def test_zero_rate_warning_emitted(self, db_session, sample_cycle):
+        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
+        assert any("sem taxa" in w for w in summary["warnings"])
+
+    def test_zero_rate_warning_not_duplicated_per_collaborator(self, db_session, sample_cycle):
+        row2 = {**BASE_ROW, "Data": "16/01/2026"}
+        summary = ingest_file(_csv(BASE_ROW, row2), "t.csv", db_session)
+        rate_warnings = [w for w in summary["warnings"] if "sem taxa" in w]
+        assert len(rate_warnings) == 1
