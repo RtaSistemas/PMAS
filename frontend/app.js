@@ -612,11 +612,20 @@ async function _renderEffortTab() {
     }
     _showEmpty('effortEmpty', false);
 
-    // Effort chart
+    // Effort chart — G1 ✅
     const h = calcHeight(data.length);
     document.getElementById('effortChart').style.height = `${h}px`;
     const ch = _getOrCreateChart('effortChart');
-    ch.setOption(_buildEffortOption(data, _stackMode), true);
+    ch.setOption(_buildHoursBarOption({
+      data:        data,
+      categoryKey: 'collaborator',
+      orientation: 'horizontal',
+      stacked:     _stackMode,
+      showTotal:   true,
+      richLabel:   true,
+      maxItems:    40,
+      toolboxName: 'PMAS-Esforco',
+    }), true);
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
@@ -715,7 +724,6 @@ async function _renderPortfolioTab() {
 }
 
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
 // Compute date window for Queima/IDP when cycles are selected.
 // Returns {dateFrom, dateTo} covering selected cycles ±1 neighbor.
 // If no cycles selected, returns the manually entered date range unchanged.
@@ -774,8 +782,18 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     }
     _showEmpty('trendsEmpty', false);
 
+    // Trends chart — G2 ✅
     const tc = _getOrCreateChart('trendsChart');
-    tc.setOption(_buildTrendsOption(trends), true);
+    tc.setOption(_buildHoursBarOption({
+      data:        trends,
+      categoryKey: 'cycle_name',
+      orientation: 'vertical',
+      stacked:     true,
+      showTotal:   true,
+      richLabel:   false,
+      maxItems:    40,
+      toolboxName: 'PMAS-Queima',
+    }), true);
     tc.resize();
 
     const cpiCard = document.getElementById('cpiChartCard');
@@ -921,7 +939,7 @@ async function _renderAllocationTab() {
     const maxVal        = Math.max(...Object.values(collabTotals));
 
     const fmt = v => _allocEvmMode
-      ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
       : `${v.toFixed(1)}h`;
 
     const cellBg = v => {
@@ -1323,200 +1341,230 @@ function _toolbox(extra = {}, name = 'PMAS') {
   };
 }
 
-function _buildEffortOption(data, stacked) {
-  const MAX        = 40;
-  const slice      = data.length > MAX ? data.slice(0, MAX) : data;
+// ============================================================
+// _buildHoursBarOption — Builder unificado de barras de horas
+// Substitui: _buildEffortOption, _buildTrendsOption (bloco de
+// barras) e o bloco inline tc.setOption({…}) do modal timeline.
+//
+// Correções aplicadas vs. documento de design (seção 5):
+//   [C1] showBackground preservado do G1 original (horizontal)
+//   [C2] label da linha de total: 'right' (horizontal) / 'top' (vertical)
+// ============================================================
+function _buildHoursBarOption({
+  data          = [],
+  categoryKey   = 'collaborator',
+  orientation   = 'horizontal',   // 'horizontal' | 'vertical'
+  stacked       = true,
+  showTotal     = true,
+  richLabel     = false,
+  maxItems      = 40,
+  toolboxName   = 'PMAS-Horas',
+} = {}) {
+
+  // ── 1. Preparação dos dados ─────────────────────────────────────────
+  const slice      = data.length > maxItems ? data.slice(0, maxItems) : data;
+  const truncated  = data.length > maxItems;
   const stack      = stacked ? 'total' : undefined;
-  const byName     = Object.fromEntries(data.map(d => [d.collaborator, d]));
-  const truncNote  = data.length > MAX
-    ? `Exibindo ${MAX} de ${data.length} colaboradores`
-    : '';
+  const isHoriz    = orientation === 'horizontal';
 
-  // ── Totais por colaborador (para a linha de total) ──────────────────────
-  const totals = slice.map(r =>
-    +(r.normal_hours + r.extra_hours + r.standby_hours).toFixed(2)
+  const categories = slice.map(r => r[categoryKey]);
+  const normals    = slice.map(r => +(r.normal_hours  ?? 0).toFixed(2));
+  const extras     = slice.map(r => +(r.extra_hours   ?? 0).toFixed(2));
+  const standbys   = slice.map(r => +(r.standby_hours ?? 0).toFixed(2));
+  const totals     = slice.map((_, i) =>
+    +(normals[i] + extras[i] + standbys[i]).toFixed(2)
   );
+  const maxTotal   = Math.max(...totals, 0);
 
-  // ── Maior total da série (para destacar o pico) ─────────────────────────
-  const maxTotal = Math.max(...totals);
+  // Lookup rápido para richLabel (usado apenas em horizontal)
+  const byCategory = Object.fromEntries(slice.map(r => [r[categoryKey], r]));
 
+  // ── 2. Eixo de categoria ────────────────────────────────────────────
+  const categoryAxis = {
+    type: 'category',
+    data: categories,
+    axisTick: { show: false },
+    axisLabel: richLabel && isHoriz
+      // [C1] Label rico: nome + breakdown N/E/S — exclusivo do modo horizontal
+      ? {
+          color:      '#e2e8f0',
+          fontSize:   10,
+          lineHeight: 16,
+          formatter: name => {
+            const d  = byCategory[name];
+            if (!d) return name;
+            const t  = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
+            const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
+            return (
+              `{nm|${nm}}\n` +
+              `{hr|N:${d.normal_hours.toFixed(1)}h  ` +
+              `E:${d.extra_hours.toFixed(1)}h  ` +
+              `S:${d.standby_hours.toFixed(1)}h  \u2211${t}h}`
+            );
+          },
+          rich: {
+            nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
+            hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
+          },
+        }
+      // Label simples para vertical (ciclos) — rotaciona quando há muitas categorias
+      : {
+          color:    '#94a3b8',
+          fontSize: isHoriz ? 10 : 11,
+          rotate:   (!isHoriz && categories.length > 6) ? 30 : 0,
+        },
+  };
+
+  // ── 3. Eixo de valor ────────────────────────────────────────────────
+  const valueAxis = {
+    type: 'value',
+    name: 'h',
+    nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+    axisLabel: {
+      color:     '#94a3b8',
+      fontSize:  11,
+      formatter: v => `${v}h`,
+    },
+    splitLine: { lineStyle: { color: '#1e293b' } },
+  };
+
+  // ── 4. Tooltip unificado ────────────────────────────────────────────
+  const tooltip = {
+    trigger:     'axis',
+    axisPointer: { type: 'shadow' },
+    backgroundColor: '#1e293b',
+    borderColor:     '#475569',
+    textStyle:       { color: '#e2e8f0' },
+    formatter: params => {
+      const bars  = params.filter(p => p.seriesName !== _t('stat.total'));
+      let html    = `<b>${params[0].axisValue}</b><br/>`;
+      let total   = 0;
+      bars.forEach(p => {
+        if (p.value > 0) {
+          html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
+          total += p.value;
+        }
+      });
+      html += `<hr style="border-color:#334155;margin:4px 0"/>`;
+      html += `Total: <b>${total.toFixed(1)}h</b>`;
+      return html;
+    },
+  };
+
+  // ── 5. Séries de barras ─────────────────────────────────────────────
+  // [C1] showBackground preservado: presente em G1 (horizontal), ausente em G2/G3 (vertical)
+  // const bgStyle = isHoriz
+  const bgStyle = true
+    ? { showBackground: true, backgroundStyle: { color: 'rgba(180, 180, 180, 0.01)' } }
+    : {};
+
+  const barMaxWidth = isHoriz ? 32 : 48;
+
+  const _barSerie = (name, data, color) => ({
+    name,
+    type: 'bar',
+    ...bgStyle,
+    stack,
+    data,
+    itemStyle:   { color },
+    barMaxWidth,
+    label: {
+      show:      !!stack,
+      position:  'inside',
+      fontSize:  9,
+      color:     '#fff',
+      formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
+    },
+  });
+
+  const barSeries = [
+    _barSerie(_t('ch.normal_h'),  normals,   '#3b82f6'),
+    _barSerie(_t('ch.extra_h'),   extras,    '#f59e0b'),
+    _barSerie(_t('ch.standby_h'), standbys,  '#8b5cf6'),
+  ];
+
+  // ── 6. Série de linha de total (opcional) ───────────────────────────
+  // [C2] position dinâmico: 'right' em horizontal (G1), 'top' em vertical (G2/G3)
+  const totalLineSeries = showTotal ? [{
+    name:       _t('stat.total'),
+    type:       'line',
+    color:      '#10b981',
+    legendIcon: 'circle',
+    data:       totals,
+    symbolSize: val => val === maxTotal ? 10 : 6,
+    lineStyle:  { width: 1, type: 'dashed' },
+    itemStyle:  { color: p => p.value === maxTotal ? '#f87171' : '#10b981' },
+    label: {
+      show:       true,
+      position:   isHoriz ? 'right' : 'top',   // [C2]
+      fontSize:   10,
+      fontWeight: 600,
+      color:      '#10b981',
+      formatter:  p => p.value === maxTotal
+        ? `{peak|${p.value.toFixed(1)}h}`
+        : `${p.value.toFixed(1)}h`,
+      rich: { peak: { color: '#f87171', fontWeight: 700 } },
+    },
+    z: 10,
+  }] : [];
+
+  // ── 7. Legenda ──────────────────────────────────────────────────────
+  const legendData = [
+    _t('ch.normal_h'),
+    _t('ch.extra_h'),
+    _t('ch.standby_h'),
+    ...(showTotal ? [_t('stat.total')] : []),
+  ];
+
+  // ── 8. Grid — margens ajustadas por orientação e presença de total ──
+  const grid = {
+    top:          44,
+    right:        showTotal && isHoriz  ? '8%'  :
+                  showTotal && !isHoriz ? '6%'  : '3%',
+    bottom:       isHoriz ? 28 : 56,
+    left:         '2%',
+    containLabel: true,
+  };
+
+  // ── 9. Montagem final ───────────────────────────────────────────────
   return {
     backgroundColor: 'transparent',
 
-    title: {
-      subtext: truncNote.trim(),
-      left: 'center',
-      top: 4,
+    title: truncated ? {
+      subtext:      `Exibindo os primeiros ${maxItems} itens`,
+      left:         'center',
+      top:          4,
       subtextStyle: { color: '#64748b', fontSize: 11 },
-    },
+    } : undefined,
 
     legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('stat.total')],
-      top: 8,
-      left: 'center',
-      textStyle: { color: '#cbd5e1', fontSize: 12 },
-      itemGap: 24,
-      itemWidth: 14,
+      data:       legendData,
+      top:        8,
+      left:       'center',
+      textStyle:  { color: '#cbd5e1', fontSize: 12 },
+      itemGap:    24,
+      itemWidth:  14,
       itemHeight: 10,
     },
 
-    grid: {
-      top: 44,
-      right: '8%',   // margem extra para os labels de total na linha
-      bottom: 28,
-      left: '2%',
-      containLabel: true,
-    },
-
-    toolbox: _toolbox({}, 'PMAS-Esforco'),
-
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: '#1e293b',
-      borderColor: '#475569',
-      textStyle: { color: '#e2e8f0' },
-      formatter: params => {
-        // ignora a série de total no tooltip (ela já aparece no rodapé)
-        const bars = params.filter(p => p.seriesName !== _t('stat.total'));
-        let html  = `<b>${params[0].axisValue}</b><br/>`;
-        let total = 0;
-        bars.forEach(p => {
-          if (p.value > 0) {
-            html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
-            total += p.value;
-          }
-        });
-        html += `<hr style="border-color:#334155;margin:4px 0"/>`;
-        html += `Total: <b>${total.toFixed(1)}h</b>`;
-        return html;
-      },
-    },
-
-    xAxis: {
-      type: 'value',
-      name: _t('ch.hours'),
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: {
-        color: '#94a3b8',
-        fontSize: 11,
-        formatter: v => `${v}h`,
-      },
-      splitLine: { lineStyle: { color: '#1e293b' } },
-    },
-
-    yAxis: {
-      type: 'category',
-      data: slice.map(r => r.collaborator),
-      axisTick: { show: false },
-      axisLabel: {
-        fontSize: 10,
-        lineHeight: 16,
-        formatter: name => {
-          const d  = byName[name];
-          if (!d) return name;
-          const t  = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-          const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
-          return `{nm|${nm}}\n{hr|N:${d.normal_hours.toFixed(1)}h  E:${d.extra_hours.toFixed(1)}h  S:${d.standby_hours.toFixed(1)}h  ∑${t}h}`;
-        },
-        rich: {
-          nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
-          hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
+    toolbox: _toolbox({
+      magicType: {
+        type:  ['stack', 'tiled'],
+        title: {
+          stack: _t('toolbox.stack'),
+          tiled: _t('toolbox.tiled'),
         },
       },
-    },
+    }, toolboxName),
 
-    series: [
-      // ── Barra: Horas Normais ─────────────────────────────────────────────
-      {
-        name: _t('ch.normal_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        stack,
-        data: slice.map(r => +r.normal_hours.toFixed(2)),
-        itemStyle: { color: '#3b82f6' },
-        barMaxWidth: 32,
-        // Label visível apenas no modo empilhado e quando o segmento é grande o suficiente
-        label: {
-          show: !!stack,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-      },
+    grid,
+    tooltip,
 
-      // ── Barra: Horas Extras ──────────────────────────────────────────────
-      {
-        name: _t('ch.extra_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        stack,
-        data: slice.map(r => +r.extra_hours.toFixed(2)),
-        itemStyle: { color: '#f59e0b' },
-        barMaxWidth: 32,
-        label: {
-          show: !!stack,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-      },
+    // Eixos: posição invertida conforme orientação
+    xAxis: isHoriz ? valueAxis    : categoryAxis,
+    yAxis: isHoriz ? categoryAxis : valueAxis,
 
-      // ── Barra: Sobreaviso ────────────────────────────────────────────────
-      {
-        name: _t('ch.standby_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        stack,
-        data: slice.map(r => +r.standby_hours.toFixed(2)),
-        itemStyle: { color: '#8b5cf6' },
-        barMaxWidth: 32,
-        label: {
-          show: !!stack,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-      },
-
-      // ── Linha de Total ───────────────────────────────────────────────────
-      {
-        name: _t('stat.total'),
-        type: 'line',
-        color: '#10b981',       // fixed color → legend icon shows green
-        legendIcon: 'circle',   // avoids dashed-line artifact in legend
-        data: totals,
-        symbolSize: val => val === maxTotal ? 10 : 6,
-        lineStyle: { width: 1, type: 'dashed' },
-        itemStyle: {
-          color: p => p.value === maxTotal ? '#f87171' : '#10b981',
-        },
-        label: {
-          show: true,
-          position: 'right',
-          fontSize: 10,
-          fontWeight: 600,
-          color: '#10b981',
-          formatter: p => p.value === maxTotal
-            ? `{peak|${p.value.toFixed(1)}h}`
-            : `${p.value.toFixed(1)}h`,
-          rich: { peak: { color: '#f87171', fontWeight: 700 } },
-        },
-        z: 10,
-      },
-    ],
+    series: [...barSeries, ...totalLineSeries],
   };
 }
 
@@ -1532,11 +1580,10 @@ function _buildEffortSeriesOnly(stacked) {
   };
 }
 
-
 function _buildScatterOption(items) {
   const totalH  = items.reduce((s, d) => s + d.total_hours, 0);
   const totalC  = items.reduce((s, d) => s + d.actual_cost, 0);
-  const avgRate = totalH > 0 ? totalC / totalH : 0;             // raw R$/h for color comparison
+  const avgRate = totalH > 0 ? totalC / totalH : 0;
   const maxH    = Math.max(...items.map(d => d.total_hours)) * 1.15 || 1;
   const maxC    = Math.max(...items.map(d => d.actual_cost * _currencyFactor)) * 1.15 || 1;
   const minH    = Math.min(...items.map(d => d.total_hours));
@@ -1544,9 +1591,9 @@ function _buildScatterOption(items) {
   const colorOf = d => {
     const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
     if (rph === 0 || avgRate === 0) return '#64748b';
-    if (rph <= avgRate)             return '#3b82f6';   // normal-hours blue
-    if (rph <= avgRate * 1.1)       return '#f59e0b';   // project amber
-    return '#f87171';                                   // project red
+    if (rph <= avgRate)             return '#3b82f6';
+    if (rph <= avgRate * 1.1)       return '#f59e0b';
+    return '#f87171';
   };
 
   const sizeOf = d => {
@@ -1816,97 +1863,6 @@ function _buildBulletOption(withBudget, evmMode = false) {
   };
 }
 
-function _buildTrendsOption(trends) {
-  const cats     = trends.map(d => d.cycle_name);
-  const normals  = trends.map(d => +d.normal_hours.toFixed(2));
-  const extras   = trends.map(d => +d.extra_hours.toFixed(2));
-  const standbys = trends.map(d => +(d.standby_hours ?? 0).toFixed(2));
-  const totals   = trends.map((d, i) => +(normals[i] + extras[i] + standbys[i]).toFixed(2));
-  const maxTotal = Math.max(...totals);
-
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({
-      magicType: { type: ['stack', 'tiled'], title: { stack: _t('toolbox.stack'), tiled: _t('toolbox.tiled') } },
-    }, 'PMAS-Queima'),
-    legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h'), _t('stat.total')],
-      top: 8, left: 'center',
-      textStyle: { color: '#cbd5e1', fontSize: 12 },
-      itemGap: 24, itemWidth: 14, itemHeight: 10,
-    },
-    grid: { top: 44, right: '6%', bottom: 56, left: '2%', containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
-      formatter: params => {
-        const bars = params.filter(p => p.seriesName !== _t('stat.total'));
-        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
-        let total = 0;
-        bars.forEach(p => {
-          if (p.value > 0) {
-            html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`;
-            total += p.value;
-          }
-        });
-        html += `<hr style="border-color:#334155;margin:4px 0">Total: <b>${total.toFixed(1)}h</b>`;
-        return html;
-      },
-    },
-    xAxis: {
-      type: 'category',
-      data: cats,
-      axisLabel: { color: '#94a3b8', rotate: cats.length > 6 ? 30 : 0, fontSize: 11 },
-      axisTick: { alignWithLabel: true },
-      axisLine: { lineStyle: { color: '#334155' } },
-    },
-    yAxis: {
-      type: 'value', name: 'h',
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: '#1e293b' } },
-    },
-    series: [
-      {
-        name: _t('ch.normal_h'), type: 'bar', stack: 'total',
-        data: normals, itemStyle: { color: '#3b82f6' }, barMaxWidth: 48,
-        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
-      },
-      {
-        name: _t('ch.extra_h'), type: 'bar', stack: 'total',
-        data: extras, itemStyle: { color: '#f59e0b' }, barMaxWidth: 48,
-        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
-      },
-      {
-        name: _t('ch.standby_h'), type: 'bar', stack: 'total',
-        data: standbys, itemStyle: { color: '#8b5cf6' }, barMaxWidth: 48,
-        label: { show: true, position: 'inside', fontSize: 9, color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '' },
-      },
-      {
-        name: _t('stat.total'), type: 'line',
-        color: '#10b981', legendIcon: 'circle',
-        data: totals,
-        symbolSize: val => val === maxTotal ? 10 : 6,
-        lineStyle: { width: 1, type: 'dashed' },
-        itemStyle: { color: p => p.value === maxTotal ? '#f87171' : '#10b981' },
-        label: {
-          show: true, position: 'top', fontSize: 10, fontWeight: 600,
-          color: '#10b981',
-          formatter: p => p.value === maxTotal
-            ? `{peak|${p.value.toFixed(1)}h}`
-            : `${p.value.toFixed(1)}h`,
-          rich: { peak: { color: '#f87171', fontWeight: 700 } },
-        },
-        z: 10,
-      },
-    ],
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Collaborator Timeline Modal
 // ---------------------------------------------------------------------------
@@ -2004,121 +1960,18 @@ async function _openCollabTimelineModal(collaboratorName) {
   const existing = echarts.getInstanceByDom(chartEl);
   if (existing && !existing.isDisposed()) existing.dispose();
 
-  // 10. Renderiza gráfico
+  // 10. Renderiza gráfico — G3 ✅
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
-  const cycles = rows.map(r => r.cycle_name);
-
-  tc.setOption({
-    backgroundColor: 'transparent',
-    legend: {
-      data: [_t('ch.normal_h'), _t('ch.extra_h'), _t('ch.standby_h')],
-      top: 8,
-      left: 'center',
-      textStyle: { color: '#cbd5e1', fontSize: 12 },
-      itemGap: 24,
-      itemWidth: 14,
-      itemHeight: 10,
-    },
-    grid: { top: 44, right: '4%', bottom: 56, left: '4%', containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: '#1e293b',
-      borderColor: '#475569',
-      textStyle: { color: '#e2e8f0' },
-      formatter: params => {
-        let html = `<b>${params[0].axisValue}</b><br/>`;
-        let total = 0;
-        params.forEach(p => {
-          if (p.value > 0) {
-            html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
-            total += p.value;
-          }
-        });
-        html += `<hr style="border-color:#334155;margin:4px 0"/>Total: <b>${total.toFixed(1)}h</b>`;
-        return html;
-      },
-    },
-    toolbox: _toolbox({
-      magicType: { type: ['stack', 'tiled'], title: { stack: _t('toolbox.stack'), tiled: _t('toolbox.tiled') } },
-    }, 'PMAS-Esforco'),
-    xAxis: {
-      type: 'category',
-      data: cycles,
-      axisLabel: {
-        color: '#94a3b8',
-        fontSize: 10,
-        rotate: 30,
-      },
-      axisLine: { lineStyle: { color: '#334155' } },
-    },
-    yAxis: {
-      type: 'value',
-      name: 'h',
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#1e293b' } },
-    },
-    series: [
-      {
-        name: _t('ch.normal_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-        stack: 'total',
-        data: rows.map(r => +r.normal_hours.toFixed(2)),
-        itemStyle: { color: '#3b82f6' },
-        barMaxWidth: 48,
-      },
-      {
-        name: _t('ch.extra_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-        stack: 'total',
-        data: rows.map(r => +r.extra_hours.toFixed(2)),
-        itemStyle: { color: '#f59e0b' },
-        barMaxWidth: 48,
-      },
-      {
-        name: _t('ch.standby_h'),
-        type: 'bar',
-        showBackground: true,
-        backgroundStyle: {
-          color: 'rgba(180, 180, 180, 0.01)'
-        },
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 9,
-          color: '#fff',
-          formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-        },
-        stack: 'total',
-        data: rows.map(r => +r.standby_hours.toFixed(2)),
-        itemStyle: { color: '#8b5cf6' },
-        barMaxWidth: 48,
-      },
-    ],
-  });
+  tc.setOption(_buildHoursBarOption({
+    data:        rows,
+    categoryKey: 'cycle_name',
+    orientation: 'vertical',
+    stacked:     true,
+    showTotal:   true,
+    richLabel:   false,
+    maxItems:     40,
+    toolboxName: 'PMAS-Timeline',
+  }), true);
 }
 
 // ---------------------------------------------------------------------------
@@ -2126,7 +1979,6 @@ async function _openCollabTimelineModal(collaboratorName) {
 // ---------------------------------------------------------------------------
 function _buildCpiOption(trends) {
   const cats = trends.map(d => d.cycle_name);
-  // connectNulls: true bridges cycles with no CPI value
   const cpiSeries = trends.map(d => d.cpi != null ? +d.cpi.toFixed(3) : null);
   return {
     backgroundColor: 'transparent',
