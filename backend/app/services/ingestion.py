@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import math
+import re
 from datetime import date, timedelta
 from io import BytesIO
 
@@ -27,6 +29,11 @@ _COL_STANDBY = "Hora sobreaviso"
 _COL_PEP_CODE = "Código PEP"
 _COL_PEP_DESC = "PEP"
 _COL_START_TIME = "Hora Inicial [H]"
+
+_INVALID_COLLAB_NAMES = {"nan", "none", "unnamed", "0", "", "-", "—"}
+_MAX_ROWS_WARNING = 5_000
+_PEP_PATTERN = re.compile(r"^[A-Z0-9]{2,}-[A-Z0-9]{3,}$", re.IGNORECASE)
+_HARD_CAP_HOURS = 24.0
 
 
 class ClosedCycleError(Exception):
@@ -76,6 +83,24 @@ def ingest_file(
                 f"{n_discarded} linha(s) descartadas — sem permissão nos PEPs: "
                 f"{', '.join(top)}{suffix}"
             )
+
+    # High-volume warning (checked before any DB writes)
+    if len(df) > _MAX_ROWS_WARNING:
+        ingest_warnings.append(
+            f"Arquivo com volume elevado: {len(df)} linhas. "
+            f"Verifique se o período exportado está correto."
+        )
+
+    # Filter rows with invalid collaborator names (e.g. Excel merged cells → "nan")
+    _collab_invalid = df[_COL_COLLABORATOR].apply(
+        lambda v: len(str(v).strip()) < 2 or str(v).strip().lower() in _INVALID_COLLAB_NAMES
+    ).astype(bool)
+    n_bad_collabs = int(_collab_invalid.sum())
+    if n_bad_collabs:
+        ingest_warnings.append(
+            f"{n_bad_collabs} linha(s) ignorada(s) por nome de colaborador inválido."
+        )
+        df = df[~_collab_invalid].copy()
 
     # Pass 1: resolve collaborators and cycles
     collab_cache: dict[str, Collaborator] = {}
@@ -169,23 +194,37 @@ def ingest_file(
         seen_keys: set[tuple] = set()
         inserted = 0
         skipped = 0
+        warned_zero_rate: set[str] = set()
 
-        for _, row in df.iterrows():
+        for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
             collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
             record_date = _parse_date(row[_COL_DATE])
             cycle = cycle_cache[record_date]
 
             normal_h = extra_h = standby_h = 0.0
-            total_h = float(row[_COL_HOURS])
+            total_h = _safe_hours(row[_COL_HOURS], row_idx, _COL_HOURS, ingest_warnings)
 
-            if _is_yes(row.get(_COL_EXTRA, "")):
-                extra_h = total_h
+            if total_h == 0.0:
+                skipped += 1
+                continue
+
+            is_extra   = _is_yes(row.get(_COL_EXTRA, ""))
+            is_standby = _is_yes(row.get(_COL_STANDBY, ""))
+
+            if is_extra and is_standby:
+                ingest_warnings.append(
+                    f"Linha {row_idx}: colaborador '{collab.name}' em {record_date} "
+                    f"marcado como Extra E Sobreaviso simultaneamente → classificado como Extra."
+                )
+
+            if is_extra:
+                extra_h   = total_h
                 hour_type = "extra"
-            elif _is_yes(row.get(_COL_STANDBY, "")):
+            elif is_standby:
                 standby_h = total_h
                 hour_type = "standby"
             else:
-                normal_h = total_h
+                normal_h  = total_h
                 hour_type = "normal"
 
             pep_code   = _str_or_none(row.get(_COL_PEP_CODE))
@@ -198,6 +237,14 @@ def ingest_file(
                 continue
 
             seen_keys.add(key)
+            rate = _lookup_rate(db, collab, record_date)
+            if rate == 0.0 and collab.name not in warned_zero_rate:
+                ingest_warnings.append(
+                    f"Colaborador '{collab.name}' sem taxa cadastrada para {record_date} "
+                    f"→ custo registrado como R$0,00."
+                )
+                warned_zero_rate.add(collab.name)
+
             db.add(TimesheetRecord(
                 collaborator_id=collab.id,
                 cycle_id=cycle.id,
@@ -207,7 +254,7 @@ def ingest_file(
                 normal_hours=normal_h,
                 extra_hours=extra_h,
                 standby_hours=standby_h,
-                cost_per_hour=_lookup_rate(db, collab, record_date),
+                cost_per_hour=rate,
             ))
             inserted += 1
 
@@ -310,6 +357,18 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
             + (" e outros." if len(over_limit) > 10 else ".")
         )
 
+    today = date.today()
+    future_mask = dates_parsed.dt.date > today
+    if future_mask.any():
+        future_collabs = df.loc[future_mask, _COL_COLLABORATOR].unique().tolist()
+        future_dates   = dates_parsed[future_mask].dt.date.unique().tolist()
+        warnings.append(
+            f"Datas futuras detectadas (possível erro de digitação): "
+            f"{', '.join(str(d) for d in future_dates[:5])} "
+            f"— colaboradores: {', '.join(str(c) for c in future_collabs[:5])}"
+            + (" e outros." if len(future_collabs) > 5 else ".")
+        )
+
     if pep_codes_in_file:
         registered = {
             p.pep_wbs
@@ -320,6 +379,14 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
             warnings.append(
                 f"Códigos PEP sem cadastro em Projetos: {', '.join(unregistered[:20])}"
                 + (" e outros." if len(unregistered) > 20 else ".")
+            )
+
+        suspicious_peps = [p for p in pep_codes_in_file if not _PEP_PATTERN.match(p)]
+        if suspicious_peps:
+            warnings.append(
+                f"Códigos PEP com formato suspeito (verifique mapeamento de colunas): "
+                f"{', '.join(sorted(suspicious_peps)[:10])}"
+                + (" e outros." if len(suspicious_peps) > 10 else ".")
             )
 
     return warnings
@@ -400,6 +467,55 @@ def _str_or_none(value) -> str | None:
         return None
     s = str(value).strip()
     return None if s.lower() in {"nan", "none", ""} else s
+
+
+def _safe_hours(value, row_index: int, col_name: str, warnings: list[str]) -> float:
+    """Convert a cell value to a non-negative, finite float of hours.
+
+    Returns 0.0 and appends a warning for: empty/None, non-numeric text,
+    NaN, Inf, negative values, and values above _HARD_CAP_HOURS.
+    Never propagates NaN, Inf, or negative values to the database.
+    """
+    if value is None:
+        return 0.0
+
+    raw = str(value).strip().replace(",", ".")
+
+    if raw == "" or raw.lower() in {"nan", "none", "-", "—", "n/a"}:
+        warnings.append(
+            f"Linha {row_index}: valor ausente em '{col_name}' → tratado como 0h."
+        )
+        return 0.0
+
+    try:
+        v = float(raw)
+    except (ValueError, TypeError):
+        warnings.append(
+            f"Linha {row_index}: valor não numérico em '{col_name}' "
+            f"({value!r}) → tratado como 0h."
+        )
+        return 0.0
+
+    if math.isnan(v) or math.isinf(v):
+        warnings.append(
+            f"Linha {row_index}: NaN/Inf em '{col_name}' → tratado como 0h."
+        )
+        return 0.0
+
+    if v < 0:
+        warnings.append(
+            f"Linha {row_index}: horas negativas em '{col_name}' ({v}) → tratado como 0h."
+        )
+        return 0.0
+
+    if v > _HARD_CAP_HOURS:
+        warnings.append(
+            f"Linha {row_index}: valor de horas absurdo em '{col_name}' "
+            f"({v}h > {_HARD_CAP_HOURS}h) → tratado como 0h."
+        )
+        return 0.0
+
+    return v
 
 
 def _lookup_rate(db: Session, collab: Collaborator, record_date: date) -> float:
