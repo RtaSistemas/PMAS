@@ -35,18 +35,15 @@ _MAX_ROWS_WARNING = 5_000
 _PEP_PATTERN = re.compile(r"^[A-Z0-9]{2,}-[A-Z0-9]{3,}$", re.IGNORECASE)
 _HARD_CAP_HOURS = 24.0
 
-
 class ClosedCycleError(Exception):
     def __init__(self, cycle_names: list[str]) -> None:
         self.cycle_names = cycle_names
         super().__init__(f"Ciclos fechados: {', '.join(cycle_names)}")
 
-
 class LockedProjectError(Exception):
     def __init__(self, project_names: list[str]) -> None:
         self.project_names = project_names
         super().__init__(f"Projetos encerrados/suspensos: {', '.join(project_names)}")
-
 
 # ---------------------------------------------------------------------------
 # Public entry point
@@ -101,6 +98,21 @@ def ingest_file(
             f"{n_bad_collabs} linha(s) ignorada(s) por nome de colaborador inválido."
         )
         df = df[~_collab_invalid].copy()
+
+    # ── CORREÇÃO 1 ──────────────────────────────────────────────────────────
+    # Filter rows with invalid or missing dates (e.g. Excel merged cells → NaN)
+    _date_invalid = df[_COL_DATE].apply(
+        lambda v: v is None
+        or (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))
+        or str(v).strip().lower() in {"nan", "none", ""}
+    ).astype(bool)
+    n_bad_dates = int(_date_invalid.sum())
+    if n_bad_dates:
+        ingest_warnings.append(
+            f"{n_bad_dates} linha(s) ignorada(s) por data inválida ou ausente."
+        )
+        df = df[~_date_invalid].copy()
+    # ── FIM CORREÇÃO 1 ───────────────────────────────────────────────────────
 
     # Pass 1: resolve collaborators and cycles
     collab_cache: dict[str, Collaborator] = {}
@@ -281,10 +293,8 @@ def ingest_file(
         "anomaly_warnings": anomaly_warnings,
     }
 
-
 def ingest_csv(file_bytes: bytes, db: Session) -> dict:
     return ingest_file(file_bytes, "file.csv", db)
-
 
 # ---------------------------------------------------------------------------
 # Authorization
@@ -327,7 +337,6 @@ def _authorized_peps(
     }
 
     return managed | delegated
-
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -391,7 +400,6 @@ def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session
 
     return warnings
 
-
 def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
     if filename.lower().endswith((".xlsx", ".xls")):
         df = pd.read_excel(BytesIO(file_bytes))
@@ -405,7 +413,6 @@ def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
         raise ValueError(f"Colunas obrigatórias ausentes: {missing}")
     return df
 
-
 def _get_or_create_collaborator(db: Session, name: str) -> Collaborator:
     collab = db.query(Collaborator).filter(Collaborator.name == name).first()
     if collab is None:
@@ -413,7 +420,6 @@ def _get_or_create_collaborator(db: Session, name: str) -> Collaborator:
         db.add(collab)
         db.flush()
     return collab
-
 
 def _resolve_cycle(db: Session, record_date: date) -> tuple[Cycle, bool]:
     cycle = (
@@ -449,25 +455,27 @@ def _resolve_cycle(db: Session, record_date: date) -> tuple[Cycle, bool]:
     log.warning("Ciclo de quarentena criado: '%s'", name)
     return quarantine, True
 
-
+# ── CORREÇÃO 2 ──────────────────────────────────────────────────────────────
 def _parse_date(value) -> date:
     if isinstance(value, date):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            raise ValueError(f"Data inválida (NaN/Inf) na planilha.")
         return date(1899, 12, 30) + timedelta(days=int(value))
+    if isinstance(value, int):
+        return date(1899, 12, 30) + timedelta(days=value)
     return pd.to_datetime(str(value), dayfirst=True).date()
-
+# ── FIM CORREÇÃO 2 ───────────────────────────────────────────────────────────
 
 def _is_yes(value) -> bool:
     return str(value).strip().lower() in {"sim", "yes", "s", "y", "true", "1"}
-
 
 def _str_or_none(value) -> str | None:
     if value is None:
         return None
     s = str(value).strip()
     return None if s.lower() in {"nan", "none", ""} else s
-
 
 def _safe_hours(value, row_index: int, col_name: str, warnings: list[str]) -> float:
     """Convert a cell value to a non-negative, finite float of hours.
@@ -516,7 +524,6 @@ def _safe_hours(value, row_index: int, col_name: str, warnings: list[str]) -> fl
         return 0.0
 
     return v
-
 
 def _lookup_rate(db: Session, collab: Collaborator, record_date: date) -> float:
     if collab.seniority_level_id is None:
