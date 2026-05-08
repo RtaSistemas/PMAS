@@ -367,9 +367,11 @@ class QuarantineRecordOut(BaseModel):
     raw_data: Optional[dict] = None
     quarantine_reason: str
     rule_id: Optional[int] = None
+    rule_description: Optional[str] = None
     reviewed: bool
     reviewed_by: Optional[str] = None
     reviewed_at: Optional[datetime] = None
+    review_status: str = "pending"
 
     model_config = ConfigDict(from_attributes=True)
 

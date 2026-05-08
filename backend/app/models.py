@@ -236,9 +236,16 @@ class QuarantineRecord(Base):
     reviewed             = Column(Boolean, default=False, nullable=False, index=True)
     reviewed_by          = Column(String, nullable=True)
     reviewed_at          = Column(DateTime, nullable=True)
+    review_status        = Column(String, default="pending", nullable=False)
 
     upload_session = relationship("UploadSession", back_populates="quarantine_records")
     rule           = relationship("ValidationRule", back_populates="quarantine_records")
+
+    @property
+    def rule_description(self) -> str | None:
+        if self.rule:
+            return self.rule.description
+        return None
 
 
 class UserPreference(Base):
