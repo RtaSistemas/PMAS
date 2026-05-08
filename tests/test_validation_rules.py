@@ -57,15 +57,27 @@ class TestValidationRules:
         assert r.status_code == 200
         assert r.json()["value"] == "15"
 
-    def test_cannot_update_system_rule(self, client):
+    def test_system_rule_immutable_fields_rejected(self, client):
+        rules = client.get("/api/validation-rules").json()
+        # Pick a system rule whose action is not already "info"
+        sys_rule = next(x for x in rules if x["is_system"] and x["action"] != "info")
+        r = client.put(f"/api/validation-rules/{sys_rule['id']}", json={
+            "field": sys_rule["field"], "operator": sys_rule["operator"],
+            "value": sys_rule["value"], "action": "info",  # changed → 422
+            "order": sys_rule["order"], "is_active": sys_rule["is_active"],
+        })
+        assert r.status_code == 422
+
+    def test_system_rule_value_editable(self, client):
         rules = client.get("/api/validation-rules").json()
         sys_rule = next(x for x in rules if x["is_system"])
         r = client.put(f"/api/validation-rules/{sys_rule['id']}", json={
             "field": sys_rule["field"], "operator": sys_rule["operator"],
-            "value": sys_rule["value"], "action": sys_rule["action"],
+            "value": "30", "action": sys_rule["action"],
             "order": sys_rule["order"], "is_active": sys_rule["is_active"],
         })
-        assert r.status_code == 403
+        assert r.status_code == 200
+        assert r.json()["value"] == "30"
 
     def test_delete_custom_rule(self, client):
         created = client.post("/api/validation-rules", json={

@@ -7,7 +7,12 @@ import pandas as pd
 import pytest
 
 from backend.app.models import Collaborator, Cycle, TimesheetRecord
-from backend.app.services.ingestion import _safe_hours, _str_or_none, ingest_file
+from backend.app.services.ingestion import (
+    ArchivedCycleError,
+    _safe_hours,
+    _str_or_none,
+    ingest_file,
+)
 
 
 def _csv(*rows: dict) -> bytes:
@@ -44,11 +49,10 @@ class TestIngestFile:
         record = db_session.query(TimesheetRecord).first()
         assert record.cycle_id == sample_cycle.id
 
-    def test_unknown_date_row_is_skipped(self, db_session):
+    def test_unknown_date_raises_archived_error(self, db_session):
         row = {**BASE_ROW, "Data": "10/09/2099"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert summary["records_inserted"] == 0
-        assert db_session.query(Cycle).count() == 0
+        with pytest.raises(ArchivedCycleError):
+            ingest_file(_csv(row), "t.csv", db_session)
 
     def test_deduplication(self, db_session, sample_cycle):
         csv = _csv(BASE_ROW, BASE_ROW)
@@ -457,19 +461,10 @@ class TestIngestionHardening:
         assert r.standby_hours == 0.0
         assert any("Sobreaviso simultaneamente" in w for w in summary["warnings"])
 
-    def test_future_date_warning(self, db_session):
+    def test_date_outside_all_cycles_raises_archived_error(self, db_session):
         row = {**BASE_ROW, "Data": "15/01/2099"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert any("futuras" in w for w in summary["warnings"])
-
-    def test_suspicious_pep_format_warns(self, db_session, sample_cycle):
-        row = {**BASE_ROW, "Código PEP": "abc"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert any("formato suspeito" in w for w in summary["warnings"])
-
-    def test_valid_pep_format_no_suspicious_warning(self, db_session, sample_cycle):
-        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
-        assert not any("formato suspeito" in w for w in summary["warnings"])
+        with pytest.raises(ArchivedCycleError):
+            ingest_file(_csv(row), "t.csv", db_session)
 
     def test_zero_rate_warning_emitted(self, db_session, sample_cycle):
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)

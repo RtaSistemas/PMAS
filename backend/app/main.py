@@ -5,17 +5,17 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.app.database import DbSession, init_db
-from backend.app.deps import CurrentUser
-from backend.app.schemas import UploadOut
-from backend.app.audit import log_audit
-from backend.app.routers import acl, analytics, auditlog, auth, cycles, dashboard, plans, projects, quarantine, ratecard, reference, theme, upload, users, validation_rules, my
-from backend.app.services.ingestion import ClosedCycleError, LockedProjectError, ingest_file
+from backend.app.database import init_db
+from backend.app.routers import (
+    acl, analytics, auditlog, auth, cycles, dashboard,
+    my, plans, projects, quarantine, ratecard, reference,
+    theme, upload, users, validation_rules,
+)
 
 log = logging.getLogger(__name__)
 
@@ -77,36 +77,3 @@ app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse(url="/frontend/index.html")
-
-
-_MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
-
-
-@app.post("/api/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
-def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser):
-    fname = file.filename or ""
-    if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
-    contents = file.file.read(_MAX_UPLOAD_BYTES + 1)
-    if len(contents) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Arquivo excede o limite de 20 MB.")
-    try:
-        summary = ingest_file(contents, fname, db, user_role=current_user.role, user_id=current_user.id, username=current_user.username)
-        log_audit(db, current_user, "import", "timesheet", detail={
-            "file": fname,
-            "records_inserted": summary["records_inserted"],
-            "records_skipped": summary["records_skipped"],
-            "quarantine_records_added": summary.get("quarantine_records_added", 0),
-            "warnings": summary["warnings"],
-        })
-        db.commit()
-    except ClosedCycleError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except LockedProjectError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        log.exception("Erro inesperado durante ingestão.")
-        raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
-    return summary

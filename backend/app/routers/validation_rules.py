@@ -47,14 +47,29 @@ def update_rule(rule_id: int, payload: ValidationRuleIn, db: DbSession, current_
     if rule is None:
         raise HTTPException(status_code=404, detail="Regra não encontrada.")
     if rule.is_system:
-        raise HTTPException(status_code=403, detail="Regras de sistema não podem ser editadas.")
-    rule.is_active = payload.is_active
-    rule.order = payload.order
-    rule.field = payload.field
-    rule.operator = payload.operator
-    rule.value = payload.value
-    rule.action = payload.action
-    rule.description = payload.description
+        # System rules: only value and is_active are editable
+        immutable = {
+            "field": (rule.field, payload.field),
+            "operator": (rule.operator, payload.operator),
+            "action": (rule.action, payload.action),
+            "order": (rule.order, payload.order),
+        }
+        changed = [k for k, (old, new) in immutable.items() if old != new]
+        if changed:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Regras de sistema: apenas value e is_active são editáveis. Campos imutáveis alterados: {changed}",
+            )
+        rule.value = payload.value
+        rule.is_active = payload.is_active
+    else:
+        rule.is_active = payload.is_active
+        rule.order = payload.order
+        rule.field = payload.field
+        rule.operator = payload.operator
+        rule.value = payload.value
+        rule.action = payload.action
+        rule.description = payload.description
     rule.updated_by = current_user.username
     rule.updated_at = datetime.utcnow()
     db.commit()

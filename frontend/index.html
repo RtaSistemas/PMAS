@@ -69,7 +69,7 @@
         <polyline points="5,13 12,8 19,4" stroke="#00f0a0" stroke-width="2" fill="none"/>
       </svg>
     </div>
-    <span class="header-name" id="headerAppName">PMAS</span>
+    <span class="header-name" id="headerAppName" data-app-name>PMAS</span>
   </div>
   <div class="header-sep"></div>
   <span class="header-sub">Gestão de Projetos</span>
@@ -144,7 +144,7 @@
     <!-- ============================================================ -->
     <div id="atab-effort" class="atab-section">
       <div id="effortStats"></div>
-      <div class="card chart-panel" id="effortPanel">
+      <div class="card chart-panel" id="effortPanel" data-chart-id="effortChart">
         <div class="panel-header">
           <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
           <div style="display:flex;gap:0.5rem">
@@ -157,7 +157,7 @@
         </div>
         <div id="effortChart" style="width:100%;height:500px"></div>
       </div>
-      <div class="card chart-panel">
+      <div class="card chart-panel" data-chart-id="trendsChart">
         <div class="panel-header">
           <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
           <button id="cpiToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_cpi">Ver: CPI por PEP</button>
@@ -167,7 +167,7 @@
         </div>
         <div id="trendsChart" style="width:100%;height:440px"></div>
       </div>
-      <div class="card chart-panel" id="pepCpiPanel" hidden style="margin-top:0">
+      <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" hidden style="margin-top:0">
         <div class="panel-header">
           <span class="panel-title" data-i18n="pepcpi.title">CPI por PEP ao longo dos Ciclos</span>
           <span class="panel-note"  data-i18n="pepcpi.note">Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos</span>
@@ -177,7 +177,7 @@
         </div>
         <div id="pepCpiChart" style="width:100%;height:360px"></div>
       </div>
-      <div class="card chart-panel" id="cpiChartCard" hidden>
+      <div class="card chart-panel" id="cpiChartCard" data-chart-id="cpiChart" hidden>
         <div class="panel-header">
           <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
         </div>
@@ -190,7 +190,7 @@
     <!-- ============================================================ -->
     <div id="atab-portfolio" class="atab-section" hidden>
       <div id="portfolioStats"></div>
-      <div class="card chart-panel">
+      <div class="card chart-panel" data-chart-id="treemapChart">
         <div class="panel-header">
           <span class="panel-title" id="portfolioTreemapTitle" data-i18n="portfolio.treemap_h">Distribuição de Horas por PEP (Treemap)</span>
           <div style="display:flex;gap:0.5rem;align-items:center">
@@ -203,7 +203,7 @@
         </div>
         <div id="treemapChart" style="width:100%;height:440px"></div>
       </div>
-      <div class="card chart-panel" id="bulletPanel" hidden>
+      <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
         <div class="panel-note" style="margin-bottom:0.75rem">
           <span class="threshold-dot blue"></span> &lt; 75%&nbsp;
@@ -212,7 +212,7 @@
         </div>
         <div id="bulletChart" style="width:100%;height:300px"></div>
       </div>
-      <div class="card chart-panel" id="scatterPanel" hidden>
+      <div class="card chart-panel" id="scatterPanel" data-chart-id="scatterChart" hidden>
         <div class="panel-header">
           <span class="panel-title" data-i18n="scatter.title">Eficiência de Custo por PEP</span>
           <span class="panel-note"  data-i18n="scatter.note">Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio</span>
@@ -240,7 +240,7 @@
     <!-- Sub-tab: Previsão de Conclusão (EVM)                         -->
     <!-- ============================================================ -->
     <div id="atab-forecast" class="atab-section" hidden>
-      <div class="card chart-panel">
+      <div class="card chart-panel" data-chart-id="forecastChart">
         <div class="panel-header">
           <span class="panel-title" data-i18n="forecast.title">Previsão de Conclusão</span>
           <div style="display:flex;gap:.5rem;align-items:center">

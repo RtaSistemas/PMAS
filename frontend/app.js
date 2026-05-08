@@ -499,16 +499,9 @@ csvInput.addEventListener('change', async () => {
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
     let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
     if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
-    if (json.quarantine_cycles_created > 0) msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s).`;
-    notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
-    const warnings = json.warnings || [];
-    const panel = document.getElementById('anomalyPanel');
-    if (warnings.length) {
-      document.getElementById('anomalyList').innerHTML = warnings.map(w => `<li>${escHtml(w)}</li>`).join('');
-      panel.hidden = false;
-    } else {
-      panel.hidden = true;
-    }
+    if (json.quarantine_records_added > 0)  msg += ` ⚠ ${json.quarantine_records_added} em quarentena.`;
+    const severity = json.quarantine_records_added > 0 ? 'info' : 'success';
+    notify(msg, severity);
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -752,7 +745,6 @@ function _computeTrendsWindow(cycleIds, dateFrom, dateTo) {
   if (!cycleIds.length) return { dateFrom, dateTo };
 
   const sorted = [..._allCycles]
-    .filter(c => !c.is_quarantine)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
   if (!sorted.length) return { dateFrom, dateTo };
@@ -838,7 +830,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     // When no specific cycles are selected, use all non-quarantine cycles
     const effectiveCycleIds = cycleIds.length > 0
       ? cycleIds
-      : (_allCycles || []).filter(c => !c.is_quarantine).map(c => c.id);
+      : (_allCycles || []).map(c => c.id);
 
     if (!effectiveCycleIds.length) {
       _showEmpty('pepCpiEmpty', true);
@@ -1277,7 +1269,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
       apiFetch(`/api/projects/${_planProjectId}/plans`),
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
-    const available = allCycles.filter(c => !plannedCycleIds.has(c.id) && !c.is_quarantine);
+    const available = allCycles.filter(c => !plannedCycleIds.has(c.id));
     if (!available.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
     const cycleId = parseInt(prompt(
       'ID do ciclo:\n' + available.map(c => `${c.id} — ${c.name}`).join('\n')
@@ -2254,7 +2246,7 @@ function _renderCyclesTable(cycles) {
       <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
-      <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? _t('badge.quarantine') : _t('badge.regular')}</span></td>
+      <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
@@ -2349,9 +2341,9 @@ async function deleteCycle(id, name, count) {
 
 document.getElementById('exportCyclesBtn').addEventListener('click', () => {
   if (!_allCycles.length) { notify('Nenhum ciclo para exportar.', 'info'); return; }
-  const header = 'name,start_date,end_date,is_quarantine,is_closed,record_count';
+  const header = 'name,start_date,end_date,is_closed,record_count';
   const rows = _allCycles.map(c =>
-    `"${c.name}",${c.start_date},${c.end_date},${c.is_quarantine},${c.is_closed},${c.record_count}`
+    `"${c.name}",${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -3012,10 +3004,41 @@ document.getElementById('auditActionFilter').addEventListener('change', loadAudi
 // ---------------------------------------------------------------------------
 // Theme loader (public endpoint — no auth required)
 // ---------------------------------------------------------------------------
+const _DENSITY_MAP = {
+  compact:  { spacing: '0.6rem', fontSize: '0.8rem' },
+  normal:   { spacing: '1rem',   fontSize: '0.875rem' },
+  relaxed:  { spacing: '1.4rem', fontSize: '1rem' },
+};
+
+function _getPalette() {
+  return window._CHART_PALETTE || ['#4f8ef7','#e94560','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+}
+
+function _resolveSeriesColor(chartId, seriesName, fallbackIndex) {
+  const prefs = window._userPrefs?.dashboard?.charts?.find(c => c.id === chartId);
+  const custom = prefs?.options?.series_colors?.[seriesName];
+  if (custom) return custom;
+  const palette = _getPalette();
+  return palette[fallbackIndex % palette.length] || '#4f8ef7';
+}
+
 async function _loadTheme() {
   try {
     const t = await fetch('/api/theme').then(r => r.json());
     const root = document.documentElement;
+
+    // Standard --color-* vars (used by new CSS classes)
+    root.style.setProperty('--color-primary',    t.color_primary    || '#4f8ef7');
+    root.style.setProperty('--color-background', t.color_background || '#1a1a2e');
+    root.style.setProperty('--color-surface',    t.color_surface    || '#16213e');
+    root.style.setProperty('--color-accent',     t.color_accent     || '#e94560');
+    root.style.setProperty('--color-success',    t.color_success    || '#2ecc71');
+    root.style.setProperty('--color-warning',    t.color_warning    || '#f39c12');
+    root.style.setProperty('--color-danger',     t.color_danger     || '#e74c3c');
+    root.style.setProperty('--color-text',       t.color_text       || '#e0e0e0');
+    root.style.setProperty('--color-text-muted', t.color_text_muted || '#8892a4');
+
+    // Legacy --theme-* aliases (used by existing CSS)
     root.style.setProperty('--theme-primary',    t.color_primary    || '#4f8ef7');
     root.style.setProperty('--theme-bg',         t.color_background || '#1a1a2e');
     root.style.setProperty('--theme-surface',    t.color_surface    || '#16213e');
@@ -3026,17 +3049,25 @@ async function _loadTheme() {
     root.style.setProperty('--theme-text',       t.color_text       || '#e0e0e0');
     root.style.setProperty('--theme-text-muted', t.color_text_muted || '#8892a4');
 
-    const nameEl = document.getElementById('headerAppName');
-    if (nameEl && t.app_name) nameEl.textContent = t.app_name;
+    // Density
+    const density = _DENSITY_MAP[t.density] || _DENSITY_MAP.normal;
+    root.style.setProperty('--density-spacing',   density.spacing);
+    root.style.setProperty('--density-font-size', density.fontSize);
 
+    // Chart palette
+    window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
+
+    // App name — both id and data-app-name selectors
+    const appName = t.app_name || 'PMAS';
+    document.title = `${appName} — Dashboard`;
+    document.querySelectorAll('[data-app-name]').forEach(el => { el.textContent = appName; });
+
+    // Logo
     if (t.logo_url) {
+      document.querySelectorAll('[data-app-logo]').forEach(el => { el.src = escHtml(t.logo_url); });
       const box = document.getElementById('headerLogoBox');
-      if (box) {
-        box.innerHTML = `<img src="${escHtml(t.logo_url)}" class="header-logo-img" alt="Logo" />`;
-      }
+      if (box) box.innerHTML = `<img src="${escHtml(t.logo_url)}" class="header-logo-img" alt="Logo" data-app-logo />`;
     }
-
-    document.title = `${t.app_name || 'PMAS'} — Dashboard`;
   } catch (_) { /* silently ignore — not critical */ }
 }
 

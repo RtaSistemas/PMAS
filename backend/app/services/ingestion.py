@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from backend.app.models import (
     Collaborator,
     Cycle,
-    GlobalConfig,
     Project,
     RateCard,
     TimesheetRecord,
@@ -49,6 +48,12 @@ class LockedProjectError(Exception):
     def __init__(self, project_names: list[str]) -> None:
         self.project_names = project_names
         super().__init__(f"Projetos encerrados/suspensos: {', '.join(project_names)}")
+
+
+class ArchivedCycleError(Exception):
+    def __init__(self, cycle_names: list[str]) -> None:
+        self.cycle_names = cycle_names
+        super().__init__(f"Datas fora de ciclos ativos: {', '.join(cycle_names)}")
 
 
 # ---------------------------------------------------------------------------
@@ -134,17 +139,10 @@ def ingest_file(
             })
             continue
 
-        # Phase 1b: active cycle check
+        # Phase 1b: active cycle check (raises ArchivedCycleError if none found)
         if record_date not in cycle_cache:
             cycle_cache[record_date] = _resolve_cycle(db, record_date)
         cycle = cycle_cache[record_date]
-        if cycle is None:
-            quarantine_buffer.append({
-                "raw_data": _row_to_dict(row),
-                "reason": f"Nenhum ciclo ativo para {record_date}",
-                "rule_id": None,
-            })
-            continue
 
         # Phase 1c: hours parsing
         total_h = _safe_hours(row[_COL_HOURS])
@@ -361,19 +359,21 @@ def ingest_file(
         db.rollback()
         raise
 
-    # Phase 6: anomaly detection (post-commit, read-only)
-    cfg = db.get(GlobalConfig, 1)
-    max_daily_hours = cfg.anomaly_max_daily_hours if cfg else 24.0
-    anomaly_warnings = _detect_anomalies(df, pep_codes_in_file, db, max_daily_hours)
-    ingest_warnings.extend(anomaly_warnings)
+    # Phase 6: audit (caller may also call log_audit after this returns)
+    if quarantine_buffer:
+        status = "quarantine"
+    elif ingest_warnings:
+        status = "warnings"
+    else:
+        status = "ok"
 
     log.info(
-        "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas, %d alertas.",
-        inserted, skipped, len(quarantine_buffer), len(ingest_warnings),
+        "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas.",
+        inserted, skipped, len(quarantine_buffer),
     )
 
     return {
-        "status": "warnings" if ingest_warnings else "ok",
+        "status": status,
         "records_inserted": inserted,
         "records_skipped": skipped,
         "quarantine_records_added": len(quarantine_buffer),
@@ -429,64 +429,6 @@ def _authorized_peps(
 # Private helpers
 # ---------------------------------------------------------------------------
 
-def _detect_anomalies(df: pd.DataFrame, pep_codes_in_file: set[str], db: Session, max_daily_hours: float = 24.0) -> list[str]:
-    warnings: list[str] = []
-
-    dates_parsed = pd.to_datetime(df[_COL_DATE], errors="coerce", dayfirst=True)
-    weekend_mask = dates_parsed.dt.weekday.isin([5, 6])
-    if weekend_mask.any():
-        weekend_collabs = df.loc[weekend_mask, _COL_COLLABORATOR].unique().tolist()
-        warnings.append(
-            f"Registros em fim de semana detectados para: {', '.join(str(c) for c in weekend_collabs[:10])}"
-            + (" e outros." if len(weekend_collabs) > 10 else ".")
-        )
-
-    df_work = df.copy()
-    df_work["_date_key"] = dates_parsed.dt.date
-    df_work["_hours"] = pd.to_numeric(df[_COL_HOURS], errors="coerce").fillna(0)
-    daily_totals = df_work.groupby([_COL_COLLABORATOR, "_date_key"])["_hours"].sum()
-    over_limit = daily_totals[daily_totals > max_daily_hours]
-    if not over_limit.empty:
-        cases = [f"{collab} em {d}" for (collab, d) in over_limit.index[:10]]
-        warnings.append(
-            f"Horas > {max_daily_hours:.0f}h/dia detectadas: {'; '.join(cases)}"
-            + (" e outros." if len(over_limit) > 10 else ".")
-        )
-
-    today = date.today()
-    future_mask = dates_parsed.dt.date > today
-    if future_mask.any():
-        future_collabs = df.loc[future_mask, _COL_COLLABORATOR].unique().tolist()
-        future_dates = dates_parsed[future_mask].dt.date.unique().tolist()
-        warnings.append(
-            f"Datas futuras detectadas (possível erro de digitação): "
-            f"{', '.join(str(d) for d in future_dates[:5])} "
-            f"— colaboradores: {', '.join(str(c) for c in future_collabs[:5])}"
-            + (" e outros." if len(future_collabs) > 5 else ".")
-        )
-
-    if pep_codes_in_file:
-        registered = {
-            p.pep_wbs
-            for p in db.query(Project).filter(Project.pep_wbs.in_(pep_codes_in_file)).all()
-        }
-        unregistered = sorted(pep_codes_in_file - registered)
-        if unregistered:
-            warnings.append(
-                f"Códigos PEP sem cadastro em Projetos: {', '.join(unregistered[:20])}"
-                + (" e outros." if len(unregistered) > 20 else ".")
-            )
-
-        suspicious_peps = [p for p in pep_codes_in_file if not _PEP_PATTERN.match(p)]
-        if suspicious_peps:
-            warnings.append(
-                f"Códigos PEP com formato suspeito (verifique mapeamento de colunas): "
-                f"{', '.join(sorted(suspicious_peps)[:10])}"
-                + (" e outros." if len(suspicious_peps) > 10 else ".")
-            )
-
-    return warnings
-
 
 def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
     if filename.lower().endswith((".xlsx", ".xls")):
@@ -511,8 +453,8 @@ def _get_or_create_collaborator(db: Session, name: str) -> Collaborator:
     return collab
 
 
-def _resolve_cycle(db: Session, record_date: date) -> Cycle | None:
-    return (
+def _resolve_cycle(db: Session, record_date: date) -> Cycle:
+    cycle = (
         db.query(Cycle)
         .filter(
             Cycle.start_date <= record_date,
@@ -521,6 +463,9 @@ def _resolve_cycle(db: Session, record_date: date) -> Cycle | None:
         )
         .first()
     )
+    if cycle is None:
+        raise ArchivedCycleError([str(record_date)])
+    return cycle
 
 
 def _parse_date(value) -> date:

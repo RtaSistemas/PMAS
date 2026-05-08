@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
-from backend.app.models import QuarantineRecord
+from backend.app.models import QuarantineRecord, UploadSession
 from backend.app.schemas import QuarantineRecordOut, QuarantineReviewIn
 
 router = APIRouter(
@@ -22,7 +22,10 @@ def list_quarantine(
     _: AdminUser,
     reviewed: bool | None = None,
     upload_session_id: int | None = None,
-    limit: int = 200,
+    rule_id: int | None = None,
+    source_file: str | None = None,
+    username: str | None = None,
+    limit: int = 100,
     offset: int = 0,
 ):
     q = db.query(QuarantineRecord).order_by(QuarantineRecord.ingested_at.desc())
@@ -30,6 +33,14 @@ def list_quarantine(
         q = q.filter(QuarantineRecord.reviewed == reviewed)
     if upload_session_id is not None:
         q = q.filter(QuarantineRecord.upload_session_id == upload_session_id)
+    if rule_id is not None:
+        q = q.filter(QuarantineRecord.rule_id == rule_id)
+    if source_file is not None:
+        q = q.join(UploadSession, QuarantineRecord.upload_session_id == UploadSession.id).filter(
+            UploadSession.source_file.ilike(f"%{source_file}%")
+        )
+    if username is not None:
+        q = q.filter(QuarantineRecord.uploaded_by_username == username)
     return q.offset(offset).limit(limit).all()
 
 
@@ -49,3 +60,12 @@ def review_quarantine(
     db.commit()
     db.refresh(rec)
     return rec
+
+
+@router.delete("/{record_id}", status_code=204)
+def delete_quarantine_record(record_id: int, db: DbSession, _: AdminUser):
+    rec = db.get(QuarantineRecord, record_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Registro não encontrado.")
+    db.delete(rec)
+    db.commit()

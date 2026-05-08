@@ -473,12 +473,11 @@ class TestUploadTimesheet:
         assert r.json()["records_inserted"] == 1
         assert r.json()["records_skipped"] >= 1
 
-    def test_out_of_range_date_row_is_skipped(self, client, db_session):
+    def test_out_of_range_date_raises_archived_error(self, client, db_session):
         _mk_cycle(db_session, "Jan/2026", 2026, 1)
         data = _csv([("Out Of Range", "01/06/2025", 4.0)])  # no cycle covers June 2025
         r = client.post("/api/upload-timesheet", files={"file": ("t.csv", data, "text/csv")})
-        assert r.status_code == 200
-        assert r.json()["records_inserted"] == 0
+        assert r.status_code == 403  # ArchivedCycleError — no active cycle for date
 
     def test_weekend_anomaly_warning(self, client, db_session):
         _mk_cycle(db_session, "Jan/2026", 2026, 1)

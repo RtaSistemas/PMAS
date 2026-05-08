@@ -397,6 +397,15 @@ class UploadSessionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Alert summary ────────────────────────────────────────────────────────────
+
+class AlertSummaryOut(BaseModel):
+    message: str
+    occurrences: int
+    last_triggered: datetime
+    trend: str  # up | down | stable
+
+
 # ── User preferences ─────────────────────────────────────────────────────────
 
 class UserPreferenceIn(BaseModel):
