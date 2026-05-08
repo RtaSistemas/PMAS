@@ -3,12 +3,30 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
-from backend.app.models import QuarantineRecord, UploadSession
+from backend.app.models import Collaborator, QuarantineRecord, TimesheetRecord, UploadSession
 from backend.app.schemas import QuarantineRecordOut, QuarantineReviewIn
+from backend.app.services.ingestion import (
+    ArchivedCycleError,
+    _COL_COLLABORATOR,
+    _COL_DATE,
+    _COL_EXTRA,
+    _COL_HOURS,
+    _COL_PEP_CODE,
+    _COL_PEP_DESC,
+    _COL_STANDBY,
+    _get_or_create_collaborator,
+    _is_yes,
+    _lookup_rate,
+    _parse_date_safe,
+    _resolve_cycle,
+    _safe_hours,
+    _str_or_none,
+)
 
 router = APIRouter(
     prefix="/api/quarantine",
@@ -17,11 +35,76 @@ router = APIRouter(
 )
 
 
+def _load_qr(db: Session, record_id: int) -> QuarantineRecord:
+    rec = (
+        db.query(QuarantineRecord)
+        .options(joinedload(QuarantineRecord.rule))
+        .filter(QuarantineRecord.id == record_id)
+        .first()
+    )
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Registro não encontrado.")
+    return rec
+
+
+def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
+    """Insert a TimesheetRecord from quarantine raw_data, bypassing validation rules."""
+    raw = rec.raw_data or {}
+
+    name = _str_or_none(raw.get(_COL_COLLABORATOR))
+    if not name:
+        raise ValueError("Nome de colaborador ausente nos dados brutos.")
+
+    record_date = _parse_date_safe(raw.get(_COL_DATE))
+    if record_date is None:
+        raise ValueError(f"Data inválida nos dados brutos: {raw.get(_COL_DATE)!r}")
+
+    total_h = _safe_hours(raw.get(_COL_HOURS))
+    if total_h is None or total_h == 0.0:
+        raise ValueError(f"Horas inválidas nos dados brutos: {raw.get(_COL_HOURS)!r}")
+
+    try:
+        cycle = _resolve_cycle(db, record_date)
+    except ArchivedCycleError:
+        raise ValueError(
+            f"Nenhum ciclo ativo encontrado para a data {record_date}. "
+            "Crie ou ative um ciclo antes de aprovar este registro."
+        )
+
+    collab = _get_or_create_collaborator(db, name)
+    pep_code = _str_or_none(raw.get(_COL_PEP_CODE))
+    pep_desc = _str_or_none(raw.get(_COL_PEP_DESC))
+    is_extra   = _is_yes(raw.get(_COL_EXTRA, ""))
+    is_standby = _is_yes(raw.get(_COL_STANDBY, ""))
+
+    if is_extra:
+        normal_h, extra_h, standby_h = 0.0, total_h, 0.0
+    elif is_standby:
+        normal_h, extra_h, standby_h = 0.0, 0.0, total_h
+    else:
+        normal_h, extra_h, standby_h = total_h, 0.0, 0.0
+
+    rate = _lookup_rate(db, collab, record_date)
+    db.add(TimesheetRecord(
+        collaborator_id=collab.id,
+        cycle_id=cycle.id,
+        record_date=record_date,
+        pep_wbs=pep_code,
+        pep_description=pep_desc,
+        normal_hours=normal_h,
+        extra_hours=extra_h,
+        standby_hours=standby_h,
+        cost_per_hour=rate,
+    ))
+    db.flush()
+
+
 @router.get("", response_model=list[QuarantineRecordOut])
 def list_quarantine(
     db: DbSession,
     _: AdminUser,
     reviewed: bool | None = None,
+    review_status: str | None = None,
     upload_session_id: int | None = None,
     rule_id: int | None = None,
     source_file: str | None = None,
@@ -29,9 +112,15 @@ def list_quarantine(
     limit: int = 100,
     offset: int = 0,
 ):
-    q = db.query(QuarantineRecord).order_by(QuarantineRecord.ingested_at.desc())
+    q = (
+        db.query(QuarantineRecord)
+        .options(joinedload(QuarantineRecord.rule))
+        .order_by(QuarantineRecord.ingested_at.desc())
+    )
     if reviewed is not None:
         q = q.filter(QuarantineRecord.reviewed == reviewed)
+    if review_status is not None:
+        q = q.filter(QuarantineRecord.review_status == review_status)
     if upload_session_id is not None:
         q = q.filter(QuarantineRecord.upload_session_id == upload_session_id)
     if rule_id is not None:
@@ -45,6 +134,11 @@ def list_quarantine(
     return q.offset(offset).limit(limit).all()
 
 
+@router.get("/{record_id}", response_model=QuarantineRecordOut)
+def get_quarantine_record(record_id: int, db: DbSession, _: AdminUser):
+    return _load_qr(db, record_id)
+
+
 @router.patch("/{record_id}/review", response_model=QuarantineRecordOut)
 def review_quarantine(
     record_id: int,
@@ -52,15 +146,52 @@ def review_quarantine(
     db: DbSession,
     current_user: AdminUser,
 ):
-    rec = db.get(QuarantineRecord, record_id)
-    if rec is None:
-        raise HTTPException(status_code=404, detail="Registro não encontrado.")
+    rec = _load_qr(db, record_id)
     rec.reviewed = payload.reviewed
     rec.reviewed_by = current_user.username
     rec.reviewed_at = datetime.utcnow() if payload.reviewed else None
     db.commit()
     db.refresh(rec)
     log_audit(db, current_user, "review", "quarantine_record", record_id, {"reviewed": payload.reviewed})
+    db.commit()
+    return rec
+
+
+@router.post("/{record_id}/approve", response_model=QuarantineRecordOut)
+def approve_quarantine(record_id: int, db: DbSession, current_user: AdminUser):
+    rec = _load_qr(db, record_id)
+    if rec.review_status == "approved":
+        raise HTTPException(status_code=409, detail="Registro já aprovado.")
+
+    try:
+        _ingest_from_raw(db, rec)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    rec.review_status = "approved"
+    rec.reviewed = True
+    rec.reviewed_by = current_user.username
+    rec.reviewed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(rec)
+    log_audit(db, current_user, "approve", "quarantine_record", record_id, {})
+    db.commit()
+    return rec
+
+
+@router.post("/{record_id}/reject", response_model=QuarantineRecordOut)
+def reject_quarantine(record_id: int, db: DbSession, current_user: AdminUser):
+    rec = _load_qr(db, record_id)
+    if rec.review_status == "approved":
+        raise HTTPException(status_code=409, detail="Registro já aprovado — não pode ser rejeitado.")
+
+    rec.review_status = "rejected"
+    rec.reviewed = True
+    rec.reviewed_by = current_user.username
+    rec.reviewed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(rec)
+    log_audit(db, current_user, "reject", "quarantine_record", record_id, {})
     db.commit()
     return rec
 

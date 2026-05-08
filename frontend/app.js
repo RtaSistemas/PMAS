@@ -146,6 +146,15 @@ const _LANG = {
     'qr.type.structural':'Estrutural','qr.type.rule':'Regra',
     'qr.btn.export':'⬇ Exportar CSV','qr.btn.review':'✅ Marcar revisado',
     'qr.btn.discard':'🗑 Descartar','qr.filter.pending':'Apenas pendentes',
+    'qr.btn.detail':'🔍 Detalhar',
+    'qr.btn.approve':'✅ Aprovar','qr.btn.reject':'❌ Rejeitar',
+    'qr.status.pending':'⏳ Pendente','qr.status.approved':'✅ Aprovado','qr.status.rejected':'❌ Rejeitado',
+    'qr.modal.title':'Registro em Quarentena #','qr.modal.collab':'Colaborador',
+    'qr.modal.date':'Data','qr.modal.hours':'Horas','qr.modal.pep':'PEP',
+    'qr.modal.extra':'Hora Extra','qr.modal.standby':'Sobreaviso',
+    'qr.modal.reason':'Motivo','qr.modal.rule':'Regra violada',
+    'qr.modal.session':'Upload Session','qr.modal.status':'Status',
+    'qr.modal.reviewed_by':'Revisado por','qr.modal.raw':'Dados brutos',
     'alerts.th.rule':'Regra','alerts.th.occurrences':'Ocorrências',
     'alerts.th.last':'Último disparo','alerts.th.action':'Ação','alerts.th.trend':'Tendência',
     'vr.title':'Regras de Validação','vr.btn.new':'+ Nova Regra',
@@ -314,6 +323,15 @@ const _LANG = {
     'qr.type.structural':'Structural','qr.type.rule':'Rule',
     'qr.btn.export':'⬇ Export CSV','qr.btn.review':'✅ Mark reviewed',
     'qr.btn.discard':'🗑 Discard','qr.filter.pending':'Pending only',
+    'qr.btn.detail':'🔍 Detail',
+    'qr.btn.approve':'✅ Approve','qr.btn.reject':'❌ Reject',
+    'qr.status.pending':'⏳ Pending','qr.status.approved':'✅ Approved','qr.status.rejected':'❌ Rejected',
+    'qr.modal.title':'Quarantine Record #','qr.modal.collab':'Collaborator',
+    'qr.modal.date':'Date','qr.modal.hours':'Hours','qr.modal.pep':'PEP',
+    'qr.modal.extra':'Overtime','qr.modal.standby':'Standby',
+    'qr.modal.reason':'Reason','qr.modal.rule':'Violated rule',
+    'qr.modal.session':'Upload Session','qr.modal.status':'Status',
+    'qr.modal.reviewed_by':'Reviewed by','qr.modal.raw':'Raw data',
     'alerts.th.rule':'Rule','alerts.th.occurrences':'Occurrences',
     'alerts.th.last':'Last trigger','alerts.th.action':'Action','alerts.th.trend':'Trend',
     'vr.title':'Validation Rules','vr.btn.new':'+ New Rule',
@@ -3498,50 +3516,92 @@ async function deleteRule(id) {
 // ---------------------------------------------------------------------------
 // Quarantine (Admin tab)
 // ---------------------------------------------------------------------------
+let _qrCache = [];
+
 async function loadQuarantineTable() {
   const filter = document.getElementById('quarantineFilter')?.value;
   const params = new URLSearchParams({ limit: 200 });
-  if (filter !== '') params.set('reviewed', filter);
+  if (filter === 'pending')   params.set('review_status', 'pending');
+  if (filter === 'approved')  params.set('review_status', 'approved');
+  if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    const rows = await apiFetch(`/api/quarantine?${params}`);
-    _renderQuarantineTable(rows);
+    _qrCache = await apiFetch(`/api/quarantine?${params}`);
+    _renderQuarantineTable(_qrCache);
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _qrStatusBadge(status) {
+  const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'encerrado' : 'suspenso';
+  return `<span class="badge-status ${cls}">${_t('qr.status.' + status)}</span>`;
 }
 
 function _renderQuarantineTable(rows) {
   const tbody = document.getElementById('quarantineBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
+    const raw  = r.raw_data || {};
     const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
-    const statusBadge = r.reviewed
-      ? `<span class="badge-status ativo">Revisado</span>`
-      : `<span class="badge-status suspenso">Pendente</span>`;
-    const reviewBtn = r.reviewed
-      ? `<button class="btn btn-secondary btn-sm" onclick="reviewQR(${r.id}, false)">Reabrir</button>`
-      : `<button class="btn btn-primary btn-sm" onclick="reviewQR(${r.id}, true)">Revisar ✓</button>`;
-    return `<tr>
-      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
-      <td style="text-align:right">${r.upload_session_id ?? '—'}</td>
-      <td>${escHtml(r.uploaded_by_username || '—')}</td>
-      <td style="font-size:.78rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
-      <td style="text-align:right">${r.rule_id ?? '—'}</td>
-      <td>${statusBadge}</td>
-      <td>${reviewBtn}</td>
+    const collab = escHtml(raw['Colaborador'] || r.uploaded_by_username || '—');
+    const date   = escHtml(raw['Data'] || '—');
+    const hours  = raw['Horas totais (decimal)'] ?? '—';
+    const pep    = escHtml(raw['Código PEP'] || '—');
+    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
+      <td style="white-space:nowrap;font-size:.78rem">${when}</td>
+      <td>${collab}</td>
+      <td>${date}</td>
+      <td style="text-align:right">${hours}</td>
+      <td>${pep}</td>
+      <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
   }).join('');
 }
 
-async function reviewQR(id, reviewed) {
+function _openQRDetail(id) {
+  const r = _qrCache.find(x => x.id === id);
+  if (!r) return;
+  const raw = r.raw_data || {};
+
+  document.getElementById('qrModalTitle').textContent = _t('qr.modal.title') + r.id;
+  document.getElementById('qrDCollab').textContent    = raw['Colaborador'] || '—';
+  document.getElementById('qrDDate').textContent      = raw['Data'] || '—';
+  document.getElementById('qrDHours').textContent     = raw['Horas totais (decimal)'] ?? '—';
+  document.getElementById('qrDPep').textContent       = (raw['Código PEP'] ? `${raw['Código PEP']} — ${raw['PEP'] || ''}` : '—');
+  document.getElementById('qrDExtra').textContent     = raw['Hora extra'] || '—';
+  document.getElementById('qrDStandby').textContent   = raw['Hora sobreaviso'] || '—';
+  document.getElementById('qrDReason').textContent    = r.quarantine_reason;
+  document.getElementById('qrDRule').textContent      = r.rule_description || (r.rule_id ? `Regra #${r.rule_id}` : '—');
+  document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
+  document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
+  document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
+    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' })}`
+    : '—';
+  document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
+
+  const isPending = r.review_status === 'pending';
+  document.getElementById('qrApproveBtn').hidden = !isPending;
+  document.getElementById('qrRejectBtn').hidden  = !isPending;
+
+  document.getElementById('qrApproveBtn').onclick = () => _doQRAction(id, 'approve');
+  document.getElementById('qrRejectBtn').onclick  = () => _doQRAction(id, 'reject');
+
+  document.getElementById('qrDetailModal').removeAttribute('hidden');
+}
+
+async function _doQRAction(id, action) {
   try {
-    await apiFetchJSON(`/api/quarantine/${id}/review`, 'PATCH', { reviewed });
+    await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
+    document.getElementById('qrDetailModal').setAttribute('hidden', '');
+    notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
     loadQuarantineTable();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
+document.getElementById('qrModalClose')?.addEventListener('click',    () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
+document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
 document.getElementById('quarantineRefreshBtn')?.addEventListener('click', loadQuarantineTable);
 document.getElementById('quarantineFilter')?.addEventListener('change', loadQuarantineTable);
 

@@ -512,25 +512,26 @@
       <div class="section-header">
         <h2 class="card-title">Quarentena</h2>
         <div style="display:flex;gap:.5rem;align-items:center">
-          <select id="quarantineFilter" class="form-select" style="min-width:150px;height:2rem;font-size:.8rem">
+          <select id="quarantineFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
             <option value="">Todos os registros</option>
-            <option value="false">Pendente revisão</option>
-            <option value="true">Revisados</option>
+            <option value="pending">⏳ Pendentes</option>
+            <option value="approved">✅ Aprovados</option>
+            <option value="rejected">❌ Rejeitados</option>
           </select>
           <button class="btn btn-secondary btn-sm" id="quarantineRefreshBtn">↺ Atualizar</button>
         </div>
       </div>
+      <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Clique em uma linha para ver detalhes e aprovar ou rejeitar o registro.</p>
       <table class="data-table" id="quarantineTable">
         <thead><tr>
           <th>Data</th>
-          <th>Upload Session</th>
-          <th>Enviado por</th>
-          <th>Motivo</th>
-          <th>Regra</th>
+          <th>Colaborador</th>
+          <th>Data reg.</th>
+          <th style="text-align:right">Horas</th>
+          <th>PEP</th>
           <th>Status</th>
-          <th></th>
         </tr></thead>
-        <tbody id="quarantineBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+        <tbody id="quarantineBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
       </table>
     </div>
 
@@ -938,6 +939,42 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="myPwdCancelBtn">Cancelar</button>
       <button class="btn btn-primary" id="myPwdSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detalhe de Quarentena -->
+<div class="modal-backdrop" id="qrDetailModal" hidden>
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="qrModalTitle">Registro em Quarentena</h3>
+      <button class="modal-close" id="qrModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <table class="data-table" style="margin-bottom:1rem">
+        <tbody>
+          <tr><th style="width:160px;text-align:left">Colaborador</th><td id="qrDCollab">—</td></tr>
+          <tr><th style="text-align:left">Data</th><td id="qrDDate">—</td></tr>
+          <tr><th style="text-align:left">Horas</th><td id="qrDHours">—</td></tr>
+          <tr><th style="text-align:left">PEP</th><td id="qrDPep">—</td></tr>
+          <tr><th style="text-align:left">Hora Extra</th><td id="qrDExtra">—</td></tr>
+          <tr><th style="text-align:left">Sobreaviso</th><td id="qrDStandby">—</td></tr>
+          <tr><th style="text-align:left">Motivo</th><td id="qrDReason" style="color:#f59e0b">—</td></tr>
+          <tr><th style="text-align:left">Regra violada</th><td id="qrDRule">—</td></tr>
+          <tr><th style="text-align:left">Upload Session</th><td id="qrDSession">—</td></tr>
+          <tr><th style="text-align:left">Status</th><td id="qrDStatus">—</td></tr>
+          <tr><th style="text-align:left">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
+        </tbody>
+      </table>
+      <details style="margin-bottom:.5rem">
+        <summary style="cursor:pointer;font-size:.8rem;color:#94a3b8">Dados brutos (raw data)</summary>
+        <pre id="qrDRawData" style="font-size:.72rem;background:#0b1829;padding:.75rem;border-radius:.4rem;overflow:auto;max-height:260px;margin-top:.5rem"></pre>
+      </details>
+    </div>
+    <div class="modal-footer">
+      <button id="qrApproveBtn" class="btn btn-primary" style="background:#10d98a;border-color:#10d98a">✅ Aprovar</button>
+      <button id="qrRejectBtn"  class="btn btn-primary" style="background:#f04040;border-color:#f04040">❌ Rejeitar</button>
+      <button id="qrModalCloseBtn" class="btn btn-secondary">Fechar</button>
     </div>
   </div>
 </div>

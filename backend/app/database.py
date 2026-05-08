@@ -141,6 +141,12 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE global_config ADD COLUMN ui_theme JSON"))
             if "logo_path" not in gc_cols:
                 conn.execute(text("ALTER TABLE global_config ADD COLUMN logo_path VARCHAR"))
+            qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
+            if "review_status" not in qr_cols:
+                conn.execute(text(
+                    "ALTER TABLE quarantine_record"
+                    " ADD COLUMN review_status VARCHAR NOT NULL DEFAULT 'pending'"
+                ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 
