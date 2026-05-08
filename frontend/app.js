@@ -3258,16 +3258,40 @@ async function _loadMyPreferences() {
 function _applyLayoutPreferences() {
   const prefs = _userPrefs?.dashboard;
   if (!prefs) return;
-  document.querySelectorAll('.chart-grid').forEach(g => {
-    g.dataset.cols = prefs.grid_cols || 2;
-  });
+
+  // Sub-tab order (reorder nav buttons + sections)
+  const order = prefs.chart_order;
+  if (Array.isArray(order) && order.length) {
+    const nav = document.querySelector('.analytics-tabs');
+    const firstSection = document.querySelector('.atab-section');
+    const parent = firstSection?.parentElement;
+    order.forEach(tabId => {
+      const btn = nav?.querySelector(`[data-atab="${tabId}"]`);
+      if (btn) nav.appendChild(btn);
+      const section = document.getElementById(`atab-${tabId}`);
+      if (section && parent) parent.appendChild(section);
+    });
+  }
+
+  // Grid columns — apply to each visible atab-section
+  if (prefs.grid_cols && prefs.grid_cols > 1) {
+    document.querySelectorAll('.atab-section').forEach(s => {
+      s.dataset.cols = prefs.grid_cols;
+    });
+  } else {
+    document.querySelectorAll('.atab-section').forEach(s => {
+      delete s.dataset.cols;
+    });
+  }
+
+  // Per-chart size and order (visibility stays under business-logic control)
   (prefs.charts || []).forEach(cp => {
     const panel = document.querySelector(`[data-chart-id="${cp.id}"]`);
     if (!panel) return;
-    panel.hidden = !cp.visible;
-    panel.dataset.size = cp.size || 'medium';
-    panel.style.order = cp.order ?? 0;
+    if (cp.size) panel.dataset.size = cp.size;
+    if (cp.order != null) panel.style.order = cp.order;
   });
+
   Object.values(_charts).forEach(c => {
     try { if (!c.isDisposed()) c.resize(); } catch (_) {}
   });

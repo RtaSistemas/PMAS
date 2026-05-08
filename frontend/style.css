@@ -668,10 +668,19 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .chart-grid[data-cols='2'] { grid-template-columns: 1fr 1fr; }
 .chart-grid[data-cols='3'] { grid-template-columns: 1fr 1fr 1fr; }
 
-.chart-card[data-size='small']  { grid-column: span 1; min-height: 240px; }
-.chart-card[data-size='medium'] { grid-column: span 1; min-height: 360px; }
-.chart-card[data-size='large']  { grid-column: span 2; min-height: 480px; }
-.chart-card[data-size='full']   { grid-column: 1 / -1; min-height: 520px; }
+/* atab-section acts as the chart grid when data-cols is set */
+.atab-section[data-cols='2'] { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.atab-section[data-cols='3'] { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
+
+/* chart-card and chart-panel both support data-size */
+.chart-card[data-size='small'],
+.chart-panel[data-size='small']  { grid-column: span 1; min-height: 240px; }
+.chart-card[data-size='medium'],
+.chart-panel[data-size='medium'] { grid-column: span 1; min-height: 360px; }
+.chart-card[data-size='large'],
+.chart-panel[data-size='large']  { grid-column: span 2; min-height: 480px; }
+.chart-card[data-size='full'],
+.chart-panel[data-size='full']   { grid-column: 1 / -1; min-height: 520px; }
 
 /* ── Drag-and-drop ───────────────────────────────────────────────────────── */
 .drag-handle { cursor: grab; color: var(--color-text-muted, #8892a4); flex-shrink: 0; }
