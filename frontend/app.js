@@ -1191,15 +1191,17 @@ function _buildForecastOption(fc) {
     ? [...history.map(h => h.cumulative_planned_hours ?? null), ...Array(projCount).fill(null)]
     : null;
 
+  const _fpal = _getPalette();
+  const _fC0  = _fpal[0] || '#0ea5e9';
   const series = [
     {
       name: _t('forecast.realized'),
       type: 'line', yAxisIndex: 0,
       data: realizedData,
       smooth: false, symbol: 'circle', symbolSize: 6,
-      lineStyle: { color: '#0ea5e9', width: 2.5 },
-      itemStyle: { color: '#0ea5e9' },
-      areaStyle: { color: 'rgba(14,165,233,0.10)' },
+      lineStyle: { color: _fC0, width: 2.5 },
+      itemStyle: { color: _fC0 },
+      areaStyle: { color: _fC0 + '1a' },
       connectNulls: false,
     },
     {
@@ -1213,13 +1215,14 @@ function _buildForecastOption(fc) {
     },
   ];
   if (pvData) {
+    const _fC3 = _fpal[3] || '#a78bfa';
     series.push({
       name: _t('forecast.pv_line'),
       type: 'line', yAxisIndex: 0,
       data: pvData,
       symbol: 'none',
-      lineStyle: { color: '#a78bfa', width: 2, type: 'dotted' },
-      itemStyle: { color: '#a78bfa' },
+      lineStyle: { color: _fC3, width: 2, type: 'dotted' },
+      itemStyle: { color: _fC3 },
       connectNulls: true,
     });
   }
@@ -1590,10 +1593,11 @@ function _buildHoursBarOption({
     },
   });
 
+  const _pal = _getPalette();
   const barSeries = [
-    _barSerie(_t('ch.normal_h'),  normals,   '#3b82f6'),
-    _barSerie(_t('ch.extra_h'),   extras,    '#f59e0b'),
-    _barSerie(_t('ch.standby_h'), standbys,  '#8b5cf6'),
+    _barSerie(_t('ch.normal_h'),  normals,   _pal[0] || '#3b82f6'),
+    _barSerie(_t('ch.extra_h'),   extras,    _pal[1] || '#f59e0b'),
+    _barSerie(_t('ch.standby_h'), standbys,  _pal[2] || '#8b5cf6'),
   ];
 
   // ── 6. Série de linha de total (opcional) ───────────────────────────
@@ -2155,16 +2159,12 @@ function _buildCpiOption(trends) {
   };
 }
 
-const _PEP_CPI_COLORS = [
-  '#3b82f6', '#f59e0b', '#10b981', '#a78bfa',
-  '#f43f5e', '#06b6d4', '#fb923c', '#84cc16',
-];
-
 function _buildPepCpiOption(peps, allCycleNames) {
   const series = peps.map(([wbs, { desc, points }], i) => {
     const dataMap = Object.fromEntries(points.map(p => [p.cycleName, p.cpi]));
     const data    = allCycleNames.map(n => dataMap[n] ?? null);
-    const color   = _PEP_CPI_COLORS[i % _PEP_CPI_COLORS.length];
+    const pal     = _getPalette();
+    const color   = pal[i % pal.length];
     return {
       name: `${wbs} — ${desc}`,
       type: 'line',
@@ -3260,6 +3260,21 @@ async function _loadTheme() {
 // ---------------------------------------------------------------------------
 let _currentUserInfo = null;
 
+function _switchMyTab(tabId) {
+  document.querySelectorAll('.my-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.myTab === tabId);
+  });
+  document.querySelectorAll('.my-tab-section').forEach(el => {
+    el.hidden = el.id !== `my-tab-${tabId}`;
+  });
+  if (tabId === 'history')    loadMyHistory();
+  if (tabId === 'quarantine') loadMyQr();
+}
+
+document.querySelectorAll('.my-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => _switchMyTab(btn.dataset.myTab));
+});
+
 function _initMyArea() {
   const usernameEl = document.getElementById('myProfileUsername');
   if (usernameEl) {
@@ -3388,6 +3403,114 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// My Area — Upload sub-tab
+// ---------------------------------------------------------------------------
+document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const resultEl = document.getElementById('myAreaUploadResult');
+  resultEl.textContent = _t('loading');
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch('/api/upload-timesheet', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      body: fd,
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.detail || resp.statusText);
+    let msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}`;
+    if (json.records_skipped)          msg += ` · ${json.records_skipped} ${_t('upload.skipped')}`;
+    if (json.quarantine_records_added) msg += ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}`;
+    if (json.warning_count)            msg += ` · ${json.warning_count} ${_t('upload.warnings')}`;
+    resultEl.textContent = msg;
+    notify(msg, json.quarantine_records_added ? 'warning' : 'success');
+  } catch (e) {
+    resultEl.textContent = `Erro: ${e.message}`;
+    notify(e.message, 'error');
+  }
+  e.target.value = '';
+});
+
+// ---------------------------------------------------------------------------
+// My Area — Histórico sub-tab
+// ---------------------------------------------------------------------------
+async function loadMyHistory() {
+  try {
+    const rows = await apiFetch('/api/my/upload-history');
+    _renderMyHistory(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderMyHistory(rows) {
+  const tbody = document.getElementById('myHistoryBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const statusKey = r.status === 'ok' ? 'history.status.ok'
+      : r.status === 'warnings' ? 'history.status.warnings'
+      : r.status === 'quarantine' ? 'history.status.quarantine'
+      : 'history.status.rejected';
+    return `<tr>
+      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
+      <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
+      <td style="text-align:right">${r.records_inserted}</td>
+      <td style="text-align:right">${r.records_skipped}</td>
+      <td style="text-align:right">${r.quarantine_added}</td>
+      <td style="text-align:right">${r.warning_count}</td>
+      <td>${escHtml(_t(statusKey))}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMyHistory);
+
+// ---------------------------------------------------------------------------
+// My Area — Quarentena sub-tab
+// ---------------------------------------------------------------------------
+async function loadMyQr() {
+  const filter = document.getElementById('myQrFilter')?.value;
+  const params = new URLSearchParams({ limit: 200 });
+  if (filter === 'pending')   params.set('review_status', 'pending');
+  if (filter === 'approved')  params.set('review_status', 'approved');
+  if (filter === 'rejected')  params.set('review_status', 'rejected');
+  try {
+    const rows = await apiFetch(`/api/my/quarantine?${params}`);
+    _renderMyQrTable(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderMyQrTable(rows) {
+  const tbody = document.getElementById('myQrBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const raw  = r.raw_data || {};
+    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return `<tr>
+      <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
+      <td>${escHtml(raw['Colaborador'] || '—')}</td>
+      <td style="text-align:right">${raw['Horas totais (decimal)'] ?? '—'}</td>
+      <td style="font-size:.78rem">${escHtml(raw['Código PEP'] || '—')}</td>
+      <td style="font-size:.78rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
+      <td>${_qrStatusBadge(r.review_status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
+document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
+
+// ---------------------------------------------------------------------------
 // Validation Rules (Admin tab)
 // ---------------------------------------------------------------------------
 let _rules = [];
@@ -3450,6 +3573,25 @@ function _renderRulesList() {
   });
 }
 
+const _AGGREGATE_RULE_FIELDS = new Set(['soma_diaria', 'soma_semanal']);
+
+function _updateRuleActionOptions() {
+  const field     = document.getElementById('ruleFieldInput')?.value;
+  const actionSel = document.getElementById('ruleActionInput');
+  const hintEl    = document.getElementById('ruleAggregateHint');
+  if (!actionSel) return;
+  const isAgg = _AGGREGATE_RULE_FIELDS.has(field);
+  [...actionSel.options].forEach(opt => {
+    if (opt.value === 'quarentena' || opt.value === 'descarte') {
+      opt.disabled = isAgg;
+    }
+  });
+  if (isAgg && (actionSel.value === 'quarentena' || actionSel.value === 'descarte')) {
+    actionSel.value = 'warning';
+  }
+  if (hintEl) hintEl.hidden = !isAgg;
+}
+
 function _openRuleModal(rule = null) {
   _editingRuleId = rule ? rule.id : null;
   document.getElementById('ruleModalTitle').textContent = rule ? 'Editar Regra' : 'Nova Regra de Validação';
@@ -3461,6 +3603,7 @@ function _openRuleModal(rule = null) {
   document.getElementById('ruleActiveInput').value   = rule ? (rule.is_active ? 'true' : 'false') : 'true';
   document.getElementById('ruleDescInput').value     = rule?.description || '';
   document.getElementById('ruleError').textContent   = '';
+  _updateRuleActionOptions();
   document.getElementById('ruleModal').removeAttribute('hidden');
 }
 
@@ -3469,6 +3612,7 @@ function openEditRule(id) {
   if (rule) _openRuleModal(rule);
 }
 
+document.getElementById('ruleFieldInput')?.addEventListener('change', _updateRuleActionOptions);
 document.getElementById('newRuleBtn')?.addEventListener('click', () => _openRuleModal());
 document.getElementById('ruleModalClose')?.addEventListener('click',  () => document.getElementById('ruleModal').setAttribute('hidden', ''));
 document.getElementById('ruleCancelBtn')?.addEventListener('click',   () => document.getElementById('ruleModal').setAttribute('hidden', ''));
@@ -3665,25 +3809,121 @@ async function _loadThemeEditor() {
   } catch (e) { notify(`Erro ao carregar tema: ${e.message}`, 'error'); }
 }
 
+function _applyThemePreset(key) {
+  const preset = _THEME_PRESETS[key];
+  if (!preset) return;
+  _THEME_FIELDS.forEach(f => {
+    if (preset[f.key]) {
+      const picker = document.getElementById(`themeColor_${f.key}`);
+      const txt    = document.getElementById(`themeColorTxt_${f.key}`);
+      if (picker) picker.value = preset[f.key];
+      if (txt)    txt.value   = preset[f.key];
+    }
+  });
+  if (preset.density) {
+    document.querySelectorAll('.theme-density-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.density === preset.density);
+    });
+  }
+  if (preset.chart_palette) {
+    preset.chart_palette.forEach((c, i) => {
+      const picker = document.getElementById(`themePalColor_${i}`);
+      const txt    = document.getElementById(`themePalTxt_${i}`);
+      if (picker) picker.value = c;
+      if (txt)    txt.value   = c;
+    });
+  }
+}
+
 function _renderThemeEditor() {
   const grid = document.getElementById('themeColorGrid');
   if (!grid) return;
-  grid.innerHTML = _THEME_FIELDS.map(f => `
-    <div class="form-group">
-      <label style="font-size:.7rem;color:#94a3b8">${escHtml(f.label)}</label>
-      <div class="theme-swatch-row">
-        <input type="color" id="themeColor_${f.key}" value="${escHtml(_currentTheme[f.key] || '#000000')}" />
-        <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(_currentTheme[f.key] || '')}" style="flex:1;font-size:.8rem" />
-      </div>
-    </div>
-  `).join('');
+  const t   = _currentTheme;
+  const pal = t.chart_palette?.length ? t.chart_palette : _THEME_PRESETS.pmas.chart_palette;
 
-  // Sync color picker ↔ text input
+  // Section: app name + density
+  const densitySection = `
+    <div class="form-group full" style="margin-bottom:.25rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.app_name')}</label>
+      <input type="text" id="themeAppName" value="${escHtml(t.app_name || 'PMAS')}"
+        style="max-width:240px;margin-top:.25rem" />
+    </div>
+    <div class="form-group full" style="margin-bottom:.5rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.density')}</label>
+      <div style="display:flex;gap:.5rem;margin-top:.25rem">
+        ${['compact','normal','relaxed'].map(d => `
+          <button class="btn btn-secondary btn-sm theme-density-btn${(t.density || 'normal') === d ? ' active' : ''}"
+            data-density="${d}" type="button">${_t('appearance.density.'+d)}</button>
+        `).join('')}
+      </div>
+    </div>`;
+
+  // Section: presets
+  const presetsSection = `
+    <div class="form-group full" style="margin-bottom:.5rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.presets')}</label>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem">
+        ${Object.keys(_THEME_PRESETS).map(k => `
+          <button class="btn btn-secondary btn-sm" type="button"
+            onclick="_applyThemePreset('${k}')">${_t('appearance.preset.'+k)}</button>
+        `).join('')}
+      </div>
+    </div>`;
+
+  // Section: colors
+  const colorSection = `
+    <div class="form-group full" style="margin-bottom:.25rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.colors')}</label>
+    </div>
+    ${_THEME_FIELDS.map(f => `
+      <div class="form-group">
+        <label style="font-size:.7rem;color:#94a3b8">${escHtml(f.label)}</label>
+        <div class="theme-swatch-row">
+          <input type="color" id="themeColor_${f.key}" value="${escHtml(t[f.key] || '#000000')}" />
+          <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(t[f.key] || '')}"
+            style="flex:1;font-size:.8rem" />
+        </div>
+      </div>
+    `).join('')}`;
+
+  // Section: chart palette
+  const paletteSection = `
+    <div class="form-group full" style="margin:.5rem 0 .25rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.palette')}</label>
+    </div>
+    ${Array.from({ length: 6 }, (_, i) => `
+      <div class="form-group">
+        <label style="font-size:.7rem;color:#94a3b8">Cor ${i + 1}</label>
+        <div class="theme-swatch-row">
+          <input type="color" id="themePalColor_${i}" value="${escHtml(pal[i] || '#4f8ef7')}" />
+          <input type="text" id="themePalTxt_${i}" value="${escHtml(pal[i] || '')}"
+            style="flex:1;font-size:.8rem" />
+        </div>
+      </div>
+    `).join('')}`;
+
+  grid.innerHTML = densitySection + presetsSection + colorSection + paletteSection;
+
+  // Wire color pickers ↔ text inputs
   _THEME_FIELDS.forEach(f => {
     const picker = document.getElementById(`themeColor_${f.key}`);
     const txt    = document.getElementById(`themeColorTxt_${f.key}`);
     picker?.addEventListener('input', () => { txt.value = picker.value; });
-    txt?.addEventListener('change', () => { picker.value = txt.value; });
+    txt?.addEventListener('change',  () => { if (/^#[0-9a-f]{6}$/i.test(txt.value)) picker.value = txt.value; });
+  });
+  Array.from({ length: 6 }, (_, i) => {
+    const picker = document.getElementById(`themePalColor_${i}`);
+    const txt    = document.getElementById(`themePalTxt_${i}`);
+    picker?.addEventListener('input', () => { txt.value = picker.value; });
+    txt?.addEventListener('change',  () => { if (/^#[0-9a-f]{6}$/i.test(txt.value)) picker.value = txt.value; });
+  });
+
+  // Density button toggle
+  grid.querySelectorAll('.theme-density-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      grid.querySelectorAll('.theme-density-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
 }
 
@@ -3693,11 +3933,22 @@ document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
     const txt = document.getElementById(`themeColorTxt_${f.key}`);
     if (txt) payload[f.key] = txt.value;
   });
+  const appNameEl = document.getElementById('themeAppName');
+  if (appNameEl) payload.app_name = appNameEl.value.trim() || 'PMAS';
+  const activeBtn = document.querySelector('.theme-density-btn.active');
+  if (activeBtn) payload.density = activeBtn.dataset.density;
+  payload.chart_palette = Array.from({ length: 6 }, (_, i) => {
+    return document.getElementById(`themePalTxt_${i}`)?.value || _THEME_PRESETS.pmas.chart_palette[i];
+  });
   try {
     _currentTheme = await apiFetchJSON('/api/theme', 'PUT', payload);
     _loadTheme();
-    notify('Tema salvo.', 'success');
+    notify(_t('appearance.saved'), 'success');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+document.getElementById('restoreDefaultThemeBtn')?.addEventListener('click', () => {
+  _applyThemePreset('pmas');
 });
 
 document.getElementById('logoUploadInput')?.addEventListener('change', async (e) => {

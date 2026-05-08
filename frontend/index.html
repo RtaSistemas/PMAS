@@ -439,39 +439,116 @@
   <!-- TAB: Minha Área                                                     -->
   <!-- ================================================================== -->
   <section id="tab-my" class="tab-section" hidden>
-    <div class="my-area-grid">
 
-      <!-- Profile card -->
-      <div class="card">
-        <h2 class="card-title">Meu Perfil</h2>
-        <p id="myProfileUsername" style="font-size:.9rem;margin-bottom:1rem;color:#94a3b8"></p>
-        <button class="btn btn-secondary btn-sm" id="myChangePwdBtn">Alterar senha</button>
-      </div>
+    <nav class="my-area-nav">
+      <button class="my-tab-btn active" data-my-tab="profile">Perfil</button>
+      <button class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
+      <button class="my-tab-btn" data-my-tab="history" data-i18n="myarea.history">Histórico</button>
+      <button class="my-tab-btn" data-my-tab="quarantine" data-i18n="myarea.quarantine">Quarentena</button>
+    </nav>
 
-      <!-- Dashboard layout customization -->
-      <div class="card">
-        <div class="section-header" style="margin-bottom:.75rem">
-          <h2 class="card-title" style="margin-bottom:0">Layout do Dashboard</h2>
-          <button class="btn btn-primary btn-sm" id="saveLayoutBtn">Salvar layout</button>
+    <!-- Sub-tab: Perfil -->
+    <div id="my-tab-profile" class="my-tab-section">
+      <div class="my-area-grid">
+
+        <!-- Profile card -->
+        <div class="card">
+          <h2 class="card-title">Meu Perfil</h2>
+          <p id="myProfileUsername" style="font-size:.9rem;margin-bottom:1rem;color:#94a3b8"></p>
+          <button class="btn btn-secondary btn-sm" id="myChangePwdBtn">Alterar senha</button>
         </div>
-        <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem">Arraste para reordenar os painéis do dashboard.</p>
-        <ul class="sortable-list" id="chartLayoutList">
-          <li class="sortable-item" data-chart="effort">
-            <span class="sortable-handle">⠿</span>
-            <span class="sortable-item-label">Esforço da Equipe</span>
-          </li>
-          <li class="sortable-item" data-chart="portfolio">
-            <span class="sortable-handle">⠿</span>
-            <span class="sortable-item-label">Saúde do Portfólio</span>
-          </li>
-          <li class="sortable-item" data-chart="forecast">
-            <span class="sortable-handle">⠿</span>
-            <span class="sortable-item-label">Previsão (EVM)</span>
-          </li>
-        </ul>
-      </div>
 
+        <!-- Dashboard layout customization -->
+        <div class="card">
+          <div class="section-header" style="margin-bottom:.75rem">
+            <h2 class="card-title" style="margin-bottom:0">Layout do Dashboard</h2>
+            <button class="btn btn-primary btn-sm" id="saveLayoutBtn">Salvar layout</button>
+          </div>
+          <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem">Arraste para reordenar os painéis do dashboard.</p>
+          <ul class="sortable-list" id="chartLayoutList">
+            <li class="sortable-item" data-chart="effort">
+              <span class="sortable-handle">⠿</span>
+              <span class="sortable-item-label">Esforço da Equipe</span>
+            </li>
+            <li class="sortable-item" data-chart="portfolio">
+              <span class="sortable-handle">⠿</span>
+              <span class="sortable-item-label">Saúde do Portfólio</span>
+            </li>
+            <li class="sortable-item" data-chart="forecast">
+              <span class="sortable-handle">⠿</span>
+              <span class="sortable-item-label">Previsão (EVM)</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
     </div>
+
+    <!-- Sub-tab: Upload -->
+    <div id="my-tab-upload" class="my-tab-section" hidden>
+      <div class="card" style="max-width:480px">
+        <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
+        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem">Importe um arquivo CSV ou XLSX de timesheets.</p>
+        <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem">
+          <span data-i18n="btn.import_ts">⬆ Importar</span>
+          <input type="file" id="myAreaCsvInput" accept=".csv,.xlsx,.xls" hidden />
+        </label>
+        <div id="myAreaUploadResult" style="margin-top:1rem;font-size:.85rem;color:#94a3b8"></div>
+      </div>
+    </div>
+
+    <!-- Sub-tab: Histórico -->
+    <div id="my-tab-history" class="my-tab-section" hidden>
+      <div class="card">
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
+          <button class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn">↺ Atualizar</button>
+        </div>
+        <table class="data-table" id="myHistoryTable">
+          <thead><tr>
+            <th data-i18n="history.th.when">Quando</th>
+            <th data-i18n="history.th.file">Arquivo</th>
+            <th style="text-align:right" data-i18n="history.th.inserted">Inseridos</th>
+            <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
+            <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
+            <th style="text-align:right" data-i18n="history.th.warnings">Avisos</th>
+            <th data-i18n="history.th.status">Status</th>
+          </tr></thead>
+          <tbody id="myHistoryBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sub-tab: Quarentena -->
+    <div id="my-tab-quarantine" class="my-tab-section" hidden>
+      <div class="card">
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <select id="myQrFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
+              <option value="">Todos os registros</option>
+              <option value="pending">⏳ Pendentes</option>
+              <option value="approved">✅ Aprovados</option>
+              <option value="rejected">❌ Rejeitados</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="myQrRefreshBtn">↺ Atualizar</button>
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros do seus uploads que foram para quarentena.</p>
+        <table class="data-table" id="myQrTable">
+          <thead><tr>
+            <th data-i18n="qr.th.date">Data</th>
+            <th data-i18n="qr.th.collaborator">Colaborador</th>
+            <th style="text-align:right" data-i18n="qr.th.hours">Horas</th>
+            <th data-i18n="qr.th.pep">PEP</th>
+            <th data-i18n="qr.th.reason">Motivo</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="myQrBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </section>
 
   <!-- ================================================================== -->
@@ -558,14 +635,15 @@
     <!-- Theme Editor -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Aparência (Tema)</h2>
-        <div style="display:flex;gap:.5rem">
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer" title="Enviar logo">
+        <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer" title="Enviar logo" data-i18n="appearance.logo_upload">
             📷 Logo
             <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
           </label>
-          <button class="btn btn-danger btn-sm" id="deleteLogoBtn">✕ Remover logo</button>
-          <button class="btn btn-primary btn-sm" id="saveThemeBtn">Salvar tema</button>
+          <button class="btn btn-danger btn-sm" id="deleteLogoBtn" data-i18n="appearance.logo_remove">✕ Remover logo</button>
+          <button class="btn btn-secondary btn-sm" id="restoreDefaultThemeBtn" data-i18n="appearance.restore">Restaurar padrões</button>
+          <button class="btn btn-primary btn-sm" id="saveThemeBtn" data-i18n="appearance.save">Salvar aparência</button>
         </div>
       </div>
       <div id="themePreviewBar" class="theme-preview-bar" style="margin-bottom:1rem"></div>
@@ -891,6 +969,7 @@
           <option value="quarentena">quarentena</option>
           <option value="descarte">descarte</option>
         </select>
+        <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:#f59e0b" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
       </div>
       <div class="form-group">
         <label>Ordem</label>
