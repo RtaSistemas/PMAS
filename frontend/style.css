@@ -587,6 +587,18 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ── My Area tab ─────────────────────────────────────────────── */
+.my-area-nav {
+  display: flex; gap: .25rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border); margin-bottom: 1.25rem;
+}
+.my-tab-btn {
+  padding: .45rem 1rem; font-size: .85rem; font-weight: 500;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text-2); cursor: pointer; transition: color .15s, border-color .15s;
+}
+.my-tab-btn:hover { color: var(--text); }
+.my-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
 .my-area-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -661,6 +673,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .theme-preview-bar {
   height: 4px; border-radius: 2px; margin-top: 0.5rem;
   background: linear-gradient(90deg, var(--theme-primary), var(--theme-accent));
+}
+.theme-density-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
 }
 
 /* ── Chart grid / card layout (data-driven) ─────────────────────────────── */
