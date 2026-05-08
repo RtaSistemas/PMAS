@@ -96,7 +96,7 @@ class TestValidationRules:
         rules = client.get("/api/validation-rules").json()
         sys_rule = next(x for x in rules if x["is_system"])
         r = client.delete(f"/api/validation-rules/{sys_rule['id']}")
-        assert r.status_code == 403
+        assert r.status_code == 409
 
     def test_toggle_system_rule(self, client):
         rules = client.get("/api/validation-rules").json()

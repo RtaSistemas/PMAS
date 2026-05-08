@@ -6,7 +6,7 @@
 const _LANG = {
   pt: {
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
-    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe',
+    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
@@ -131,10 +131,50 @@ const _LANG = {
     'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
     'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
     'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
+    'myarea.upload':'Upload','myarea.history':'Histórico',
+    'myarea.quarantine':'Quarentena','myarea.alerts':'Alertas',
+    'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
+    'upload.quarantine':'registros em quarentena','upload.warnings':'avisos','upload.infos':'informações',
+    'history.th.when':'Quando','history.th.file':'Arquivo','history.th.inserted':'Inseridos',
+    'history.th.skipped':'Ignorados','history.th.quarantine':'Quarentena',
+    'history.th.warnings':'Avisos','history.th.status':'Status',
+    'history.status.ok':'✅ OK','history.status.warnings':'⚠️ Com avisos',
+    'history.status.quarantine':'🔒 Com quarentena','history.status.rejected':'❌ Rejeitado',
+    'qr.th.date':'Data','qr.th.collaborator':'Colaborador','qr.th.hours':'Horas',
+    'qr.th.pep':'PEP','qr.th.reason':'Motivo','qr.th.type':'Tipo',
+    'qr.th.reviewed':'Revisado','qr.th.sent_by':'Enviado por',
+    'qr.type.structural':'Estrutural','qr.type.rule':'Regra',
+    'qr.btn.export':'⬇ Exportar CSV','qr.btn.review':'✅ Marcar revisado',
+    'qr.btn.discard':'🗑 Descartar','qr.filter.pending':'Apenas pendentes',
+    'alerts.th.rule':'Regra','alerts.th.occurrences':'Ocorrências',
+    'alerts.th.last':'Último disparo','alerts.th.action':'Ação','alerts.th.trend':'Tendência',
+    'vr.title':'Regras de Validação','vr.btn.new':'+ Nova Regra',
+    'vr.th.order':'Ordem','vr.th.field':'Campo','vr.th.operator':'Operador',
+    'vr.th.value':'Valor','vr.th.action':'Ação','vr.th.description':'Descrição',
+    'vr.th.active':'Ativo','vr.th.system':'Sistema',
+    'vr.badge.system':'Sistema','vr.hint.aggregate':'Regras de agregado permitem apenas info ou warning.',
+    'prefs.customize':'⚙ Personalizar Layout','prefs.save':'Salvar preferências',
+    'prefs.saved':'Preferências salvas.','prefs.save_error':'Erro ao salvar preferências.',
+    'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
+    'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
+    'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
+    'chart.cpiChart':'CPI por Ciclo','chart.pepCpiChart':'CPI por PEP',
+    'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Budget vs Realizado',
+    'chart.scatterChart':'Dispersão Custo × Horas','chart.forecastChart':'Previsão de Conclusão',
+    'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
+    'appearance.logo':'Logo','appearance.logo_upload':'⬆ Enviar novo logo',
+    'appearance.logo_remove':'🗑 Remover logo','appearance.density':'Densidade',
+    'appearance.density.compact':'Compacto','appearance.density.normal':'Normal',
+    'appearance.density.relaxed':'Espaçado','appearance.colors':'Cores',
+    'appearance.palette':'Paleta de gráficos','appearance.presets':'Paletas predefinidas',
+    'appearance.preset.pmas':'● Padrão PMAS','appearance.preset.corporate':'● Azul Corporativo',
+    'appearance.preset.high_contrast':'● Alto Contraste',
+    'appearance.restore':'Restaurar padrões','appearance.save':'Salvar aparência',
+    'appearance.saved':'Aparência salva com sucesso.',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
-    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team',
+    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
@@ -259,6 +299,46 @@ const _LANG = {
     'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
     'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
     'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
+    'myarea.upload':'Upload','myarea.history':'History',
+    'myarea.quarantine':'Quarantine','myarea.alerts':'Alerts',
+    'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
+    'upload.quarantine':'records quarantined','upload.warnings':'warnings','upload.infos':'info messages',
+    'history.th.when':'When','history.th.file':'File','history.th.inserted':'Inserted',
+    'history.th.skipped':'Skipped','history.th.quarantine':'Quarantine',
+    'history.th.warnings':'Warnings','history.th.status':'Status',
+    'history.status.ok':'✅ OK','history.status.warnings':'⚠️ With warnings',
+    'history.status.quarantine':'🔒 With quarantine','history.status.rejected':'❌ Rejected',
+    'qr.th.date':'Date','qr.th.collaborator':'Collaborator','qr.th.hours':'Hours',
+    'qr.th.pep':'PEP','qr.th.reason':'Reason','qr.th.type':'Type',
+    'qr.th.reviewed':'Reviewed','qr.th.sent_by':'Sent by',
+    'qr.type.structural':'Structural','qr.type.rule':'Rule',
+    'qr.btn.export':'⬇ Export CSV','qr.btn.review':'✅ Mark reviewed',
+    'qr.btn.discard':'🗑 Discard','qr.filter.pending':'Pending only',
+    'alerts.th.rule':'Rule','alerts.th.occurrences':'Occurrences',
+    'alerts.th.last':'Last trigger','alerts.th.action':'Action','alerts.th.trend':'Trend',
+    'vr.title':'Validation Rules','vr.btn.new':'+ New Rule',
+    'vr.th.order':'Order','vr.th.field':'Field','vr.th.operator':'Operator',
+    'vr.th.value':'Value','vr.th.action':'Action','vr.th.description':'Description',
+    'vr.th.active':'Active','vr.th.system':'System',
+    'vr.badge.system':'System','vr.hint.aggregate':'Aggregate rules only allow info or warning.',
+    'prefs.customize':'⚙ Customize Layout','prefs.save':'Save preferences',
+    'prefs.saved':'Preferences saved.','prefs.save_error':'Error saving preferences.',
+    'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
+    'size.small':'Small','size.medium':'Medium','size.large':'Large','size.full':'Full width',
+    'chart.effortChart':'Effort by Collaborator','chart.trendsChart':'Trends by Cycle',
+    'chart.cpiChart':'CPI by Cycle','chart.pepCpiChart':'CPI by PEP',
+    'chart.treemapChart':'Portfolio Treemap','chart.bulletChart':'Budget vs Actual',
+    'chart.scatterChart':'Cost × Hours Scatter','chart.forecastChart':'Completion Forecast',
+    'appearance.title':'System Appearance','appearance.app_name':'System name',
+    'appearance.logo':'Logo','appearance.logo_upload':'⬆ Upload new logo',
+    'appearance.logo_remove':'🗑 Remove logo','appearance.density':'Density',
+    'appearance.density.compact':'Compact','appearance.density.normal':'Normal',
+    'appearance.density.relaxed':'Relaxed','appearance.colors':'Colors',
+    'appearance.palette':'Chart palette','appearance.presets':'Preset palettes',
+    'appearance.preset.pmas':'● PMAS Default','appearance.preset.corporate':'● Corporate Blue',
+    'appearance.preset.high_contrast':'● High Contrast',
+    'appearance.restore':'Restore defaults','appearance.save':'Save appearance',
+    'appearance.saved':'Appearance saved successfully.',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -490,6 +570,7 @@ async function refreshCollaborators() {
 // ---------------------------------------------------------------------------
 csvInput.addEventListener('change', async () => {
   const file = csvInput.files[0]; if (!file) return;
+  csvInput.value = '';
   notify(`Enviando "${file.name}"…`, 'info');
   const form = new FormData(); form.append('file', file);
   try {
@@ -519,6 +600,8 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
   if (tab === 'dashboard') _renderActiveTab();
+  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
+  if (tab === 'my')       _initMyArea();
 });
 
 // ---------------------------------------------------------------------------
@@ -3002,6 +3085,62 @@ document.getElementById('auditEntityFilter').addEventListener('change', loadAudi
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
 
 // ---------------------------------------------------------------------------
+// Chart series names (for color picker UI)
+// ---------------------------------------------------------------------------
+const _CHART_SERIES_NAMES = {
+  effortChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
+  trendsChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
+  cpiChart:      ['CPI'],
+  treemapChart:  [],
+  bulletChart:   ['Planejado', 'Realizado'],
+  scatterChart:  [],
+  forecastChart: ['Realizado', 'Previsto', 'Orçamento'],
+};
+
+// ---------------------------------------------------------------------------
+// Theme presets
+// ---------------------------------------------------------------------------
+const _THEME_PRESETS = {
+  pmas: {
+    color_primary: '#4f8ef7', color_background: '#1a1a2e',
+    color_surface: '#16213e', color_accent: '#e94560',
+    color_success: '#2ecc71', color_warning: '#f39c12',
+    color_danger:  '#e74c3c', color_text: '#e0e0e0',
+    color_text_muted: '#8892a4', density: 'normal',
+    chart_palette: ['#4f8ef7','#e94560','#2ecc71','#f39c12','#9b59b6','#1abc9c'],
+  },
+  corporate: {
+    color_primary: '#0070f3', color_background: '#0a0a23',
+    color_surface: '#111133', color_accent: '#00d4ff',
+    color_success: '#00c853', color_warning: '#ffab00',
+    color_danger:  '#ff1744', color_text: '#f0f4ff',
+    color_text_muted: '#7986cb', density: 'normal',
+    chart_palette: ['#0070f3','#00d4ff','#00c853','#ffab00','#7c4dff','#26c6da'],
+  },
+  high_contrast: {
+    color_primary: '#ffffff', color_background: '#000000',
+    color_surface: '#111111', color_accent: '#ffff00',
+    color_success: '#00ff00', color_warning: '#ff8800',
+    color_danger:  '#ff0000', color_text: '#ffffff',
+    color_text_muted: '#aaaaaa', density: 'relaxed',
+    chart_palette: ['#ffffff','#ffff00','#00ff00','#ff8800','#00ffff','#ff00ff'],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// User preferences — populated at login, used by layout + color pickers
+// ---------------------------------------------------------------------------
+let _userPrefs = null;
+
+async function _loadPreferences() {
+  try {
+    _userPrefs = await apiFetch('/api/my/preferences');
+  } catch {
+    _userPrefs = { dashboard: { grid_cols: 2, charts: [] } };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Theme loader (public endpoint — no auth required)
 // ---------------------------------------------------------------------------
 const _DENSITY_MAP = {
@@ -3100,18 +3239,38 @@ function _initChartLayout() {
 
 async function _loadMyPreferences() {
   try {
-    const pref = await apiFetch('/api/my/preferences');
-    if (pref.dashboard && Array.isArray(pref.dashboard.chart_order)) {
+    _userPrefs = await apiFetch('/api/my/preferences');
+    _applyLayoutPreferences();
+    const order = _userPrefs?.dashboard?.chart_order;
+    if (Array.isArray(order)) {
       const list = document.getElementById('chartLayoutList');
-      if (!list) return;
-      const order = pref.dashboard.chart_order;
-      const items = [...list.querySelectorAll('.sortable-item')];
-      order.forEach((chartId, idx) => {
-        const item = items.find(i => i.dataset.chart === chartId);
-        if (item) list.appendChild(item);
-      });
+      if (list) {
+        const items = [...list.querySelectorAll('.sortable-item')];
+        order.forEach(chartId => {
+          const item = items.find(i => i.dataset.chart === chartId);
+          if (item) list.appendChild(item);
+        });
+      }
     }
   } catch (_) {}
+}
+
+function _applyLayoutPreferences() {
+  const prefs = _userPrefs?.dashboard;
+  if (!prefs) return;
+  document.querySelectorAll('.chart-grid').forEach(g => {
+    g.dataset.cols = prefs.grid_cols || 2;
+  });
+  (prefs.charts || []).forEach(cp => {
+    const panel = document.querySelector(`[data-chart-id="${cp.id}"]`);
+    if (!panel) return;
+    panel.hidden = !cp.visible;
+    panel.dataset.size = cp.size || 'medium';
+    panel.style.order = cp.order ?? 0;
+  });
+  Object.values(_charts).forEach(c => {
+    try { if (!c.isDisposed()) c.resize(); } catch (_) {}
+  });
 }
 
 document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => {
@@ -3119,7 +3278,8 @@ document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => 
   if (!list) return;
   const order = [...list.querySelectorAll('.sortable-item')].map(i => i.dataset.chart);
   try {
-    await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order } });
+    _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order } });
+    _applyLayoutPreferences();
     notify('Layout salvo.', 'success');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 });
@@ -3465,6 +3625,7 @@ function _bootApp() {
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
   _loadTheme();
+  _loadPreferences().then(() => _applyLayoutPreferences());
   loadDashboardCycles();
   _renderActiveTab();
 }

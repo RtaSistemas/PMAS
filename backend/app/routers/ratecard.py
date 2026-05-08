@@ -235,4 +235,6 @@ def update_config(body: GlobalConfigIn, db: DbSession, _admin: AdminUser):
     cfg.anomaly_max_daily_hours = body.anomaly_max_daily_hours
     db.commit()
     db.refresh(cfg)
+    log_audit(db, _admin, "update", "global_config", 1, body.model_dump())
+    db.commit()
     return cfg

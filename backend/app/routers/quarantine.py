@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
 from backend.app.models import QuarantineRecord, UploadSession
@@ -59,13 +60,16 @@ def review_quarantine(
     rec.reviewed_at = datetime.utcnow() if payload.reviewed else None
     db.commit()
     db.refresh(rec)
+    log_audit(db, current_user, "review", "quarantine_record", record_id, {"reviewed": payload.reviewed})
+    db.commit()
     return rec
 
 
 @router.delete("/{record_id}", status_code=204)
-def delete_quarantine_record(record_id: int, db: DbSession, _: AdminUser):
+def delete_quarantine_record(record_id: int, db: DbSession, current_user: AdminUser):
     rec = db.get(QuarantineRecord, record_id)
     if rec is None:
         raise HTTPException(status_code=404, detail="Registro não encontrado.")
+    log_audit(db, current_user, "delete", "quarantine_record", record_id, {})
     db.delete(rec)
     db.commit()

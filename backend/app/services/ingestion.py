@@ -161,10 +161,15 @@ def ingest_file(
             "horas_individuais": total_h,
             "pep_wbs": pep_code,
             "dia_semana": record_date.weekday(),
+            "hora_extra": _str_or_none(row.get(_COL_EXTRA)),
+            "hora_sobreaviso": _str_or_none(row.get(_COL_STANDBY)),
         }
         result = evaluate_row_rules(rules, row_fields)
 
-        if result.final_action in ("quarentena", "descarte"):
+        if result.final_action == "descarte":
+            skipped += 1
+            continue
+        if result.final_action == "quarentena":
             rule_id = result.matches[-1].rule_id if result.matches else None
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
@@ -332,7 +337,7 @@ def ingest_file(
             user_id=user_id,
             username=username,
             source_file=filename,
-            status="warnings" if ingest_warnings else "ok",
+            status=("quarantine" if quarantine_buffer else "warnings" if ingest_warnings else "ok"),
             inserted=inserted,
             skipped=skipped,
             quarantine=len(quarantine_buffer),
