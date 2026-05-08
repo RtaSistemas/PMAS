@@ -3162,9 +3162,9 @@ async function _loadPreferences() {
 // Theme loader (public endpoint — no auth required)
 // ---------------------------------------------------------------------------
 const _DENSITY_MAP = {
-  compact:  { spacing: '0.6rem', fontSize: '0.8rem' },
-  normal:   { spacing: '1rem',   fontSize: '0.875rem' },
-  relaxed:  { spacing: '1.4rem', fontSize: '1rem' },
+  compact:  { spacing: '0.45rem', fontSize: '0.78rem' },
+  normal:   { spacing: '0.875rem', fontSize: '0.875rem' },
+  relaxed:  { spacing: '1.35rem', fontSize: '1rem' },
 };
 
 function _getPalette() {
@@ -3918,11 +3918,14 @@ function _renderThemeEditor() {
     txt?.addEventListener('change',  () => { if (/^#[0-9a-f]{6}$/i.test(txt.value)) picker.value = txt.value; });
   });
 
-  // Density button toggle
+  // Density button toggle — apply preview immediately
   grid.querySelectorAll('.theme-density-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       grid.querySelectorAll('.theme-density-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      const d = _DENSITY_MAP[btn.dataset.density] || _DENSITY_MAP.normal;
+      document.documentElement.style.setProperty('--density-spacing',   d.spacing);
+      document.documentElement.style.setProperty('--density-font-size', d.fontSize);
     });
   });
 }
