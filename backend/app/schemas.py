@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, date as DateType, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ── Input schemas ────────────────────────────────────────────────────────────
@@ -315,6 +315,12 @@ class AuditLogItem(BaseModel):
 
 # ── Validation rules ─────────────────────────────────────────────────────────
 
+_VALID_RULE_FIELDS = {
+    "horas_individuais", "hora_extra", "hora_sobreaviso",
+    "pep_wbs", "dia_semana", "soma_diaria", "soma_semanal",
+}
+
+
 class ValidationRuleIn(BaseModel):
     is_active: bool = True
     order: int = Field(default=10, ge=1)
@@ -323,6 +329,15 @@ class ValidationRuleIn(BaseModel):
     value: Optional[str] = None
     action: str
     description: Optional[str] = None
+
+    @field_validator("field")
+    @classmethod
+    def _check_field(cls, v: str) -> str:
+        if v not in _VALID_RULE_FIELDS:
+            raise ValueError(
+                f"Campo inválido '{v}'. Permitidos: {sorted(_VALID_RULE_FIELDS)}"
+            )
+        return v
 
     def model_post_init(self, __context) -> None:
         _AGGREGATE_FIELDS = {"soma_diaria", "soma_semanal"}

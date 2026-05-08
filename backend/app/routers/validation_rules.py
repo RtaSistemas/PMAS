@@ -91,7 +91,7 @@ def reorder_rules(order_map: dict[int, int], db: DbSession, current_user: AdminU
     """Bulk update order field. Body: {rule_id: new_order, ...}"""
     rules = db.query(ValidationRule).filter(ValidationRule.id.in_(order_map.keys())).all()
     for rule in rules:
-        rule.order = order_map[rule.id]
+        rule.order = max(1, order_map[rule.id])
         rule.updated_by = current_user.username
         rule.updated_at = datetime.utcnow()
     db.commit()

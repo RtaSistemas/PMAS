@@ -15,10 +15,12 @@ router = APIRouter(
 
 
 @router.get("", response_model=list[UploadSessionOut])
-def list_upload_sessions(db: DbSession, _: AdminUser):
+def list_upload_sessions(db: DbSession, _: AdminUser, limit: int = 200, offset: int = 0):
     return (
         db.query(UploadSession)
         .order_by(UploadSession.uploaded_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 

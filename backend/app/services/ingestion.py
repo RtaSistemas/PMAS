@@ -579,7 +579,11 @@ def _row_to_dict(row) -> dict:
     """Convert a pandas Series to a JSON-serializable dict."""
     d = {}
     for k, v in row.items():
-        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        try:
+            is_na = pd.isna(v)
+        except (TypeError, ValueError):
+            is_na = False
+        if is_na or (isinstance(v, float) and math.isinf(v)):
             d[str(k)] = None
         elif hasattr(v, "item"):
             d[str(k)] = v.item()
