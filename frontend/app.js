@@ -3166,27 +3166,54 @@ async function _loadTheme() {
     const t = await fetch('/api/theme').then(r => r.json());
     const root = document.documentElement;
 
-    // Standard --color-* vars (used by new CSS classes)
-    root.style.setProperty('--color-primary',    t.color_primary    || '#4f8ef7');
-    root.style.setProperty('--color-background', t.color_background || '#1a1a2e');
-    root.style.setProperty('--color-surface',    t.color_surface    || '#16213e');
-    root.style.setProperty('--color-accent',     t.color_accent     || '#e94560');
-    root.style.setProperty('--color-success',    t.color_success    || '#2ecc71');
-    root.style.setProperty('--color-warning',    t.color_warning    || '#f39c12');
-    root.style.setProperty('--color-danger',     t.color_danger     || '#e74c3c');
-    root.style.setProperty('--color-text',       t.color_text       || '#e0e0e0');
-    root.style.setProperty('--color-text-muted', t.color_text_muted || '#8892a4');
+    const primary   = t.color_primary    || '#4f8ef7';
+    const bg        = t.color_background || '#1a1a2e';
+    const surface   = t.color_surface    || '#16213e';
+    const accent    = t.color_accent     || '#e94560';
+    const success   = t.color_success    || '#2ecc71';
+    const warning   = t.color_warning    || '#f39c12';
+    const danger    = t.color_danger     || '#e74c3c';
+    const text      = t.color_text       || '#e0e0e0';
+    const textMuted = t.color_text_muted || '#8892a4';
 
-    // Legacy --theme-* aliases (used by existing CSS)
-    root.style.setProperty('--theme-primary',    t.color_primary    || '#4f8ef7');
-    root.style.setProperty('--theme-bg',         t.color_background || '#1a1a2e');
-    root.style.setProperty('--theme-surface',    t.color_surface    || '#16213e');
-    root.style.setProperty('--theme-accent',     t.color_accent     || '#e94560');
-    root.style.setProperty('--theme-success',    t.color_success    || '#2ecc71');
-    root.style.setProperty('--theme-warning',    t.color_warning    || '#f39c12');
-    root.style.setProperty('--theme-danger',     t.color_danger     || '#e74c3c');
-    root.style.setProperty('--theme-text',       t.color_text       || '#e0e0e0');
-    root.style.setProperty('--theme-text-muted', t.color_text_muted || '#8892a4');
+    // Standard --color-* vars (new CSS)
+    root.style.setProperty('--color-primary',    primary);
+    root.style.setProperty('--color-background', bg);
+    root.style.setProperty('--color-surface',    surface);
+    root.style.setProperty('--color-accent',     accent);
+    root.style.setProperty('--color-success',    success);
+    root.style.setProperty('--color-warning',    warning);
+    root.style.setProperty('--color-danger',     danger);
+    root.style.setProperty('--color-text',       text);
+    root.style.setProperty('--color-text-muted', textMuted);
+
+    // --theme-* aliases (gradient bar, tooltips)
+    root.style.setProperty('--theme-primary',    primary);
+    root.style.setProperty('--theme-bg',         bg);
+    root.style.setProperty('--theme-surface',    surface);
+    root.style.setProperty('--theme-accent',     accent);
+    root.style.setProperty('--theme-success',    success);
+    root.style.setProperty('--theme-warning',    warning);
+    root.style.setProperty('--theme-danger',     danger);
+    root.style.setProperty('--theme-text',       text);
+    root.style.setProperty('--theme-text-muted', textMuted);
+
+    // Original legacy vars — the ones the existing stylesheet actually uses
+    // (--bg 3×, --surface 8×, --card 8×, --text 12×, --primary 10×, etc.)
+    root.style.setProperty('--bg',        bg);
+    root.style.setProperty('--surface',   surface);
+    root.style.setProperty('--card',      surface);
+    root.style.setProperty('--card-alt',  bg);
+    root.style.setProperty('--text',      text);
+    root.style.setProperty('--text-2',    textMuted);
+    root.style.setProperty('--text-3',    textMuted);
+    root.style.setProperty('--primary',   primary);
+    root.style.setProperty('--primary-d', primary);
+    root.style.setProperty('--primary-g', `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`);
+    root.style.setProperty('--green',     success);
+    root.style.setProperty('--amber',     warning);
+    root.style.setProperty('--red',       danger);
+    root.style.setProperty('--cyan',      accent);
 
     // Density
     const density = _DENSITY_MAP[t.density] || _DENSITY_MAP.normal;
@@ -3196,7 +3223,7 @@ async function _loadTheme() {
     // Chart palette
     window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
 
-    // App name — both id and data-app-name selectors
+    // App name
     const appName = t.app_name || 'PMAS';
     document.title = `${appName} — Dashboard`;
     document.querySelectorAll('[data-app-name]').forEach(el => { el.textContent = appName; });
