@@ -14,7 +14,7 @@ from backend.app.database import DbSession, init_db
 from backend.app.deps import CurrentUser
 from backend.app.schemas import UploadOut
 from backend.app.audit import log_audit
-from backend.app.routers import acl, analytics, auditlog, auth, cycles, dashboard, plans, projects, ratecard, reference, users
+from backend.app.routers import acl, analytics, auditlog, auth, cycles, dashboard, plans, projects, quarantine, ratecard, reference, theme, upload, users, validation_rules, my
 from backend.app.services.ingestion import ClosedCycleError, LockedProjectError, ingest_file
 
 log = logging.getLogger(__name__)
@@ -58,6 +58,11 @@ app.include_router(reference.router)
 app.include_router(analytics.router)
 app.include_router(ratecard.router)
 app.include_router(acl.router)
+app.include_router(upload.router)
+app.include_router(quarantine.router)
+app.include_router(validation_rules.router)
+app.include_router(my.router)
+app.include_router(theme.router)
 
 
 def _frontend_dir() -> str:
@@ -86,7 +91,7 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
     if len(contents) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Arquivo excede o limite de 20 MB.")
     try:
-        summary = ingest_file(contents, fname, db, user_role=current_user.role, user_id=current_user.id)
+        summary = ingest_file(contents, fname, db, user_role=current_user.role, user_id=current_user.id, username=current_user.username)
         log_audit(db, current_user, "import", "timesheet", detail={
             "file": fname,
             "records_inserted": summary["records_inserted"],
