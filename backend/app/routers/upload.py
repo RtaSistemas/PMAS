@@ -15,6 +15,7 @@ from backend.app.services.ingestion import (
     LockedProjectError,
     ingest_file,
 )
+from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +26,19 @@ router = APIRouter(
 )
 
 _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+def _save_rejected_session(db, user, fname: str, reason: str) -> None:
+    try:
+        create_upload_session(
+            db, user_id=user.id, username=user.username,
+            source_file=fname, status="rejected",
+            inserted=0, skipped=0, quarantine=0,
+            warning_count=1, info_count=0, warnings=[reason], infos=[],
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 @router.post("/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
@@ -51,12 +65,20 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
         })
         db.commit()
     except (ClosedCycleError, ArchivedCycleError) as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LockedProjectError as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, "Erro interno durante ingestão.")
         log.exception("Erro inesperado durante ingestão.")
         raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
     return summary

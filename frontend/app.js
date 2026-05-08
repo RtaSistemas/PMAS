@@ -6,7 +6,7 @@
 const _LANG = {
   pt: {
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
-    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe',
+    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
@@ -134,7 +134,7 @@ const _LANG = {
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
-    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team',
+    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
@@ -490,6 +490,7 @@ async function refreshCollaborators() {
 // ---------------------------------------------------------------------------
 csvInput.addEventListener('change', async () => {
   const file = csvInput.files[0]; if (!file) return;
+  csvInput.value = '';
   notify(`Enviando "${file.name}"…`, 'info');
   const form = new FormData(); form.append('file', file);
   try {
@@ -519,6 +520,8 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
   if (tab === 'dashboard') _renderActiveTab();
+  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); }
+  if (tab === 'my')       _initMyArea();
 });
 
 // ---------------------------------------------------------------------------
@@ -3102,16 +3105,35 @@ async function _loadMyPreferences() {
   try {
     const pref = await apiFetch('/api/my/preferences');
     if (pref.dashboard && Array.isArray(pref.dashboard.chart_order)) {
-      const list = document.getElementById('chartLayoutList');
-      if (!list) return;
       const order = pref.dashboard.chart_order;
-      const items = [...list.querySelectorAll('.sortable-item')];
-      order.forEach((chartId, idx) => {
-        const item = items.find(i => i.dataset.chart === chartId);
-        if (item) list.appendChild(item);
-      });
+      const list = document.getElementById('chartLayoutList');
+      if (list) {
+        const items = [...list.querySelectorAll('.sortable-item')];
+        order.forEach(chartId => {
+          const item = items.find(i => i.dataset.chart === chartId);
+          if (item) list.appendChild(item);
+        });
+      }
+      _applyLayoutPreferences(order);
     }
   } catch (_) {}
+}
+
+function _applyLayoutPreferences(order) {
+  const nav = document.querySelector('.analytics-tabs');
+  if (nav) {
+    order.forEach(chartId => {
+      const btn = nav.querySelector(`[data-atab="${chartId}"]`);
+      if (btn) nav.appendChild(btn);
+    });
+  }
+  const firstSection = document.querySelector('.atab-section');
+  if (!firstSection) return;
+  const parent = firstSection.parentElement;
+  order.forEach(chartId => {
+    const section = document.getElementById(`atab-${chartId}`);
+    if (section) parent.appendChild(section);
+  });
 }
 
 document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => {
@@ -3120,6 +3142,7 @@ document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => 
   const order = [...list.querySelectorAll('.sortable-item')].map(i => i.dataset.chart);
   try {
     await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order } });
+    _applyLayoutPreferences(order);
     notify('Layout salvo.', 'success');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 });
