@@ -126,6 +126,8 @@ def ingest_file(
             closed_names: list[str] = []
             seen_cycle_ids: set[int] = set()
             for cycle in cycle_cache.values():
+                if cycle is None:
+                    continue
                 if cycle.id not in seen_cycle_ids and cycle.is_closed:
                     closed_names.append(cycle.name)
                 seen_cycle_ids.add(cycle.id)
@@ -162,8 +164,10 @@ def ingest_file(
 
         pep_cycle_scope: set[tuple[str | None, int]] = set()
         for _, row in df.iterrows():
-            pep = _str_or_none(row.get(_COL_PEP_CODE))
             cycle = cycle_cache[_parse_date(row[_COL_DATE])]
+            if cycle is None:
+                continue
+            pep = _str_or_none(row.get(_COL_PEP_CODE))
             pep_cycle_scope.add((pep, cycle.id))
 
         # Named PEPs: delete the entire (pep_wbs, cycle) block
@@ -178,9 +182,11 @@ def ingest_file(
         null_by_cycle: dict[int, set[int]] = {}
         for _, row in df.iterrows():
             if _str_or_none(row.get(_COL_PEP_CODE)) is None:
+                cycle = cycle_cache[_parse_date(row[_COL_DATE])]
+                if cycle is None:
+                    continue
                 collab_id = collab_cache[str(row[_COL_COLLABORATOR]).strip()].id
-                cycle_id = cycle_cache[_parse_date(row[_COL_DATE])].id
-                null_by_cycle.setdefault(cycle_id, set()).add(collab_id)
+                null_by_cycle.setdefault(cycle.id, set()).add(collab_id)
 
         for cycle_id, collab_ids in null_by_cycle.items():
             for collab_id in collab_ids:
@@ -200,6 +206,10 @@ def ingest_file(
             collab = collab_cache[str(row[_COL_COLLABORATOR]).strip()]
             record_date = _parse_date(row[_COL_DATE])
             cycle = cycle_cache[record_date]
+
+            if cycle is None:
+                skipped += 1
+                continue
 
             normal_h = extra_h = standby_h = 0.0
             total_h = _safe_hours(row[_COL_HOURS], row_idx, _COL_HOURS, ingest_warnings)
@@ -274,11 +284,15 @@ def ingest_file(
         inserted, skipped, quarantine_cycles_created, len(ingest_warnings),
     )
     return {
+        "status": "warnings" if ingest_warnings else "ok",
         "records_inserted": inserted,
         "records_skipped": skipped,
-        "quarantine_cycles_created": quarantine_cycles_created,
+        "quarantine_records_added": 0,
+        "warning_count": len(ingest_warnings),
+        "info_count": 0,
         "warnings": ingest_warnings,
-        "anomaly_warnings": anomaly_warnings,
+        "infos": [],
+        "upload_session_id": None,
     }
 
 
@@ -421,33 +435,14 @@ def _resolve_cycle(db: Session, record_date: date) -> tuple[Cycle, bool]:
         .filter(
             Cycle.start_date <= record_date,
             Cycle.end_date >= record_date,
-            Cycle.is_quarantine == False,  # noqa: E712
+            Cycle.is_active == True,  # noqa: E712
         )
         .first()
     )
     if cycle is not None:
         return cycle, False
 
-    cycle = (
-        db.query(Cycle)
-        .filter(Cycle.start_date <= record_date, Cycle.end_date >= record_date)
-        .first()
-    )
-    if cycle is not None:
-        return cycle, False
-
-    start = record_date.replace(day=1)
-    if start.month == 12:
-        end = start.replace(year=start.year + 1, month=1, day=1) - timedelta(days=1)
-    else:
-        end = start.replace(month=start.month + 1, day=1) - timedelta(days=1)
-
-    name = f"Quarentena - {record_date.strftime('%b/%Y')}"
-    quarantine = Cycle(name=name, start_date=start, end_date=end, is_quarantine=True)
-    db.add(quarantine)
-    db.flush()
-    log.warning("Ciclo de quarentena criado: '%s'", name)
-    return quarantine, True
+    return None, True
 
 
 def _parse_date(value) -> date:

@@ -214,7 +214,6 @@ def get_collaborator_timeline(
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(
             Collaborator.name == collaborator_name,
-            Cycle.is_quarantine == False,  # noqa: E712
         )
     )
     if pep_code:
@@ -271,7 +270,6 @@ def get_dashboard_all(
             "name": "Toda a base",
             "start_date": None,
             "end_date": None,
-            "is_quarantine": False,
         },
         "filters": {
             "pep_codes": pep_code,
@@ -331,7 +329,6 @@ def get_dashboard(
             "name": cycle.name,
             "start_date": cycle.start_date,
             "end_date": cycle.end_date,
-            "is_quarantine": cycle.is_quarantine,
         },
         "filters": {
             "pep_codes": pep_code,

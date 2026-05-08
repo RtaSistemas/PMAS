@@ -40,17 +40,15 @@ class TestIngestFile:
 
     def test_uses_existing_cycle(self, db_session, sample_cycle):
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
-        assert summary["quarantine_cycles_created"] == 0
+        assert summary["records_inserted"] == 1
         record = db_session.query(TimesheetRecord).first()
         assert record.cycle_id == sample_cycle.id
 
-    def test_creates_quarantine_cycle_for_unknown_date(self, db_session):
+    def test_unknown_date_row_is_skipped(self, db_session):
         row = {**BASE_ROW, "Data": "10/09/2099"}
         summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert summary["quarantine_cycles_created"] == 1
-        q = db_session.query(Cycle).filter_by(is_quarantine=True).first()
-        assert q is not None
-        assert "Quarentena" in q.name
+        assert summary["records_inserted"] == 0
+        assert db_session.query(Cycle).count() == 0
 
     def test_deduplication(self, db_session, sample_cycle):
         csv = _csv(BASE_ROW, BASE_ROW)

@@ -97,7 +97,6 @@ def sample_cycle(db_session):
         name="Jan/2026",
         start_date=date(2026, 1, 1),
         end_date=date(2026, 1, 31),
-        is_quarantine=False,
     )
     db_session.add(cycle)
     db_session.commit()

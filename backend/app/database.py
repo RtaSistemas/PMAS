@@ -60,6 +60,7 @@ def init_db() -> None:
     _migrate_columns()
     _seed_admin()
     _seed_config()
+    _seed_validation_rules()
 
 
 def _seed_config() -> None:
@@ -136,5 +137,49 @@ def _migrate_columns() -> None:
                     "ALTER TABLE global_config"
                     " ADD COLUMN anomaly_max_daily_hours FLOAT NOT NULL DEFAULT 24.0"
                 ))
+            if "ui_theme" not in gc_cols:
+                conn.execute(text("ALTER TABLE global_config ADD COLUMN ui_theme JSON"))
+            if "logo_path" not in gc_cols:
+                conn.execute(text("ALTER TABLE global_config ADD COLUMN logo_path VARCHAR"))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
+
+
+def _seed_validation_rules() -> None:
+    from datetime import datetime
+    from backend.app.models import ValidationRule
+
+    db = SessionLocal()
+    try:
+        if db.query(ValidationRule).filter_by(is_system=True).first() is not None:
+            return
+        rules = [
+            ValidationRule(is_system=True, order=1, field="horas_individuais", operator="gt",
+                           value="24", action="quarentena",
+                           description="Individual hours > 24 → quarantine",
+                           created_at=datetime.utcnow()),
+            ValidationRule(is_system=True, order=2, field="horas_individuais", operator="lt",
+                           value="0", action="quarentena",
+                           description="Negative individual hours → quarantine",
+                           created_at=datetime.utcnow()),
+            ValidationRule(is_system=True, order=3, field="soma_diaria", operator="gt",
+                           value="24", action="warning",
+                           description="Daily total > 24h → warning",
+                           created_at=datetime.utcnow()),
+            ValidationRule(is_system=True, order=4, field="soma_semanal", operator="gt",
+                           value="60", action="warning",
+                           description="Weekly total > 60h → warning",
+                           created_at=datetime.utcnow()),
+            ValidationRule(is_system=True, order=5, field="dia_semana", operator="in_lista",
+                           value="5,6", action="warning",
+                           description="Weekend entry → warning",
+                           created_at=datetime.utcnow()),
+            ValidationRule(is_system=True, order=6, field="pep_wbs", operator="vazio",
+                           value=None, action="info",
+                           description="Missing PEP code → info",
+                           created_at=datetime.utcnow()),
+        ]
+        db.add_all(rules)
+        db.commit()
+    finally:
+        db.close()

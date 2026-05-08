@@ -42,12 +42,11 @@ def _last_day(y: int, m: int) -> int:
     return calendar.monthrange(y, m)[1]
 
 
-def _mk_cycle(db, name, y, m, quarantine=False, is_active=True):
+def _mk_cycle(db, name, y, m, is_active=True):
     c = Cycle(
         name=name,
         start_date=date(y, m, 1),
         end_date=date(y, m, _last_day(y, m)),
-        is_quarantine=quarantine,
         is_active=is_active,
     )
     db.add(c); db.commit(); db.refresh(c)
@@ -289,7 +288,6 @@ class TestCycles:
         assert r.status_code == 201
         d = r.json()
         assert d["name"] == "Jan/2026"
-        assert d["is_quarantine"] is False
         assert d["is_active"] is True
 
     def test_date_range_validation(self, client):
@@ -441,7 +439,7 @@ class TestUploadTimesheet:
         r = client.post("/api/upload-timesheet",
                         files={"file": ("sheet.csv", data, "text/csv")})
         assert r.status_code == 200
-        assert r.json()["status"] == "ok"
+        assert r.json()["status"] in ("ok", "warnings")
         assert r.json()["records_inserted"] >= 1
 
     def test_xlsx_upload(self, client, db_session):
@@ -475,13 +473,12 @@ class TestUploadTimesheet:
         assert r.json()["records_inserted"] == 1
         assert r.json()["records_skipped"] >= 1
 
-    def test_quarantine_created_for_out_of_range_date(self, client, db_session):
+    def test_out_of_range_date_row_is_skipped(self, client, db_session):
         _mk_cycle(db_session, "Jan/2026", 2026, 1)
         data = _csv([("Out Of Range", "01/06/2025", 4.0)])  # no cycle covers June 2025
         r = client.post("/api/upload-timesheet", files={"file": ("t.csv", data, "text/csv")})
         assert r.status_code == 200
-        cycles = client.get("/api/cycles?include_archived=true").json()
-        assert any(c["is_quarantine"] for c in cycles)
+        assert r.json()["records_inserted"] == 0
 
     def test_weekend_anomaly_warning(self, client, db_session):
         _mk_cycle(db_session, "Jan/2026", 2026, 1)
@@ -662,12 +659,12 @@ class TestAnalytics:
         names = [x["cycle_name"] for x in result]
         assert names == sorted(names)
 
-    def test_trends_excludes_quarantine(self, client, db_session):
-        cy = _mk_cycle(db_session, "Q", 2026, 3, quarantine=True)
+    def test_trends_all_cycles_included(self, client, db_session):
+        cy = _mk_cycle(db_session, "Q", 2026, 3)
         co = _mk_collab(db_session, "q_collab")
         _mk_record(db_session, cy, co, "Q-PEP")
         names = [x["cycle_name"] for x in client.get("/api/trends").json()]
-        assert "Q" not in names
+        assert "Q" in names
 
     def test_trends_cpi_field_present(self, client, db_session):
         self._seed_evm(db_session)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, date as DateType, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ── Input schemas ────────────────────────────────────────────────────────────
@@ -80,7 +80,6 @@ class CycleOut(BaseModel):
     name: str
     start_date: DateType
     end_date: DateType
-    is_quarantine: bool
     is_closed: bool
     is_active: bool
     record_count: int
@@ -168,7 +167,6 @@ class CycleInfo(BaseModel):
     name: str
     start_date: Optional[DateType] = None
     end_date: Optional[DateType] = None
-    is_quarantine: bool
 
 
 class DashboardFilters(BaseModel):
@@ -278,8 +276,12 @@ class UploadOut(BaseModel):
     status: str
     records_inserted: int
     records_skipped: int
-    quarantine_cycles_created: int
+    quarantine_records_added: int = 0
+    warning_count: int = 0
+    info_count: int = 0
     warnings: List[str] = []
+    infos: List[str] = []
+    upload_session_id: Optional[int] = None
 
 
 class PepRadarItem(BaseModel):
@@ -309,3 +311,109 @@ class AuditLogItem(BaseModel):
     entity_id: int | None
     detail: str | None
     timestamp: datetime
+
+
+# ── Validation rules ─────────────────────────────────────────────────────────
+
+class ValidationRuleIn(BaseModel):
+    is_active: bool = True
+    order: int = Field(default=10, ge=1)
+    field: str
+    operator: str
+    value: Optional[str] = None
+    action: str
+    description: Optional[str] = None
+
+    def model_post_init(self, __context) -> None:
+        _AGGREGATE_FIELDS = {"soma_diaria", "soma_semanal"}
+        _AGGREGATE_ACTIONS = {"info", "warning"}
+        if self.field in _AGGREGATE_FIELDS and self.action not in _AGGREGATE_ACTIONS:
+            raise ValueError("Aggregate rules allow only info or warning.")
+
+
+class ValidationRuleOut(ValidationRuleIn):
+    id: int
+    is_system: bool
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Quarantine ───────────────────────────────────────────────────────────────
+
+class QuarantineRecordOut(BaseModel):
+    id: int
+    ingested_at: datetime
+    upload_session_id: Optional[int] = None
+    uploaded_by_username: Optional[str] = None
+    raw_data: Optional[dict] = None
+    quarantine_reason: str
+    rule_id: Optional[int] = None
+    reviewed: bool
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QuarantineReviewIn(BaseModel):
+    reviewed: bool
+
+
+# ── Upload session ───────────────────────────────────────────────────────────
+
+class UploadSessionOut(BaseModel):
+    id: int
+    uploaded_at: datetime
+    uploaded_by_username: str
+    source_file: str
+    records_inserted: int
+    records_skipped: int
+    quarantine_added: int
+    warning_count: int
+    info_count: int
+    status: str
+    warnings_detail: Optional[List[str]] = None
+    infos_detail: Optional[List[str]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── User preferences ─────────────────────────────────────────────────────────
+
+class UserPreferenceIn(BaseModel):
+    dashboard: Optional[dict] = None
+
+
+class UserPreferenceOut(BaseModel):
+    user_id: int
+    dashboard: Optional[dict] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── UI theme ─────────────────────────────────────────────────────────────────
+
+class UIThemeIn(BaseModel):
+    app_name: str = "PMAS"
+    color_primary: str = "#4f8ef7"
+    color_background: str = "#1a1a2e"
+    color_surface: str = "#16213e"
+    color_accent: str = "#e94560"
+    color_success: str = "#2ecc71"
+    color_warning: str = "#f39c12"
+    color_danger: str = "#e74c3c"
+    color_text: str = "#e0e0e0"
+    color_text_muted: str = "#8892a4"
+    density: Literal["compact", "normal", "relaxed"] = "normal"
+    chart_palette: List[str] = Field(default_factory=lambda: [
+        "#4f8ef7", "#e94560", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"
+    ])
+
+
+class UIThemeOut(UIThemeIn):
+    logo_url: Optional[str] = None

@@ -91,11 +91,9 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
             "file": fname,
             "records_inserted": summary["records_inserted"],
             "records_skipped": summary["records_skipped"],
-            "quarantine_cycles_created": summary["quarantine_cycles_created"],
+            "quarantine_records_added": summary.get("quarantine_records_added", 0),
             "warnings": summary["warnings"],
         })
-        for w in summary.get("anomaly_warnings", []):
-            log_audit(db, current_user, "anomaly", "timesheet", detail={"file": fname, "warning": w})
         db.commit()
     except ClosedCycleError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
@@ -106,4 +104,4 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
     except Exception as exc:
         log.exception("Erro inesperado durante ingestão.")
         raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
-    return {"status": "ok", **summary}
+    return summary

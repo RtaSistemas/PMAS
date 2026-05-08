@@ -10,7 +10,7 @@ from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, Times
 def _cycle(db, name, y, m):
     import calendar
     last = calendar.monthrange(y, m)[1]
-    c = Cycle(name=name, start_date=date(y, m, 1), end_date=date(y, m, last), is_quarantine=False)
+    c = Cycle(name=name, start_date=date(y, m, 1), end_date=date(y, m, last))
     db.add(c); db.commit(); db.refresh(c)
     return c
 
@@ -182,25 +182,16 @@ class TestTrends:
         names = [r["cycle_name"] for r in result]
         assert names == ["Jan/2026", "Feb/2026", "Mar/2026"]
 
-    def test_excludes_quarantine_cycles(self, client, db_session):
-        regular    = _cycle(db_session, "Regular", 2026, 1)
-        quarantine = Cycle(
-            name="Quarentena - Jan/2099",
-            start_date=date(2099, 1, 1), end_date=date(2099, 1, 31), is_quarantine=True,
-        )
-        db_session.add(quarantine); db_session.commit()
+    def test_all_cycles_appear_in_trends(self, client, db_session):
+        c1 = _cycle(db_session, "Jan/2026", 2026, 1)
+        c2 = _cycle(db_session, "Feb/2026", 2026, 2)
         co = _collab(db_session, "Laura")
-        _rec(db_session, regular, co, "P4")
-        r = TimesheetRecord(
-            collaborator_id=co.id, cycle_id=quarantine.id,
-            record_date=date(2099, 1, 10), pep_wbs="P4", pep_description="D",
-            normal_hours=8.0, extra_hours=0.0, standby_hours=0.0, cost_per_hour=0.0,
-        )
-        db_session.add(r); db_session.commit()
+        _rec(db_session, c1, co, "P4")
+        _rec(db_session, c2, co, "P4")
         result = client.get("/api/trends").json()
         names = [r["cycle_name"] for r in result]
-        assert "Regular" in names
-        assert "Quarentena - Jan/2099" not in names
+        assert "Jan/2026" in names
+        assert "Feb/2026" in names
 
     def test_filter_by_pep_wbs(self, client, db_session):
         cy = _cycle(db_session, "FPEP", 2026, 4)

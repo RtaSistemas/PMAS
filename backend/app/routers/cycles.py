@@ -19,7 +19,6 @@ router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(
 
 def _check_overlap(db: Session, start, end, exclude_id: int | None = None) -> None:
     q = db.query(Cycle).filter(
-        Cycle.is_quarantine == False,  # noqa: E712
         Cycle.start_date <= end,
         Cycle.end_date >= start,
     )
@@ -48,7 +47,6 @@ def _cycle_to_dict(c: Cycle, record_count: int = 0) -> dict:
         "name": c.name,
         "start_date": c.start_date,
         "end_date": c.end_date,
-        "is_quarantine": c.is_quarantine,
         "is_closed": c.is_closed,
         "is_active": c.is_active,
         "record_count": record_count,
@@ -74,7 +72,6 @@ def create_cycle(body: CycleIn, db: DbSession, current_user: CurrentUser):
         name=body.name,
         start_date=body.start_date,
         end_date=body.end_date,
-        is_quarantine=False,
     )
     db.add(cycle)
     db.flush()
@@ -155,14 +152,13 @@ def import_cycles(file: UploadFile, db: DbSession, current_user: CurrentUser):
             if db.query(Cycle).filter(Cycle.name == name).first():
                 continue
             overlap = db.query(Cycle).filter(
-                Cycle.is_quarantine == False,  # noqa: E712
                 Cycle.start_date <= end,
                 Cycle.end_date >= start,
             ).first()
             if overlap:
                 errors.append(f"Linha {i + 2}: sobreposição com ciclo '{overlap.name}'")
                 continue
-            db.add(Cycle(name=name, start_date=start, end_date=end, is_quarantine=False))
+            db.add(Cycle(name=name, start_date=start, end_date=end))
             created += 1
         except Exception as exc:
             db.rollback()
