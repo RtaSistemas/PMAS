@@ -11,7 +11,7 @@ from backend.app.database import Base, get_db
 from backend.app.deps import get_current_user
 from backend.app.main import app
 import backend.app.models  # noqa: F401 — registers all models in Base.metadata
-from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord, User
+from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord, User, ValidationRule
 
 # ---------------------------------------------------------------------------
 # Single in-memory engine shared across the entire test session.
@@ -61,6 +61,38 @@ def client(create_tables):
 # Per-test cleanup — wipe all rows between tests
 # ---------------------------------------------------------------------------
 
+def _seed_system_rules(db) -> None:
+    from datetime import datetime
+    rules = [
+        ValidationRule(is_system=True, order=1, field="horas_individuais", operator="gt",
+                       value="24", action="quarentena",
+                       description="Individual hours > 24 → quarantine",
+                       created_at=datetime.utcnow()),
+        ValidationRule(is_system=True, order=2, field="horas_individuais", operator="lt",
+                       value="0", action="quarentena",
+                       description="Negative individual hours → quarantine",
+                       created_at=datetime.utcnow()),
+        ValidationRule(is_system=True, order=3, field="soma_diaria", operator="gt",
+                       value="24", action="warning",
+                       description="Daily total > 24h → warning",
+                       created_at=datetime.utcnow()),
+        ValidationRule(is_system=True, order=4, field="soma_semanal", operator="gt",
+                       value="60", action="warning",
+                       description="Weekly total > 60h → warning",
+                       created_at=datetime.utcnow()),
+        ValidationRule(is_system=True, order=5, field="dia_semana", operator="in_lista",
+                       value="5,6", action="warning",
+                       description="Weekend entry → warning",
+                       created_at=datetime.utcnow()),
+        ValidationRule(is_system=True, order=6, field="pep_wbs", operator="vazio",
+                       value=None, action="info",
+                       description="Missing PEP code → info",
+                       created_at=datetime.utcnow()),
+    ]
+    db.add_all(rules)
+    db.commit()
+
+
 @pytest.fixture(autouse=True)
 def clean_db(create_tables):
     # Wipe before each test so every test starts from a known empty state.
@@ -69,6 +101,8 @@ def clean_db(create_tables):
         for table in reversed(Base.metadata.sorted_tables):
             db.execute(table.delete())
         db.commit()
+        # Re-seed system ValidationRules so Phase 2 rule evaluation works in tests.
+        _seed_system_rules(db)
     finally:
         db.close()
     yield
@@ -97,7 +131,6 @@ def sample_cycle(db_session):
         name="Jan/2026",
         start_date=date(2026, 1, 1),
         end_date=date(2026, 1, 31),
-        is_quarantine=False,
     )
     db_session.add(cycle)
     db_session.commit()

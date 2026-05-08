@@ -115,23 +115,11 @@ class TestDashboardByCycle:
         assert bva[0]["actual_hours"] == 40.0
         assert bva[0]["budget_hours"] == 160.0
 
-    def test_quarantine_cycle_flagged(self, client, db_session):
-        qcycle = Cycle(
-            name="Quarentena - Jan/2025",
-            start_date=date(2025, 1, 1),
-            end_date=date(2025, 1, 31),
-            is_quarantine=True,
-        )
-        db_session.add(qcycle)
-        db_session.commit()
-        r = client.get(f"/api/dashboard/{qcycle.id}")
-        assert r.json()["cycle"]["is_quarantine"] is True
-
     def test_isolates_records_by_cycle(self, client, db_session, sample_collaborator):
         c1 = Cycle(name="C1", start_date=date(2026, 2, 1),
-                   end_date=date(2026, 2, 28), is_quarantine=False)
+                   end_date=date(2026, 2, 28))
         c2 = Cycle(name="C2", start_date=date(2026, 3, 1),
-                   end_date=date(2026, 3, 31), is_quarantine=False)
+                   end_date=date(2026, 3, 31))
         db_session.add_all([c1, c2]); db_session.commit()
         _add_record(db_session, c1, sample_collaborator, normal=10.0,
                     day=1)  # day is in Jan but cycle fixture forces the cycle

@@ -7,7 +7,12 @@ import pandas as pd
 import pytest
 
 from backend.app.models import Collaborator, Cycle, TimesheetRecord
-from backend.app.services.ingestion import _safe_hours, _str_or_none, ingest_file
+from backend.app.services.ingestion import (
+    ArchivedCycleError,
+    _safe_hours,
+    _str_or_none,
+    ingest_file,
+)
 
 
 def _csv(*rows: dict) -> bytes:
@@ -40,17 +45,14 @@ class TestIngestFile:
 
     def test_uses_existing_cycle(self, db_session, sample_cycle):
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
-        assert summary["quarantine_cycles_created"] == 0
+        assert summary["records_inserted"] == 1
         record = db_session.query(TimesheetRecord).first()
         assert record.cycle_id == sample_cycle.id
 
-    def test_creates_quarantine_cycle_for_unknown_date(self, db_session):
+    def test_unknown_date_raises_archived_error(self, db_session):
         row = {**BASE_ROW, "Data": "10/09/2099"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert summary["quarantine_cycles_created"] == 1
-        q = db_session.query(Cycle).filter_by(is_quarantine=True).first()
-        assert q is not None
-        assert "Quarentena" in q.name
+        with pytest.raises(ArchivedCycleError):
+            ingest_file(_csv(row), "t.csv", db_session)
 
     def test_deduplication(self, db_session, sample_cycle):
         csv = _csv(BASE_ROW, BASE_ROW)
@@ -328,80 +330,56 @@ class TestSurgicalDeletion:
 
 
 # ===========================================================================
-# Tests for Issue #70: _safe_hours unit tests
+# Tests for Issue #70 / Issue #78: _safe_hours unit tests
 # ===========================================================================
 
 class TestSafeHours:
-    """Unit tests for _safe_hours — no DB required."""
+    """Unit tests for _safe_hours(value) -> float | None — no DB required.
 
-    def _w(self):
-        return []
+    None means structurally unparseable (Phase 1 quarantine).
+    Negative and >24h values pass through so ValidationRules can act on them.
+    """
 
     def test_valid_float(self):
-        w = self._w()
-        assert _safe_hours(8.0, 2, "col", w) == 8.0
-        assert not w
+        assert _safe_hours(8.0) == 8.0
 
-    def test_none_is_silent_zero(self):
-        w = self._w()
-        assert _safe_hours(None, 2, "col", w) == 0.0
-        assert not w  # None is silently treated as 0 — no warning
+    def test_none_returns_none(self):
+        assert _safe_hours(None) is None
 
-    def test_empty_string_warns(self):
-        w = self._w()
-        assert _safe_hours("", 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_empty_string_returns_none(self):
+        assert _safe_hours("") is None
 
-    def test_nan_string_warns(self):
-        w = self._w()
-        assert _safe_hours("nan", 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_nan_string_returns_none(self):
+        assert _safe_hours("nan") is None
 
-    def test_dash_string_warns(self):
-        w = self._w()
-        assert _safe_hours("—", 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_dash_string_returns_none(self):
+        assert _safe_hours("—") is None
 
     def test_comma_decimal_parsed_silently(self):
-        w = self._w()
-        assert _safe_hours("8,5", 2, "col", w) == 8.5
-        assert not w
+        assert _safe_hours("8,5") == 8.5
 
-    def test_non_numeric_string_warns(self):
-        w = self._w()
-        assert _safe_hours("abc", 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_non_numeric_string_returns_none(self):
+        assert _safe_hours("abc") is None
 
-    def test_nan_float_warns(self):
-        import math as _math
-        w = self._w()
-        assert _safe_hours(float("nan"), 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_nan_float_returns_none(self):
+        assert _safe_hours(float("nan")) is None
 
-    def test_inf_float_warns(self):
-        w = self._w()
-        assert _safe_hours(float("inf"), 2, "col", w) == 0.0
-        assert len(w) == 1
+    def test_inf_float_returns_none(self):
+        assert _safe_hours(float("inf")) is None
 
-    def test_negative_warns(self):
-        w = self._w()
-        assert _safe_hours(-3.0, 2, "col", w) == 0.0
-        assert "negativas" in w[0]
+    def test_negative_returns_float(self):
+        # Negative values pass through — ValidationRules (Phase 2) handle them.
+        assert _safe_hours(-3.0) == -3.0
 
-    def test_hard_cap_warns(self):
-        w = self._w()
-        assert _safe_hours(25.0, 2, "col", w) == 0.0
-        assert "absurdo" in w[0]
+    def test_hard_cap_returns_float(self):
+        # Values >24h pass through — ValidationRules (Phase 2) handle them.
+        assert _safe_hours(25.0) == 25.0
 
     def test_exactly_at_cap_is_valid(self):
-        w = self._w()
-        assert _safe_hours(24.0, 2, "col", w) == 24.0
-        assert not w
+        assert _safe_hours(24.0) == 24.0
 
-    def test_zero_is_valid_no_warning(self):
-        w = self._w()
-        assert _safe_hours(0.0, 2, "col", w) == 0.0
-        assert not w  # 0 is a valid float (guard in INSERT loop, not in _safe_hours)
+    def test_zero_is_valid(self):
+        assert _safe_hours(0.0) == 0.0
 
 
 # ===========================================================================
@@ -415,14 +393,14 @@ class TestIngestionHardening:
         row = {**BASE_ROW, "Horas totais (decimal)": ""}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert summary["records_skipped"] == 1
+        assert summary["quarantine_records_added"] == 1
         assert db_session.query(TimesheetRecord).count() == 0
 
     def test_nan_hours_row_is_skipped(self, db_session, sample_cycle):
         row = {**BASE_ROW, "Horas totais (decimal)": float("nan")}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert summary["records_skipped"] == 1
+        assert summary["quarantine_records_added"] == 1
         assert db_session.query(TimesheetRecord).count() == 0
 
     def test_comma_decimal_hours_parsed(self, db_session, sample_cycle):
@@ -433,18 +411,18 @@ class TestIngestionHardening:
         assert r.normal_hours == 8.5
 
     def test_negative_hours_row_is_skipped(self, db_session, sample_cycle):
+        # Phase 2: system ValidationRule (horas_individuais < 0 → quarentena)
         row = {**BASE_ROW, "Horas totais (decimal)": -3.0}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert summary["records_skipped"] == 1
-        assert any("negativas" in w for w in summary["warnings"])
+        assert summary["quarantine_records_added"] == 1
 
     def test_hard_cap_hours_row_is_skipped(self, db_session, sample_cycle):
+        # Phase 2: system ValidationRule (horas_individuais > 24 → quarentena)
         row = {**BASE_ROW, "Horas totais (decimal)": 25.0}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert summary["records_skipped"] == 1
-        assert any("absurdo" in w for w in summary["warnings"])
+        assert summary["quarantine_records_added"] == 1
 
     def test_invalid_hours_row_with_valid_rows_no_rollback(self, db_session, sample_cycle):
         """Invalid hours in one row must not roll back the entire upload."""
@@ -452,7 +430,7 @@ class TestIngestionHardening:
         good_row = {**BASE_ROW, "Colaborador": "Maria Souza"}
         summary = ingest_file(_csv(bad_row, good_row), "t.csv", db_session)
         assert summary["records_inserted"] == 1
-        assert summary["records_skipped"] == 1
+        assert summary["quarantine_records_added"] == 1
 
     def test_invalid_collab_name_row_is_filtered(self, db_session, sample_cycle):
         row = {**BASE_ROW, "Colaborador": "nan"}
@@ -483,19 +461,10 @@ class TestIngestionHardening:
         assert r.standby_hours == 0.0
         assert any("Sobreaviso simultaneamente" in w for w in summary["warnings"])
 
-    def test_future_date_warning(self, db_session):
+    def test_date_outside_all_cycles_raises_archived_error(self, db_session):
         row = {**BASE_ROW, "Data": "15/01/2099"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert any("futuras" in w for w in summary["warnings"])
-
-    def test_suspicious_pep_format_warns(self, db_session, sample_cycle):
-        row = {**BASE_ROW, "Código PEP": "abc"}
-        summary = ingest_file(_csv(row), "t.csv", db_session)
-        assert any("formato suspeito" in w for w in summary["warnings"])
-
-    def test_valid_pep_format_no_suspicious_warning(self, db_session, sample_cycle):
-        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
-        assert not any("formato suspeito" in w for w in summary["warnings"])
+        with pytest.raises(ArchivedCycleError):
+            ingest_file(_csv(row), "t.csv", db_session)
 
     def test_zero_rate_warning_emitted(self, db_session, sample_cycle):
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)

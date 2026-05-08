@@ -53,7 +53,6 @@ class TestCreateCycle:
         assert data["name"] == "Fev/2026"
         assert data["start_date"] == "2026-02-01"
         assert data["end_date"] == "2026-02-28"
-        assert data["is_quarantine"] is False
         assert data["record_count"] == 0
         assert "id" in data
 

@@ -219,7 +219,7 @@ class TestTeam:
 
 class TestRateLookupIngestion:
     def _make_cycle(self, db):
-        c = Cycle(name="Jan/2026", start_date=date(2026, 1, 1), end_date=date(2026, 1, 31), is_quarantine=False)
+        c = Cycle(name="Jan/2026", start_date=date(2026, 1, 1), end_date=date(2026, 1, 31))
         db.add(c); db.commit()
 
     def test_no_seniority_gives_zero_cost(self, client, db_session):

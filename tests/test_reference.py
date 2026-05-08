@@ -47,9 +47,9 @@ class TestCollaborators:
 
     def test_filter_by_cycle(self, client, db_session, sample_collaborator):
         c1 = Cycle(name="C1", start_date=date(2026, 2, 1),
-                   end_date=date(2026, 2, 28), is_quarantine=False)
+                   end_date=date(2026, 2, 28), is_closed=False)
         c2 = Cycle(name="C2", start_date=date(2026, 3, 1),
-                   end_date=date(2026, 3, 31), is_quarantine=False)
+                   end_date=date(2026, 3, 31), is_closed=False)
         db_session.add_all([c1, c2]); db_session.commit()
 
         other = Collaborator(name="Outro"); db_session.add(other); db_session.commit()
@@ -118,9 +118,9 @@ class TestPeps:
 
     def test_filter_by_cycle(self, client, db_session, sample_collaborator):
         c1 = Cycle(name="FC1", start_date=date(2026, 4, 1),
-                   end_date=date(2026, 4, 30), is_quarantine=False)
+                   end_date=date(2026, 4, 30), is_closed=False)
         c2 = Cycle(name="FC2", start_date=date(2026, 5, 1),
-                   end_date=date(2026, 5, 31), is_quarantine=False)
+                   end_date=date(2026, 5, 31), is_closed=False)
         db_session.add_all([c1, c2]); db_session.commit()
         _add_record(db_session, c1, sample_collaborator, pep="PEP-C1")
         _add_record(db_session, c2, sample_collaborator, pep="PEP-C2")

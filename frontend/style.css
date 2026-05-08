@@ -566,3 +566,151 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   body, main, .card, .tab-section { background: #fff !important; color: #000 !important; }
   .badge-status { border: 1px solid #ccc; background: #f5f5f5 !important; color: #000 !important; }
 }
+
+/* ── Theme custom properties (overridden by JS from /api/theme) ── */
+:root {
+  --theme-primary:     #4f8ef7;
+  --theme-bg:          #1a1a2e;
+  --theme-surface:     #16213e;
+  --theme-accent:      #e94560;
+  --theme-success:     #2ecc71;
+  --theme-warning:     #f39c12;
+  --theme-danger:      #e74c3c;
+  --theme-text:        #e0e0e0;
+  --theme-text-muted:  #8892a4;
+}
+
+/* ── Header logo image (when custom logo is set) ─────────────── */
+.header-logo-img {
+  height: 28px; max-width: 120px; object-fit: contain;
+  border-radius: 4px;
+}
+
+/* ── My Area tab ─────────────────────────────────────────────── */
+.my-area-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 800px) {
+  .my-area-grid { grid-template-columns: 1fr; }
+}
+
+.pref-section-title {
+  font-size: 0.7rem; font-weight: 700; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.09em;
+  margin-bottom: 1rem;
+}
+
+/* ── Sortable drag-and-drop (chart layout + rules) ───────────── */
+.sortable-list {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  list-style: none;
+}
+.sortable-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.6rem 0.85rem;
+  cursor: grab; user-select: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sortable-item:hover { border-color: var(--border-hi); }
+.sortable-item.sortable-chosen { cursor: grabbing; box-shadow: var(--shadow); }
+.sortable-item.sortable-ghost { opacity: 0.4; border-style: dashed; }
+.sortable-handle {
+  color: var(--text-3); font-size: 0.9rem; flex-shrink: 0; cursor: grab;
+}
+.sortable-item-label { flex: 1; font-size: 0.84rem; }
+.sortable-item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+/* ── Validation rules panel ──────────────────────────────────── */
+.rule-badge {
+  display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px;
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; flex-shrink: 0;
+}
+.rule-badge.info      { background: rgba(14,165,233,0.12); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.25); }
+.rule-badge.warning   { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+.rule-badge.quarentena{ background: rgba(240,64,64,0.12);  color: #f87171; border: 1px solid rgba(240,64,64,0.25); }
+.rule-badge.descarte  { background: rgba(148,0,211,0.12);  color: #c084fc; border: 1px solid rgba(148,0,211,0.25); }
+.rule-badge.system    { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.25); }
+
+.rule-inactive { opacity: 0.45; }
+
+/* ── Quarantine review panel ─────────────────────────────────── */
+.qr-raw-data {
+  font-size: 0.75rem; color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.75rem;
+  white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto;
+}
+
+/* ── Theme editor panel ──────────────────────────────────────── */
+.theme-color-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.85rem;
+}
+.theme-swatch-row {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.theme-swatch-row input[type="color"] {
+  width: 2.2rem; height: 2.2rem; border-radius: var(--radius);
+  border: 1px solid var(--border-hi); padding: 2px; background: var(--surface);
+  cursor: pointer; flex-shrink: 0;
+}
+.theme-preview-bar {
+  height: 4px; border-radius: 2px; margin-top: 0.5rem;
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-accent));
+}
+
+/* ── Chart grid / card layout (data-driven) ─────────────────────────────── */
+.chart-grid[data-cols='1'] { grid-template-columns: 1fr; }
+.chart-grid[data-cols='2'] { grid-template-columns: 1fr 1fr; }
+.chart-grid[data-cols='3'] { grid-template-columns: 1fr 1fr 1fr; }
+
+.chart-card[data-size='small']  { grid-column: span 1; min-height: 240px; }
+.chart-card[data-size='medium'] { grid-column: span 1; min-height: 360px; }
+.chart-card[data-size='large']  { grid-column: span 2; min-height: 480px; }
+.chart-card[data-size='full']   { grid-column: 1 / -1; min-height: 520px; }
+
+/* ── Drag-and-drop ───────────────────────────────────────────────────────── */
+.drag-handle { cursor: grab; color: var(--color-text-muted, #8892a4); flex-shrink: 0; }
+.drag-handle:active { cursor: grabbing; }
+
+.layout-card {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--color-surface, var(--surface));
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+/* ── Palette swatches ────────────────────────────────────────────────────── */
+.swatch {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer; flex-shrink: 0;
+  transition: transform 0.1s;
+}
+.swatch.active { border-color: var(--color-text, #e0e0e0); }
+.swatch:hover  { transform: scale(1.2); }
+.palette-swatches { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
+
+/* ── Quarantine type / status badges ─────────────────────────────────────── */
+.badge-structural { background: #422006; color: #fcd34d; border: 1px solid #92400e; }
+.badge-rule       { background: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; }
+.badge-reviewed   { background: #14532d; color: #86efac; border: 1px solid #166534; }
+.badge-pending    { background: #292524; color: #a8a29e; border: 1px solid #44403c; }
+
+/* ── Validation rule helpers ─────────────────────────────────────────────── */
+.aggregate-hint { font-size: 0.75rem; color: var(--color-warning, #f39c12); margin-top: 0.25rem; }
+
+/* ── Theme appearance panel ──────────────────────────────────────────────── */
+.theme-preset-btn {
+  border: 1px solid var(--border);
+  background: var(--color-surface, var(--surface));
+  padding: 0.4rem 0.8rem; border-radius: var(--radius);
+  cursor: pointer; color: var(--color-text, #e0e0e0);
+}
+.theme-preset-btn.active {
+  border-color: var(--color-primary, var(--primary));
+  color: var(--color-primary, var(--primary));
+}

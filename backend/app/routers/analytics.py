@@ -135,7 +135,6 @@ def get_trends(
             ).label("actual_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
-        .filter(Cycle.is_quarantine == False)  # noqa: E712
     )
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
@@ -182,7 +181,6 @@ def get_trends(
             )
             .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
             .filter(
-                Cycle.is_quarantine == False,  # noqa: E712
                 TimesheetRecord.pep_wbs.in_(list(budgeted_projects.keys())),
             )
         )
@@ -345,7 +343,6 @@ def get_forecast(
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(
             TimesheetRecord.pep_wbs == pep_wbs,
-            Cycle.is_quarantine == False,  # noqa: E712
         )
     )
     if date_from is not None:
@@ -425,7 +422,6 @@ def get_forecast(
         future = (
             db.query(Cycle)
             .filter(
-                Cycle.is_quarantine == False,  # noqa: E712
                 Cycle.start_date > rows[-1].cycle_start,
             )
             .order_by(Cycle.start_date)

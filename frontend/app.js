@@ -310,7 +310,8 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'projects') loadProjectsTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
-    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); }
+    if (btn.dataset.tab === 'my')       _initMyArea();
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
   });
 });
 
@@ -498,16 +499,9 @@ csvInput.addEventListener('change', async () => {
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
     let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
     if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
-    if (json.quarantine_cycles_created > 0) msg += ` ⚠ ${json.quarantine_cycles_created} ciclo(s) de Quarentena criado(s).`;
-    notify(msg, json.quarantine_cycles_created > 0 ? 'info' : 'success');
-    const warnings = json.warnings || [];
-    const panel = document.getElementById('anomalyPanel');
-    if (warnings.length) {
-      document.getElementById('anomalyList').innerHTML = warnings.map(w => `<li>${escHtml(w)}</li>`).join('');
-      panel.hidden = false;
-    } else {
-      panel.hidden = true;
-    }
+    if (json.quarantine_records_added > 0)  msg += ` ⚠ ${json.quarantine_records_added} em quarentena.`;
+    const severity = json.quarantine_records_added > 0 ? 'info' : 'success';
+    notify(msg, severity);
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -751,7 +745,6 @@ function _computeTrendsWindow(cycleIds, dateFrom, dateTo) {
   if (!cycleIds.length) return { dateFrom, dateTo };
 
   const sorted = [..._allCycles]
-    .filter(c => !c.is_quarantine)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
   if (!sorted.length) return { dateFrom, dateTo };
@@ -837,7 +830,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     // When no specific cycles are selected, use all non-quarantine cycles
     const effectiveCycleIds = cycleIds.length > 0
       ? cycleIds
-      : (_allCycles || []).filter(c => !c.is_quarantine).map(c => c.id);
+      : (_allCycles || []).map(c => c.id);
 
     if (!effectiveCycleIds.length) {
       _showEmpty('pepCpiEmpty', true);
@@ -1276,7 +1269,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
       apiFetch(`/api/projects/${_planProjectId}/plans`),
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
-    const available = allCycles.filter(c => !plannedCycleIds.has(c.id) && !c.is_quarantine);
+    const available = allCycles.filter(c => !plannedCycleIds.has(c.id));
     if (!available.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
     const cycleId = parseInt(prompt(
       'ID do ciclo:\n' + available.map(c => `${c.id} — ${c.name}`).join('\n')
@@ -2253,7 +2246,7 @@ function _renderCyclesTable(cycles) {
       <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
-      <td><span class="badge-status ${c.is_quarantine ? 'quarantine' : 'ativo'}">${c.is_quarantine ? _t('badge.quarantine') : _t('badge.regular')}</span></td>
+      <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
@@ -2348,9 +2341,9 @@ async function deleteCycle(id, name, count) {
 
 document.getElementById('exportCyclesBtn').addEventListener('click', () => {
   if (!_allCycles.length) { notify('Nenhum ciclo para exportar.', 'info'); return; }
-  const header = 'name,start_date,end_date,is_quarantine,is_closed,record_count';
+  const header = 'name,start_date,end_date,is_closed,record_count';
   const rows = _allCycles.map(c =>
-    `"${c.name}",${c.start_date},${c.end_date},${c.is_quarantine},${c.is_closed},${c.record_count}`
+    `"${c.name}",${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -2857,6 +2850,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     }
     const { access_token } = await res.json();
     sessionStorage.setItem('access_token', access_token);
+    sessionStorage.setItem('username', username);
     document.getElementById('loginOverlay').setAttribute('hidden', '');
     document.getElementById('appShell').removeAttribute('hidden');
     _bootApp();
@@ -2867,6 +2861,8 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('username');
+  sessionStorage.removeItem('role');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
 });
@@ -3006,12 +3002,469 @@ document.getElementById('auditEntityFilter').addEventListener('change', loadAudi
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
 
 // ---------------------------------------------------------------------------
+// Theme loader (public endpoint — no auth required)
+// ---------------------------------------------------------------------------
+const _DENSITY_MAP = {
+  compact:  { spacing: '0.6rem', fontSize: '0.8rem' },
+  normal:   { spacing: '1rem',   fontSize: '0.875rem' },
+  relaxed:  { spacing: '1.4rem', fontSize: '1rem' },
+};
+
+function _getPalette() {
+  return window._CHART_PALETTE || ['#4f8ef7','#e94560','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+}
+
+function _resolveSeriesColor(chartId, seriesName, fallbackIndex) {
+  const prefs = window._userPrefs?.dashboard?.charts?.find(c => c.id === chartId);
+  const custom = prefs?.options?.series_colors?.[seriesName];
+  if (custom) return custom;
+  const palette = _getPalette();
+  return palette[fallbackIndex % palette.length] || '#4f8ef7';
+}
+
+async function _loadTheme() {
+  try {
+    const t = await fetch('/api/theme').then(r => r.json());
+    const root = document.documentElement;
+
+    // Standard --color-* vars (used by new CSS classes)
+    root.style.setProperty('--color-primary',    t.color_primary    || '#4f8ef7');
+    root.style.setProperty('--color-background', t.color_background || '#1a1a2e');
+    root.style.setProperty('--color-surface',    t.color_surface    || '#16213e');
+    root.style.setProperty('--color-accent',     t.color_accent     || '#e94560');
+    root.style.setProperty('--color-success',    t.color_success    || '#2ecc71');
+    root.style.setProperty('--color-warning',    t.color_warning    || '#f39c12');
+    root.style.setProperty('--color-danger',     t.color_danger     || '#e74c3c');
+    root.style.setProperty('--color-text',       t.color_text       || '#e0e0e0');
+    root.style.setProperty('--color-text-muted', t.color_text_muted || '#8892a4');
+
+    // Legacy --theme-* aliases (used by existing CSS)
+    root.style.setProperty('--theme-primary',    t.color_primary    || '#4f8ef7');
+    root.style.setProperty('--theme-bg',         t.color_background || '#1a1a2e');
+    root.style.setProperty('--theme-surface',    t.color_surface    || '#16213e');
+    root.style.setProperty('--theme-accent',     t.color_accent     || '#e94560');
+    root.style.setProperty('--theme-success',    t.color_success    || '#2ecc71');
+    root.style.setProperty('--theme-warning',    t.color_warning    || '#f39c12');
+    root.style.setProperty('--theme-danger',     t.color_danger     || '#e74c3c');
+    root.style.setProperty('--theme-text',       t.color_text       || '#e0e0e0');
+    root.style.setProperty('--theme-text-muted', t.color_text_muted || '#8892a4');
+
+    // Density
+    const density = _DENSITY_MAP[t.density] || _DENSITY_MAP.normal;
+    root.style.setProperty('--density-spacing',   density.spacing);
+    root.style.setProperty('--density-font-size', density.fontSize);
+
+    // Chart palette
+    window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
+
+    // App name — both id and data-app-name selectors
+    const appName = t.app_name || 'PMAS';
+    document.title = `${appName} — Dashboard`;
+    document.querySelectorAll('[data-app-name]').forEach(el => { el.textContent = appName; });
+
+    // Logo
+    if (t.logo_url) {
+      document.querySelectorAll('[data-app-logo]').forEach(el => { el.src = escHtml(t.logo_url); });
+      const box = document.getElementById('headerLogoBox');
+      if (box) box.innerHTML = `<img src="${escHtml(t.logo_url)}" class="header-logo-img" alt="Logo" data-app-logo />`;
+    }
+  } catch (_) { /* silently ignore — not critical */ }
+}
+
+// ---------------------------------------------------------------------------
+// My Area tab
+// ---------------------------------------------------------------------------
+let _currentUserInfo = null;
+
+function _initMyArea() {
+  const usernameEl = document.getElementById('myProfileUsername');
+  if (usernameEl) {
+    const payload = _getTokenPayload() || {};
+    const stored  = sessionStorage.getItem('username') || payload.sub || '—';
+    const role    = payload.role || '';
+    usernameEl.textContent = `${stored} (${role})`;
+    _currentUserInfo = { username: stored, role };
+  }
+  _initChartLayout();
+  _loadMyPreferences();
+}
+
+// Chart layout drag-drop
+let _sortableLayout = null;
+function _initChartLayout() {
+  const list = document.getElementById('chartLayoutList');
+  if (!list || typeof Sortable === 'undefined') return;
+  if (_sortableLayout) _sortableLayout.destroy();
+  _sortableLayout = Sortable.create(list, { animation: 150, handle: '.sortable-handle' });
+}
+
+async function _loadMyPreferences() {
+  try {
+    const pref = await apiFetch('/api/my/preferences');
+    if (pref.dashboard && Array.isArray(pref.dashboard.chart_order)) {
+      const list = document.getElementById('chartLayoutList');
+      if (!list) return;
+      const order = pref.dashboard.chart_order;
+      const items = [...list.querySelectorAll('.sortable-item')];
+      order.forEach((chartId, idx) => {
+        const item = items.find(i => i.dataset.chart === chartId);
+        if (item) list.appendChild(item);
+      });
+    }
+  } catch (_) {}
+}
+
+document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => {
+  const list = document.getElementById('chartLayoutList');
+  if (!list) return;
+  const order = [...list.querySelectorAll('.sortable-item')].map(i => i.dataset.chart);
+  try {
+    await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order } });
+    notify('Layout salvo.', 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+// My Area — change password
+document.getElementById('myChangePwdBtn')?.addEventListener('click', () => {
+  document.getElementById('myCurrentPwdInput').value = '';
+  document.getElementById('myNewPwdInput').value = '';
+  document.getElementById('myPwdError').textContent = '';
+  document.getElementById('myPwdModal').removeAttribute('hidden');
+});
+document.getElementById('myPwdModalClose')?.addEventListener('click', () => {
+  document.getElementById('myPwdModal').setAttribute('hidden', '');
+});
+document.getElementById('myPwdCancelBtn')?.addEventListener('click', () => {
+  document.getElementById('myPwdModal').setAttribute('hidden', '');
+});
+document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
+  const currentPwd = document.getElementById('myCurrentPwdInput').value.trim();
+  const newPwd     = document.getElementById('myNewPwdInput').value.trim();
+  const errEl      = document.getElementById('myPwdError');
+  errEl.textContent = '';
+  if (!currentPwd || !newPwd) { errEl.textContent = 'Preencha todos os campos.'; return; }
+  try {
+    const stored = sessionStorage.getItem('username') || '';
+    // Find own user id first
+    const users = await apiFetch('/api/users');
+    const me = users.find(u => u.username === stored);
+    if (!me) { errEl.textContent = 'Usuário não encontrado.'; return; }
+    await apiFetchJSON(`/api/users/${me.id}/password`, 'PATCH', {
+      new_password: newPwd,
+      current_password: currentPwd,
+    });
+    document.getElementById('myPwdModal').setAttribute('hidden', '');
+    notify('Senha alterada com sucesso.', 'success');
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+// ---------------------------------------------------------------------------
+// Validation Rules (Admin tab)
+// ---------------------------------------------------------------------------
+let _rules = [];
+let _rulesSortable = null;
+let _editingRuleId = null;
+
+async function loadRulesList() {
+  try {
+    _rules = await apiFetch('/api/validation-rules');
+    _renderRulesList();
+  } catch (e) { notify(`Erro ao carregar regras: ${e.message}`, 'error'); }
+}
+
+function _renderRulesList() {
+  const ul = document.getElementById('rulesList');
+  if (!ul) return;
+  if (!_rules.length) {
+    ul.innerHTML = '<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Nenhuma regra cadastrada.</li>';
+    return;
+  }
+  ul.innerHTML = _rules.map(r => {
+    const actionBadge = `<span class="rule-badge ${r.action}">${r.action}</span>`;
+    const systemBadge = r.is_system ? '<span class="rule-badge system">🔒 sistema</span>' : '';
+    const activeClass = r.is_active ? '' : 'rule-inactive';
+    const editBtn  = r.is_system ? '' :
+      `<button class="btn btn-secondary btn-sm" onclick="openEditRule(${r.id})">✎</button>`;
+    const delBtn = r.is_system ? '' :
+      `<button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">✕</button>`;
+    const toggleTitle = r.is_active ? 'Desativar' : 'Ativar';
+    return `<li class="sortable-item ${activeClass}" data-rule-id="${r.id}">
+      <span class="sortable-handle">⠿</span>
+      <span class="sortable-item-label">
+        <strong>${escHtml(r.field)}</strong>
+        <span style="color:#64748b;font-size:.75rem;margin:0 .3rem">${escHtml(r.operator)}</span>
+        <span style="color:#e2e8f0">${escHtml(r.value || '—')}</span>
+        ${r.description ? `<span style="color:#64748b;font-size:.75rem;margin-left:.5rem">— ${escHtml(r.description)}</span>` : ''}
+      </span>
+      ${actionBadge}${systemBadge}
+      <div class="sortable-item-actions">
+        <button class="btn btn-secondary btn-sm" title="${toggleTitle}" onclick="toggleRule(${r.id})">${r.is_active ? '⏸' : '▶'}</button>
+        ${editBtn}${delBtn}
+      </div>
+    </li>`;
+  }).join('');
+
+  // Init SortableJS on rules list (non-system rules can be reordered)
+  if (_rulesSortable) _rulesSortable.destroy();
+  _rulesSortable = Sortable.create(ul, {
+    animation: 150,
+    handle: '.sortable-handle',
+    onEnd: async () => {
+      const items = [...ul.querySelectorAll('[data-rule-id]')];
+      const orderMap = {};
+      items.forEach((el, idx) => { orderMap[el.dataset.ruleId] = idx + 1; });
+      try {
+        await apiFetchJSON('/api/validation-rules/reorder', 'POST', orderMap);
+        loadRulesList();
+      } catch (e) { notify(`Erro ao reordenar: ${e.message}`, 'error'); }
+    },
+  });
+}
+
+function _openRuleModal(rule = null) {
+  _editingRuleId = rule ? rule.id : null;
+  document.getElementById('ruleModalTitle').textContent = rule ? 'Editar Regra' : 'Nova Regra de Validação';
+  document.getElementById('ruleFieldInput').value    = rule?.field    || 'horas_individuais';
+  document.getElementById('ruleOperatorInput').value = rule?.operator || 'gt';
+  document.getElementById('ruleValueInput').value    = rule?.value    || '';
+  document.getElementById('ruleActionInput').value   = rule?.action   || 'warning';
+  document.getElementById('ruleOrderInput').value    = rule?.order    || 10;
+  document.getElementById('ruleActiveInput').value   = rule ? (rule.is_active ? 'true' : 'false') : 'true';
+  document.getElementById('ruleDescInput').value     = rule?.description || '';
+  document.getElementById('ruleError').textContent   = '';
+  document.getElementById('ruleModal').removeAttribute('hidden');
+}
+
+function openEditRule(id) {
+  const rule = _rules.find(r => r.id === id);
+  if (rule) _openRuleModal(rule);
+}
+
+document.getElementById('newRuleBtn')?.addEventListener('click', () => _openRuleModal());
+document.getElementById('ruleModalClose')?.addEventListener('click',  () => document.getElementById('ruleModal').setAttribute('hidden', ''));
+document.getElementById('ruleCancelBtn')?.addEventListener('click',   () => document.getElementById('ruleModal').setAttribute('hidden', ''));
+
+document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
+  const errEl = document.getElementById('ruleError');
+  errEl.textContent = '';
+  const payload = {
+    field:       document.getElementById('ruleFieldInput').value,
+    operator:    document.getElementById('ruleOperatorInput').value,
+    value:       document.getElementById('ruleValueInput').value || null,
+    action:      document.getElementById('ruleActionInput').value,
+    order:       parseInt(document.getElementById('ruleOrderInput').value) || 10,
+    is_active:   document.getElementById('ruleActiveInput').value === 'true',
+    description: document.getElementById('ruleDescInput').value || null,
+  };
+  try {
+    if (_editingRuleId) {
+      await apiFetchJSON(`/api/validation-rules/${_editingRuleId}`, 'PUT', payload);
+    } else {
+      await apiFetchJSON('/api/validation-rules', 'POST', payload);
+    }
+    document.getElementById('ruleModal').setAttribute('hidden', '');
+    loadRulesList();
+    notify('Regra salva.', 'success');
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+async function toggleRule(id) {
+  try {
+    await apiFetchJSON(`/api/validation-rules/${id}/toggle`, 'PATCH');
+    loadRulesList();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function deleteRule(id) {
+  if (!confirm('Excluir esta regra?')) return;
+  try {
+    await apiFetchJSON(`/api/validation-rules/${id}`, 'DELETE');
+    loadRulesList();
+    notify('Regra excluída.', 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// ---------------------------------------------------------------------------
+// Quarantine (Admin tab)
+// ---------------------------------------------------------------------------
+async function loadQuarantineTable() {
+  const filter = document.getElementById('quarantineFilter')?.value;
+  const params = new URLSearchParams({ limit: 200 });
+  if (filter !== '') params.set('reviewed', filter);
+  try {
+    const rows = await apiFetch(`/api/quarantine?${params}`);
+    _renderQuarantineTable(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderQuarantineTable(rows) {
+  const tbody = document.getElementById('quarantineBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+    const statusBadge = r.reviewed
+      ? `<span class="badge-status ativo">Revisado</span>`
+      : `<span class="badge-status suspenso">Pendente</span>`;
+    const reviewBtn = r.reviewed
+      ? `<button class="btn btn-secondary btn-sm" onclick="reviewQR(${r.id}, false)">Reabrir</button>`
+      : `<button class="btn btn-primary btn-sm" onclick="reviewQR(${r.id}, true)">Revisar ✓</button>`;
+    return `<tr>
+      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
+      <td style="text-align:right">${r.upload_session_id ?? '—'}</td>
+      <td>${escHtml(r.uploaded_by_username || '—')}</td>
+      <td style="font-size:.78rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
+      <td style="text-align:right">${r.rule_id ?? '—'}</td>
+      <td>${statusBadge}</td>
+      <td>${reviewBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function reviewQR(id, reviewed) {
+  try {
+    await apiFetchJSON(`/api/quarantine/${id}/review`, 'PATCH', { reviewed });
+    loadQuarantineTable();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('quarantineRefreshBtn')?.addEventListener('click', loadQuarantineTable);
+document.getElementById('quarantineFilter')?.addEventListener('change', loadQuarantineTable);
+
+// ---------------------------------------------------------------------------
+// Upload History (Admin tab)
+// ---------------------------------------------------------------------------
+async function loadUploadHistory() {
+  try {
+    const rows = await apiFetch('/api/upload-history');
+    _renderUploadHistory(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderUploadHistory(rows) {
+  const tbody = document.getElementById('uploadHistoryBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+    const statusBadge = r.status === 'ok'
+      ? `<span class="badge-status ativo">ok</span>`
+      : `<span class="badge-status suspenso">warnings</span>`;
+    return `<tr>
+      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
+      <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
+      <td>${escHtml(r.uploaded_by_username)}</td>
+      <td style="text-align:right">${r.records_inserted}</td>
+      <td style="text-align:right">${r.quarantine_added}</td>
+      <td style="text-align:right">${r.warning_count}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', loadUploadHistory);
+
+// ---------------------------------------------------------------------------
+// Theme editor (Admin tab)
+// ---------------------------------------------------------------------------
+const _THEME_FIELDS = [
+  { key: 'color_primary',     label: 'Cor primária' },
+  { key: 'color_background',  label: 'Fundo' },
+  { key: 'color_surface',     label: 'Superfície' },
+  { key: 'color_accent',      label: 'Destaque' },
+  { key: 'color_success',     label: 'Sucesso' },
+  { key: 'color_warning',     label: 'Alerta' },
+  { key: 'color_danger',      label: 'Perigo' },
+  { key: 'color_text',        label: 'Texto' },
+  { key: 'color_text_muted',  label: 'Texto muted' },
+];
+
+let _currentTheme = {};
+
+async function _loadThemeEditor() {
+  try {
+    _currentTheme = await fetch('/api/theme').then(r => r.json());
+    _renderThemeEditor();
+  } catch (e) { notify(`Erro ao carregar tema: ${e.message}`, 'error'); }
+}
+
+function _renderThemeEditor() {
+  const grid = document.getElementById('themeColorGrid');
+  if (!grid) return;
+  grid.innerHTML = _THEME_FIELDS.map(f => `
+    <div class="form-group">
+      <label style="font-size:.7rem;color:#94a3b8">${escHtml(f.label)}</label>
+      <div class="theme-swatch-row">
+        <input type="color" id="themeColor_${f.key}" value="${escHtml(_currentTheme[f.key] || '#000000')}" />
+        <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(_currentTheme[f.key] || '')}" style="flex:1;font-size:.8rem" />
+      </div>
+    </div>
+  `).join('');
+
+  // Sync color picker ↔ text input
+  _THEME_FIELDS.forEach(f => {
+    const picker = document.getElementById(`themeColor_${f.key}`);
+    const txt    = document.getElementById(`themeColorTxt_${f.key}`);
+    picker?.addEventListener('input', () => { txt.value = picker.value; });
+    txt?.addEventListener('change', () => { picker.value = txt.value; });
+  });
+}
+
+document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
+  const payload = { ..._currentTheme };
+  _THEME_FIELDS.forEach(f => {
+    const txt = document.getElementById(`themeColorTxt_${f.key}`);
+    if (txt) payload[f.key] = txt.value;
+  });
+  try {
+    _currentTheme = await apiFetchJSON('/api/theme', 'PUT', payload);
+    _loadTheme();
+    notify('Tema salvo.', 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+document.getElementById('logoUploadInput')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/theme/logo', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      body: fd,
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+    _currentTheme = await resp.json();
+    _loadTheme();
+    notify('Logo atualizado.', 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  e.target.value = '';
+});
+
+document.getElementById('deleteLogoBtn')?.addEventListener('click', async () => {
+  if (!confirm('Remover logo personalizado?')) return;
+  try {
+    _currentTheme = await apiFetchJSON('/api/theme/logo', 'DELETE');
+    _loadTheme();
+    notify('Logo removido.', 'success');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
+  _loadTheme();
   loadDashboardCycles();
   _renderActiveTab();
 }
