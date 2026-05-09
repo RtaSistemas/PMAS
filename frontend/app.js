@@ -2834,6 +2834,32 @@ document.getElementById('seniorityCancelBtn').addEventListener('click', closeSen
 document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
 
+document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
+  if (!_allSeniorityLevels.length) { notify('Nenhum nível para exportar.', 'info'); return; }
+  const rows = _allSeniorityLevels.map(l => `"${l.name.replace(/"/g, '""')}"`);
+  const blob = new Blob(['﻿' + ['name', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: 'senioridade.csv' }).click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importSeniorityInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/seniority-levels/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    await loadTeamTab();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
+
 async function deleteSeniorityLevel(id, name) {
   if (!confirm(`Excluir o nível "${name}"?`)) return;
   try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
@@ -2886,6 +2912,35 @@ document.getElementById('rateCardSaveBtn').addEventListener('click', async () =>
 document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
 document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
+
+document.getElementById('exportRateCardBtn').addEventListener('click', () => {
+  if (!_allRateCards.length) { notify('Nenhuma taxa para exportar.', 'info'); return; }
+  const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const rows = _allRateCards.map(r =>
+    `${esc(r.seniority_level_name)},${r.valid_from},${r.valid_to ?? ''},${r.hourly_rate}`
+  );
+  const blob = new Blob(['﻿' + ['seniority_level,valid_from,valid_to,hourly_rate', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: 'rate_cards.csv' }).click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importRateCardInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/rate-cards/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    await loadTeamTab();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
 
 async function deleteRateCard(id) {
   if (!confirm('Excluir esta taxa?')) return;

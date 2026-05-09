@@ -390,7 +390,13 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
-        <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+            <input type="file" id="importSeniorityInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+        </div>
       </div>
       <table class="data-table">
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
@@ -401,7 +407,13 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
-        <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+            <input type="file" id="importRateCardInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+        </div>
       </div>
       <table class="data-table">
         <thead>

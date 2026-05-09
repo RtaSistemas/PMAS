@@ -319,7 +319,7 @@ def write_rate_cards():
     path = f"{OUT}/senioridade_rate_card.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["seniority_level", "valid_from", "valid_to", "hourly_rate"])
+        w.writerow(["seniority_level", "valid_from", "valid_to", "hourly_rate"])  # matches /api/rate-cards/export
         for sen, periods in RATES.items():
             w.writerow([sen, "2024-01-01", "2024-12-31", f"{periods[2024]:.2f}"])
             w.writerow([sen, "2025-01-01", "",            f"{periods[2025]:.2f}"])
