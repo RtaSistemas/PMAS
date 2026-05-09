@@ -584,6 +584,44 @@ async function refreshCollaborators() {
 }
 
 // ---------------------------------------------------------------------------
+// Upload result panel
+// ---------------------------------------------------------------------------
+function _showIngestResult(json, filename) {
+  const panel   = document.getElementById('ingestResultPanel');
+  const summary = document.getElementById('ingestResultSummary');
+  const details = document.getElementById('ingestResultDetails');
+
+  const chip = (label, val, color) =>
+    val > 0 ? `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.1rem .5rem;font-size:.78rem;white-space:nowrap">${label}: <strong>${val}</strong></span>` : '';
+
+  summary.innerHTML =
+    `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
+    chip('Inseridos',   json.records_inserted,         '#2ecc71') +
+    chip('Ignorados',   json.records_skipped,           '#94a3b8') +
+    chip('Quarentena',  json.quarantine_records_added,  '#f59e0b') +
+    chip('Avisos',      json.warning_count,             '#f97316') +
+    chip('Infos',       json.info_count,                '#60a5fa');
+
+  let html = '';
+  if (json.warnings?.length) {
+    html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid #1e293b">
+      <summary style="cursor:pointer;color:#f59e0b;font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+        ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
+      </ul></details>`;
+  }
+  if (json.infos?.length) {
+    html += `<details open style="padding:.6rem 1rem">
+      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+        ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
+      </ul></details>`;
+  }
+  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
+  panel.hidden = false;
+}
+
+// ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
 csvInput.addEventListener('change', async () => {
@@ -596,11 +634,9 @@ csvInput.addEventListener('change', async () => {
     const json = await res.json();
     if (res.status === 401) { _handleUnauthorized(); return; }
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
-    let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
-    if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
-    if (json.quarantine_records_added > 0)  msg += ` ⚠ ${json.quarantine_records_added} em quarentena.`;
-    const severity = json.quarantine_records_added > 0 ? 'info' : 'success';
-    notify(msg, severity);
+    _showIngestResult(json, file.name);
+    const severity = json.quarantine_records_added > 0 ? 'warning' : 'success';
+    notify(`✔ ${json.records_inserted.toLocaleString('pt-BR')} inserido(s)${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} em quarentena` : ''}.`, severity);
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -3420,12 +3456,11 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     });
     const json = await resp.json();
     if (!resp.ok) throw new Error(json.detail || resp.statusText);
-    let msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}`;
-    if (json.records_skipped)          msg += ` · ${json.records_skipped} ${_t('upload.skipped')}`;
-    if (json.quarantine_records_added) msg += ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}`;
-    if (json.warning_count)            msg += ` · ${json.warning_count} ${_t('upload.warnings')}`;
+    _showIngestResult(json, file.name);
+    const msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}` : ''}`;
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
+    loadMyHistory();
   } catch (e) {
     resultEl.textContent = `Erro: ${e.message}`;
     notify(e.message, 'error');
@@ -3447,7 +3482,7 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -3456,13 +3491,17 @@ function _renderMyHistory(rows) {
       : r.status === 'warnings' ? 'history.status.warnings'
       : r.status === 'quarantine' ? 'history.status.quarantine'
       : 'history.status.rejected';
-    return `<tr>
+    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
+    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
+    const hasDetail = (r.warning_count + r.info_count) > 0;
+    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
-      <td style="text-align:right">${r.quarantine_added}</td>
-      <td style="text-align:right">${r.warning_count}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${warnCell}</td>
+      <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
     </tr>`;
   }).join('');
@@ -3763,27 +3802,85 @@ function _renderUploadHistory(rows) {
   const tbody = document.getElementById('uploadHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
     const statusBadge = r.status === 'ok'
       ? `<span class="badge-status ativo">ok</span>`
-      : `<span class="badge-status suspenso">warnings</span>`;
-    return `<tr>
+      : r.status === 'warnings'
+      ? `<span class="badge-status warning">avisos</span>`
+      : r.status === 'quarantine'
+      ? `<span class="badge-status suspenso">quarentena</span>`
+      : `<span class="badge-status encerrado">rejeitado</span>`;
+    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
+    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
+    const hasDetail = (r.warning_count + r.info_count) > 0;
+    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td>${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
-      <td style="text-align:right">${r.quarantine_added}</td>
-      <td style="text-align:right">${r.warning_count}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${warnCell}</td>
+      <td style="text-align:right">${infoCell}</td>
       <td>${statusBadge}</td>
     </tr>`;
   }).join('');
 }
 
 document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', loadUploadHistory);
+
+// ---------------------------------------------------------------------------
+// Session detail modal
+// ---------------------------------------------------------------------------
+async function _openSessionDetail(sessionId) {
+  try {
+    const r = await apiFetch(`/api/upload-history/${sessionId}`);
+    const modal  = document.getElementById('sessionDetailModal');
+    const title  = document.getElementById('sessionDetailTitle');
+    const meta   = document.getElementById('sessionDetailMeta');
+    const counts = document.getElementById('sessionDetailCounts');
+    const wDiv   = document.getElementById('sessionDetailWarnings');
+    const wList  = document.getElementById('sessionDetailWarningsList');
+    const iDiv   = document.getElementById('sessionDetailInfos');
+    const iList  = document.getElementById('sessionDetailInfosList');
+
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    title.textContent = `Importação — ${r.source_file}`;
+    meta.innerHTML = [
+      `<span style="color:#64748b">Data</span><span>${escHtml(when)}</span>`,
+      `<span style="color:#64748b">Usuário</span><span>${escHtml(r.uploaded_by_username)}</span>`,
+      `<span style="color:#64748b">Arquivo</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
+      `<span style="color:#64748b">Status</span><span>${escHtml(r.status)}</span>`,
+    ].join('');
+
+    const chip = (label, val, color) =>
+      `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.15rem .6rem;font-size:.78rem">${label}: <strong>${val}</strong></span>`;
+    counts.innerHTML =
+      chip('Inseridos',  r.records_inserted,        '#2ecc71') +
+      chip('Ignorados',  r.records_skipped,          '#94a3b8') +
+      chip('Quarentena', r.quarantine_added,         '#f59e0b') +
+      chip('Avisos',     r.warning_count,            '#f97316') +
+      chip('Infos',      r.info_count,               '#60a5fa');
+
+    if (r.warnings_detail?.length) {
+      wList.innerHTML = r.warnings_detail.map(w => `<li>${escHtml(w)}</li>`).join('');
+      wDiv.hidden = false;
+    } else {
+      wDiv.hidden = true;
+    }
+    if (r.infos_detail?.length) {
+      iList.innerHTML = r.infos_detail.map(i => `<li>${escHtml(i)}</li>`).join('');
+      iDiv.hidden = false;
+    } else {
+      iDiv.hidden = true;
+    }
+
+    modal.hidden = false;
+  } catch (e) { notify(`Erro ao carregar detalhes: ${e.message}`, 'error'); }
+}
 
 // ---------------------------------------------------------------------------
 // Theme editor (Admin tab)

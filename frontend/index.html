@@ -92,12 +92,39 @@
 </header>
 
 <div id="notification"></div>
-<div id="anomalyPanel" hidden style="margin:0 1.5rem .5rem;padding:.75rem 1rem;background:#422006;border:1px solid #92400e;border-radius:.5rem;font-size:.85rem;color:#fcd34d">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
-    <strong data-i18n="anomaly.title">⚠ Alertas de Anomalia na Importação</strong>
-    <button onclick="document.getElementById('anomalyPanel').hidden=true" style="background:none;border:none;color:#fcd34d;cursor:pointer;font-size:1.1rem">✕</button>
+
+<!-- Ingest result panel — shown after every upload -->
+<div id="ingestResultPanel" hidden style="margin:0 1.5rem .5rem;border-radius:.5rem;font-size:.85rem;overflow:hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;background:#1e293b;border:1px solid #334155;border-bottom:none;border-radius:.5rem .5rem 0 0">
+    <div id="ingestResultSummary" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center"></div>
+    <button onclick="document.getElementById('ingestResultPanel').hidden=true" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem;line-height:1">✕</button>
   </div>
-  <ul id="anomalyList" style="margin:0;padding-left:1.2rem"></ul>
+  <div id="ingestResultDetails" style="border:1px solid #334155;border-radius:0 0 .5rem .5rem;background:#0f172a"></div>
+</div>
+
+<!-- Session detail modal -->
+<div id="sessionDetailModal" class="modal-overlay" hidden>
+  <div class="modal" style="max-width:600px;width:95%">
+    <div class="modal-header">
+      <h3 class="modal-title" id="sessionDetailTitle">Detalhes da Importação</h3>
+      <button class="modal-close" onclick="document.getElementById('sessionDetailModal').hidden=true">✕</button>
+    </div>
+    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem">
+      <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
+      <div id="sessionDetailCounts" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
+      <div id="sessionDetailWarnings" hidden>
+        <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0 0 .35rem">⚠ Avisos</p>
+        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#fcd34d;display:flex;flex-direction:column;gap:.2rem"></ul>
+      </div>
+      <div id="sessionDetailInfos" hidden>
+        <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0 0 .35rem">ℹ Informações</p>
+        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem"></ul>
+      </div>
+    </div>
+    <div style="padding:.75rem 1.25rem;border-top:1px solid #1e293b;display:flex;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <nav class="app-tabs">
@@ -504,6 +531,7 @@
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
           <button class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn">↺ Atualizar</button>
         </div>
+        <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
@@ -512,9 +540,10 @@
             <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
             <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
             <th style="text-align:right" data-i18n="history.th.warnings">Avisos</th>
+            <th style="text-align:right">Infos</th>
             <th data-i18n="history.th.status">Status</th>
           </tr></thead>
-          <tbody id="myHistoryBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="myHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -618,6 +647,7 @@
         <h2 class="card-title">Histórico de Importações</h2>
         <button class="btn btn-secondary btn-sm" id="uploadHistoryRefreshBtn">↺ Atualizar</button>
       </div>
+      <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
       <table class="data-table" id="uploadHistoryTable">
         <thead><tr>
           <th>Data</th>
@@ -626,9 +656,10 @@
           <th style="text-align:right">Inseridos</th>
           <th style="text-align:right">Quarentena</th>
           <th style="text-align:right">Avisos</th>
+          <th style="text-align:right">Infos</th>
           <th>Status</th>
         </tr></thead>
-        <tbody id="uploadHistoryBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+        <tbody id="uploadHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
       </table>
     </div>
 

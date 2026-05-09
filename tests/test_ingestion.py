@@ -50,7 +50,8 @@ class TestIngestFile:
         assert record.cycle_id == sample_cycle.id
 
     def test_unknown_date_raises_archived_error(self, db_session):
-        row = {**BASE_ROW, "Data": "10/09/2099"}
+        # Past date with no registered cycle → total rejection (W2)
+        row = {**BASE_ROW, "Data": "10/09/2020"}
         with pytest.raises(ArchivedCycleError):
             ingest_file(_csv(row), "t.csv", db_session)
 
@@ -432,18 +433,20 @@ class TestIngestionHardening:
         assert summary["records_inserted"] == 1
         assert summary["quarantine_records_added"] == 1
 
-    def test_invalid_collab_name_row_is_filtered(self, db_session, sample_cycle):
+    def test_invalid_collab_name_quarantined(self, db_session, sample_cycle):
+        # Q8: invalid collaborator → QuarantineRecord, not warning
         row = {**BASE_ROW, "Colaborador": "nan"}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert any("colaborador inválido" in w for w in summary["warnings"])
+        assert summary["quarantine_records_added"] == 1
         assert db_session.query(Collaborator).count() == 0
 
-    def test_invalid_collab_single_char_filtered(self, db_session, sample_cycle):
+    def test_invalid_collab_single_char_quarantined(self, db_session, sample_cycle):
+        # Q8: single-char collaborator name → QuarantineRecord
         row = {**BASE_ROW, "Colaborador": "X"}
         summary = ingest_file(_csv(row), "t.csv", db_session)
         assert summary["records_inserted"] == 0
-        assert any("colaborador inválido" in w for w in summary["warnings"])
+        assert summary["quarantine_records_added"] == 1
 
     def test_high_volume_warning_emitted(self, db_session, sample_cycle):
         from unittest.mock import patch
@@ -462,7 +465,8 @@ class TestIngestionHardening:
         assert any("Sobreaviso simultaneamente" in w for w in summary["warnings"])
 
     def test_date_outside_all_cycles_raises_archived_error(self, db_session):
-        row = {**BASE_ROW, "Data": "15/01/2099"}
+        # Past date with no registered cycle → total rejection (W2)
+        row = {**BASE_ROW, "Data": "15/01/2020"}
         with pytest.raises(ArchivedCycleError):
             ingest_file(_csv(row), "t.csv", db_session)
 
@@ -492,10 +496,42 @@ class TestIngestionHardening:
         assert summary["records_skipped"] == 1
 
     def test_phase0_prescan_lists_all_dates_without_cycle(self, db_session):
-        # Phase 0 pre-scan should collect ALL dates missing a cycle and report them
-        # together — not abort on the first bad date.
-        row1 = {**BASE_ROW, "Data": "10/10/2090"}
-        row2 = {**BASE_ROW, "Data": "11/10/2090"}
+        # Phase 0 pre-scan collects ALL past dates missing a cycle and reports them
+        # together — does not abort on the first bad date.
+        row1 = {**BASE_ROW, "Data": "10/10/2020"}
+        row2 = {**BASE_ROW, "Data": "11/10/2020"}
         with pytest.raises(ArchivedCycleError) as exc_info:
             ingest_file(_csv(row1, row2), "t.csv", db_session)
         assert len(exc_info.value.cycle_names) == 2
+
+    def test_future_date_row_quarantined(self, db_session, sample_cycle):
+        # Q2: future date → QuarantineRecord, not inserted
+        from datetime import date, timedelta
+        future = (date.today() + timedelta(days=30)).strftime("%d/%m/%Y")
+        row = {**BASE_ROW, "Data": future}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["quarantine_records_added"] == 1
+
+    def test_future_date_mixed_with_valid_inserts_valid(self, db_session, sample_cycle):
+        # Q2: future row quarantined; past row still inserted
+        from datetime import date, timedelta
+        future = (date.today() + timedelta(days=30)).strftime("%d/%m/%Y")
+        future_row = {**BASE_ROW, "Data": future}
+        summary = ingest_file(_csv(BASE_ROW, future_row), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        assert summary["quarantine_records_added"] == 1
+
+    def test_empty_file_raises_value_error(self, db_session):
+        # E2: file with headers only → explicit ValueError, not silent empty result
+        import io
+        headers = "Colaborador,Data,Horas totais (decimal)\n"
+        contents = headers.encode()
+        with pytest.raises(ValueError, match="vazio"):
+            ingest_file(contents, "empty.csv", db_session)
+
+    def test_new_collaborator_emits_info(self, db_session, sample_cycle):
+        # N1: first-time collaborator → info message listing the name
+        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
+        assert summary["records_inserted"] == 1
+        assert any("João Silva" in i for i in summary["infos"])

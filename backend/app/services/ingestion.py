@@ -98,17 +98,6 @@ def ingest_file(
             f"Verifique se o período exportado está correto."
         )
 
-    # Filter rows with invalid collaborator names
-    _collab_invalid = df[_COL_COLLABORATOR].apply(
-        lambda v: len(str(v).strip()) < 2 or str(v).strip().lower() in _INVALID_COLLAB_NAMES
-    ).astype(bool)
-    n_bad_collabs = int(_collab_invalid.sum())
-    if n_bad_collabs:
-        ingest_warnings.append(
-            f"{n_bad_collabs} linha(s) ignorada(s) por nome de colaborador inválido."
-        )
-        df = df[~_collab_invalid].copy()
-
     # Load active ValidationRules once for the entire ingest
     rules = (
         db.query(ValidationRule)
@@ -124,10 +113,12 @@ def ingest_file(
     quarantine_buffer: list[dict] = []
     valid_rows: list[dict] = []
 
+    _today = date.today()
     _unique_dates: set[date] = set()
     for v in df[_COL_DATE]:
         d = _parse_date_safe(v)
-        if d is not None:
+        # Future dates are handled per-row (Q2); skip them in the pre-scan
+        if d is not None and d <= _today:
             _unique_dates.add(d)
 
     _no_cycle_dates: list[str] = []
@@ -142,14 +133,28 @@ def ingest_file(
 
     # Phase 1 + 2: Per-row structural validation and rule evaluation
     skipped = 0
+    new_collaborators: list[str] = []
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
         name = str(row[_COL_COLLABORATOR]).strip()
+
+        # Phase 1a (Q8): collaborator name validation → quarantine
+        if len(name) < 2 or name.lower() in _INVALID_COLLAB_NAMES:
+            quarantine_buffer.append({
+                "raw_data": _row_to_dict(row),
+                "reason": f"Nome de colaborador inválido: {row[_COL_COLLABORATOR]!r}",
+                "rule_id": None,
+            })
+            continue
+
         if name not in collab_cache:
-            collab_cache[name] = _get_or_create_collaborator(db, name)
+            collab, created = _get_or_create_collaborator(db, name)
+            collab_cache[name] = collab
+            if created:
+                new_collaborators.append(name)
         collab = collab_cache[name]
 
-        # Phase 1a: date validation
+        # Phase 1b: date validation (Q1)
         record_date = _parse_date_safe(row[_COL_DATE])
         if record_date is None:
             quarantine_buffer.append({
@@ -159,12 +164,21 @@ def ingest_file(
             })
             continue
 
-        # Phase 1b: active cycle check (raises ArchivedCycleError if none found)
+        # Phase 1c (Q2): future date → quarantine
+        if record_date > date.today():
+            quarantine_buffer.append({
+                "raw_data": _row_to_dict(row),
+                "reason": f"Data futura: {record_date}",
+                "rule_id": None,
+            })
+            continue
+
+        # Phase 1d: active cycle check (raises ArchivedCycleError if none found)
         if record_date not in cycle_cache:
             cycle_cache[record_date] = _resolve_cycle(db, record_date)
         cycle = cycle_cache[record_date]
 
-        # Phase 1c: hours parsing
+        # Phase 1e: hours parsing
         total_h = _safe_hours(row[_COL_HOURS])
         if total_h is None:
             quarantine_buffer.append({
@@ -211,6 +225,12 @@ def ingest_file(
             "total_h": total_h,
             "row": row,
         })
+
+    # N1: new collaborators info
+    if new_collaborators:
+        ingest_infos.append(
+            f"Novo(s) colaborador(es) criado(s): {', '.join(new_collaborators)}."
+        )
 
     # RBAC check on valid rows' cycles
     if user_role != "admin":
@@ -465,16 +485,19 @@ def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Colunas obrigatórias ausentes: {missing}")
+    if df.empty:
+        raise ValueError("Arquivo vazio ou sem registros.")
     return df
 
 
-def _get_or_create_collaborator(db: Session, name: str) -> Collaborator:
+def _get_or_create_collaborator(db: Session, name: str) -> tuple[Collaborator, bool]:
     collab = db.query(Collaborator).filter(Collaborator.name == name).first()
     if collab is None:
         collab = Collaborator(name=name)
         db.add(collab)
         db.flush()
-    return collab
+        return collab, True
+    return collab, False
 
 
 def _resolve_cycle(db: Session, record_date: date) -> Cycle:

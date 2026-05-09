@@ -71,7 +71,7 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
             "Crie ou ative um ciclo antes de aprovar este registro."
         )
 
-    collab = _get_or_create_collaborator(db, name)
+    collab, _ = _get_or_create_collaborator(db, name)
     pep_code = _str_or_none(raw.get(_COL_PEP_CODE))
     pep_desc = _str_or_none(raw.get(_COL_PEP_DESC))
     is_extra   = _is_yes(raw.get(_COL_EXTRA, ""))
