@@ -2553,6 +2553,7 @@ function _renderProjectsTable(projects) {
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        ${_isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`).join('');
@@ -2628,6 +2629,73 @@ async function deleteProject(id, pep) {
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+// ---------------------------------------------------------------------------
+// ACL de projetos — controle de acesso por PEP (item 3)
+// ---------------------------------------------------------------------------
+let _aclProjectId = null;
+
+async function _openAclModal(projectId, pepWbs) {
+  _aclProjectId = projectId;
+  document.getElementById('aclModalTitle').textContent = `Acesso — ${pepWbs}`;
+  document.getElementById('aclError').textContent = '';
+  document.getElementById('aclModal').hidden = false;
+  await Promise.all([_loadAclEntries(), _populateAclUserSelect()]);
+}
+
+async function _loadAclEntries() {
+  const tbody = document.getElementById('aclEntriesBody');
+  tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Carregando…</td></tr>';
+  try {
+    const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Nenhum acesso concedido.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map(e => `
+      <tr>
+        <td>${escHtml(e.username)}</td>
+        <td style="text-align:right">
+          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">Revogar</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _populateAclUserSelect() {
+  const sel = document.getElementById('aclUserSelect');
+  try {
+    const users = await apiFetch('/api/users');
+    sel.innerHTML = '<option value="">— selecione —</option>' +
+      users.filter(u => u.role !== 'admin').map(u =>
+        `<option value="${u.id}">${escHtml(u.username)}</option>`
+      ).join('');
+  } catch (_) {}
+}
+
+document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
+  const sel = document.getElementById('aclUserSelect');
+  const userId = parseInt(sel.value);
+  const errEl  = document.getElementById('aclError');
+  if (!userId) { errEl.textContent = 'Selecione um usuário.'; return; }
+  errEl.textContent = '';
+  try {
+    await apiFetchJSON(`/api/projects/${_aclProjectId}/access`, 'POST', { user_id: userId });
+    sel.value = '';
+    await _loadAclEntries();
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+async function _revokeAccess(userId) {
+  if (!confirm('Revogar acesso deste usuário?')) return;
+  try {
+    await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
+    await _loadAclEntries();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('aclModalClose')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
+document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify('Nenhum projeto para exportar.', 'info'); return; }
@@ -3305,6 +3373,7 @@ function _switchMyTab(tabId) {
   });
   if (tabId === 'history')    loadMyHistory();
   if (tabId === 'quarantine') loadMyQr();
+  if (tabId === 'alerts')     loadMyAlerts();
 }
 
 document.querySelectorAll('.my-tab-btn').forEach(btn => {
@@ -3548,6 +3617,56 @@ function _renderMyQrTable(rows) {
 
 document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
+
+// ---------------------------------------------------------------------------
+// My Area — Exportar quarentena (item 5)
+// ---------------------------------------------------------------------------
+document.getElementById('myQrExportBtn')?.addEventListener('click', async () => {
+  try {
+    const resp = await fetch('/api/my/quarantine/export', { headers: _authHeaders() });
+    if (!resp.ok) { notify('Erro ao exportar quarentena.', 'error'); return; }
+    const blob = await resp.blob();
+    const cd   = resp.headers.get('Content-Disposition') || '';
+    const name = cd.match(/filename="([^"]+)"/)?.[1] || 'quarantine_export.csv';
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+// ---------------------------------------------------------------------------
+// My Area — Alertas (item 4)
+// ---------------------------------------------------------------------------
+async function loadMyAlerts() {
+  const tbody = document.getElementById('myAlertsBody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr>';
+  try {
+    const rows = await apiFetch('/api/my/alerts');
+    _renderMyAlerts(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderMyAlerts(rows) {
+  const tbody = document.getElementById('myAlertsBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Nenhum alerta recorrente encontrado.</td></tr>';
+    return;
+  }
+  const trendIcon = t => t === 'up' ? '📈' : t === 'down' ? '📉' : '➡️';
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return `<tr>
+      <td style="font-size:.8rem">${escHtml(r.message)}</td>
+      <td style="text-align:right">${r.occurrences}</td>
+      <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
+      <td style="text-align:center;font-size:1rem">${trendIcon(r.trend)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('myAlertsRefreshBtn')?.addEventListener('click', loadMyAlerts);
 
 // ---------------------------------------------------------------------------
 // Validation Rules (Admin tab)
@@ -3837,7 +3956,8 @@ document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', lo
 // ---------------------------------------------------------------------------
 async function _openSessionDetail(sessionId) {
   try {
-    const r = await apiFetch(`/api/upload-history/${sessionId}`);
+    const endpoint = _isAdmin ? `/api/upload-history/${sessionId}` : `/api/my/upload-history/${sessionId}`;
+    const r = await apiFetch(endpoint);
     const modal  = document.getElementById('sessionDetailModal');
     const title  = document.getElementById('sessionDetailTitle');
     const meta   = document.getElementById('sessionDetailMeta');
