@@ -117,11 +117,31 @@ def ingest_file(
         .all()
     )
 
-    # Phase 1 + 2: Per-row structural validation and rule evaluation
+    # Phase 0b: pre-scan all unique parseable dates — if any has no active cycle
+    # reject the entire file immediately (spec: rejeição total, Camada 1)
     collab_cache: dict[str, Collaborator] = {}
     cycle_cache: dict[date, Cycle | None] = {}
     quarantine_buffer: list[dict] = []
     valid_rows: list[dict] = []
+
+    _unique_dates: set[date] = set()
+    for v in df[_COL_DATE]:
+        d = _parse_date_safe(v)
+        if d is not None:
+            _unique_dates.add(d)
+
+    _no_cycle_dates: list[str] = []
+    for d in sorted(_unique_dates):
+        try:
+            cycle_cache[d] = _resolve_cycle(db, d)
+        except ArchivedCycleError:
+            _no_cycle_dates.append(str(d))
+
+    if _no_cycle_dates:
+        raise ArchivedCycleError(_no_cycle_dates)
+
+    # Phase 1 + 2: Per-row structural validation and rule evaluation
+    skipped = 0
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
         name = str(row[_COL_COLLABORATOR]).strip()
@@ -269,7 +289,6 @@ def ingest_file(
 
         seen_keys: set[tuple] = set()
         inserted = 0
-        skipped = 0
         warned_zero_rate: set[str] = set()
 
         for vr in valid_rows:

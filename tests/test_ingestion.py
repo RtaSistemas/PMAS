@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from backend.app.models import Collaborator, Cycle, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, TimesheetRecord, ValidationRule
 from backend.app.services.ingestion import (
     ArchivedCycleError,
     _safe_hours,
@@ -475,3 +475,27 @@ class TestIngestionHardening:
         summary = ingest_file(_csv(BASE_ROW, row2), "t.csv", db_session)
         rate_warnings = [w for w in summary["warnings"] if "sem taxa" in w]
         assert len(rate_warnings) == 1
+
+    def test_descarte_rule_counts_skipped_without_error(self, db_session, sample_cycle):
+        # Regression: skipped counter used in Phase 2 before being initialized in Phase 4
+        # caused NameError when a 'descarte' rule fired.
+        rule = ValidationRule(
+            is_system=False, is_active=True, order=50,
+            field="horas_individuais", operator="gt", value="4",
+            action="descarte", description="Test descarte",
+        )
+        db_session.add(rule)
+        db_session.commit()
+        row = {**BASE_ROW, "Horas totais (decimal)": 5.0}
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["records_skipped"] == 1
+
+    def test_phase0_prescan_lists_all_dates_without_cycle(self, db_session):
+        # Phase 0 pre-scan should collect ALL dates missing a cycle and report them
+        # together — not abort on the first bad date.
+        row1 = {**BASE_ROW, "Data": "10/10/2090"}
+        row2 = {**BASE_ROW, "Data": "11/10/2090"}
+        with pytest.raises(ArchivedCycleError) as exc_info:
+            ingest_file(_csv(row1, row2), "t.csv", db_session)
+        assert len(exc_info.value.cycle_names) == 2
