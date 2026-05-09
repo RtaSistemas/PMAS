@@ -5,7 +5,7 @@ import io
 from collections import defaultdict
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.app.database import DbSession
@@ -57,6 +57,16 @@ def my_upload_history(db: DbSession, current_user: CurrentUser, limit: int = 200
     if current_user.role != "admin":
         q = q.filter(UploadSession.uploaded_by_user_id == current_user.id)
     return q.offset(offset).limit(limit).all()
+
+
+@router.get("/upload-history/{session_id}", response_model=UploadSessionOut)
+def my_upload_history_detail(session_id: int, db: DbSession, current_user: CurrentUser):
+    session = db.get(UploadSession, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada.")
+    if current_user.role != "admin" and session.uploaded_by_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+    return session
 
 
 # ── Quarantine ────────────────────────────────────────────────────────────────

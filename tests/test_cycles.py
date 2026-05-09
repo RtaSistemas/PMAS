@@ -31,8 +31,8 @@ class TestListCycles:
         assert found["record_count"] == 0
 
     def test_includes_record_count_from_upload(self, client):
-        c = _create(client, name="ComRegistros", start="2026-07-01", end="2026-07-31")
-        csv = b"Colaborador,Data,Horas totais (decimal)\nAna,10/07/2026,8.0\n"
+        c = _create(client, name="ComRegistros", start="2025-01-01", end="2025-01-31")
+        csv = b"Colaborador,Data,Horas totais (decimal)\nAna,10/01/2025,8.0\n"
         client.post("/api/upload-timesheet", files={"file": ("t.csv", csv, "text/csv")})
         data = client.get("/api/cycles").json()
         found = next(x for x in data if x["id"] == c["id"])
@@ -124,8 +124,8 @@ class TestDeleteCycle:
         assert c["id"] not in ids
 
     def test_blocked_when_has_records(self, client):
-        _create(client, name="CicloComDados", start="2026-08-01", end="2026-08-31")
-        csv = b"Colaborador,Data,Horas totais (decimal)\nBob,05/08/2026,8.0\n"
+        _create(client, name="CicloComDados", start="2025-02-01", end="2025-02-28")
+        csv = b"Colaborador,Data,Horas totais (decimal)\nBob,05/02/2025,8.0\n"
         client.post("/api/upload-timesheet", files={"file": ("t.csv", csv, "text/csv")})
         cycles = client.get("/api/cycles").json()
         target = next(x for x in cycles if x["name"] == "CicloComDados")

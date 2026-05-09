@@ -584,6 +584,44 @@ async function refreshCollaborators() {
 }
 
 // ---------------------------------------------------------------------------
+// Upload result panel
+// ---------------------------------------------------------------------------
+function _showIngestResult(json, filename) {
+  const panel   = document.getElementById('ingestResultPanel');
+  const summary = document.getElementById('ingestResultSummary');
+  const details = document.getElementById('ingestResultDetails');
+
+  const chip = (label, val, color) =>
+    val > 0 ? `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.1rem .5rem;font-size:.78rem;white-space:nowrap">${label}: <strong>${val}</strong></span>` : '';
+
+  summary.innerHTML =
+    `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
+    chip('Inseridos',   json.records_inserted,         '#2ecc71') +
+    chip('Ignorados',   json.records_skipped,           '#94a3b8') +
+    chip('Quarentena',  json.quarantine_records_added,  '#f59e0b') +
+    chip('Avisos',      json.warning_count,             '#f97316') +
+    chip('Infos',       json.info_count,                '#60a5fa');
+
+  let html = '';
+  if (json.warnings?.length) {
+    html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid #1e293b">
+      <summary style="cursor:pointer;color:#f59e0b;font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+        ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
+      </ul></details>`;
+  }
+  if (json.infos?.length) {
+    html += `<details open style="padding:.6rem 1rem">
+      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+        ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
+      </ul></details>`;
+  }
+  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
+  panel.hidden = false;
+}
+
+// ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
 csvInput.addEventListener('change', async () => {
@@ -596,11 +634,9 @@ csvInput.addEventListener('change', async () => {
     const json = await res.json();
     if (res.status === 401) { _handleUnauthorized(); return; }
     if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
-    let msg = `✔ ${json.records_inserted.toLocaleString('pt-BR')} registro(s) importado(s).`;
-    if (json.records_skipped > 0)           msg += ` (${json.records_skipped} duplicata(s) ignorada(s))`;
-    if (json.quarantine_records_added > 0)  msg += ` ⚠ ${json.quarantine_records_added} em quarentena.`;
-    const severity = json.quarantine_records_added > 0 ? 'info' : 'success';
-    notify(msg, severity);
+    _showIngestResult(json, file.name);
+    const severity = json.quarantine_records_added > 0 ? 'warning' : 'success';
+    notify(`✔ ${json.records_inserted.toLocaleString('pt-BR')} inserido(s)${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} em quarentena` : ''}.`, severity);
     await loadDashboardCycles();
     _renderActiveTab();
   } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
@@ -2517,6 +2553,7 @@ function _renderProjectsTable(projects) {
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        ${_isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`).join('');
@@ -2592,6 +2629,73 @@ async function deleteProject(id, pep) {
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
+
+// ---------------------------------------------------------------------------
+// ACL de projetos — controle de acesso por PEP (item 3)
+// ---------------------------------------------------------------------------
+let _aclProjectId = null;
+
+async function _openAclModal(projectId, pepWbs) {
+  _aclProjectId = projectId;
+  document.getElementById('aclModalTitle').textContent = `Acesso — ${pepWbs}`;
+  document.getElementById('aclError').textContent = '';
+  document.getElementById('aclModal').hidden = false;
+  await Promise.all([_loadAclEntries(), _populateAclUserSelect()]);
+}
+
+async function _loadAclEntries() {
+  const tbody = document.getElementById('aclEntriesBody');
+  tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Carregando…</td></tr>';
+  try {
+    const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Nenhum acesso concedido.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map(e => `
+      <tr>
+        <td>${escHtml(e.username)}</td>
+        <td style="text-align:right">
+          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">Revogar</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _populateAclUserSelect() {
+  const sel = document.getElementById('aclUserSelect');
+  try {
+    const users = await apiFetch('/api/users');
+    sel.innerHTML = '<option value="">— selecione —</option>' +
+      users.filter(u => u.role !== 'admin').map(u =>
+        `<option value="${u.id}">${escHtml(u.username)}</option>`
+      ).join('');
+  } catch (_) {}
+}
+
+document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
+  const sel = document.getElementById('aclUserSelect');
+  const userId = parseInt(sel.value);
+  const errEl  = document.getElementById('aclError');
+  if (!userId) { errEl.textContent = 'Selecione um usuário.'; return; }
+  errEl.textContent = '';
+  try {
+    await apiFetchJSON(`/api/projects/${_aclProjectId}/access`, 'POST', { user_id: userId });
+    sel.value = '';
+    await _loadAclEntries();
+  } catch (e) { errEl.textContent = e.message; }
+});
+
+async function _revokeAccess(userId) {
+  if (!confirm('Revogar acesso deste usuário?')) return;
+  try {
+    await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
+    await _loadAclEntries();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+document.getElementById('aclModalClose')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
+document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify('Nenhum projeto para exportar.', 'info'); return; }
@@ -3269,6 +3373,7 @@ function _switchMyTab(tabId) {
   });
   if (tabId === 'history')    loadMyHistory();
   if (tabId === 'quarantine') loadMyQr();
+  if (tabId === 'alerts')     loadMyAlerts();
 }
 
 document.querySelectorAll('.my-tab-btn').forEach(btn => {
@@ -3420,12 +3525,11 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     });
     const json = await resp.json();
     if (!resp.ok) throw new Error(json.detail || resp.statusText);
-    let msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}`;
-    if (json.records_skipped)          msg += ` · ${json.records_skipped} ${_t('upload.skipped')}`;
-    if (json.quarantine_records_added) msg += ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}`;
-    if (json.warning_count)            msg += ` · ${json.warning_count} ${_t('upload.warnings')}`;
+    _showIngestResult(json, file.name);
+    const msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}` : ''}`;
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
+    loadMyHistory();
   } catch (e) {
     resultEl.textContent = `Erro: ${e.message}`;
     notify(e.message, 'error');
@@ -3447,7 +3551,7 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -3456,13 +3560,17 @@ function _renderMyHistory(rows) {
       : r.status === 'warnings' ? 'history.status.warnings'
       : r.status === 'quarantine' ? 'history.status.quarantine'
       : 'history.status.rejected';
-    return `<tr>
+    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
+    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
+    const hasDetail = (r.warning_count + r.info_count) > 0;
+    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
-      <td style="text-align:right">${r.quarantine_added}</td>
-      <td style="text-align:right">${r.warning_count}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${warnCell}</td>
+      <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
     </tr>`;
   }).join('');
@@ -3509,6 +3617,56 @@ function _renderMyQrTable(rows) {
 
 document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
+
+// ---------------------------------------------------------------------------
+// My Area — Exportar quarentena (item 5)
+// ---------------------------------------------------------------------------
+document.getElementById('myQrExportBtn')?.addEventListener('click', async () => {
+  try {
+    const resp = await fetch('/api/my/quarantine/export', { headers: _authHeaders() });
+    if (!resp.ok) { notify('Erro ao exportar quarentena.', 'error'); return; }
+    const blob = await resp.blob();
+    const cd   = resp.headers.get('Content-Disposition') || '';
+    const name = cd.match(/filename="([^"]+)"/)?.[1] || 'quarantine_export.csv';
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+// ---------------------------------------------------------------------------
+// My Area — Alertas (item 4)
+// ---------------------------------------------------------------------------
+async function loadMyAlerts() {
+  const tbody = document.getElementById('myAlertsBody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr>';
+  try {
+    const rows = await apiFetch('/api/my/alerts');
+    _renderMyAlerts(rows);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderMyAlerts(rows) {
+  const tbody = document.getElementById('myAlertsBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Nenhum alerta recorrente encontrado.</td></tr>';
+    return;
+  }
+  const trendIcon = t => t === 'up' ? '📈' : t === 'down' ? '📉' : '➡️';
+  tbody.innerHTML = rows.map(r => {
+    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return `<tr>
+      <td style="font-size:.8rem">${escHtml(r.message)}</td>
+      <td style="text-align:right">${r.occurrences}</td>
+      <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
+      <td style="text-align:center;font-size:1rem">${trendIcon(r.trend)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('myAlertsRefreshBtn')?.addEventListener('click', loadMyAlerts);
 
 // ---------------------------------------------------------------------------
 // Validation Rules (Admin tab)
@@ -3763,27 +3921,86 @@ function _renderUploadHistory(rows) {
   const tbody = document.getElementById('uploadHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
     const statusBadge = r.status === 'ok'
       ? `<span class="badge-status ativo">ok</span>`
-      : `<span class="badge-status suspenso">warnings</span>`;
-    return `<tr>
+      : r.status === 'warnings'
+      ? `<span class="badge-status warning">avisos</span>`
+      : r.status === 'quarantine'
+      ? `<span class="badge-status suspenso">quarentena</span>`
+      : `<span class="badge-status encerrado">rejeitado</span>`;
+    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
+    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
+    const hasDetail = (r.warning_count + r.info_count) > 0;
+    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td>${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
-      <td style="text-align:right">${r.quarantine_added}</td>
-      <td style="text-align:right">${r.warning_count}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${warnCell}</td>
+      <td style="text-align:right">${infoCell}</td>
       <td>${statusBadge}</td>
     </tr>`;
   }).join('');
 }
 
 document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', loadUploadHistory);
+
+// ---------------------------------------------------------------------------
+// Session detail modal
+// ---------------------------------------------------------------------------
+async function _openSessionDetail(sessionId) {
+  try {
+    const endpoint = _isAdmin ? `/api/upload-history/${sessionId}` : `/api/my/upload-history/${sessionId}`;
+    const r = await apiFetch(endpoint);
+    const modal  = document.getElementById('sessionDetailModal');
+    const title  = document.getElementById('sessionDetailTitle');
+    const meta   = document.getElementById('sessionDetailMeta');
+    const counts = document.getElementById('sessionDetailCounts');
+    const wDiv   = document.getElementById('sessionDetailWarnings');
+    const wList  = document.getElementById('sessionDetailWarningsList');
+    const iDiv   = document.getElementById('sessionDetailInfos');
+    const iList  = document.getElementById('sessionDetailInfosList');
+
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    title.textContent = `Importação — ${r.source_file}`;
+    meta.innerHTML = [
+      `<span style="color:#64748b">Data</span><span>${escHtml(when)}</span>`,
+      `<span style="color:#64748b">Usuário</span><span>${escHtml(r.uploaded_by_username)}</span>`,
+      `<span style="color:#64748b">Arquivo</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
+      `<span style="color:#64748b">Status</span><span>${escHtml(r.status)}</span>`,
+    ].join('');
+
+    const chip = (label, val, color) =>
+      `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.15rem .6rem;font-size:.78rem">${label}: <strong>${val}</strong></span>`;
+    counts.innerHTML =
+      chip('Inseridos',  r.records_inserted,        '#2ecc71') +
+      chip('Ignorados',  r.records_skipped,          '#94a3b8') +
+      chip('Quarentena', r.quarantine_added,         '#f59e0b') +
+      chip('Avisos',     r.warning_count,            '#f97316') +
+      chip('Infos',      r.info_count,               '#60a5fa');
+
+    if (r.warnings_detail?.length) {
+      wList.innerHTML = r.warnings_detail.map(w => `<li>${escHtml(w)}</li>`).join('');
+      wDiv.hidden = false;
+    } else {
+      wDiv.hidden = true;
+    }
+    if (r.infos_detail?.length) {
+      iList.innerHTML = r.infos_detail.map(i => `<li>${escHtml(i)}</li>`).join('');
+      iDiv.hidden = false;
+    } else {
+      iDiv.hidden = true;
+    }
+
+    modal.hidden = false;
+  } catch (e) { notify(`Erro ao carregar detalhes: ${e.message}`, 'error'); }
+}
 
 // ---------------------------------------------------------------------------
 // Theme editor (Admin tab)
