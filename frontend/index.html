@@ -72,19 +72,19 @@
     <span class="header-name" id="headerAppName" data-app-name>PMAS</span>
   </div>
   <div class="header-sep"></div>
-  <span class="header-sub">Gestão de Projetos</span>
+  <span class="header-sub" id="headerUserInfo">—</span>
   <span class="header-badge">Analytics</span>
   <div class="header-actions">
     <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Importar CSV ou XLSX">
       <span data-i18n="btn.import_ts">⬆ Importar</span>
       <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
     </label>
-    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .5rem">
+    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .75rem;min-width:11rem">
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        style="width:2.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
       <span style="color:#475569;font-size:.85rem">×</span>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        style="width:4rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
     </div>
     <button id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
@@ -159,8 +159,11 @@
       </div>
     </div>
 
+    <!-- Portfolio semaphore — macro health overview -->
+    <div id="semaphoreBar" class="card semaphore-bar" style="display:none"></div>
+
     <!-- Analytics sub-tab navigation -->
-    <nav class="analytics-tabs">
+    <nav class="analytics-tabs" id="analyticsTabsNav">
       <button class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
       <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
       <button class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>

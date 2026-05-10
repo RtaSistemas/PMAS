@@ -4257,13 +4257,65 @@ document.getElementById('deleteLogoBtn')?.addEventListener('click', async () => 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+function _updateHeaderUser() {
+  const el = document.getElementById('headerUserInfo');
+  if (!el) return;
+  const username = sessionStorage.getItem('username') || _getTokenPayload()?.sub || '';
+  el.textContent = username || 'PMAS';
+}
+
+async function loadSemaphore() {
+  const bar = document.getElementById('semaphoreBar');
+  if (!bar) return;
+  try {
+    const data = await apiFetch('/api/portfolio-health');
+    if (!data.length) { bar.style.display = 'none'; return; }
+
+    const classify = p => {
+      if (!p.budget_hours && !p.budget_cost) return 'grey';
+      const pctH = p.budget_hours ? p.consumed_hours / p.budget_hours : 0;
+      const pctC = p.budget_cost  ? p.actual_cost    / p.budget_cost  : 0;
+      const max  = Math.max(pctH, pctC);
+      return max >= 1.0 ? 'red' : max >= 0.9 ? 'yellow' : 'green';
+    };
+
+    const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
+    const pills  = data.map(p => {
+      const s = classify(p);
+      counts[s]++;
+      const pH = p.budget_hours ? (p.consumed_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
+      const pC = p.budget_cost  ? (p.actual_cost    / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
+      const tip = `${p.pep_wbs}: ${pH} · ${pC}`;
+      return `<span class="sem-project ${s}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
+    });
+
+    const dot = (cls, label) => counts[cls]
+      ? `<span class="sem-count" title="${label}"><span class="sem-dot ${cls}"></span>${counts[cls]}</span>`
+      : '';
+
+    bar.innerHTML =
+      `<div class="sem-summary">
+        <span class="sem-title">Portfólio</span>
+        ${dot('green',  'OK — dentro do budget')}
+        ${dot('yellow', 'Atenção — ≥ 90% do budget')}
+        ${dot('red',    'Estourado — ≥ 100% do budget')}
+        ${dot('grey',   'Sem budget definido')}
+      </div>
+      <div class="sem-divider"></div>
+      <div class="sem-projects">${pills.join('')}</div>`;
+    bar.style.display = 'flex';
+  } catch (_) { bar.style.display = 'none'; }
+}
+
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
   _loadTheme();
   _loadPreferences().then(() => _applyLayoutPreferences());
+  _updateHeaderUser();
   loadDashboardCycles();
+  loadSemaphore();
   _renderActiveTab();
 }
 
