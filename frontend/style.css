@@ -462,6 +462,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: rgba(14,165,233,0.04); }
 .data-table .actions { display: flex; gap: 0.4rem; }
+.data-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.data-table th.sortable::after { content: ' ↕'; opacity: .3; font-size: .75em; }
+.data-table th.sort-asc::after { content: ' ▲'; opacity: 1; color: var(--primary); }
+.data-table th.sort-desc::after { content: ' ▼'; opacity: 1; color: var(--primary); }
 
 /* ── Badges ──────────────────────────────────────────────────── */
 .badge-status {
