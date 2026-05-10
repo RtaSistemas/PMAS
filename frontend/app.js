@@ -393,6 +393,46 @@ document.getElementById('currencyFactor').addEventListener('change', _onCurrency
 document.getElementById('currencySymbol').addEventListener('change', _onCurrencyChange);
 
 // ---------------------------------------------------------------------------
+// Table sort
+// ---------------------------------------------------------------------------
+const _tableSortState = {};
+
+function _sortData(data, key, type, dir) {
+  return [...data].sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (type === 'num')        { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
+    else if (type === 'date')  { va = va ? +new Date(va) : 0; vb = vb ? +new Date(vb) : 0; }
+    else { va = (va ?? '').toString().toLowerCase(); vb = (vb ?? '').toString().toLowerCase(); }
+    return dir * (va < vb ? -1 : va > vb ? 1 : 0);
+  });
+}
+
+function _applySort(tableId, data) {
+  const st = _tableSortState[tableId];
+  return st?.col ? _sortData(data, st.col, st.type, st.dir) : data;
+}
+
+function _makeSortable(tableId, colDefs, getDataFn, renderFn) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const ths = table.querySelectorAll('thead th');
+  _tableSortState[tableId] = { col: null, type: null, dir: 1 };
+  ths.forEach((th, i) => {
+    const def = colDefs[i];
+    if (!def) return;
+    th.classList.add('sortable');
+    th.addEventListener('click', () => {
+      const st = _tableSortState[tableId];
+      if (st.col === def.key) { st.dir *= -1; }
+      else { st.col = def.key; st.type = def.type; st.dir = 1; }
+      ths.forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+      th.classList.add(st.dir === 1 ? 'sort-asc' : 'sort-desc');
+      renderFn(_applySort(tableId, getDataFn()));
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Top-level tab navigation
 // ---------------------------------------------------------------------------
 const tabBtns     = document.querySelectorAll('.tab-btn');
@@ -2367,7 +2407,7 @@ async function loadCyclesTable() {
   const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
   try {
     _allCycles = await apiFetch(url);
-    _renderCyclesTable(_allCycles);
+    _renderCyclesTable(_applySort('cyclesTable', _allCycles));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -2466,7 +2506,8 @@ document.getElementById('newCycleBtn').addEventListener('click', () => openCycle
 
 document.getElementById('cycleSearch').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
-  _renderCyclesTable(q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles);
+  const filtered = q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles;
+  _renderCyclesTable(_applySort('cyclesTable', filtered));
 });
 
 async function deleteCycle(id, name, count) {
@@ -2522,7 +2563,7 @@ async function loadProjectsTable() {
     ]);
     _allProjects   = projects;
     _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.consumed_hours]));
-    _renderProjectsTable(projects);
+    _renderProjectsTable(_applySort('projectsTable', projects));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -2617,11 +2658,12 @@ document.getElementById('newProjectBtn').addEventListener('click', () => openPro
 
 document.getElementById('projectSearch').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
-  _renderProjectsTable(q ? _allProjects.filter(p =>
+  const filtered = q ? _allProjects.filter(p =>
     (p.pep_wbs || '').toLowerCase().includes(q) ||
     (p.name    || '').toLowerCase().includes(q) ||
     (p.client  || '').toLowerCase().includes(q)
-  ) : _allProjects);
+  ) : _allProjects;
+  _renderProjectsTable(_applySort('projectsTable', filtered));
 });
 
 async function deleteProject(id, pep) {
@@ -2743,62 +2785,74 @@ async function loadTeamTab() {
   await loadTeamTable();
 }
 
+function _renderSeniorityTable(rows) {
+  const tbody = document.getElementById('seniorityBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_seniority')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(l => `
+    <tr>
+      <td>${escHtml(l.name)}</td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
+      </div></td>
+    </tr>`).join('');
+}
+
 async function loadSeniorityLevels() {
   try {
     _allSeniorityLevels = await apiFetch('/api/seniority-levels');
-    const tbody = document.getElementById('seniorityBody');
-    if (!_allSeniorityLevels.length) {
-      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_seniority')}</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = _allSeniorityLevels.map(l => `
-      <tr>
-        <td>${escHtml(l.name)}</td>
-        <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
-        </div></td>
-      </tr>`).join('');
+    _renderSeniorityTable(_applySort('seniorityTable', _allSeniorityLevels));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderRateCardsTable(rows) {
+  const tbody = document.getElementById('rateCardBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_rates')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td>${escHtml(c.seniority_level_name)}</td>
+      <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+      <td>${c.valid_from}</td>
+      <td>${c.valid_to ?? '—'}</td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
+      </div></td>
+    </tr>`).join('');
 }
 
 async function loadRateCards() {
   try {
     _allRateCards = await apiFetch('/api/rate-cards');
-    const tbody = document.getElementById('rateCardBody');
-    if (!_allRateCards.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_rates')}</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = _allRateCards.map(c => `
-      <tr>
-        <td>${escHtml(c.seniority_level_name)}</td>
-        <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-        <td>${c.valid_from}</td>
-        <td>${c.valid_to ?? '—'}</td>
-        <td><div class="actions">
-          <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
-        </div></td>
-      </tr>`).join('');
+    _renderRateCardsTable(_applySort('rateCardTable', _allRateCards));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+function _renderTeamTable(rows) {
+  const tbody = document.getElementById('teamBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_team')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(m => `
+    <tr>
+      <td>${escHtml(m.name)}</td>
+      <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
+      <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
+    </tr>`).join('');
 }
 
 async function loadTeamTable() {
   try {
     _allTeam = await apiFetch('/api/team');
-    const tbody = document.getElementById('teamBody');
-    if (!_allTeam.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_team')}</td></tr>`;
-    } else {
-      tbody.innerHTML = _allTeam.map(m => `
-        <tr>
-          <td>${escHtml(m.name)}</td>
-          <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
-          <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
-          <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
-        </tr>`).join('');
-    }
+    _renderTeamTable(_applySort('teamTable', _allTeam));
     // Populate bulk seniority select
     const bulkSel = document.getElementById('bulkSenioritySelect');
     bulkSel.innerHTML = '<option value="">— Sem senioridade —</option>' +
@@ -2833,6 +2887,32 @@ document.getElementById('senioritySaveBtn').addEventListener('click', async () =
 document.getElementById('seniorityCancelBtn').addEventListener('click', closeSeniorityModal);
 document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
+
+document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
+  if (!_allSeniorityLevels.length) { notify('Nenhum nível para exportar.', 'info'); return; }
+  const rows = _allSeniorityLevels.map(l => `"${l.name.replace(/"/g, '""')}"`);
+  const blob = new Blob(['﻿' + ['name', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: 'senioridade.csv' }).click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importSeniorityInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/seniority-levels/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    await loadTeamTab();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
 
 async function deleteSeniorityLevel(id, name) {
   if (!confirm(`Excluir o nível "${name}"?`)) return;
@@ -2886,6 +2966,35 @@ document.getElementById('rateCardSaveBtn').addEventListener('click', async () =>
 document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
 document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
+
+document.getElementById('exportRateCardBtn').addEventListener('click', () => {
+  if (!_allRateCards.length) { notify('Nenhuma taxa para exportar.', 'info'); return; }
+  const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const rows = _allRateCards.map(r =>
+    `${esc(r.seniority_level_name)},${r.valid_from},${r.valid_to ?? ''},${r.hourly_rate}`
+  );
+  const blob = new Blob(['﻿' + ['seniority_level,valid_from,valid_to,hourly_rate', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: 'rate_cards.csv' }).click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importRateCardInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/rate-cards/import', { method: 'POST', headers: _authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
+      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    notify(msg, data.errors.length ? 'error' : 'success');
+    await loadTeamTab();
+  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  e.target.value = '';
+});
 
 async function deleteRateCard(id) {
   if (!confirm('Excluir esta taxa?')) return;
@@ -3080,7 +3189,7 @@ let _allUsers = [];
 async function loadUsersTable() {
   try {
     _allUsers = await apiFetch('/api/users');
-    _renderUsersTable(_allUsers);
+    _renderUsersTable(_applySort('usersTable', _allUsers));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3164,6 +3273,8 @@ async function deleteUser(id, username) {
 // Audit Log (Admin tab)
 // ---------------------------------------------------------------------------
 
+let _auditLogCache = [];
+
 async function loadAuditLog() {
   const entity = document.getElementById('auditEntityFilter').value;
   const action = document.getElementById('auditActionFilter').value;
@@ -3171,8 +3282,8 @@ async function loadAuditLog() {
   if (entity) params.set('entity', entity);
   if (action) params.set('action', action);
   try {
-    const rows = await apiFetch(`/api/audit-log?${params}`);
-    _renderAuditLog(rows);
+    _auditLogCache = await apiFetch(`/api/audit-log?${params}`);
+    _renderAuditLog(_applySort('auditTable', _auditLogCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3540,10 +3651,12 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 // ---------------------------------------------------------------------------
 // My Area — Histórico sub-tab
 // ---------------------------------------------------------------------------
+let _myHistoryCache = [];
+
 async function loadMyHistory() {
   try {
-    const rows = await apiFetch('/api/my/upload-history');
-    _renderMyHistory(rows);
+    _myHistoryCache = await apiFetch('/api/my/upload-history');
+    _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3581,6 +3694,8 @@ document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMy
 // ---------------------------------------------------------------------------
 // My Area — Quarentena sub-tab
 // ---------------------------------------------------------------------------
+let _myQrCache = [];
+
 async function loadMyQr() {
   const filter = document.getElementById('myQrFilter')?.value;
   const params = new URLSearchParams({ limit: 200 });
@@ -3588,8 +3703,8 @@ async function loadMyQr() {
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    const rows = await apiFetch(`/api/my/quarantine?${params}`);
-    _renderMyQrTable(rows);
+    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
+    _renderMyQrTable(_applySort('myQrTable', _myQrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3638,12 +3753,14 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
 // ---------------------------------------------------------------------------
 // My Area — Alertas (item 4)
 // ---------------------------------------------------------------------------
+let _myAlertsCache = [];
+
 async function loadMyAlerts() {
   const tbody = document.getElementById('myAlertsBody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr>';
   try {
-    const rows = await apiFetch('/api/my/alerts');
-    _renderMyAlerts(rows);
+    _myAlertsCache = await apiFetch('/api/my/alerts');
+    _renderMyAlerts(_applySort('myAlertsTable', _myAlertsCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3828,7 +3945,7 @@ async function loadQuarantineTable() {
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
     _qrCache = await apiFetch(`/api/quarantine?${params}`);
-    _renderQuarantineTable(_qrCache);
+    _renderQuarantineTable(_applySort('quarantineTable', _qrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -3910,10 +4027,12 @@ document.getElementById('quarantineFilter')?.addEventListener('change', loadQuar
 // ---------------------------------------------------------------------------
 // Upload History (Admin tab)
 // ---------------------------------------------------------------------------
+let _uploadHistoryCache = [];
+
 async function loadUploadHistory() {
   try {
-    const rows = await apiFetch('/api/upload-history');
-    _renderUploadHistory(rows);
+    _uploadHistoryCache = await apiFetch('/api/upload-history');
+    _renderUploadHistory(_applySort('uploadHistoryTable', _uploadHistoryCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -4202,13 +4321,89 @@ document.getElementById('deleteLogoBtn')?.addEventListener('click', async () => 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+function _updateHeaderUser() {
+  const el = document.getElementById('headerUserInfo');
+  if (!el) return;
+  const username = sessionStorage.getItem('username') || _getTokenPayload()?.sub || '';
+  el.textContent = username || 'PMAS';
+}
+
+async function loadSemaphore() {
+  const bar = document.getElementById('semaphoreBar');
+  if (!bar) return;
+  try {
+    const data = await apiFetch('/api/portfolio-health');
+    if (!data.length) { bar.style.display = 'none'; return; }
+
+    const classify = p => {
+      if (!p.budget_hours && !p.budget_cost) return 'grey';
+      const pctH = p.budget_hours ? p.consumed_hours / p.budget_hours : 0;
+      const pctC = p.budget_cost  ? p.actual_cost    / p.budget_cost  : 0;
+      const max  = Math.max(pctH, pctC);
+      return max >= 1.0 ? 'red' : max >= 0.9 ? 'yellow' : 'green';
+    };
+
+    const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
+    const pills  = data.map(p => {
+      const s = classify(p);
+      counts[s]++;
+      const pH = p.budget_hours ? (p.consumed_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
+      const pC = p.budget_cost  ? (p.actual_cost    / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
+      const tip = `${p.pep_wbs}: ${pH} · ${pC}`;
+      return `<span class="sem-project ${s}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
+    });
+
+    const dot = (cls, label) => counts[cls]
+      ? `<span class="sem-count" title="${label}"><span class="sem-dot ${cls}"></span>${counts[cls]}</span>`
+      : '';
+
+    bar.innerHTML =
+      `<div class="sem-summary">
+        <span class="sem-title">Portfólio</span>
+        ${dot('green',  'OK — dentro do budget')}
+        ${dot('yellow', 'Atenção — ≥ 90% do budget')}
+        ${dot('red',    'Estourado — ≥ 100% do budget')}
+        ${dot('grey',   'Sem budget definido')}
+      </div>
+      <div class="sem-divider"></div>
+      <div class="sem-projects">${pills.join('')}</div>`;
+    bar.style.display = 'flex';
+  } catch (_) { bar.style.display = 'none'; }
+}
+
+// ---------------------------------------------------------------------------
+// Wire up sortable column headers
+// ---------------------------------------------------------------------------
+_makeSortable('cyclesTable',
+  [{key:'name',type:'str'}, {key:'start_date',type:'date'}, {key:'end_date',type:'date'}, null, {key:'record_count',type:'num'}, null],
+  () => { const q = document.getElementById('cycleSearch')?.value?.toLowerCase(); return q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles; },
+  _renderCyclesTable
+);
+_makeSortable('projectsTable',
+  [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'client',type:'str'}, {key:'manager',type:'str'}, {key:'budget_hours',type:'num'}, {key:'status',type:'str'}, null],
+  () => { const q = document.getElementById('projectSearch')?.value?.toLowerCase(); return q ? _allProjects.filter(p => (p.pep_wbs||'').toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.client||'').toLowerCase().includes(q)) : _allProjects; },
+  _renderProjectsTable
+);
+_makeSortable('seniorityTable',   [{key:'name',type:'str'}, null], () => _allSeniorityLevels, _renderSeniorityTable);
+_makeSortable('rateCardTable',    [{key:'seniority_level_name',type:'str'}, {key:'hourly_rate',type:'num'}, {key:'valid_from',type:'date'}, {key:'valid_to',type:'date'}, null], () => _allRateCards, _renderRateCardsTable);
+_makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => _allTeam, _renderTeamTable);
+_makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
+_makeSortable('quarantineTable',  [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _qrCache, _renderQuarantineTable);
+_makeSortable('uploadHistoryTable', [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _uploadHistoryCache, _renderUploadHistory);
+_makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
+_makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
+_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
+_makeSortable('myAlertsTable',    [{key:'message',type:'str'}, {key:'occurrences',type:'num'}, {key:'last_triggered',type:'date'}, null], () => _myAlertsCache, _renderMyAlerts);
+
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
   _loadTheme();
   _loadPreferences().then(() => _applyLayoutPreferences());
+  _updateHeaderUser();
   loadDashboardCycles();
+  loadSemaphore();
   _renderActiveTab();
 }
 

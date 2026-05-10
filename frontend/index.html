@@ -72,19 +72,19 @@
     <span class="header-name" id="headerAppName" data-app-name>PMAS</span>
   </div>
   <div class="header-sep"></div>
-  <span class="header-sub">Gestão de Projetos</span>
+  <span class="header-sub" id="headerUserInfo">—</span>
   <span class="header-badge">Analytics</span>
   <div class="header-actions">
     <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Importar CSV ou XLSX">
       <span data-i18n="btn.import_ts">⬆ Importar</span>
       <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
     </label>
-    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .5rem">
+    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .75rem;min-width:11rem">
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        style="width:2.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
       <span style="color:#475569;font-size:.85rem">×</span>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        style="width:4rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
     </div>
     <button id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
@@ -159,8 +159,11 @@
       </div>
     </div>
 
+    <!-- Portfolio semaphore — macro health overview -->
+    <div id="semaphoreBar" class="card semaphore-bar" style="display:none"></div>
+
     <!-- Analytics sub-tab navigation -->
-    <nav class="analytics-tabs">
+    <nav class="analytics-tabs" id="analyticsTabsNav">
       <button class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
       <button class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
       <button class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>
@@ -390,9 +393,15 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
-        <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+            <input type="file" id="importSeniorityInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+        </div>
       </div>
-      <table class="data-table">
+      <table class="data-table" id="seniorityTable">
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
         <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
@@ -401,9 +410,15 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
-        <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+            <input type="file" id="importRateCardInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+        </div>
       </div>
-      <table class="data-table">
+      <table class="data-table" id="rateCardTable">
         <thead>
           <tr>
             <th data-i18n="ratecard.th.level">Nível</th>
@@ -447,7 +462,7 @@
           <button class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
-      <table class="data-table">
+      <table class="data-table" id="teamTable">
         <thead>
           <tr>
             <th data-i18n="team.th.name">Nome</th>
