@@ -3044,21 +3044,22 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
 });
 
 // Global config (multipliers)
+let _anomalyMaxHours = 24;
+
 async function loadGlobalConfig() {
   try {
     const cfg = await apiFetch('/api/config');
     document.getElementById('extraMultiplierInput').value   = cfg.extra_hours_multiplier;
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
-    document.getElementById('anomalyMaxHoursInput').value   = cfg.anomaly_max_daily_hours;
+    if (cfg.anomaly_max_daily_hours) _anomalyMaxHours = cfg.anomaly_max_daily_hours;
   } catch (e) { /* non-critical, leave placeholders */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
-  const am  = parseFloat(document.getElementById('anomalyMaxHoursInput').value);
   const msg = document.getElementById('configMsg');
-  if (isNaN(em) || isNaN(sm) || isNaN(am) || em <= 0 || sm <= 0 || am <= 0) {
+  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
     msg.style.color = '#ef4444';
     msg.textContent = 'Os valores devem ser números positivos.';
     return;
@@ -3067,7 +3068,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     await apiFetchJSON('/api/config', 'PUT', {
       extra_hours_multiplier: em,
       standby_hours_multiplier: sm,
-      anomaly_max_daily_hours: am,
+      anomaly_max_daily_hours: _anomalyMaxHours,
     });
     msg.style.color = '#22c55e';
     msg.textContent = 'Fatores salvos com sucesso.';

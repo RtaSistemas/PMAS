@@ -338,10 +338,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-bottom: none;
   padding: 0 0.5rem;
-  position: sticky;
-  top: 3.25rem;   /* height of the sticky header */
-  z-index: 90;
-  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.35);
 }
 
 /* ── Portfolio semaphore ─────────────────────────────────────── */
