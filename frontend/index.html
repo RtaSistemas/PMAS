@@ -129,7 +129,6 @@
 
 <nav class="app-tabs">
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  <button class="tab-btn" data-tab="cycles" data-i18n="tab.cycles">Ciclos</button>
   <button class="tab-btn" data-tab="projects" data-i18n="tab.projects">Projetos</button>
   <button class="tab-btn" data-tab="team" data-i18n="tab.team">Equipe</button>
   <button class="tab-btn" data-tab="my" data-i18n="tab.my">Minha Área</button>
@@ -313,9 +312,9 @@
   </section>
 
   <!-- ================================================================== -->
-  <!-- TAB: Ciclos                                                          -->
+  <!-- TAB: Projetos (inclui Ciclos)                                        -->
   <!-- ================================================================== -->
-  <section id="tab-cycles" class="tab-section" hidden>
+  <section id="tab-projects" class="tab-section" hidden>
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
@@ -349,12 +348,6 @@
         <tbody id="cyclesBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
-  </section>
-
-  <!-- ================================================================== -->
-  <!-- TAB: Projetos                                                        -->
-  <!-- ================================================================== -->
-  <section id="tab-projects" class="tab-section" hidden>
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
@@ -1176,6 +1169,25 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="aclModalCloseBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addPlanModal" hidden>
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h3 data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
+      <button class="modal-close" id="addPlanModalClose">×</button>
+    </div>
+    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem">
+      <p style="font-size:.8rem;color:#94a3b8;margin:0" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.</p>
+      <div id="addPlanRows" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      <button class="btn btn-secondary btn-sm" id="addPlanAddRowBtn" style="align-self:flex-start" data-i18n="plan.modal_add_row">+ Mais um ciclo</button>
+      <div id="addPlanError" style="color:#f87171;font-size:.8rem;min-height:1rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>

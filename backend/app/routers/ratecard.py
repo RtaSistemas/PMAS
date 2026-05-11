@@ -79,7 +79,7 @@ def export_seniority_levels(db: DbSession, _admin: AdminUser):
 
 
 @router.post("/seniority-levels/import", response_model=ImportResultOut)
-def import_seniority_levels(file: UploadFile, db: DbSession, current_user: CurrentUser):
+def import_seniority_levels(file: UploadFile, db: DbSession, _admin: AdminUser):
     try:
         df = pd.read_csv(io.BytesIO(file.file.read()))
         df.columns = [c.strip() for c in df.columns]
@@ -101,7 +101,7 @@ def import_seniority_levels(file: UploadFile, db: DbSession, current_user: Curre
         except Exception as exc:
             errors.append(f"Linha {i + 2}: {exc}")
     if created:
-        log_audit(db, current_user, "import", "seniority_level",
+        log_audit(db, _admin, "import", "seniority_level",
                   detail={"created": created, "errors": len(errors)})
     db.commit()
     return {"created": created, "updated": 0, "errors": errors}
@@ -208,7 +208,7 @@ def export_rate_cards(db: DbSession, _admin: AdminUser):
 
 
 @router.post("/rate-cards/import", response_model=ImportResultOut)
-def import_rate_cards(file: UploadFile, db: DbSession, current_user: CurrentUser):
+def import_rate_cards(file: UploadFile, db: DbSession, _admin: AdminUser):
     try:
         df = pd.read_csv(io.BytesIO(file.file.read()))
         df.columns = [c.strip() for c in df.columns]
@@ -271,7 +271,7 @@ def import_rate_cards(file: UploadFile, db: DbSession, current_user: CurrentUser
         except Exception as exc:
             errors.append(f"Linha {i + 2}: {exc}")
     if created or updated:
-        log_audit(db, current_user, "import", "rate_card",
+        log_audit(db, _admin, "import", "rate_card",
                   detail={"created": created, "updated": updated, "errors": len(errors)})
     db.commit()
     return {"created": created, "updated": updated, "errors": errors}

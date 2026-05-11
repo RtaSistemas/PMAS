@@ -6,7 +6,7 @@
 const _LANG = {
   pt: {
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
-    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
+    'tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
@@ -131,6 +131,9 @@ const _LANG = {
     'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
     'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
     'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
+    'plan.modal_title':'Adicionar ciclos ao baseline',
+    'plan.modal_hint':'Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.',
+    'plan.modal_add_row':'+ Mais um ciclo',
     'myarea.upload':'Upload','myarea.history':'Histórico',
     'myarea.quarantine':'Quarentena','myarea.alerts':'Alertas',
     'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
@@ -183,7 +186,7 @@ const _LANG = {
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
-    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
+    'tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
@@ -308,6 +311,9 @@ const _LANG = {
     'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
     'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
     'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
+    'plan.modal_title':'Add cycles to baseline',
+    'plan.modal_hint':'Select cycles and set planned hours. Cycles already in the baseline are not listed.',
+    'plan.modal_add_row':'+ One more cycle',
     'myarea.upload':'Upload','myarea.history':'History',
     'myarea.quarantine':'Quarantine','myarea.alerts':'Alerts',
     'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
@@ -445,8 +451,7 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
-    if (btn.dataset.tab === 'cycles')   loadCyclesTable();
-    if (btn.dataset.tab === 'projects') loadProjectsTable();
+    if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
     if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
@@ -1440,27 +1445,86 @@ async function deletePlan(cycle_id) {
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
+let _addPlanAvailableCycles = [];
+
+function _addPlanRow(available) {
+  const container = document.getElementById('addPlanRows');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center';
+  const sel = document.createElement('select');
+  sel.className = 'form-select';
+  sel.style.cssText = 'flex:2;height:2rem;font-size:.82rem';
+  sel.innerHTML = `<option value="">— ${_t('plan.select_cycle')} —</option>` +
+    available.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.min = '0';
+  inp.step = '0.5';
+  inp.placeholder = _t('plan.th.hours');
+  inp.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
+  const rm = document.createElement('button');
+  rm.type = 'button';
+  rm.className = 'btn btn-secondary btn-sm';
+  rm.textContent = '✕';
+  rm.onclick = () => row.remove();
+  row.append(sel, inp, rm);
+  container.appendChild(row);
+}
+
 document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
-  // Build a select of all available active cycles not yet planned
   try {
     const [allCycles, existingPlans] = await Promise.all([
       apiFetch('/api/cycles?include_archived=false'),
       apiFetch(`/api/projects/${_planProjectId}/plans`),
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
-    const available = allCycles.filter(c => !plannedCycleIds.has(c.id));
-    if (!available.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
-    const cycleId = parseInt(prompt(
-      'ID do ciclo:\n' + available.map(c => `${c.id} — ${c.name}`).join('\n')
+    _addPlanAvailableCycles = allCycles.filter(c => !plannedCycleIds.has(c.id));
+    if (!_addPlanAvailableCycles.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
+    document.getElementById('addPlanRows').innerHTML = '';
+    document.getElementById('addPlanError').textContent = '';
+    _addPlanRow(_addPlanAvailableCycles);
+    document.getElementById('addPlanModal').hidden = false;
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
+  _addPlanRow(_addPlanAvailableCycles);
+});
+
+function _closeAddPlanModal() {
+  document.getElementById('addPlanModal').hidden = true;
+}
+document.getElementById('addPlanModalClose').addEventListener('click', _closeAddPlanModal);
+document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
+
+document.getElementById('addPlanSaveBtn').addEventListener('click', async () => {
+  const rows = document.getElementById('addPlanRows').querySelectorAll('div');
+  const errEl = document.getElementById('addPlanError');
+  errEl.textContent = '';
+  const entries = [];
+  const seenIds = new Set();
+  for (const row of rows) {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const cycleId = parseInt(sel.value);
+    const hours = parseFloat(inp.value);
+    if (!cycleId) { errEl.textContent = 'Selecione um ciclo em todas as linhas.'; return; }
+    if (seenIds.has(cycleId)) { errEl.textContent = 'Ciclo duplicado na lista.'; return; }
+    if (isNaN(hours) || hours < 0) { errEl.textContent = 'Informe horas válidas (≥ 0) em todas as linhas.'; return; }
+    seenIds.add(cycleId);
+    entries.push({ cycle_id: cycleId, planned_hours: hours });
+  }
+  if (!entries.length) { _closeAddPlanModal(); return; }
+  try {
+    await Promise.all(entries.map(e =>
+      apiFetchJSON(`/api/projects/${_planProjectId}/plans/${e.cycle_id}`, 'PUT',
+        { cycle_id: e.cycle_id, planned_hours: e.planned_hours })
     ));
-    if (!cycleId || isNaN(cycleId)) return;
-    const hours = parseFloat(prompt('Horas planejadas para este ciclo:'));
-    if (isNaN(hours) || hours < 0) return;
-    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycleId}`, 'PUT', { cycle_id: cycleId, planned_hours: hours });
+    _closeAddPlanModal();
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
 });
 
 document.getElementById('exportPlanBtn').addEventListener('click', async () => {
