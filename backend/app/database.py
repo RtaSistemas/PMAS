@@ -141,6 +141,11 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE global_config ADD COLUMN ui_theme JSON"))
             if "logo_path" not in gc_cols:
                 conn.execute(text("ALTER TABLE global_config ADD COLUMN logo_path VARCHAR"))
+            if "timezone" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN timezone VARCHAR NOT NULL DEFAULT 'America/Sao_Paulo'"
+                ))
             qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
             if "review_status" not in qr_cols:
                 conn.execute(text(

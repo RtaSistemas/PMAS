@@ -1467,7 +1467,7 @@ document.getElementById('exportPlanBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
   try {
     const res = await fetch(`/api/projects/${_planProjectId}/plans/export`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+      headers: _authHeaders(),
     });
     if (!res.ok) throw new Error(await res.text());
     const blob = await res.blob();
@@ -1489,7 +1489,7 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
   try {
     const res = await fetch('/api/projects/plans/import', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+      headers: _authHeaders(),
       body: form,
     });
     const data = await res.json();
@@ -3052,12 +3052,14 @@ async function loadGlobalConfig() {
     document.getElementById('extraMultiplierInput').value   = cfg.extra_hours_multiplier;
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
     if (cfg.anomaly_max_daily_hours) _anomalyMaxHours = cfg.anomaly_max_daily_hours;
+    if (cfg.timezone) document.getElementById('timezoneSelect').value = cfg.timezone;
   } catch (e) { /* non-critical, leave placeholders */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
+  const tz  = document.getElementById('timezoneSelect').value;
   const msg = document.getElementById('configMsg');
   if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
     msg.style.color = '#ef4444';
@@ -3069,6 +3071,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       extra_hours_multiplier: em,
       standby_hours_multiplier: sm,
       anomaly_max_daily_hours: _anomalyMaxHours,
+      timezone: tz,
     });
     msg.style.color = '#22c55e';
     msg.textContent = 'Fatores salvos com sucesso.';
@@ -3295,7 +3298,7 @@ function _renderAuditLog(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     let detail = '';
     if (r.detail) {
       try {
@@ -3669,7 +3672,7 @@ function _renderMyHistory(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     const statusKey = r.status === 'ok' ? 'history.status.ok'
       : r.status === 'warnings' ? 'history.status.warnings'
       : r.status === 'quarantine' ? 'history.status.quarantine'
@@ -3718,7 +3721,7 @@ function _renderMyQrTable(rows) {
   }
   tbody.innerHTML = rows.map(r => {
     const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return `<tr>
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
@@ -3774,7 +3777,7 @@ function _renderMyAlerts(rows) {
   }
   const trendIcon = t => t === 'up' ? '📈' : t === 'down' ? '📉' : '➡️';
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return `<tr>
       <td style="font-size:.8rem">${escHtml(r.message)}</td>
       <td style="text-align:right">${r.occurrences}</td>
@@ -3964,7 +3967,7 @@ function _renderQuarantineTable(rows) {
   }
   tbody.innerHTML = rows.map(r => {
     const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' });
     const collab = escHtml(raw['Colaborador'] || r.uploaded_by_username || '—');
     const date   = escHtml(raw['Data'] || '—');
     const hours  = raw['Horas totais (decimal)'] ?? '—';
@@ -3997,7 +4000,7 @@ function _openQRDetail(id) {
   document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
   document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
   document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
-    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' })}`
+    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' })}`
     : '—';
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
@@ -4045,7 +4048,7 @@ function _renderUploadHistory(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' });
     const statusBadge = r.status === 'ok'
       ? `<span class="badge-status ativo">ok</span>`
       : r.status === 'warnings'
@@ -4087,7 +4090,7 @@ async function _openSessionDetail(sessionId) {
     const iDiv   = document.getElementById('sessionDetailInfos');
     const iList  = document.getElementById('sessionDetailInfosList');
 
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     title.textContent = `Importação — ${r.source_file}`;
     meta.innerHTML = [
       `<span style="color:#64748b">Data</span><span>${escHtml(when)}</span>`,

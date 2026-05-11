@@ -17,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from backend.app.database import Base
+from backend.app.utils import now_br
 
 
 class SeniorityLevel(Base):
@@ -145,6 +146,7 @@ class GlobalConfig(Base):
     extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
     standby_hours_multiplier = Column(Float, default=1.0, nullable=False)
     anomaly_max_daily_hours = Column(Float, default=24.0, nullable=False)
+    timezone = Column(String, nullable=False, default="America/Sao_Paulo")
     ui_theme = Column(JSON, nullable=True)
     logo_path = Column(String, nullable=True)
 
@@ -191,7 +193,7 @@ class ValidationRule(Base):
     action      = Column(String, nullable=False)
     description = Column(String, nullable=True)
     created_by  = Column(String, nullable=True)
-    created_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at  = Column(DateTime, nullable=False, default=now_br)
     updated_by  = Column(String, nullable=True)
     updated_at  = Column(DateTime, nullable=True)
 
@@ -202,7 +204,7 @@ class UploadSession(Base):
     __tablename__ = "upload_session"
 
     id                   = Column(Integer, primary_key=True, index=True)
-    uploaded_at          = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    uploaded_at          = Column(DateTime, nullable=False, default=now_br, index=True)
     uploaded_by_user_id  = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
     uploaded_by_username = Column(String, nullable=False)
     source_file          = Column(String, nullable=False)
@@ -226,7 +228,7 @@ class QuarantineRecord(Base):
     __tablename__ = "quarantine_record"
 
     id                   = Column(Integer, primary_key=True, index=True)
-    ingested_at          = Column(DateTime, nullable=False, default=datetime.utcnow)
+    ingested_at          = Column(DateTime, nullable=False, default=now_br)
     upload_session_id    = Column(Integer, ForeignKey("upload_session.id", ondelete="SET NULL"), nullable=True, index=True)
     uploaded_by_user_id  = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
     uploaded_by_username = Column(String, nullable=True)

@@ -44,7 +44,7 @@ def list_plans(project_id: int, db: DbSession):
 
 
 @router.get("/{project_id}/plans/export", summary="Exportar baseline do projeto em CSV")
-def export_plans(project_id: int, db: DbSession):
+def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")

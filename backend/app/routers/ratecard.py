@@ -385,6 +385,7 @@ def update_config(body: GlobalConfigIn, db: DbSession, _admin: AdminUser):
     cfg.extra_hours_multiplier = body.extra_hours_multiplier
     cfg.standby_hours_multiplier = body.standby_hours_multiplier
     cfg.anomaly_max_daily_hours = body.anomaly_max_daily_hours
+    cfg.timezone = body.timezone
     db.commit()
     db.refresh(cfg)
     log_audit(db, _admin, "update", "global_config", 1, body.model_dump())

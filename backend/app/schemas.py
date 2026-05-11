@@ -49,13 +49,15 @@ class ImportResultOut(BaseModel):
 class GlobalConfigIn(BaseModel):
     extra_hours_multiplier: float = Field(gt=0)
     standby_hours_multiplier: float = Field(gt=0)
-    anomaly_max_daily_hours: float = Field(default=24.0, gt=0)
+    anomaly_max_daily_hours: float = Field(default=24.0, gt=0)  # deprecated: use ValidationRule engine
+    timezone: str = "America/Sao_Paulo"
 
 
 class GlobalConfigOut(BaseModel):
     extra_hours_multiplier: float
     standby_hours_multiplier: float
     anomaly_max_daily_hours: float
+    timezone: str
 
 
 class UserCreateIn(BaseModel):
