@@ -85,19 +85,18 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
 
 
 @router.get("/upload-history", response_model=list[UploadSessionOut])
-def list_upload_sessions(db: DbSession, _: AdminUser, limit: int = 200, offset: int = 0):
-    return (
-        db.query(UploadSession)
-        .order_by(UploadSession.uploaded_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+def list_upload_sessions(db: DbSession, current_user: CurrentUser, limit: int = 200, offset: int = 0):
+    q = db.query(UploadSession).order_by(UploadSession.uploaded_at.desc())
+    if current_user.role != "admin":
+        q = q.filter(UploadSession.uploaded_by_user_id == current_user.id)
+    return q.offset(offset).limit(limit).all()
 
 
 @router.get("/upload-history/{session_id}", response_model=UploadSessionOut)
-def get_upload_session(session_id: int, db: DbSession, _: AdminUser):
+def get_upload_session(session_id: int, db: DbSession, current_user: CurrentUser):
     session = db.get(UploadSession, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
+    if current_user.role != "admin" and session.uploaded_by_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
     return session

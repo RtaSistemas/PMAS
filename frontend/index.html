@@ -483,9 +483,6 @@
     <nav class="my-area-nav">
       <button class="my-tab-btn active" data-my-tab="profile">Perfil</button>
       <button class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
-      <button class="my-tab-btn" data-my-tab="history" data-i18n="myarea.history">Histórico</button>
-      <button class="my-tab-btn" data-my-tab="quarantine" data-i18n="myarea.quarantine">Quarentena</button>
-      <button class="my-tab-btn" data-my-tab="alerts">⚡ Alertas</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
@@ -525,9 +522,9 @@
       </div>
     </div>
 
-    <!-- Sub-tab: Upload -->
+    <!-- Sub-tab: Upload (includes History and Quarantine inline) -->
     <div id="my-tab-upload" class="my-tab-section" hidden>
-      <div class="card" style="max-width:480px">
+      <div class="card" style="max-width:520px">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
         <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem">Importe um arquivo CSV ou XLSX de timesheets.</p>
         <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem">
@@ -536,10 +533,8 @@
         </label>
         <div id="myAreaUploadResult" style="margin-top:1rem;font-size:.85rem;color:#94a3b8"></div>
       </div>
-    </div>
 
-    <!-- Sub-tab: Histórico -->
-    <div id="my-tab-history" class="my-tab-section" hidden>
+      <!-- History -->
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
@@ -550,6 +545,7 @@
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
             <th data-i18n="history.th.file">Arquivo</th>
+            <th>Enviado por</th>
             <th style="text-align:right" data-i18n="history.th.inserted">Inseridos</th>
             <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
             <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
@@ -557,13 +553,11 @@
             <th style="text-align:right">Infos</th>
             <th data-i18n="history.th.status">Status</th>
           </tr></thead>
-          <tbody id="myHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="myHistoryBody"><tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
-    </div>
 
-    <!-- Sub-tab: Quarentena -->
-    <div id="my-tab-quarantine" class="my-tab-section" hidden>
+      <!-- Quarantine -->
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
@@ -578,37 +572,18 @@
             <button class="btn btn-secondary btn-sm" id="myQrExportBtn">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros do seus uploads que foram para quarentena.</p>
+        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros em quarentena. Clique para ver detalhes.</p>
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
             <th data-i18n="qr.th.collaborator">Colaborador</th>
+            <th>Data reg.</th>
             <th style="text-align:right" data-i18n="qr.th.hours">Horas</th>
             <th data-i18n="qr.th.pep">PEP</th>
             <th data-i18n="qr.th.reason">Motivo</th>
             <th>Status</th>
           </tr></thead>
-          <tbody id="myQrBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Sub-tab: Alertas -->
-    <div id="my-tab-alerts" class="my-tab-section" hidden>
-      <div class="card">
-        <div class="section-header">
-          <h2 class="card-title">⚡ Alertas Recorrentes</h2>
-          <button class="btn btn-secondary btn-sm" id="myAlertsRefreshBtn">↺ Atualizar</button>
-        </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Mensagens de aviso ou informação que se repetem nas suas importações recentes.</p>
-        <table class="data-table" id="myAlertsTable">
-          <thead><tr>
-            <th>Mensagem</th>
-            <th style="text-align:right">Ocorrências</th>
-            <th>Último disparo</th>
-            <th style="text-align:center">Tendência</th>
-          </tr></thead>
-          <tbody id="myAlertsBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+          <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -646,56 +621,6 @@
       <ul class="sortable-list" id="rulesList">
         <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Carregando…</li>
       </ul>
-    </div>
-
-    <!-- Quarantine -->
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title">Quarentena</h2>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <select id="quarantineFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
-            <option value="">Todos os registros</option>
-            <option value="pending">⏳ Pendentes</option>
-            <option value="approved">✅ Aprovados</option>
-            <option value="rejected">❌ Rejeitados</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" id="quarantineRefreshBtn">↺ Atualizar</button>
-        </div>
-      </div>
-      <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Clique em uma linha para ver detalhes e aprovar ou rejeitar o registro.</p>
-      <table class="data-table" id="quarantineTable">
-        <thead><tr>
-          <th>Data</th>
-          <th>Colaborador</th>
-          <th>Data reg.</th>
-          <th style="text-align:right">Horas</th>
-          <th>PEP</th>
-          <th>Status</th>
-        </tr></thead>
-        <tbody id="quarantineBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
-      </table>
-    </div>
-
-    <!-- Upload History -->
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title">Histórico de Importações</h2>
-        <button class="btn btn-secondary btn-sm" id="uploadHistoryRefreshBtn">↺ Atualizar</button>
-      </div>
-      <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
-      <table class="data-table" id="uploadHistoryTable">
-        <thead><tr>
-          <th>Data</th>
-          <th>Arquivo</th>
-          <th>Enviado por</th>
-          <th style="text-align:right">Inseridos</th>
-          <th style="text-align:right">Quarentena</th>
-          <th style="text-align:right">Avisos</th>
-          <th style="text-align:right">Infos</th>
-          <th>Status</th>
-        </tr></thead>
-        <tbody id="uploadHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
-      </table>
     </div>
 
     <!-- Theme Editor -->

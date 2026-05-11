@@ -134,8 +134,8 @@ const _LANG = {
     'plan.modal_title':'Adicionar ciclos ao baseline',
     'plan.modal_hint':'Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.',
     'plan.modal_add_row':'+ Mais um ciclo',
-    'myarea.upload':'Upload','myarea.history':'Histórico',
-    'myarea.quarantine':'Quarentena','myarea.alerts':'Alertas',
+    'myarea.upload':'Upload','myarea.history':'Histórico de Importações',
+    'myarea.quarantine':'Quarentena',
     'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
     'upload.quarantine':'registros em quarentena','upload.warnings':'avisos','upload.infos':'informações',
     'history.th.when':'Quando','history.th.file':'Arquivo','history.th.inserted':'Inseridos',
@@ -314,8 +314,8 @@ const _LANG = {
     'plan.modal_title':'Add cycles to baseline',
     'plan.modal_hint':'Select cycles and set planned hours. Cycles already in the baseline are not listed.',
     'plan.modal_add_row':'+ One more cycle',
-    'myarea.upload':'Upload','myarea.history':'History',
-    'myarea.quarantine':'Quarantine','myarea.alerts':'Alerts',
+    'myarea.upload':'Upload','myarea.history':'Import History',
+    'myarea.quarantine':'Quarantine',
     'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
     'upload.quarantine':'records quarantined','upload.warnings':'warnings','upload.infos':'info messages',
     'history.th.when':'When','history.th.file':'File','history.th.inserted':'Inserted',
@@ -454,7 +454,7 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
-    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   });
 });
 
@@ -664,6 +664,8 @@ function _showIngestResult(json, filename) {
   }
   details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
   panel.hidden = false;
+  clearTimeout(panel._dismissTimer);
+  panel._dismissTimer = setTimeout(() => { panel.hidden = true; }, 6000);
 }
 
 // ---------------------------------------------------------------------------
@@ -699,7 +701,7 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
   if (tab === 'dashboard') _renderActiveTab();
-  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
+  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   if (tab === 'my')       _initMyArea();
 });
 
@@ -3550,9 +3552,7 @@ function _switchMyTab(tabId) {
   document.querySelectorAll('.my-tab-section').forEach(el => {
     el.hidden = el.id !== `my-tab-${tabId}`;
   });
-  if (tabId === 'history')    loadMyHistory();
-  if (tabId === 'quarantine') loadMyQr();
-  if (tabId === 'alerts')     loadMyAlerts();
+  if (tabId === 'upload') { loadMyHistory(); loadMyQr(); }
 }
 
 document.querySelectorAll('.my-tab-btn').forEach(btn => {
@@ -3709,6 +3709,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
     loadMyHistory();
+    loadMyQr();
   } catch (e) {
     resultEl.textContent = `Erro: ${e.message}`;
     notify(e.message, 'error');
@@ -3723,7 +3724,7 @@ let _myHistoryCache = [];
 
 async function loadMyHistory() {
   try {
-    _myHistoryCache = await apiFetch('/api/my/upload-history');
+    _myHistoryCache = await apiFetch('/api/upload-history');
     _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3732,7 +3733,7 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -3743,10 +3744,10 @@ function _renderMyHistory(rows) {
       : 'history.status.rejected';
     const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
     const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
-    const hasDetail = (r.warning_count + r.info_count) > 0;
-    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
+    return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
+      <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
       <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
@@ -3771,7 +3772,8 @@ async function loadMyQr() {
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
+    _myQrCache = await apiFetch(`/api/quarantine?${params}`);
+    _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3780,18 +3782,19 @@ function _renderMyQrTable(rows) {
   const tbody = document.getElementById('myQrBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const raw  = r.raw_data || {};
     const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    return `<tr>
+    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
+      <td style="font-size:.78rem">${escHtml(raw['Data'] || '—')}</td>
       <td style="text-align:right">${raw['Horas totais (decimal)'] ?? '—'}</td>
       <td style="font-size:.78rem">${escHtml(raw['Código PEP'] || '—')}</td>
-      <td style="font-size:.78rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+      <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
           title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
       <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
@@ -3818,40 +3821,6 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 });
 
-// ---------------------------------------------------------------------------
-// My Area — Alertas (item 4)
-// ---------------------------------------------------------------------------
-let _myAlertsCache = [];
-
-async function loadMyAlerts() {
-  const tbody = document.getElementById('myAlertsBody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr>';
-  try {
-    _myAlertsCache = await apiFetch('/api/my/alerts');
-    _renderMyAlerts(_applySort('myAlertsTable', _myAlertsCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
-
-function _renderMyAlerts(rows) {
-  const tbody = document.getElementById('myAlertsBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Nenhum alerta recorrente encontrado.</td></tr>';
-    return;
-  }
-  const trendIcon = t => t === 'up' ? '📈' : t === 'down' ? '📉' : '➡️';
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    return `<tr>
-      <td style="font-size:.8rem">${escHtml(r.message)}</td>
-      <td style="text-align:right">${r.occurrences}</td>
-      <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
-      <td style="text-align:center;font-size:1rem">${trendIcon(r.trend)}</td>
-    </tr>`;
-  }).join('');
-}
-
-document.getElementById('myAlertsRefreshBtn')?.addEventListener('click', loadMyAlerts);
 
 // ---------------------------------------------------------------------------
 // Validation Rules (Admin tab)
@@ -4001,50 +3970,13 @@ async function deleteRule(id) {
 }
 
 // ---------------------------------------------------------------------------
-// Quarantine (Admin tab)
+// Quarantine helpers (shared by My Area)
 // ---------------------------------------------------------------------------
 let _qrCache = [];
-
-async function loadQuarantineTable() {
-  const filter = document.getElementById('quarantineFilter')?.value;
-  const params = new URLSearchParams({ limit: 200 });
-  if (filter === 'pending')   params.set('review_status', 'pending');
-  if (filter === 'approved')  params.set('review_status', 'approved');
-  if (filter === 'rejected')  params.set('review_status', 'rejected');
-  try {
-    _qrCache = await apiFetch(`/api/quarantine?${params}`);
-    _renderQuarantineTable(_applySort('quarantineTable', _qrCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
 
 function _qrStatusBadge(status) {
   const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'encerrado' : 'suspenso';
   return `<span class="badge-status ${cls}">${_t('qr.status.' + status)}</span>`;
-}
-
-function _renderQuarantineTable(rows) {
-  const tbody = document.getElementById('quarantineBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' });
-    const collab = escHtml(raw['Colaborador'] || r.uploaded_by_username || '—');
-    const date   = escHtml(raw['Data'] || '—');
-    const hours  = raw['Horas totais (decimal)'] ?? '—';
-    const pep    = escHtml(raw['Código PEP'] || '—');
-    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
-      <td style="white-space:nowrap;font-size:.78rem">${when}</td>
-      <td>${collab}</td>
-      <td>${date}</td>
-      <td style="text-align:right">${hours}</td>
-      <td>${pep}</td>
-      <td>${_qrStatusBadge(r.review_status)}</td>
-    </tr>`;
-  }).join('');
 }
 
 function _openQRDetail(id) {
@@ -4069,8 +4001,8 @@ function _openQRDetail(id) {
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
   const isPending = r.review_status === 'pending';
-  document.getElementById('qrApproveBtn').hidden = !isPending;
-  document.getElementById('qrRejectBtn').hidden  = !isPending;
+  document.getElementById('qrApproveBtn').hidden = !isPending || !_isAdmin();
+  document.getElementById('qrRejectBtn').hidden  = !isPending || !_isAdmin();
 
   document.getElementById('qrApproveBtn').onclick = () => _doQRAction(id, 'approve');
   document.getElementById('qrRejectBtn').onclick  = () => _doQRAction(id, 'reject');
@@ -4083,67 +4015,20 @@ async function _doQRAction(id, action) {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     document.getElementById('qrDetailModal').setAttribute('hidden', '');
     notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
-    loadQuarantineTable();
+    loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 document.getElementById('qrModalClose')?.addEventListener('click',    () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
 document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
-document.getElementById('quarantineRefreshBtn')?.addEventListener('click', loadQuarantineTable);
-document.getElementById('quarantineFilter')?.addEventListener('change', loadQuarantineTable);
 
-// ---------------------------------------------------------------------------
-// Upload History (Admin tab)
-// ---------------------------------------------------------------------------
-let _uploadHistoryCache = [];
-
-async function loadUploadHistory() {
-  try {
-    _uploadHistoryCache = await apiFetch('/api/upload-history');
-    _renderUploadHistory(_applySort('uploadHistoryTable', _uploadHistoryCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
-
-function _renderUploadHistory(rows) {
-  const tbody = document.getElementById('uploadHistoryBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' });
-    const statusBadge = r.status === 'ok'
-      ? `<span class="badge-status ativo">ok</span>`
-      : r.status === 'warnings'
-      ? `<span class="badge-status warning">avisos</span>`
-      : r.status === 'quarantine'
-      ? `<span class="badge-status suspenso">quarentena</span>`
-      : `<span class="badge-status encerrado">rejeitado</span>`;
-    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
-    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
-    const hasDetail = (r.warning_count + r.info_count) > 0;
-    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
-      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
-      <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
-      <td>${escHtml(r.uploaded_by_username)}</td>
-      <td style="text-align:right">${r.records_inserted}</td>
-      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
-      <td style="text-align:right">${warnCell}</td>
-      <td style="text-align:right">${infoCell}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  }).join('');
-}
-
-document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', loadUploadHistory);
 
 // ---------------------------------------------------------------------------
 // Session detail modal
 // ---------------------------------------------------------------------------
 async function _openSessionDetail(sessionId) {
   try {
-    const endpoint = _isAdmin ? `/api/upload-history/${sessionId}` : `/api/my/upload-history/${sessionId}`;
+    const endpoint = `/api/upload-history/${sessionId}`;
     const r = await apiFetch(endpoint);
     const modal  = document.getElementById('sessionDetailModal');
     const title  = document.getElementById('sessionDetailTitle');
@@ -4456,12 +4341,9 @@ _makeSortable('seniorityTable',   [{key:'name',type:'str'}, null], () => _allSen
 _makeSortable('rateCardTable',    [{key:'seniority_level_name',type:'str'}, {key:'hourly_rate',type:'num'}, {key:'valid_from',type:'date'}, {key:'valid_to',type:'date'}, null], () => _allRateCards, _renderRateCardsTable);
 _makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => _allTeam, _renderTeamTable);
 _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
-_makeSortable('quarantineTable',  [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _qrCache, _renderQuarantineTable);
-_makeSortable('uploadHistoryTable', [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _uploadHistoryCache, _renderUploadHistory);
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
-_makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
-_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
-_makeSortable('myAlertsTable',    [{key:'message',type:'str'}, {key:'occurrences',type:'num'}, {key:'last_triggered',type:'date'}, null], () => _myAlertsCache, _renderMyAlerts);
+_makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
+_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
