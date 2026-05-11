@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from backend.app.models import AuditLog, User
+from backend.app.utils import now_br
 
 
 def log_audit(
@@ -23,5 +23,5 @@ def log_audit(
         entity=entity,
         entity_id=entity_id,
         detail=json.dumps(detail, ensure_ascii=False, default=str) if detail else None,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=now_br(),
     ))

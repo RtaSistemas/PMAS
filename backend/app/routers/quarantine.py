@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Collaborator, QuarantineRecord, TimesheetRecord, UploadSession
 from backend.app.schemas import QuarantineRecordOut, QuarantineReviewIn
 from backend.app.services.ingestion import (
@@ -102,14 +102,14 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
 @router.get("", response_model=list[QuarantineRecordOut])
 def list_quarantine(
     db: DbSession,
-    _: AdminUser,
+    current_user: CurrentUser,
     reviewed: bool | None = None,
     review_status: str | None = None,
     upload_session_id: int | None = None,
     rule_id: int | None = None,
     source_file: str | None = None,
     username: str | None = None,
-    limit: int = 100,
+    limit: int = 200,
     offset: int = 0,
 ):
     q = (
@@ -117,6 +117,8 @@ def list_quarantine(
         .options(joinedload(QuarantineRecord.rule))
         .order_by(QuarantineRecord.ingested_at.desc())
     )
+    if current_user.role != "admin":
+        q = q.filter(QuarantineRecord.uploaded_by_user_id == current_user.id)
     if reviewed is not None:
         q = q.filter(QuarantineRecord.reviewed == reviewed)
     if review_status is not None:
@@ -135,8 +137,11 @@ def list_quarantine(
 
 
 @router.get("/{record_id}", response_model=QuarantineRecordOut)
-def get_quarantine_record(record_id: int, db: DbSession, _: AdminUser):
-    return _load_qr(db, record_id)
+def get_quarantine_record(record_id: int, db: DbSession, current_user: CurrentUser):
+    rec = _load_qr(db, record_id)
+    if current_user.role != "admin" and rec.uploaded_by_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+    return rec
 
 
 @router.patch("/{record_id}/review", response_model=QuarantineRecordOut)

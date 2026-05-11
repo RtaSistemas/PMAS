@@ -6,7 +6,7 @@
 const _LANG = {
   pt: {
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
-    'tab.cycles':'Ciclos','tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
+    'tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
@@ -131,8 +131,11 @@ const _LANG = {
     'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
     'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
     'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
-    'myarea.upload':'Upload','myarea.history':'Histórico',
-    'myarea.quarantine':'Quarentena','myarea.alerts':'Alertas',
+    'plan.modal_title':'Adicionar ciclos ao baseline',
+    'plan.modal_hint':'Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.',
+    'plan.modal_add_row':'+ Mais um ciclo',
+    'myarea.upload':'Upload','myarea.history':'Histórico de Importações',
+    'myarea.quarantine':'Quarentena',
     'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
     'upload.quarantine':'registros em quarentena','upload.warnings':'avisos','upload.infos':'informações',
     'history.th.when':'Quando','history.th.file':'Arquivo','history.th.inserted':'Inseridos',
@@ -183,7 +186,7 @@ const _LANG = {
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
-    'tab.cycles':'Cycles','tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
+    'tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
@@ -308,8 +311,11 @@ const _LANG = {
     'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
     'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
     'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
-    'myarea.upload':'Upload','myarea.history':'History',
-    'myarea.quarantine':'Quarantine','myarea.alerts':'Alerts',
+    'plan.modal_title':'Add cycles to baseline',
+    'plan.modal_hint':'Select cycles and set planned hours. Cycles already in the baseline are not listed.',
+    'plan.modal_add_row':'+ One more cycle',
+    'myarea.upload':'Upload','myarea.history':'Import History',
+    'myarea.quarantine':'Quarantine',
     'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
     'upload.quarantine':'records quarantined','upload.warnings':'warnings','upload.infos':'info messages',
     'history.th.when':'When','history.th.file':'File','history.th.inserted':'Inserted',
@@ -445,11 +451,10 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
-    if (btn.dataset.tab === 'cycles')   loadCyclesTable();
-    if (btn.dataset.tab === 'projects') loadProjectsTable();
+    if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
-    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   });
 });
 
@@ -659,6 +664,8 @@ function _showIngestResult(json, filename) {
   }
   details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
   panel.hidden = false;
+  clearTimeout(panel._dismissTimer);
+  panel._dismissTimer = setTimeout(() => { panel.hidden = true; }, 6000);
 }
 
 // ---------------------------------------------------------------------------
@@ -694,7 +701,7 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
   if (tab === 'dashboard') _renderActiveTab();
-  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); loadQuarantineTable(); loadUploadHistory(); _loadThemeEditor(); }
+  if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   if (tab === 'my')       _initMyArea();
 });
 
@@ -1440,34 +1447,93 @@ async function deletePlan(cycle_id) {
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
+let _addPlanAvailableCycles = [];
+
+function _addPlanRow(available) {
+  const container = document.getElementById('addPlanRows');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center';
+  const sel = document.createElement('select');
+  sel.className = 'form-select';
+  sel.style.cssText = 'flex:2;height:2rem;font-size:.82rem';
+  sel.innerHTML = `<option value="">— ${_t('plan.select_cycle')} —</option>` +
+    available.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.min = '0';
+  inp.step = '0.5';
+  inp.placeholder = _t('plan.th.hours');
+  inp.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
+  const rm = document.createElement('button');
+  rm.type = 'button';
+  rm.className = 'btn btn-secondary btn-sm';
+  rm.textContent = '✕';
+  rm.onclick = () => row.remove();
+  row.append(sel, inp, rm);
+  container.appendChild(row);
+}
+
 document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
-  // Build a select of all available active cycles not yet planned
   try {
     const [allCycles, existingPlans] = await Promise.all([
       apiFetch('/api/cycles?include_archived=false'),
       apiFetch(`/api/projects/${_planProjectId}/plans`),
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
-    const available = allCycles.filter(c => !plannedCycleIds.has(c.id));
-    if (!available.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
-    const cycleId = parseInt(prompt(
-      'ID do ciclo:\n' + available.map(c => `${c.id} — ${c.name}`).join('\n')
+    _addPlanAvailableCycles = allCycles.filter(c => !plannedCycleIds.has(c.id));
+    if (!_addPlanAvailableCycles.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
+    document.getElementById('addPlanRows').innerHTML = '';
+    document.getElementById('addPlanError').textContent = '';
+    _addPlanRow(_addPlanAvailableCycles);
+    document.getElementById('addPlanModal').hidden = false;
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+});
+
+document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
+  _addPlanRow(_addPlanAvailableCycles);
+});
+
+function _closeAddPlanModal() {
+  document.getElementById('addPlanModal').hidden = true;
+}
+document.getElementById('addPlanModalClose').addEventListener('click', _closeAddPlanModal);
+document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
+
+document.getElementById('addPlanSaveBtn').addEventListener('click', async () => {
+  const rows = document.getElementById('addPlanRows').querySelectorAll('div');
+  const errEl = document.getElementById('addPlanError');
+  errEl.textContent = '';
+  const entries = [];
+  const seenIds = new Set();
+  for (const row of rows) {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const cycleId = parseInt(sel.value);
+    const hours = parseFloat(inp.value);
+    if (!cycleId) { errEl.textContent = 'Selecione um ciclo em todas as linhas.'; return; }
+    if (seenIds.has(cycleId)) { errEl.textContent = 'Ciclo duplicado na lista.'; return; }
+    if (isNaN(hours) || hours < 0) { errEl.textContent = 'Informe horas válidas (≥ 0) em todas as linhas.'; return; }
+    seenIds.add(cycleId);
+    entries.push({ cycle_id: cycleId, planned_hours: hours });
+  }
+  if (!entries.length) { _closeAddPlanModal(); return; }
+  try {
+    await Promise.all(entries.map(e =>
+      apiFetchJSON(`/api/projects/${_planProjectId}/plans/${e.cycle_id}`, 'PUT',
+        { cycle_id: e.cycle_id, planned_hours: e.planned_hours })
     ));
-    if (!cycleId || isNaN(cycleId)) return;
-    const hours = parseFloat(prompt('Horas planejadas para este ciclo:'));
-    if (isNaN(hours) || hours < 0) return;
-    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycleId}`, 'PUT', { cycle_id: cycleId, planned_hours: hours });
+    _closeAddPlanModal();
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
 });
 
 document.getElementById('exportPlanBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
   try {
     const res = await fetch(`/api/projects/${_planProjectId}/plans/export`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+      headers: _authHeaders(),
     });
     if (!res.ok) throw new Error(await res.text());
     const blob = await res.blob();
@@ -1489,7 +1555,7 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
   try {
     const res = await fetch('/api/projects/plans/import', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('pmas_token')}` },
+      headers: _authHeaders(),
       body: form,
     });
     const data = await res.json();
@@ -3044,21 +3110,24 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
 });
 
 // Global config (multipliers)
+let _anomalyMaxHours = 24;
+
 async function loadGlobalConfig() {
   try {
     const cfg = await apiFetch('/api/config');
     document.getElementById('extraMultiplierInput').value   = cfg.extra_hours_multiplier;
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
-    document.getElementById('anomalyMaxHoursInput').value   = cfg.anomaly_max_daily_hours;
+    if (cfg.anomaly_max_daily_hours) _anomalyMaxHours = cfg.anomaly_max_daily_hours;
+    if (cfg.timezone) document.getElementById('timezoneSelect').value = cfg.timezone;
   } catch (e) { /* non-critical, leave placeholders */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
-  const am  = parseFloat(document.getElementById('anomalyMaxHoursInput').value);
+  const tz  = document.getElementById('timezoneSelect').value;
   const msg = document.getElementById('configMsg');
-  if (isNaN(em) || isNaN(sm) || isNaN(am) || em <= 0 || sm <= 0 || am <= 0) {
+  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
     msg.style.color = '#ef4444';
     msg.textContent = 'Os valores devem ser números positivos.';
     return;
@@ -3067,7 +3136,8 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     await apiFetchJSON('/api/config', 'PUT', {
       extra_hours_multiplier: em,
       standby_hours_multiplier: sm,
-      anomaly_max_daily_hours: am,
+      anomaly_max_daily_hours: _anomalyMaxHours,
+      timezone: tz,
     });
     msg.style.color = '#22c55e';
     msg.textContent = 'Fatores salvos com sucesso.';
@@ -3294,7 +3364,7 @@ function _renderAuditLog(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     let detail = '';
     if (r.detail) {
       try {
@@ -3482,9 +3552,7 @@ function _switchMyTab(tabId) {
   document.querySelectorAll('.my-tab-section').forEach(el => {
     el.hidden = el.id !== `my-tab-${tabId}`;
   });
-  if (tabId === 'history')    loadMyHistory();
-  if (tabId === 'quarantine') loadMyQr();
-  if (tabId === 'alerts')     loadMyAlerts();
+  if (tabId === 'upload') { loadMyHistory(); loadMyQr(); }
 }
 
 document.querySelectorAll('.my-tab-btn').forEach(btn => {
@@ -3641,6 +3709,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
     loadMyHistory();
+    loadMyQr();
   } catch (e) {
     resultEl.textContent = `Erro: ${e.message}`;
     notify(e.message, 'error');
@@ -3655,7 +3724,7 @@ let _myHistoryCache = [];
 
 async function loadMyHistory() {
   try {
-    _myHistoryCache = await apiFetch('/api/my/upload-history');
+    _myHistoryCache = await apiFetch('/api/upload-history');
     _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3664,21 +3733,21 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     const statusKey = r.status === 'ok' ? 'history.status.ok'
       : r.status === 'warnings' ? 'history.status.warnings'
       : r.status === 'quarantine' ? 'history.status.quarantine'
       : 'history.status.rejected';
     const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
     const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
-    const hasDetail = (r.warning_count + r.info_count) > 0;
-    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
+    return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
+      <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
       <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
@@ -3703,7 +3772,8 @@ async function loadMyQr() {
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
+    _myQrCache = await apiFetch(`/api/quarantine?${params}`);
+    _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3712,18 +3782,19 @@ function _renderMyQrTable(rows) {
   const tbody = document.getElementById('myQrBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    return `<tr>
+    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
+      <td style="font-size:.78rem">${escHtml(raw['Data'] || '—')}</td>
       <td style="text-align:right">${raw['Horas totais (decimal)'] ?? '—'}</td>
       <td style="font-size:.78rem">${escHtml(raw['Código PEP'] || '—')}</td>
-      <td style="font-size:.78rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+      <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
           title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
       <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
@@ -3750,40 +3821,6 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 });
 
-// ---------------------------------------------------------------------------
-// My Area — Alertas (item 4)
-// ---------------------------------------------------------------------------
-let _myAlertsCache = [];
-
-async function loadMyAlerts() {
-  const tbody = document.getElementById('myAlertsBody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">Carregando…</td></tr>';
-  try {
-    _myAlertsCache = await apiFetch('/api/my/alerts');
-    _renderMyAlerts(_applySort('myAlertsTable', _myAlertsCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
-
-function _renderMyAlerts(rows) {
-  const tbody = document.getElementById('myAlertsBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Nenhum alerta recorrente encontrado.</td></tr>';
-    return;
-  }
-  const trendIcon = t => t === 'up' ? '📈' : t === 'down' ? '📉' : '➡️';
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.last_triggered).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    return `<tr>
-      <td style="font-size:.8rem">${escHtml(r.message)}</td>
-      <td style="text-align:right">${r.occurrences}</td>
-      <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
-      <td style="text-align:center;font-size:1rem">${trendIcon(r.trend)}</td>
-    </tr>`;
-  }).join('');
-}
-
-document.getElementById('myAlertsRefreshBtn')?.addEventListener('click', loadMyAlerts);
 
 // ---------------------------------------------------------------------------
 // Validation Rules (Admin tab)
@@ -3933,50 +3970,13 @@ async function deleteRule(id) {
 }
 
 // ---------------------------------------------------------------------------
-// Quarantine (Admin tab)
+// Quarantine helpers (shared by My Area)
 // ---------------------------------------------------------------------------
 let _qrCache = [];
-
-async function loadQuarantineTable() {
-  const filter = document.getElementById('quarantineFilter')?.value;
-  const params = new URLSearchParams({ limit: 200 });
-  if (filter === 'pending')   params.set('review_status', 'pending');
-  if (filter === 'approved')  params.set('review_status', 'approved');
-  if (filter === 'rejected')  params.set('review_status', 'rejected');
-  try {
-    _qrCache = await apiFetch(`/api/quarantine?${params}`);
-    _renderQuarantineTable(_applySort('quarantineTable', _qrCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
 
 function _qrStatusBadge(status) {
   const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'encerrado' : 'suspenso';
   return `<span class="badge-status ${cls}">${_t('qr.status.' + status)}</span>`;
-}
-
-function _renderQuarantineTable(rows) {
-  const tbody = document.getElementById('quarantineBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
-    const collab = escHtml(raw['Colaborador'] || r.uploaded_by_username || '—');
-    const date   = escHtml(raw['Data'] || '—');
-    const hours  = raw['Horas totais (decimal)'] ?? '—';
-    const pep    = escHtml(raw['Código PEP'] || '—');
-    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
-      <td style="white-space:nowrap;font-size:.78rem">${when}</td>
-      <td>${collab}</td>
-      <td>${date}</td>
-      <td style="text-align:right">${hours}</td>
-      <td>${pep}</td>
-      <td>${_qrStatusBadge(r.review_status)}</td>
-    </tr>`;
-  }).join('');
 }
 
 function _openQRDetail(id) {
@@ -3996,13 +3996,13 @@ function _openQRDetail(id) {
   document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
   document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
   document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
-    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' })}`
+    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' })}`
     : '—';
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
   const isPending = r.review_status === 'pending';
-  document.getElementById('qrApproveBtn').hidden = !isPending;
-  document.getElementById('qrRejectBtn').hidden  = !isPending;
+  document.getElementById('qrApproveBtn').hidden = !isPending || !_isAdmin();
+  document.getElementById('qrRejectBtn').hidden  = !isPending || !_isAdmin();
 
   document.getElementById('qrApproveBtn').onclick = () => _doQRAction(id, 'approve');
   document.getElementById('qrRejectBtn').onclick  = () => _doQRAction(id, 'reject');
@@ -4015,67 +4015,20 @@ async function _doQRAction(id, action) {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     document.getElementById('qrDetailModal').setAttribute('hidden', '');
     notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
-    loadQuarantineTable();
+    loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 document.getElementById('qrModalClose')?.addEventListener('click',    () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
 document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
-document.getElementById('quarantineRefreshBtn')?.addEventListener('click', loadQuarantineTable);
-document.getElementById('quarantineFilter')?.addEventListener('change', loadQuarantineTable);
 
-// ---------------------------------------------------------------------------
-// Upload History (Admin tab)
-// ---------------------------------------------------------------------------
-let _uploadHistoryCache = [];
-
-async function loadUploadHistory() {
-  try {
-    _uploadHistoryCache = await apiFetch('/api/upload-history');
-    _renderUploadHistory(_applySort('uploadHistoryTable', _uploadHistoryCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
-}
-
-function _renderUploadHistory(rows) {
-  const tbody = document.getElementById('uploadHistoryBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
-    const statusBadge = r.status === 'ok'
-      ? `<span class="badge-status ativo">ok</span>`
-      : r.status === 'warnings'
-      ? `<span class="badge-status warning">avisos</span>`
-      : r.status === 'quarantine'
-      ? `<span class="badge-status suspenso">quarentena</span>`
-      : `<span class="badge-status encerrado">rejeitado</span>`;
-    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
-    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
-    const hasDetail = (r.warning_count + r.info_count) > 0;
-    return `<tr style="cursor:${hasDetail ? 'pointer' : 'default'}" onclick="_openSessionDetail(${r.id})" title="${hasDetail ? 'Clique para ver detalhes' : ''}">
-      <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
-      <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
-      <td>${escHtml(r.uploaded_by_username)}</td>
-      <td style="text-align:right">${r.records_inserted}</td>
-      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
-      <td style="text-align:right">${warnCell}</td>
-      <td style="text-align:right">${infoCell}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  }).join('');
-}
-
-document.getElementById('uploadHistoryRefreshBtn')?.addEventListener('click', loadUploadHistory);
 
 // ---------------------------------------------------------------------------
 // Session detail modal
 // ---------------------------------------------------------------------------
 async function _openSessionDetail(sessionId) {
   try {
-    const endpoint = _isAdmin ? `/api/upload-history/${sessionId}` : `/api/my/upload-history/${sessionId}`;
+    const endpoint = `/api/upload-history/${sessionId}`;
     const r = await apiFetch(endpoint);
     const modal  = document.getElementById('sessionDetailModal');
     const title  = document.getElementById('sessionDetailTitle');
@@ -4086,7 +4039,7 @@ async function _openSessionDetail(sessionId) {
     const iDiv   = document.getElementById('sessionDetailInfos');
     const iList  = document.getElementById('sessionDetailInfosList');
 
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     title.textContent = `Importação — ${r.source_file}`;
     meta.innerHTML = [
       `<span style="color:#64748b">Data</span><span>${escHtml(when)}</span>`,
@@ -4388,12 +4341,9 @@ _makeSortable('seniorityTable',   [{key:'name',type:'str'}, null], () => _allSen
 _makeSortable('rateCardTable',    [{key:'seniority_level_name',type:'str'}, {key:'hourly_rate',type:'num'}, {key:'valid_from',type:'date'}, {key:'valid_to',type:'date'}, null], () => _allRateCards, _renderRateCardsTable);
 _makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => _allTeam, _renderTeamTable);
 _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
-_makeSortable('quarantineTable',  [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _qrCache, _renderQuarantineTable);
-_makeSortable('uploadHistoryTable', [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _uploadHistoryCache, _renderUploadHistory);
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
-_makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
-_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
-_makeSortable('myAlertsTable',    [{key:'message',type:'str'}, {key:'occurrences',type:'num'}, {key:'last_triggered',type:'date'}, null], () => _myAlertsCache, _renderMyAlerts);
+_makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
+_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');

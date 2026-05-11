@@ -103,13 +103,13 @@
 </div>
 
 <!-- Session detail modal -->
-<div id="sessionDetailModal" class="modal-overlay" hidden>
-  <div class="modal" style="max-width:600px;width:95%">
+<div id="sessionDetailModal" class="modal-backdrop" hidden>
+  <div class="modal-box" style="max-width:600px">
     <div class="modal-header">
-      <h3 class="modal-title" id="sessionDetailTitle">Detalhes da Importação</h3>
+      <h3 id="sessionDetailTitle">Detalhes da Importação</h3>
       <button class="modal-close" onclick="document.getElementById('sessionDetailModal').hidden=true">✕</button>
     </div>
-    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem">
+    <div style="display:flex;flex-direction:column;gap:1rem">
       <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
       <div id="sessionDetailCounts" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
       <div id="sessionDetailWarnings" hidden>
@@ -121,7 +121,7 @@
         <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem"></ul>
       </div>
     </div>
-    <div style="padding:.75rem 1.25rem;border-top:1px solid #1e293b;display:flex;justify-content:flex-end">
+    <div class="modal-footer">
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true">Fechar</button>
     </div>
   </div>
@@ -129,7 +129,6 @@
 
 <nav class="app-tabs">
   <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  <button class="tab-btn" data-tab="cycles" data-i18n="tab.cycles">Ciclos</button>
   <button class="tab-btn" data-tab="projects" data-i18n="tab.projects">Projetos</button>
   <button class="tab-btn" data-tab="team" data-i18n="tab.team">Equipe</button>
   <button class="tab-btn" data-tab="my" data-i18n="tab.my">Minha Área</button>
@@ -313,9 +312,37 @@
   </section>
 
   <!-- ================================================================== -->
-  <!-- TAB: Ciclos                                                          -->
+  <!-- TAB: Projetos (inclui Ciclos)                                        -->
   <!-- ================================================================== -->
-  <section id="tab-cycles" class="tab-section" hidden>
+  <section id="tab-projects" class="tab-section" hidden>
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
+            <input type="file" id="importProjectsInput" accept=".csv" hidden />
+          </label>
+          <button class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
+        </div>
+      </div>
+      <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
+      <table class="data-table" id="projectsTable">
+        <thead>
+          <tr>
+            <th data-i18n="projects.th.pep">Código PEP</th>
+            <th data-i18n="projects.th.name">Nome do Projeto</th>
+            <th data-i18n="projects.th.client">Cliente</th>
+            <th data-i18n="projects.th.mgr">Gerente</th>
+            <th style="text-align:right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th data-i18n="projects.th.status">Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+      </table>
+    </div>
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
@@ -352,40 +379,6 @@
   </section>
 
   <!-- ================================================================== -->
-  <!-- TAB: Projetos                                                        -->
-  <!-- ================================================================== -->
-  <section id="tab-projects" class="tab-section" hidden>
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
-        <div class="actions">
-          <button class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
-            <input type="file" id="importProjectsInput" accept=".csv" hidden />
-          </label>
-          <button class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
-        </div>
-      </div>
-      <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
-      <table class="data-table" id="projectsTable">
-        <thead>
-          <tr>
-            <th data-i18n="projects.th.pep">Código PEP</th>
-            <th data-i18n="projects.th.name">Nome do Projeto</th>
-            <th data-i18n="projects.th.client">Cliente</th>
-            <th data-i18n="projects.th.mgr">Gerente</th>
-            <th style="text-align:right" data-i18n="projects.th.budget">Budget (h)</th>
-            <th data-i18n="projects.th.status">Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ================================================================== -->
   <!-- TAB: Equipe                                                         -->
   <!-- ================================================================== -->
   <section id="tab-team" class="tab-section" hidden>
@@ -395,7 +388,8 @@
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importSeniorityInput" accept=".csv" hidden />
           </label>
           <button class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
@@ -412,7 +406,8 @@
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" data-i18n="btn.import_csv">⬆ Importar CSV
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+            <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importRateCardInput" accept=".csv" hidden />
           </label>
           <button class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
@@ -444,8 +439,13 @@
           <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
         </div>
         <div class="form-group">
-          <label for="anomalyMaxHoursInput" data-i18n="config.anomaly_lbl">Máx. Horas/Dia (Alerta Anomalia)</label>
-          <input type="number" id="anomalyMaxHoursInput" min="0.01" step="0.5" placeholder="Ex: 24" />
+          <label for="timezoneSelect">Fuso horário</label>
+          <select id="timezoneSelect" class="form-select">
+            <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
+            <option value="America/Manaus">America/Manaus (UTC-4)</option>
+            <option value="America/Belem">America/Belem (UTC-3)</option>
+            <option value="America/Fortaleza">America/Fortaleza (UTC-3)</option>
+          </select>
         </div>
         <div class="form-group">
           <button class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
@@ -485,9 +485,6 @@
     <nav class="my-area-nav">
       <button class="my-tab-btn active" data-my-tab="profile">Perfil</button>
       <button class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
-      <button class="my-tab-btn" data-my-tab="history" data-i18n="myarea.history">Histórico</button>
-      <button class="my-tab-btn" data-my-tab="quarantine" data-i18n="myarea.quarantine">Quarentena</button>
-      <button class="my-tab-btn" data-my-tab="alerts">⚡ Alertas</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
@@ -527,9 +524,9 @@
       </div>
     </div>
 
-    <!-- Sub-tab: Upload -->
+    <!-- Sub-tab: Upload (includes History and Quarantine inline) -->
     <div id="my-tab-upload" class="my-tab-section" hidden>
-      <div class="card" style="max-width:480px">
+      <div class="card" style="max-width:520px">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
         <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem">Importe um arquivo CSV ou XLSX de timesheets.</p>
         <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem">
@@ -538,10 +535,8 @@
         </label>
         <div id="myAreaUploadResult" style="margin-top:1rem;font-size:.85rem;color:#94a3b8"></div>
       </div>
-    </div>
 
-    <!-- Sub-tab: Histórico -->
-    <div id="my-tab-history" class="my-tab-section" hidden>
+      <!-- History -->
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
@@ -552,6 +547,7 @@
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
             <th data-i18n="history.th.file">Arquivo</th>
+            <th>Enviado por</th>
             <th style="text-align:right" data-i18n="history.th.inserted">Inseridos</th>
             <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
             <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
@@ -559,13 +555,11 @@
             <th style="text-align:right">Infos</th>
             <th data-i18n="history.th.status">Status</th>
           </tr></thead>
-          <tbody id="myHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="myHistoryBody"><tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
-    </div>
 
-    <!-- Sub-tab: Quarentena -->
-    <div id="my-tab-quarantine" class="my-tab-section" hidden>
+      <!-- Quarantine -->
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
@@ -580,37 +574,18 @@
             <button class="btn btn-secondary btn-sm" id="myQrExportBtn">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros do seus uploads que foram para quarentena.</p>
+        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros em quarentena. Clique para ver detalhes.</p>
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
             <th data-i18n="qr.th.collaborator">Colaborador</th>
+            <th>Data reg.</th>
             <th style="text-align:right" data-i18n="qr.th.hours">Horas</th>
             <th data-i18n="qr.th.pep">PEP</th>
             <th data-i18n="qr.th.reason">Motivo</th>
             <th>Status</th>
           </tr></thead>
-          <tbody id="myQrBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Sub-tab: Alertas -->
-    <div id="my-tab-alerts" class="my-tab-section" hidden>
-      <div class="card">
-        <div class="section-header">
-          <h2 class="card-title">⚡ Alertas Recorrentes</h2>
-          <button class="btn btn-secondary btn-sm" id="myAlertsRefreshBtn">↺ Atualizar</button>
-        </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Mensagens de aviso ou informação que se repetem nas suas importações recentes.</p>
-        <table class="data-table" id="myAlertsTable">
-          <thead><tr>
-            <th>Mensagem</th>
-            <th style="text-align:right">Ocorrências</th>
-            <th>Último disparo</th>
-            <th style="text-align:center">Tendência</th>
-          </tr></thead>
-          <tbody id="myAlertsBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
+          <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -650,56 +625,6 @@
       </ul>
     </div>
 
-    <!-- Quarantine -->
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title">Quarentena</h2>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <select id="quarantineFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
-            <option value="">Todos os registros</option>
-            <option value="pending">⏳ Pendentes</option>
-            <option value="approved">✅ Aprovados</option>
-            <option value="rejected">❌ Rejeitados</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" id="quarantineRefreshBtn">↺ Atualizar</button>
-        </div>
-      </div>
-      <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Clique em uma linha para ver detalhes e aprovar ou rejeitar o registro.</p>
-      <table class="data-table" id="quarantineTable">
-        <thead><tr>
-          <th>Data</th>
-          <th>Colaborador</th>
-          <th>Data reg.</th>
-          <th style="text-align:right">Horas</th>
-          <th>PEP</th>
-          <th>Status</th>
-        </tr></thead>
-        <tbody id="quarantineBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
-      </table>
-    </div>
-
-    <!-- Upload History -->
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title">Histórico de Importações</h2>
-        <button class="btn btn-secondary btn-sm" id="uploadHistoryRefreshBtn">↺ Atualizar</button>
-      </div>
-      <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
-      <table class="data-table" id="uploadHistoryTable">
-        <thead><tr>
-          <th>Data</th>
-          <th>Arquivo</th>
-          <th>Enviado por</th>
-          <th style="text-align:right">Inseridos</th>
-          <th style="text-align:right">Quarentena</th>
-          <th style="text-align:right">Avisos</th>
-          <th style="text-align:right">Infos</th>
-          <th>Status</th>
-        </tr></thead>
-        <tbody id="uploadHistoryBody"><tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">Carregando…</td></tr></tbody>
-      </table>
-    </div>
-
     <!-- Theme Editor -->
     <div class="card">
       <div class="section-header">
@@ -724,22 +649,33 @@
       <div class="section-header">
         <h2 class="card-title" data-i18n="auditlog.title">Log de Auditoria</h2>
         <div style="display:flex;gap:.5rem;align-items:center">
-          <select id="auditEntityFilter" class="filter-select" style="min-width:130px">
+          <select id="auditEntityFilter" class="filter-select" style="min-width:150px">
             <option value="" data-i18n="auditlog.filter.all_entity">Todas entidades</option>
-            <option value="user">user</option>
             <option value="cycle">cycle</option>
             <option value="project">project</option>
+            <option value="project_plan">project_plan</option>
+            <option value="collaborator">collaborator</option>
+            <option value="seniority_level">seniority_level</option>
             <option value="rate_card">rate_card</option>
-            <option value="timesheet">timesheet</option>
+            <option value="user">user</option>
+            <option value="validation_rule">validation_rule</option>
+            <option value="quarantine_record">quarantine_record</option>
+            <option value="upload_session">upload_session</option>
+            <option value="theme">theme</option>
+            <option value="global_config">global_config</option>
           </select>
-          <select id="auditActionFilter" class="filter-select" style="min-width:130px">
+          <select id="auditActionFilter" class="filter-select" style="min-width:170px">
             <option value="" data-i18n="auditlog.filter.all_action">Todas ações</option>
             <option value="create">create</option>
             <option value="update">update</option>
             <option value="delete">delete</option>
             <option value="import">import</option>
+            <option value="toggle">toggle</option>
+            <option value="reorder">reorder</option>
+            <option value="assign_seniority">assign_seniority</option>
+            <option value="bulk_assign_seniority">bulk_assign_seniority</option>
             <option value="change_password">change_password</option>
-            <option value="toggle_status">toggle_status</option>
+            <option value="login">login</option>
           </select>
           <button class="btn btn-secondary btn-sm" id="auditRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
@@ -1160,6 +1096,25 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="aclModalCloseBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addPlanModal" hidden>
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h3 data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
+      <button class="modal-close" id="addPlanModalClose">×</button>
+    </div>
+    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem">
+      <p style="font-size:.8rem;color:#94a3b8;margin:0" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.</p>
+      <div id="addPlanRows" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      <button class="btn btn-secondary btn-sm" id="addPlanAddRowBtn" style="align-self:flex-start" data-i18n="plan.modal_add_row">+ Mais um ciclo</button>
+      <div id="addPlanError" style="color:#f87171;font-size:.8rem;min-height:1rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>

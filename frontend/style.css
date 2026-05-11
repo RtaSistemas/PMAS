@@ -157,6 +157,8 @@ header {
   border-bottom: 1px solid var(--border);
   padding: 0 1.75rem;
   display: flex; gap: 0;
+  position: sticky; top: 3.25rem; z-index: 90;
+  box-shadow: 0 1px 0 var(--border);
 }
 .tab-btn {
   background: transparent; border: none;
@@ -338,10 +340,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-bottom: none;
   padding: 0 0.5rem;
-  position: sticky;
-  top: 3.25rem;   /* height of the sticky header */
-  z-index: 90;
-  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.35);
 }
 
 /* ── Portfolio semaphore ─────────────────────────────────────── */
@@ -647,6 +645,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   display: flex; gap: .25rem; flex-wrap: wrap;
   border-bottom: 1px solid var(--border); margin-bottom: 1.25rem;
 }
+.my-tab-section { display: flex; flex-direction: column; gap: calc(var(--density-spacing) * 1.7); }
+.my-tab-section[hidden] { display: none; }
 .my-tab-btn {
   padding: .45rem 1rem; font-size: .85rem; font-weight: 500;
   background: none; border: none; border-bottom: 2px solid transparent;
