@@ -516,8 +516,10 @@ def _resolve_cycle(db: Session, record_date: date) -> Cycle:
 
 
 def _parse_date(value) -> date:
+    if isinstance(value, pd.Timestamp):
+        return value.date()
     if isinstance(value, date):
-        return value
+        return value if type(value) is date else value.date()
     if isinstance(value, (int, float)):
         return date(1899, 12, 30) + timedelta(days=int(value))
     return pd.to_datetime(str(value), dayfirst=True).date()
