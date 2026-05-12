@@ -141,8 +141,8 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 2.838 h        |
-| Custo estimado    | R$ 304.590   |
+| Horas registradas | 2.841 h        |
+| Custo estimado    | R$ 265.770   |
 
 ### Distribuição por PEP
 
