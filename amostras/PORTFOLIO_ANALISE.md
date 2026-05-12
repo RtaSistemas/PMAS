@@ -116,15 +116,15 @@
 | Métrica           | Valor           |
 |-------------------|-----------------|
 | Horas registradas | 2.405 h        |
-| Custo estimado    | R$ 260.975   |
+| Custo estimado    | R$ 222.300   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-001-01  | Transformação Digital  |      845 h |        R$ 107.250 |    2.080 h |      65.0% |
+| 60IT-001-01  | Transformação Digital  |      845 h |         R$ 68.575 |    2.080 h |      65.0% |
 | 60IT-002-01  | App Mobile             |    1.170 h |        R$ 114.725 |    1.170 h |      73.1% |
-| 60IT-004-01  | Plataforma Analytics   |      390 h |         R$ 39.000 |    1.235 h |      25.7% |
+| 60IT-004-01  | Plataforma Analytics   |      390 h |         R$ 39.000 |    1.235 h |      25.8% |
 
 ### Apontamentos de Ingestão
 
