@@ -96,8 +96,8 @@
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-001-01  | Transformação Digital  |    1.235 h |        R$ 132.600 |    1.235 h |      38.6% |
-| 60IT-004-01  | Plataforma Analytics   |      845 h |         R$ 93.600 |      845 h |      17.6% |
+| 60IT-001-01  | Transformação Digital  |    1.235 h |         R$ 93.925 |    1.235 h |      19.6% |
+| 60IT-004-01  | Plataforma Analytics   |      845 h |         R$ 94.000 |      845 h |      17.8% |
 
 ### Apontamentos de Ingestão
 
