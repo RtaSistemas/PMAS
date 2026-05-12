@@ -148,10 +148,10 @@
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-001-01  | Transformação Digital  |      462 h |         R$ 69.300 |    2.542 h |      79.4% |
+| 60IT-001-01  | Transformação Digital  |      462 h |         R$ 30.030 |    2.542 h |      79.4% |
 | 60IT-002-01  | App Mobile             |      792 h |         R$ 90.750 |    1.962 h |     122.6% |
-| 60IT-003-01  | Migração Cloud         |      792 h |         R$ 79.200 |      792 h |      33.0% |
-| 60IT-004-01  | Plataforma Analytics   |      792 h |         R$ 65.340 |    2.027 h |      42.2% |
+| 60IT-003-01  | Migração Cloud         |      795 h |         R$ 79.650 |      792 h |      33.1% |
+| 60IT-004-01  | Plataforma Analytics   |      792 h |         R$ 65.340 |    2.027 h |      42.3% |
 
 ### Apontamentos de Ingestão
 
