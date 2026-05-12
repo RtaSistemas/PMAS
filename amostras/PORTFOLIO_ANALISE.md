@@ -203,10 +203,10 @@
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-003-01  | Migração Cloud         |      384 h |         R$ 42.240 |    1.968 h |      82.0% |
-| 60IT-004-01  | Plataforma Analytics   |    1.088 h |         R$ 78.848 |    3.841 h |      80.0% |
-| 60IT-005-01  | Implantação ERP        |    1.152 h |        R$ 125.120 |    1.950 h |      34.8% |
-| 60IT-006-01  | Auditoria de Segurança |      832 h |        R$ 101.568 |      832 h |     104.0% |
+| 60IT-003-01  | Migração Cloud         |      384 h |         R$ 42.240 |    1.971 h |      82.1% |
+| 60IT-004-01  | Plataforma Analytics   |    1.088 h |         R$ 78.848 |    3.845 h |      80.1% |
+| 60IT-005-01  | Implantação ERP        |    1.157 h |        R$ 125.670 |    1.957 h |      34.9% |
+| 60IT-006-01  | Auditoria de Segurança |      832 h |         R$ 59.904 |      832 h |     104.0% |
 
 ### Apontamentos de Ingestão
 
