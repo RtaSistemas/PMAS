@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
@@ -43,7 +44,7 @@ def _save_rejected_session(db, user, fname: str, reason: str) -> None:
 
 @router.post("/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
 def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser):
-    fname = file.filename or ""
+    fname = Path(file.filename or "").name or "upload"
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
     contents = file.file.read(_MAX_UPLOAD_BYTES + 1)

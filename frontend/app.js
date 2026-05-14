@@ -586,10 +586,17 @@ const csvInput = document.getElementById('csvInput');
 const loadBtn  = document.getElementById('loadBtn');
 const clearBtn   = document.getElementById('clearBtn');
 
-const cycleMs        = new MultiSelect(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
-const pepMs          = new MultiSelect(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
-const pepDescMs      = new MultiSelect(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
-const collaboratorMs = new MultiSelect(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
+const _msRegistry = [];
+function _createMS(el, placeholder, onChange) {
+  const ms = new MultiSelect(el, placeholder, onChange);
+  _msRegistry.push(ms);
+  return ms;
+}
+
+const cycleMs        = _createMS(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
+const pepMs          = _createMS(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
+const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
+const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
 
 let pepDataCache = {};
 
@@ -1578,7 +1585,6 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     const msg = `Baseline importado: ${data.created} criados, ${data.updated} atualizados` +
       (data.errors.length ? ` — ${data.errors.length} erro(s)` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
-    if (data.errors.length) console.warn('Erros na importação de baseline:', data.errors);
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
   } catch (e) { notify(`Erro ao importar: ${e.message}`, 'error'); }
@@ -3538,6 +3544,9 @@ async function _loadTheme() {
     root.style.setProperty('--density-spacing',   density.spacing);
     root.style.setProperty('--density-font-size', density.fontSize);
 
+    // Font family
+    if (t.font_family) root.style.setProperty('--font-family', t.font_family);
+
     // Chart palette
     window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
 
@@ -3714,7 +3723,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     fd.append('file', file);
     const resp = await fetch('/api/upload-timesheet', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      headers: _authHeaders(),
       body: fd,
     });
     const json = await resp.json();
@@ -4128,6 +4137,9 @@ function _applyThemePreset(key) {
     document.querySelectorAll('.theme-density-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.density === preset.density);
     });
+    const d = _DENSITY_MAP[preset.density] || _DENSITY_MAP.normal;
+    document.documentElement.style.setProperty('--density-spacing',   d.spacing);
+    document.documentElement.style.setProperty('--density-font-size', d.fontSize);
   }
   if (preset.chart_palette) {
     preset.chart_palette.forEach((c, i) => {
@@ -4266,7 +4278,7 @@ document.getElementById('logoUploadInput')?.addEventListener('change', async (e)
   try {
     const resp = await fetch('/api/theme/logo', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      headers: _authHeaders(),
       body: fd,
     });
     if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
