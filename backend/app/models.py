@@ -64,6 +64,7 @@ class Cycle(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     records = relationship("TimesheetRecord", back_populates="cycle")
+    project_plans = relationship("ProjectCyclePlan", back_populates="cycle")
 
 
 class TimesheetRecord(Base):
@@ -119,7 +120,7 @@ class ProjectCyclePlan(Base):
     planned_hours = Column(Float, nullable=False)
 
     project = relationship("Project", back_populates="plans")
-    cycle = relationship("Cycle")
+    cycle = relationship("Cycle", back_populates="project_plans")
 
     __table_args__ = (
         Index("ix_project_cycle_plan_unique", "project_id", "cycle_id", unique=True),

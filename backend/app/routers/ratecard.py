@@ -50,11 +50,13 @@ def list_seniority_levels(db: DbSession):
 
 
 @router.post("/seniority-levels", status_code=201, response_model=SeniorityLevelOut)
-def create_seniority_level(body: SeniorityLevelIn, db: DbSession):
+def create_seniority_level(body: SeniorityLevelIn, db: DbSession, _admin: AdminUser):
     if db.query(SeniorityLevel).filter(SeniorityLevel.name == body.name).first():
         raise HTTPException(status_code=409, detail="Nível de senioridade já cadastrado.")
     sl = SeniorityLevel(name=body.name)
-    db.add(sl); db.commit(); db.refresh(sl)
+    db.add(sl)
+    log_audit(db, _admin, "create", "seniority_level", detail={"name": body.name})
+    db.commit(); db.refresh(sl)
     return {"id": sl.id, "name": sl.name}
 
 
@@ -108,7 +110,7 @@ def import_seniority_levels(file: UploadFile, db: DbSession, _admin: AdminUser):
 
 
 @router.put("/seniority-levels/{level_id}", response_model=SeniorityLevelOut)
-def update_seniority_level(level_id: int, body: SeniorityLevelIn, db: DbSession):
+def update_seniority_level(level_id: int, body: SeniorityLevelIn, db: DbSession, _admin: AdminUser):
     sl = db.get(SeniorityLevel, level_id)
     if not sl:
         raise HTTPException(status_code=404, detail="Nível não encontrado.")
@@ -118,12 +120,13 @@ def update_seniority_level(level_id: int, body: SeniorityLevelIn, db: DbSession)
     if conflict:
         raise HTTPException(status_code=409, detail="Nome já em uso por outro nível.")
     sl.name = body.name
+    log_audit(db, _admin, "update", "seniority_level", level_id, {"name": body.name})
     db.commit(); db.refresh(sl)
     return {"id": sl.id, "name": sl.name}
 
 
 @router.delete("/seniority-levels/{level_id}", status_code=204)
-def delete_seniority_level(level_id: int, db: DbSession):
+def delete_seniority_level(level_id: int, db: DbSession, _admin: AdminUser):
     sl = db.get(SeniorityLevel, level_id)
     if not sl:
         raise HTTPException(status_code=404, detail="Nível não encontrado.")
@@ -133,6 +136,7 @@ def delete_seniority_level(level_id: int, db: DbSession):
             status_code=409,
             detail=f"Nível em uso por {in_use} colaborador(es). Reatribua antes de excluir.",
         )
+    log_audit(db, _admin, "delete", "seniority_level", level_id, {"name": sl.name})
     db.delete(sl); db.commit()
 
 
@@ -160,7 +164,7 @@ def list_rate_cards(db: DbSession, seniority_level_id: Optional[int] = None):
 
 
 @router.post("/rate-cards", status_code=201, response_model=IdOut)
-def create_rate_card(body: RateCardIn, db: DbSession, current_user: CurrentUser):
+def create_rate_card(body: RateCardIn, db: DbSession, current_user: AdminUser):
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
     if not db.get(SeniorityLevel, body.seniority_level_id):
@@ -278,7 +282,7 @@ def import_rate_cards(file: UploadFile, db: DbSession, _admin: AdminUser):
 
 
 @router.put("/rate-cards/{card_id}", response_model=IdOut)
-def update_rate_card(card_id: int, body: RateCardIn, db: DbSession, current_user: CurrentUser):
+def update_rate_card(card_id: int, body: RateCardIn, db: DbSession, current_user: AdminUser):
     card = db.get(RateCard, card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
@@ -295,7 +299,7 @@ def update_rate_card(card_id: int, body: RateCardIn, db: DbSession, current_user
 
 
 @router.delete("/rate-cards/{card_id}", status_code=204)
-def delete_rate_card(card_id: int, db: DbSession, current_user: CurrentUser):
+def delete_rate_card(card_id: int, db: DbSession, current_user: AdminUser):
     card = db.get(RateCard, card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")

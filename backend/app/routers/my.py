@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -12,7 +11,6 @@ from backend.app.database import DbSession
 from backend.app.deps import CurrentUser, get_current_user
 from backend.app.models import QuarantineRecord, UploadSession, UserPreference
 from backend.app.schemas import (
-    AlertSummaryOut,
     QuarantineRecordOut,
     UploadSessionOut,
     UserPreferenceIn,
@@ -43,7 +41,7 @@ def save_preferences(payload: UserPreferenceIn, db: DbSession, current_user: Cur
         pref = UserPreference(user_id=current_user.id)
         db.add(pref)
     pref.dashboard = payload.dashboard
-    pref.updated_at = datetime.utcnow()
+    pref.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(pref)
     return pref
@@ -122,47 +120,10 @@ def export_quarantine_csv(db: DbSession, current_user: CurrentUser):
             ])
             yield buf.getvalue()
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     filename = f"quarantine_{current_user.username}_{today}.csv"
     return StreamingResponse(
         _generate(),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
-
-# ── Alerts ────────────────────────────────────────────────────────────────────
-
-@router.get("/alerts", response_model=list[AlertSummaryOut])
-def my_alerts(db: DbSession, current_user: CurrentUser):
-    q = db.query(UploadSession).order_by(UploadSession.uploaded_at.desc()).limit(50)
-    if current_user.role != "admin":
-        q = q.filter(UploadSession.uploaded_by_user_id == current_user.id)
-    sessions = q.all()
-
-    # Aggregate: message → list of (uploaded_at) sorted newest first
-    occurrences: dict[str, list[datetime]] = defaultdict(list)
-    for s in sessions:
-        for msg in (s.warnings_detail or []) + (s.infos_detail or []):
-            occurrences[msg].append(s.uploaded_at)
-
-    result = []
-    for msg, times in occurrences.items():
-        times_sorted = sorted(times, reverse=True)
-        last3 = [len([t for t in times if t <= sessions[i].uploaded_at]) for i in range(min(3, len(sessions)))]
-        # Simple trend: compare first half vs second half of last 6 occurrences
-        if len(times_sorted) >= 4:
-            recent = len([t for t in times_sorted[:3]])
-            older = len([t for t in times_sorted[3:6]])
-            trend = "up" if recent > older else ("down" if recent < older else "stable")
-        else:
-            trend = "stable"
-        result.append(AlertSummaryOut(
-            message=msg,
-            occurrences=len(times_sorted),
-            last_triggered=times_sorted[0],
-            trend=trend,
-        ))
-
-    result.sort(key=lambda a: a.last_triggered, reverse=True)
-    return result

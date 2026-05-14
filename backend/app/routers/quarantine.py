@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
@@ -154,11 +154,10 @@ def review_quarantine(
     rec = _load_qr(db, record_id)
     rec.reviewed = payload.reviewed
     rec.reviewed_by = current_user.username
-    rec.reviewed_at = datetime.utcnow() if payload.reviewed else None
-    db.commit()
-    db.refresh(rec)
+    rec.reviewed_at = datetime.now(timezone.utc) if payload.reviewed else None
     log_audit(db, current_user, "review", "quarantine_record", record_id, {"reviewed": payload.reviewed})
     db.commit()
+    db.refresh(rec)
     return rec
 
 
@@ -176,11 +175,10 @@ def approve_quarantine(record_id: int, db: DbSession, current_user: AdminUser):
     rec.review_status = "approved"
     rec.reviewed = True
     rec.reviewed_by = current_user.username
-    rec.reviewed_at = datetime.utcnow()
-    db.commit()
-    db.refresh(rec)
+    rec.reviewed_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "approve", "quarantine_record", record_id, {})
     db.commit()
+    db.refresh(rec)
     return rec
 
 
@@ -193,11 +191,10 @@ def reject_quarantine(record_id: int, db: DbSession, current_user: AdminUser):
     rec.review_status = "rejected"
     rec.reviewed = True
     rec.reviewed_by = current_user.username
-    rec.reviewed_at = datetime.utcnow()
-    db.commit()
-    db.refresh(rec)
+    rec.reviewed_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "reject", "quarantine_record", record_id, {})
     db.commit()
+    db.refresh(rec)
     return rec
 
 
