@@ -664,7 +664,7 @@ function _showIngestResult(json, filename) {
     `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
     chip('Inseridos',   json.records_inserted,         '#2ecc71') +
     chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
-    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--amber')) +
+    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--red')) +
     chip('Avisos',      json.warning_count,             '#f97316') +
     chip('Infos',       json.info_count,                '#60a5fa');
 
@@ -3759,7 +3759,7 @@ function _renderMyHistory(rows) {
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
-      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--red')}">${r.quarantine_added}</strong>` : '0'}</td>
       <td style="text-align:right">${warnCell}</td>
       <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
@@ -4062,7 +4062,7 @@ async function _openSessionDetail(sessionId) {
     counts.innerHTML =
       chip('Inseridos',  r.records_inserted,        '#2ecc71') +
       chip('Ignorados',  r.records_skipped,          '#94a3b8') +
-      chip('Quarentena', r.quarantine_added,         _cssVar('--amber')) +
+      chip('Quarentena', r.quarantine_added,         _cssVar('--red')) +
       chip('Avisos',     r.warning_count,            '#f97316') +
       chip('Infos',      r.info_count,               '#60a5fa');
 
