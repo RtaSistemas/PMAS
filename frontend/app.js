@@ -4313,7 +4313,12 @@ async function loadSemaphore() {
   if (!bar) return;
   try {
     const data = await apiFetch('/api/portfolio-health');
-    if (!data.length) { bar.style.display = 'none'; return; }
+    if (!data.length) {
+      bar.style.display = 'none';
+      const hdr = document.getElementById('headerSemaphore');
+      if (hdr) hdr.style.display = 'none';
+      return;
+    }
 
     const classify = p => {
       if (!p.budget_hours && !p.budget_cost) return 'grey';
@@ -4337,18 +4342,26 @@ async function loadSemaphore() {
       ? `<span class="sem-count" title="${label}"><span class="sem-dot ${cls}"></span>${counts[cls]}</span>`
       : '';
 
+    const summaryHtml =
+      `<span class="sem-title">Portfólio</span>
+      ${dot('green',  'OK — dentro do budget')}
+      ${dot('yellow', 'Atenção — ≥ 90% do budget')}
+      ${dot('red',    'Estourado — ≥ 100% do budget')}
+      ${dot('grey',   'Sem budget definido')}`;
+
     bar.innerHTML =
-      `<div class="sem-summary">
-        <span class="sem-title">Portfólio</span>
-        ${dot('green',  'OK — dentro do budget')}
-        ${dot('yellow', 'Atenção — ≥ 90% do budget')}
-        ${dot('red',    'Estourado — ≥ 100% do budget')}
-        ${dot('grey',   'Sem budget definido')}
-      </div>
+      `<div class="sem-summary">${summaryHtml}</div>
       <div class="sem-divider"></div>
       <div class="sem-projects">${pills.join('')}</div>`;
     bar.style.display = 'flex';
-  } catch (_) { bar.style.display = 'none'; }
+
+    const hdr = document.getElementById('headerSemaphore');
+    if (hdr) { hdr.innerHTML = summaryHtml; hdr.style.display = 'flex'; }
+  } catch (_) {
+    bar.style.display = 'none';
+    const hdr = document.getElementById('headerSemaphore');
+    if (hdr) hdr.style.display = 'none';
+  }
 }
 
 // ---------------------------------------------------------------------------
