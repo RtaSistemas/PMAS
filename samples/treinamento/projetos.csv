@@ -1,0 +1,5 @@
+﻿pep_wbs,name,client,manager,budget_hours,budget_cost,status
+"P-CRM-001","Sistema de Gestão de Clientes","Siemens","RafaelSilva",2800,300000,ativo
+"P-INF-002","Modernização de Infraestrutura","Siemens","RafaelSilva",1800,160000,ativo
+"P-RH-003","Portal do Colaborador","Siemens","BrunaCavalheiro",600,40000,ativo
+"P-BI-004","Inteligência de Negócio","Siemens","BrunaCavalheiro",3000,250000,ativo
