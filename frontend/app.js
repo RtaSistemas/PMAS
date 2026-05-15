@@ -664,8 +664,8 @@ function _showIngestResult(json, filename) {
     `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
     chip('Inseridos',   json.records_inserted,         '#2ecc71') +
     chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
-    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--amber')) +
-    chip('Avisos',      json.warning_count,             '#f97316') +
+    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--red')) +
+    chip('Avisos',      json.warning_count,             _cssVar('--amber')) +
     chip('Infos',       json.info_count,                '#60a5fa');
 
   let html = '';
@@ -2032,7 +2032,7 @@ function _buildTreemapOption(health, evmMode = false) {
               ? _cssVar('--text-3')
               : budget != null && consumed / budget >= 1.0
                 ? _cssVar('--red')
-                : budget != null && consumed / budget >= 0.75
+                : budget != null && consumed / budget >= 0.9
                   ? _cssVar('--amber')
                   : _cssVar('--primary'),
             borderColor: _cssVar('--bg'),
@@ -2049,7 +2049,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map((d, i) => {
     const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.75 ? _cssVar('--amber') : _cssVar('--primary');
+    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.9 ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
@@ -3759,7 +3759,7 @@ function _renderMyHistory(rows) {
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
-      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--red')}">${r.quarantine_added}</strong>` : '0'}</td>
       <td style="text-align:right">${warnCell}</td>
       <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
@@ -4062,8 +4062,8 @@ async function _openSessionDetail(sessionId) {
     counts.innerHTML =
       chip('Inseridos',  r.records_inserted,        '#2ecc71') +
       chip('Ignorados',  r.records_skipped,          '#94a3b8') +
-      chip('Quarentena', r.quarantine_added,         _cssVar('--amber')) +
-      chip('Avisos',     r.warning_count,            '#f97316') +
+      chip('Quarentena', r.quarantine_added,         _cssVar('--red')) +
+      chip('Avisos',     r.warning_count,            _cssVar('--amber')) +
       chip('Infos',      r.info_count,               '#60a5fa');
 
     const _exportDetailCsv = (items, label) => {
