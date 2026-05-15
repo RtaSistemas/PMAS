@@ -665,7 +665,7 @@ function _showIngestResult(json, filename) {
     chip('Inseridos',   json.records_inserted,         '#2ecc71') +
     chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
     chip('Quarentena',  json.quarantine_records_added,  _cssVar('--red')) +
-    chip('Avisos',      json.warning_count,             '#f97316') +
+    chip('Avisos',      json.warning_count,             _cssVar('--amber')) +
     chip('Infos',       json.info_count,                '#60a5fa');
 
   let html = '';
@@ -4063,7 +4063,7 @@ async function _openSessionDetail(sessionId) {
       chip('Inseridos',  r.records_inserted,        '#2ecc71') +
       chip('Ignorados',  r.records_skipped,          '#94a3b8') +
       chip('Quarentena', r.quarantine_added,         _cssVar('--red')) +
-      chip('Avisos',     r.warning_count,            '#f97316') +
+      chip('Avisos',     r.warning_count,            _cssVar('--amber')) +
       chip('Infos',      r.info_count,               '#60a5fa');
 
     const _exportDetailCsv = (items, label) => {
