@@ -109,12 +109,16 @@
       <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
       <div id="sessionDetailCounts" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
       <div id="sessionDetailWarnings" hidden>
-        <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0 0 .35rem">⚠ Avisos</p>
-        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#fcd34d;display:flex;flex-direction:column;gap:.2rem"></ul>
+        <div id="sessionDetailWarningsHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
+          <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>
+        </div>
+        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#fcd34d;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
       <div id="sessionDetailInfos" hidden>
-        <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0 0 .35rem">ℹ Informações</p>
-        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem"></ul>
+        <div id="sessionDetailInfosHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
+          <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>
+        </div>
+        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
     </div>
     <div class="modal-footer">
