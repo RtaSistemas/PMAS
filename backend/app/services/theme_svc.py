@@ -15,16 +15,16 @@ MAX_LOGO_BYTES = 2 * 1024 * 1024  # 2 MB
 DEFAULT_THEME: dict = {
     "app_name": "PMAS",
     "color_primary": "#4f8ef7",
-    "color_background": "#141548",
-    "color_surface": "#1c2b54",
-    "color_accent": "#1aa7ff",
+    "color_background": "#081122",
+    "color_surface": "#0e2038",
+    "color_accent": "#07b3d7",
     "color_success": "#5ad388",
     "color_warning": "#d9b273",
     "color_danger": "#c56d76",
     "color_text": "#e0e0e0",
-    "color_text_muted": "#8892a4",
+    "color_text_muted": "#818998",
     "density": "normal",
-    "chart_palette": ["#4f8ef7", "#d9b273", "#a168c0", "#1aa7ff", "#9b59b6", "#1abc9c"],
+    "chart_palette": ["#4f8ef7", "#d9b273", "#a78bfa", "#35a1f3", "#5ad388", "#01c1b9"],
 }
 
 

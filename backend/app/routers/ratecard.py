@@ -348,18 +348,23 @@ def bulk_assign_seniority(body: CollaboratorSeniorityIn, db: DbSession, _admin: 
     if body.seniority_level_id is not None and not db.get(SeniorityLevel, body.seniority_level_id):
         raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
     db.query(Collaborator).update({"seniority_level_id": body.seniority_level_id})
+    log_audit(db, _admin, "bulk_assign_seniority", "collaborator", None,
+              {"seniority_level_id": body.seniority_level_id})
     db.commit()
     return list_team(db)
 
 
 @router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)
-def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession):
+def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession, current_user: CurrentUser):
     collab = db.get(Collaborator, collab_id)
     if not collab:
         raise HTTPException(status_code=404, detail="Colaborador não encontrado.")
     if body.seniority_level_id is not None and not db.get(SeniorityLevel, body.seniority_level_id):
         raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
+    previous = collab.seniority_level_id
     collab.seniority_level_id = body.seniority_level_id
+    log_audit(db, current_user, "assign_seniority", "collaborator", collab_id,
+              {"from": previous, "to": body.seniority_level_id})
     db.commit()
     return {"id": collab.id, "seniority_level_id": collab.seniority_level_id}
 
@@ -371,7 +376,7 @@ def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSessio
 def _get_or_init_config(db) -> GlobalConfig:
     cfg = db.get(GlobalConfig, 1)
     if cfg is None:
-        cfg = GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=1.0)
+        cfg = GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=0.33)
         db.add(cfg)
         db.commit()
         db.refresh(cfg)

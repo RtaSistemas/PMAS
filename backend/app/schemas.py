@@ -429,17 +429,17 @@ class UserPreferenceOut(BaseModel):
 class UIThemeIn(BaseModel):
     app_name: str = "PMAS"
     color_primary: str = "#4f8ef7"
-    color_background: str = "#141548"
-    color_surface: str = "#1c2b54"
-    color_accent: str = "#1aa7ff"
+    color_background: str = "#081122"
+    color_surface: str = "#0e2038"
+    color_accent: str = "#07b3d7"
     color_success: str = "#5ad388"
     color_warning: str = "#d9b273"
     color_danger: str = "#c56d76"
     color_text: str = "#e0e0e0"
-    color_text_muted: str = "#8892a4"
+    color_text_muted: str = "#818998"
     density: Literal["compact", "normal", "relaxed"] = "normal"
     chart_palette: List[str] = Field(default_factory=lambda: [
-        "#4f8ef7", "#d9b273", "#a168c0", "#1aa7ff", "#9b59b6", "#1abc9c"
+        "#4f8ef7", "#d9b273", "#a78bfa", "#35a1f3", "#5ad388", "#01c1b9"
     ])
 
 

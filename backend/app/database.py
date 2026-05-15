@@ -69,7 +69,7 @@ def _seed_config() -> None:
     db = SessionLocal()
     try:
         if not db.get(GlobalConfig, 1):
-            db.add(GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=1.0))
+            db.add(GlobalConfig(id=1, extra_hours_multiplier=1.5, standby_hours_multiplier=0.33))
             db.commit()
     finally:
         db.close()

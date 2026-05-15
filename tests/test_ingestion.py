@@ -8,7 +8,6 @@ import pytest
 
 from backend.app.models import Collaborator, Cycle, TimesheetRecord, ValidationRule
 from backend.app.services.ingestion import (
-    ArchivedCycleError,
     _safe_hours,
     _str_or_none,
     ingest_file,
@@ -49,11 +48,12 @@ class TestIngestFile:
         record = db_session.query(TimesheetRecord).first()
         assert record.cycle_id == sample_cycle.id
 
-    def test_unknown_date_raises_archived_error(self, db_session):
-        # Past date with no registered cycle → total rejection (W2)
+    def test_unknown_date_quarantines_row(self, db_session):
+        # Past date with no registered cycle → quarantined, not aborted
         row = {**BASE_ROW, "Data": "10/09/2020"}
-        with pytest.raises(ArchivedCycleError):
-            ingest_file(_csv(row), "t.csv", db_session)
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["quarantine_records_added"] == 1
 
     def test_deduplication(self, db_session, sample_cycle):
         csv = _csv(BASE_ROW, BASE_ROW)
@@ -464,11 +464,12 @@ class TestIngestionHardening:
         assert r.standby_hours == 0.0
         assert any("Sobreaviso simultaneamente" in w for w in summary["warnings"])
 
-    def test_date_outside_all_cycles_raises_archived_error(self, db_session):
-        # Past date with no registered cycle → total rejection (W2)
+    def test_date_outside_all_cycles_quarantines_row(self, db_session):
+        # Past date with no registered cycle → quarantined per-row, not aborted
         row = {**BASE_ROW, "Data": "15/01/2020"}
-        with pytest.raises(ArchivedCycleError):
-            ingest_file(_csv(row), "t.csv", db_session)
+        summary = ingest_file(_csv(row), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["quarantine_records_added"] == 1
 
     def test_zero_rate_warning_emitted(self, db_session, sample_cycle):
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
@@ -495,14 +496,14 @@ class TestIngestionHardening:
         assert summary["records_inserted"] == 0
         assert summary["records_skipped"] == 1
 
-    def test_phase0_prescan_lists_all_dates_without_cycle(self, db_session):
-        # Phase 0 pre-scan collects ALL past dates missing a cycle and reports them
-        # together — does not abort on the first bad date.
+    def test_phase0_prescan_quarantines_all_nocycle_rows(self, db_session):
+        # Phase 0 pre-scan collects ALL past dates missing a cycle;
+        # each row is quarantined individually — file is not aborted.
         row1 = {**BASE_ROW, "Data": "10/10/2020"}
         row2 = {**BASE_ROW, "Data": "11/10/2020"}
-        with pytest.raises(ArchivedCycleError) as exc_info:
-            ingest_file(_csv(row1, row2), "t.csv", db_session)
-        assert len(exc_info.value.cycle_names) == 2
+        summary = ingest_file(_csv(row1, row2), "t.csv", db_session)
+        assert summary["records_inserted"] == 0
+        assert summary["quarantine_records_added"] == 2
 
     def test_future_date_row_quarantined(self, db_session, sample_cycle):
         # Q2: future date → QuarantineRecord, not inserted

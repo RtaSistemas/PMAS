@@ -106,8 +106,9 @@ def ingest_file(
         .all()
     )
 
-    # Phase 0b: pre-scan all unique parseable dates — if any has no active cycle
-    # reject the entire file immediately (spec: rejeição total, Camada 1)
+    # Phase 0b: pre-scan all unique parseable dates.
+    # Dates without an active cycle are cached as None and quarantined per-row
+    # (Phase 1d). The file is only rejected if ALL rows lack a cycle.
     collab_cache: dict[str, Collaborator] = {}
     cycle_cache: dict[date, Cycle | None] = {}
     quarantine_buffer: list[dict] = []
@@ -117,19 +118,14 @@ def ingest_file(
     _unique_dates: set[date] = set()
     for v in df[_COL_DATE]:
         d = _parse_date_safe(v)
-        # Future dates are handled per-row (Q2); skip them in the pre-scan
         if d is not None and d <= _today:
             _unique_dates.add(d)
 
-    _no_cycle_dates: list[str] = []
     for d in sorted(_unique_dates):
         try:
             cycle_cache[d] = _resolve_cycle(db, d)
         except ArchivedCycleError:
-            _no_cycle_dates.append(str(d))
-
-    if _no_cycle_dates:
-        raise ArchivedCycleError(_no_cycle_dates)
+            cycle_cache[d] = None  # quarantined individually in Phase 1d
 
     # Phase 1 + 2: Per-row structural validation and rule evaluation
     skipped = 0
@@ -173,10 +169,20 @@ def ingest_file(
             })
             continue
 
-        # Phase 1d: active cycle check (raises ArchivedCycleError if none found)
+        # Phase 1d: active cycle check — no cycle → quarantine row (not abort)
         if record_date not in cycle_cache:
-            cycle_cache[record_date] = _resolve_cycle(db, record_date)
+            try:
+                cycle_cache[record_date] = _resolve_cycle(db, record_date)
+            except ArchivedCycleError:
+                cycle_cache[record_date] = None
         cycle = cycle_cache[record_date]
+        if cycle is None:
+            quarantine_buffer.append({
+                "raw_data": _row_to_dict(row),
+                "reason": f"Sem ciclo ativo para a data {record_date} ({name})",
+                "rule_id": None,
+            })
+            continue
 
         # Phase 1e: hours parsing
         total_h = _safe_hours(row[_COL_HOURS])
@@ -213,9 +219,9 @@ def ingest_file(
             continue
 
         if result.final_action == "warning":
-            ingest_warnings.append(result.reason)
+            ingest_warnings.append(f"{result.reason} [{name}, {record_date}]")
         elif result.final_action == "info":
-            ingest_infos.append(result.reason)
+            ingest_infos.append(f"{result.reason} [{name}, {record_date}]")
 
         valid_rows.append({
             "row_idx": row_idx,

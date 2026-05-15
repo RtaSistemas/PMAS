@@ -582,7 +582,6 @@ document.getElementById('stackToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Dashboard — DOM refs and multi-selects
 // ---------------------------------------------------------------------------
-const csvInput = document.getElementById('csvInput');
 const loadBtn  = document.getElementById('loadBtn');
 const clearBtn   = document.getElementById('clearBtn');
 
@@ -669,20 +668,45 @@ function _showIngestResult(json, filename) {
     chip('Avisos',      json.warning_count,             '#f97316') +
     chip('Infos',       json.info_count,                '#60a5fa');
 
+  const _exportIngestCsv = (rows, label) => {
+    const header = 'tipo,mensagem\n';
+    const body = rows.map(r => `"${label}","${String(r).replace(/"/g, '""')}"`).join('\n');
+    const blob = new Blob([header + body], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${label.toLowerCase()}_${filename.replace(/\.[^.]+$/, '')}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   let html = '';
   if (json.warnings?.length) {
+    const wId = `warn_${Date.now()}`;
     html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid ${_cssVar('--surface')}">
-      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
+        <span>⚠ ${json.warnings.length} aviso(s)</span>
+        <button type="button" id="${wId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
+      </summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
       </ul></details>`;
+    setTimeout(() => document.getElementById(wId)?.addEventListener('click', e => {
+      e.stopPropagation(); _exportIngestCsv(json.warnings, 'Avisos');
+    }), 0);
   }
   if (json.infos?.length) {
+    const iId = `info_${Date.now()}`;
     html += `<details open style="padding:.6rem 1rem">
-      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
+        <span>ℹ ${json.infos.length} informação(ões)</span>
+        <button type="button" id="${iId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
+      </summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
+    setTimeout(() => document.getElementById(iId)?.addEventListener('click', e => {
+      e.stopPropagation(); _exportIngestCsv(json.infos, 'Informações');
+    }), 0);
   }
   details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
   panel.hidden = false;
@@ -693,24 +717,6 @@ function _showIngestResult(json, filename) {
 // ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
-csvInput.addEventListener('change', async () => {
-  const file = csvInput.files[0]; if (!file) return;
-  csvInput.value = '';
-  notify(`Enviando "${file.name}"…`, 'info');
-  const form = new FormData(); form.append('file', file);
-  try {
-    const res  = await fetch('/api/upload-timesheet', { method: 'POST', headers: _authHeaders(), body: form });
-    const json = await res.json();
-    if (res.status === 401) { _handleUnauthorized(); return; }
-    if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
-    _showIngestResult(json, file.name);
-    const severity = json.quarantine_records_added > 0 ? 'warning' : 'success';
-    notify(`✔ ${json.records_inserted.toLocaleString('pt-BR')} inserido(s)${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} em quarentena` : ''}.`, severity);
-    await loadDashboardCycles();
-    _renderActiveTab();
-  } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
-});
-
 // Language toggle
 document.getElementById('langToggleBtn').addEventListener('click', () => {
   _locale = _locale === 'pt' ? 'en' : 'pt';
@@ -2048,12 +2054,12 @@ function _buildTreemapOption(health, evmMode = false) {
           value: consumed,
           itemStyle: {
             color: !d.is_registered
-              ? '#475569'
+              ? _cssVar('--text-3')
               : budget != null && consumed / budget >= 1.0
-                ? 'rgba(248,113,113,0.75)'
+                ? _cssVar('--red')
                 : budget != null && consumed / budget >= 0.75
-                  ? 'rgba(245,158,11,0.75)'
-                  : 'rgba(59,130,246,0.75)',
+                  ? _cssVar('--amber')
+                  : _cssVar('--primary'),
             borderColor: _cssVar('--bg'),
           },
         };
@@ -3430,12 +3436,12 @@ const _CHART_SERIES_NAMES = {
 // ---------------------------------------------------------------------------
 const _THEME_PRESETS = {
   pmas: {
-    color_primary: '#4f8ef7', color_background: '#141548',
-    color_surface: '#1c2b54', color_accent: '#1aa7ff',
+    color_primary: '#4f8ef7', color_background: '#081122',
+    color_surface: '#0e2038', color_accent: '#07b3d7',
     color_success: '#5ad388', color_warning: '#d9b273',
     color_danger:  '#c56d76', color_text: '#e0e0e0',
-    color_text_muted: '#8892a4', density: 'normal',
-    chart_palette: ['#4f8ef7','#d9b273','#a168c0','#1aa7ff','#9b59b6','#1abc9c'],
+    color_text_muted: '#818998', density: 'normal',
+    chart_palette: ['#4f8ef7','#d9b273','#a78bfa','#35a1f3','#5ad388','#01c1b9'],
   },
   corporate: {
     color_primary: '#0070f3', color_background: '#0a0a23',
@@ -4003,7 +4009,7 @@ async function deleteRule(id) {
 let _qrCache = [];
 
 function _qrStatusBadge(status) {
-  const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'encerrado' : 'suspenso';
+  const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'rejected' : 'suspenso';
   return `<span class="badge-status ${cls}">${_t('qr.status.' + status)}</span>`;
 }
 
