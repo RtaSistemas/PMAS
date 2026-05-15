@@ -668,45 +668,20 @@ function _showIngestResult(json, filename) {
     chip('Avisos',      json.warning_count,             '#f97316') +
     chip('Infos',       json.info_count,                '#60a5fa');
 
-  const _exportIngestCsv = (rows, label) => {
-    const header = 'tipo,mensagem\n';
-    const body = rows.map(r => `"${label}","${String(r).replace(/"/g, '""')}"`).join('\n');
-    const blob = new Blob([header + body], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${label.toLowerCase()}_${filename.replace(/\.[^.]+$/, '')}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
   let html = '';
   if (json.warnings?.length) {
-    const wId = `warn_${Date.now()}`;
     html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid ${_cssVar('--surface')}">
-      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
-        <span>⚠ ${json.warnings.length} aviso(s)</span>
-        <button type="button" id="${wId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
-      </summary>
+      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
       </ul></details>`;
-    setTimeout(() => document.getElementById(wId)?.addEventListener('click', e => {
-      e.stopPropagation(); _exportIngestCsv(json.warnings, 'Avisos');
-    }), 0);
   }
   if (json.infos?.length) {
-    const iId = `info_${Date.now()}`;
     html += `<details open style="padding:.6rem 1rem">
-      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
-        <span>ℹ ${json.infos.length} informação(ões)</span>
-        <button type="button" id="${iId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
-      </summary>
+      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
-    setTimeout(() => document.getElementById(iId)?.addEventListener('click', e => {
-      e.stopPropagation(); _exportIngestCsv(json.infos, 'Informações');
-    }), 0);
   }
   details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
   panel.hidden = false;
@@ -4091,16 +4066,41 @@ async function _openSessionDetail(sessionId) {
       chip('Avisos',     r.warning_count,            '#f97316') +
       chip('Infos',      r.info_count,               '#60a5fa');
 
+    const _exportDetailCsv = (items, label) => {
+      const header = 'tipo,mensagem\n';
+      const body = items.map(m => `"${label}","${String(m).replace(/"/g, '""')}"`).join('\n');
+      const blob = new Blob([header + body], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${label.toLowerCase()}_${r.source_file.replace(/\.[^.]+$/, '')}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
     if (r.warnings_detail?.length) {
       wList.innerHTML = r.warnings_detail.map(w => `<li>${escHtml(w)}</li>`).join('');
+      document.getElementById('sessionDetailWarningsHeader').innerHTML =
+        `<p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>
+         <button type="button" id="sdWarnCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
+      setTimeout(() => document.getElementById('sdWarnCsvBtn')?.addEventListener('click', () =>
+        _exportDetailCsv(r.warnings_detail, 'Avisos')), 0);
       wDiv.hidden = false;
     } else {
+      document.getElementById('sessionDetailWarningsHeader').innerHTML =
+        `<p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>`;
       wDiv.hidden = true;
     }
     if (r.infos_detail?.length) {
       iList.innerHTML = r.infos_detail.map(i => `<li>${escHtml(i)}</li>`).join('');
+      document.getElementById('sessionDetailInfosHeader').innerHTML =
+        `<p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>
+         <button type="button" id="sdInfoCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
+      setTimeout(() => document.getElementById('sdInfoCsvBtn')?.addEventListener('click', () =>
+        _exportDetailCsv(r.infos_detail, 'Informações')), 0);
       iDiv.hidden = false;
     } else {
+      document.getElementById('sessionDetailInfosHeader').innerHTML =
+        `<p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>`;
       iDiv.hidden = true;
     }
 
