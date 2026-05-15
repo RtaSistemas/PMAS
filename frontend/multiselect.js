@@ -11,18 +11,48 @@ class MultiSelect {
 
   _build() {
     this.el.classList.add('ms-root');
+
     this.btn = document.createElement('button');
     this.btn.type = 'button';
     this.btn.className = 'ms-toggle';
+    this.btn.setAttribute('role', 'combobox');
+    this.btn.setAttribute('aria-haspopup', 'listbox');
+    this.btn.setAttribute('aria-expanded', 'false');
     this.btn.innerHTML = `<span class="ms-label"></span><span class="ms-arrow">▾</span>`;
+
     this.panel = document.createElement('div');
     this.panel.className = 'ms-dropdown';
+    this.panel.setAttribute('role', 'listbox');
+    this.panel.setAttribute('aria-multiselectable', 'true');
     this.panel.hidden = true;
+
     this.el.appendChild(this.btn);
     this.el.appendChild(this.panel);
-    this.btn.addEventListener('click', e => { e.stopPropagation(); this.panel.hidden = !this.panel.hidden; });
-    document.addEventListener('click', e => { if (!this.el.contains(e.target)) this.panel.hidden = true; });
+
+    this._docClickHandler = e => { if (!this.el.contains(e.target)) this._close(); };
+    this.btn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.panel.hidden ? this._open() : this._close();
+    });
+    document.addEventListener('click', this._docClickHandler);
     this._updateBtn();
+  }
+
+  _open() {
+    this.panel.hidden = false;
+    this.btn.setAttribute('aria-expanded', 'true');
+  }
+
+  _close() {
+    this.panel.hidden = true;
+    this.btn.setAttribute('aria-expanded', 'false');
+  }
+
+  destroy() {
+    document.removeEventListener('click', this._docClickHandler);
+    this.el.classList.remove('ms-root');
+    this.btn.remove();
+    this.panel.remove();
   }
 
   setItems(items, preserve = false) {
@@ -73,6 +103,7 @@ class MultiSelect {
       const lbl = this._makeRow(item.value, item.label, false);
       const chk = lbl.querySelector('input');
       chk.checked = this.selected.has(String(item.value));
+      lbl.setAttribute('aria-selected', String(chk.checked));
       chk.addEventListener('change', e => {
         e.stopPropagation();
         if (chk.checked) this.selected.add(String(item.value)); else this.selected.delete(String(item.value));
@@ -85,6 +116,8 @@ class MultiSelect {
   _makeRow(value, label, isAll) {
     const lbl = document.createElement('label');
     lbl.className = 'ms-option' + (isAll ? ' ms-all' : '');
+    lbl.setAttribute('role', 'option');
+    lbl.setAttribute('aria-selected', 'false');
     lbl.addEventListener('click', e => e.stopPropagation());
     const chk = document.createElement('input'); chk.type = 'checkbox'; chk.value = value;
     const span = document.createElement('span'); span.textContent = label;

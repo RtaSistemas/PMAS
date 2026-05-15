@@ -439,6 +439,21 @@ function _makeSortable(tableId, colDefs, getDataFn, renderFn) {
 }
 
 // ---------------------------------------------------------------------------
+// Theme-aware helpers
+// ---------------------------------------------------------------------------
+function _cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function _echartsTip(extra = {}) {
+  return Object.assign({
+    backgroundColor: _cssVar('--card'),
+    borderColor:     _cssVar('--border'),
+    textStyle:       { color: _cssVar('--text') },
+  }, extra);
+}
+
+// ---------------------------------------------------------------------------
 // Top-level tab navigation
 // ---------------------------------------------------------------------------
 const tabBtns     = document.querySelectorAll('.tab-btn');
@@ -567,14 +582,20 @@ document.getElementById('stackToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Dashboard — DOM refs and multi-selects
 // ---------------------------------------------------------------------------
-const csvInput = document.getElementById('csvInput');
 const loadBtn  = document.getElementById('loadBtn');
 const clearBtn   = document.getElementById('clearBtn');
 
-const cycleMs        = new MultiSelect(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
-const pepMs          = new MultiSelect(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
-const pepDescMs      = new MultiSelect(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
-const collaboratorMs = new MultiSelect(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
+const _msRegistry = [];
+function _createMS(el, placeholder, onChange) {
+  const ms = new MultiSelect(el, placeholder, onChange);
+  _msRegistry.push(ms);
+  return ms;
+}
+
+const cycleMs        = _createMS(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
+const pepMs          = _createMS(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
+const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
+const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
 
 let pepDataCache = {};
 
@@ -642,25 +663,50 @@ function _showIngestResult(json, filename) {
   summary.innerHTML =
     `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
     chip('Inseridos',   json.records_inserted,         '#2ecc71') +
-    chip('Ignorados',   json.records_skipped,           '#94a3b8') +
-    chip('Quarentena',  json.quarantine_records_added,  '#f59e0b') +
+    chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
+    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--amber')) +
     chip('Avisos',      json.warning_count,             '#f97316') +
     chip('Infos',       json.info_count,                '#60a5fa');
 
+  const _exportIngestCsv = (rows, label) => {
+    const header = 'tipo,mensagem\n';
+    const body = rows.map(r => `"${label}","${String(r).replace(/"/g, '""')}"`).join('\n');
+    const blob = new Blob([header + body], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${label.toLowerCase()}_${filename.replace(/\.[^.]+$/, '')}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   let html = '';
   if (json.warnings?.length) {
-    html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid #1e293b">
-      <summary style="cursor:pointer;color:#f59e0b;font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+    const wId = `warn_${Date.now()}`;
+    html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid ${_cssVar('--surface')}">
+      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
+        <span>⚠ ${json.warnings.length} aviso(s)</span>
+        <button type="button" id="${wId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
+      </summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
       </ul></details>`;
+    setTimeout(() => document.getElementById(wId)?.addEventListener('click', e => {
+      e.stopPropagation(); _exportIngestCsv(json.warnings, 'Avisos');
+    }), 0);
   }
   if (json.infos?.length) {
+    const iId = `info_${Date.now()}`;
     html += `<details open style="padding:.6rem 1rem">
-      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem">
+      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none;display:flex;align-items:center;gap:.5rem">
+        <span>ℹ ${json.infos.length} informação(ões)</span>
+        <button type="button" id="${iId}" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>
+      </summary>
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
+    setTimeout(() => document.getElementById(iId)?.addEventListener('click', e => {
+      e.stopPropagation(); _exportIngestCsv(json.infos, 'Informações');
+    }), 0);
   }
   details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
   panel.hidden = false;
@@ -671,24 +717,6 @@ function _showIngestResult(json, filename) {
 // ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
-csvInput.addEventListener('change', async () => {
-  const file = csvInput.files[0]; if (!file) return;
-  csvInput.value = '';
-  notify(`Enviando "${file.name}"…`, 'info');
-  const form = new FormData(); form.append('file', file);
-  try {
-    const res  = await fetch('/api/upload-timesheet', { method: 'POST', headers: _authHeaders(), body: form });
-    const json = await res.json();
-    if (res.status === 401) { _handleUnauthorized(); return; }
-    if (!res.ok) { notify(`Erro: ${json.detail ?? res.statusText}`, 'error'); return; }
-    _showIngestResult(json, file.name);
-    const severity = json.quarantine_records_added > 0 ? 'warning' : 'success';
-    notify(`✔ ${json.records_inserted.toLocaleString('pt-BR')} inserido(s)${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} em quarentena` : ''}.`, severity);
-    await loadDashboardCycles();
-    _renderActiveTab();
-  } catch (err) { notify(`Falha na conexão: ${err.message}`, 'error'); }
-});
-
 // Language toggle
 document.getElementById('langToggleBtn').addEventListener('click', () => {
   _locale = _locale === 'pt' ? 'en' : 'pt';
@@ -1292,8 +1320,8 @@ function _buildForecastOption(fc) {
       type: 'line', yAxisIndex: 0,
       data: projectionData,
       smooth: false, symbol: 'circle', symbolSize: 5,
-      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
-      itemStyle: { color: '#94a3b8' },
+      lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
+      itemStyle: { color: _cssVar('--text-3') },
       connectNulls: false,
     },
   ];
@@ -1315,8 +1343,8 @@ function _buildForecastOption(fc) {
       type: 'line', yAxisIndex: 0,
       data: budgetData,
       symbol: 'none',
-      lineStyle: { color: '#f59e0b', width: 1.5, type: 'dashed' },
-      itemStyle: { color: '#f59e0b' },
+      lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
+      itemStyle: { color: _cssVar('--amber') },
     });
   }
 
@@ -1328,14 +1356,14 @@ function _buildForecastOption(fc) {
     backgroundColor: 'transparent',
     legend: {
       data: legendData, top: 8, left: 'center',
-      textStyle: { color: '#cbd5e1', fontSize: 12 },
+      textStyle: { color: _cssVar('--text'), fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
     },
     grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e293b', borderColor: '#475569',
-      textStyle: { color: '#e2e8f0' },
+      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
+      textStyle: { color: _cssVar('--text') },
       formatter: params => {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
@@ -1350,14 +1378,14 @@ function _buildForecastOption(fc) {
     }, 'PMAS-IDP'),
     xAxis: {
       type: 'category', data: allCats,
-      axisLabel: { color: '#94a3b8', rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
+      axisLabel: { color: _cssVar('--text-3'), rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
       axisTick: { alignWithLabel: true },
     },
     yAxis: {
       type: 'value', name: _t('ch.hours'),
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: '#334155' } },
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: _cssVar('--border') } },
     },
     series,
   };
@@ -1563,7 +1591,6 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     const msg = `Baseline importado: ${data.created} criados, ${data.updated} atualizados` +
       (data.errors.length ? ` — ${data.errors.length} erro(s)` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
-    if (data.errors.length) console.warn('Erros na importação de baseline:', data.errors);
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
   } catch (e) { notify(`Erro ao importar: ${e.message}`, 'error'); }
@@ -1645,7 +1672,7 @@ function _buildHoursBarOption({
     axisLabel: richLabel && isHoriz
       // [C1] Label rico: nome + breakdown N/E/S — exclusivo do modo horizontal
       ? {
-          color:      '#e2e8f0',
+          color:      _cssVar('--text'),
           fontSize:   10,
           lineHeight: 16,
           formatter: name => {
@@ -1661,13 +1688,13 @@ function _buildHoursBarOption({
             );
           },
           rich: {
-            nm: { color: '#e2e8f0', fontSize: 11, lineHeight: 18 },
-            hr: { color: '#64748b', fontSize: 9,  lineHeight: 14 },
+            nm: { color: _cssVar('--text'), fontSize: 11, lineHeight: 18 },
+            hr: { color: _cssVar('--text-3'), fontSize: 9,  lineHeight: 14 },
           },
         }
       // Label simples para vertical (ciclos) — rotaciona quando há muitas categorias
       : {
-          color:    '#94a3b8',
+          color:    _cssVar('--text-3'),
           fontSize: isHoriz ? 10 : 11,
           rotate:   (!isHoriz && categories.length > 6) ? 30 : 0,
         },
@@ -1677,22 +1704,22 @@ function _buildHoursBarOption({
   const valueAxis = {
     type: 'value',
     name: 'h',
-    nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
     axisLabel: {
-      color:     '#94a3b8',
+      color:     _cssVar('--text-3'),
       fontSize:  11,
       formatter: v => `${v}h`,
     },
-    splitLine: { lineStyle: { color: '#1e293b' } },
+    splitLine: { lineStyle: { color: _cssVar('--surface') } },
   };
 
   // ── 4. Tooltip unificado ────────────────────────────────────────────
   const tooltip = {
     trigger:     'axis',
     axisPointer: { type: 'shadow' },
-    backgroundColor: '#1e293b',
-    borderColor:     '#475569',
-    textStyle:       { color: '#e2e8f0' },
+    backgroundColor: _cssVar('--card'),
+    borderColor:     _cssVar('--border'),
+    textStyle:       { color: _cssVar('--text') },
     formatter: params => {
       const bars  = params.filter(p => p.seriesName !== _t('stat.total'));
       let html    = `<b>${params[0].axisValue}</b><br/>`;
@@ -1703,7 +1730,7 @@ function _buildHoursBarOption({
           total += p.value;
         }
       });
-      html += `<hr style="border-color:#334155;margin:4px 0"/>`;
+      html += `<hr style="border-color:${_cssVar('--border')};margin:4px 0"/>`;
       html += `Total: <b>${total.toFixed(1)}h</b>`;
       return html;
     },
@@ -1737,8 +1764,8 @@ function _buildHoursBarOption({
 
   const _pal = _getPalette();
   const barSeries = [
-    _barSerie(_t('ch.normal_h'),  normals,   _pal[0] || '#3b82f6'),
-    _barSerie(_t('ch.extra_h'),   extras,    _pal[1] || '#f59e0b'),
+    _barSerie(_t('ch.normal_h'),  normals,   _pal[0] || _cssVar('--primary')),
+    _barSerie(_t('ch.extra_h'),   extras,    _pal[1] || _cssVar('--amber')),
     _barSerie(_t('ch.standby_h'), standbys,  _pal[2] || '#8b5cf6'),
   ];
 
@@ -1752,17 +1779,17 @@ function _buildHoursBarOption({
     data:       totals,
     symbolSize: val => val === maxTotal ? 10 : 6,
     lineStyle:  { width: 1, type: 'dashed' },
-    itemStyle:  { color: p => p.value === maxTotal ? '#f87171' : '#10b981' },
+    itemStyle:  { color: p => p.value === maxTotal ? _cssVar('--red') : _cssVar('--green') },
     label: {
       show:       true,
       position:   isHoriz ? 'right' : 'top',   // [C2]
       fontSize:   10,
       fontWeight: 600,
-      color:      '#10b981',
+      color:      _cssVar('--green'),
       formatter:  p => p.value === maxTotal
         ? `{peak|${p.value.toFixed(1)}h}`
         : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: '#f87171', fontWeight: 700 } },
+      rich: { peak: { color: _cssVar('--red'), fontWeight: 700 } },
     },
     z: 10,
   }] : [];
@@ -1793,14 +1820,14 @@ function _buildHoursBarOption({
       subtext:      `Exibindo os primeiros ${maxItems} itens`,
       left:         'center',
       top:          4,
-      subtextStyle: { color: '#64748b', fontSize: 11 },
+      subtextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
     } : undefined,
 
     legend: {
       data:       legendData,
       top:        8,
       left:       'center',
-      textStyle:  { color: '#cbd5e1', fontSize: 12 },
+      textStyle:  { color: _cssVar('--text'), fontSize: 12 },
       itemGap:    24,
       itemWidth:  14,
       itemHeight: 10,
@@ -1849,10 +1876,10 @@ function _buildScatterOption(items) {
 
   const colorOf = d => {
     const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
-    if (rph === 0 || avgRate === 0) return '#64748b';
-    if (rph <= avgRate)             return '#3b82f6';
-    if (rph <= avgRate * 1.1)       return '#f59e0b';
-    return '#f87171';
+    if (rph === 0 || avgRate === 0) return _cssVar('--text-3');
+    if (rph <= avgRate)             return _cssVar('--primary');
+    if (rph <= avgRate * 1.1)       return _cssVar('--amber');
+    return _cssVar('--red');
   };
 
   const sizeOf = d => {
@@ -1865,9 +1892,9 @@ function _buildScatterOption(items) {
     toolbox: _toolbox({}, 'PMAS-Scatter'),
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1e293b',
-      borderColor: '#334155',
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      backgroundColor: _cssVar('--card'),
+      borderColor: _cssVar('--border'),
+      textStyle: { color: _cssVar('--text'), fontSize: 12 },
       formatter: p => {
         const d   = p.data._raw;
         const rph = d.total_hours > 0 ? (d.actual_cost / d.total_hours).toFixed(2) : '—';
@@ -1888,24 +1915,24 @@ function _buildScatterOption(items) {
     xAxis: {
       name: 'Horas Consumidas',
       nameLocation: 'middle', nameGap: 32,
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', formatter: v => v + 'h' },
-      axisLine:  { lineStyle: { color: '#334155' } },
-      splitLine: { lineStyle: { color: '#1e293b' } },
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v + 'h' },
+      axisLine:  { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
       min: 0, max: maxH,
     },
     yAxis: {
       name: 'Custo Real',
       nameLocation: 'middle', nameGap: 56,
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: {
-        color: '#94a3b8',
+        color: _cssVar('--text-3'),
         formatter: v => v >= 1000
           ? `${_currencySymbol} ${(v / 1000).toFixed(0)}k`
           : `${_currencySymbol} ${v.toFixed(0)}`,
       },
-      axisLine:  { lineStyle: { color: '#334155' } },
-      splitLine: { lineStyle: { color: '#1e293b' } },
+      axisLine:  { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
       min: 0, max: maxC,
     },
     series: [{
@@ -1916,7 +1943,7 @@ function _buildScatterOption(items) {
         itemStyle: {
           color: colorOf(d),
           opacity: 0.82,
-          borderColor: '#0f172a',
+          borderColor: _cssVar('--bg'),
           borderWidth: 2,
         },
         label: {
@@ -1924,7 +1951,7 @@ function _buildScatterOption(items) {
           formatter: d.pep_description.length > 20
             ? d.pep_description.slice(0, 19) + '…'
             : d.pep_description,
-          color: '#e2e8f0',
+          color: _cssVar('--text'),
           fontSize: 10,
           fontWeight: 600,
           position: 'top',
@@ -1934,7 +1961,7 @@ function _buildScatterOption(items) {
       })),
       emphasis: {
         scale: 1.15,
-        itemStyle: { borderWidth: 3, borderColor: '#e2e8f0' },
+        itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') },
       },
     }],
   };
@@ -1951,7 +1978,7 @@ function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
         {
           type: 'line',
           shape: { x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1] },
-          style: { stroke: '#475569', lineWidth: 1.5, lineDash: [6, 4] },
+          style: { stroke: _cssVar('--border'), lineWidth: 1.5, lineDash: [6, 4] },
           z: 0,
         },
         {
@@ -1959,7 +1986,7 @@ function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
           x: p1[0] - 60, y: p1[1] - 16,
           style: {
             text: `avg ${_currencySymbol} ${avgRate.toFixed(0)}/h`,
-            fill: '#64748b',
+            fill: _cssVar('--text-3'),
             fontSize: 10,
           },
           z: 0,
@@ -1978,12 +2005,12 @@ function _buildTreemapOption(health, evmMode = false) {
     toolbox: _toolbox({}, 'PMAS-Treemap'),
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
       formatter: params => {
         const d = health.find(x => x.pep_wbs === params.name);
         if (!d) return escHtml(params.name);
         let html = `<b>${escHtml(d.pep_wbs)}</b>`;
-        if (d.pep_description) html += `<br><span style="color:#94a3b8">${escHtml(d.pep_description)}</span>`;
+        if (d.pep_description) html += `<br><span style="color:${_cssVar('--text-3')}">${escHtml(d.pep_description)}</span>`;
         if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.actual_cost : d.consumed_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
@@ -1992,7 +2019,7 @@ function _buildTreemapOption(health, evmMode = false) {
           const pct = (consumed / budget * 100).toFixed(1);
           html += `<br>${_t('ch.budget')}: ${fmtVal(budget, true)} (${pct}% ${_t('tt.utilized')})`;
         }
-        if (!d.is_registered) html += `<br><span style="color:#f59e0b">${_t('tt.pep_not_reg')}</span>`;
+        if (!d.is_registered) html += `<br><span style="color:${_cssVar('--amber')}">${_t('tt.pep_not_reg')}</span>`;
         return html;
       },
     },
@@ -2027,13 +2054,13 @@ function _buildTreemapOption(health, evmMode = false) {
           value: consumed,
           itemStyle: {
             color: !d.is_registered
-              ? '#475569'
+              ? _cssVar('--text-3')
               : budget != null && consumed / budget >= 1.0
-                ? 'rgba(248,113,113,0.75)'
+                ? _cssVar('--red')
                 : budget != null && consumed / budget >= 0.75
-                  ? 'rgba(245,158,11,0.75)'
-                  : 'rgba(59,130,246,0.75)',
-            borderColor: '#0f172a',
+                  ? _cssVar('--amber')
+                  : _cssVar('--primary'),
+            borderColor: _cssVar('--bg'),
           },
         };
       }),
@@ -2047,7 +2074,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map((d, i) => {
     const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= 1.0 ? '#f87171' : pct >= 0.75 ? '#f59e0b' : '#3b82f6';
+    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.75 ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
@@ -2060,7 +2087,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
     grid: { top: 46, right: '10%', bottom: 16, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'none' },
-      backgroundColor: '#1e293b', borderColor: '#475569', textStyle: { color: '#e2e8f0' },
+      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
       formatter: params => {
         const b = budgets[params[0].dataIndex];
         const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
@@ -2069,19 +2096,19 @@ function _buildBulletOption(withBudget, evmMode = false) {
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
-        if (b > 0 && a > b) html += `<br><span style="color:#f87171">⚠ ${_t('tt.over_budget')}</span>`;
+        if (b > 0 && a > b) html += `<br><span style="color:${_cssVar('--red')}">⚠ ${_t('tt.over_budget')}</span>`;
         return html;
       },
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: fmtAx },
-      splitLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 10, formatter: fmtAx },
+      splitLine: { lineStyle: { color: _cssVar('--border') } },
     },
     yAxis: {
       type: 'category', data: labels,
       axisTick: { show: false },
-      axisLabel: { color: '#e2e8f0', fontSize: 10, lineHeight: 16 },
+      axisLabel: { color: _cssVar('--text'), fontSize: 10, lineHeight: 16 },
     },
     series: [
       {
@@ -2111,7 +2138,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
           show: true,
           position: 'right',
           fontSize: 10,
-          color: '#e2e8f0',
+          color: _cssVar('--text'),
           formatter: params => {
             const b = budgets[params.dataIndex];
             return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
@@ -2169,17 +2196,17 @@ async function _openCollabTimelineModal(collaboratorName) {
       background:rgba(0,0,0,0.7);
     `;
     modal.innerHTML = `
-      <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;
+      <div style="background:${_cssVar('--card')};border:1px solid ${_cssVar('--border')};border-radius:10px;
                   padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
           <span id="collabTimelineTitle"
-            style="font-size:1rem;font-weight:600;color:#e2e8f0;"></span>
+            style="font-size:1rem;font-weight:600;color:${_cssVar('--text')};"></span>
           <button id="collabTimelineClose"
-            style="background:none;border:none;color:#94a3b8;font-size:1.4rem;
+            style="background:none;border:none;color:${_cssVar('--text-3')};font-size:1.4rem;
                    cursor:pointer;line-height:1;">✕</button>
         </div>
         <div id="collabTimelineEmpty"
-          style="color:#64748b;text-align:center;padding:2rem;" hidden></div>
+          style="color:${_cssVar('--text-3')};text-align:center;padding:2rem;" hidden></div>
         <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
       </div>
     `;
@@ -2249,28 +2276,28 @@ function _buildCpiOption(trends) {
       formatter: params => {
         const p = params[0];
         if (p.value == null) return `${p.name}<br/>IDP: —`;
-        const color = p.value >= 1 ? '#3b82f6' : p.value >= 0.9 ? '#fbbf24' : '#f87171';
+        const color = p.value >= 1 ? _cssVar('--primary') : p.value >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
         return `${p.name}<br/>IDP: <b style="color:${color}">${p.value.toFixed(3)}</b>`;
       },
     },
     grid: { left: 60, right: 20, top: 20, bottom: 50 },
-    xAxis: { type: 'category', data: cats, axisLabel: { color: '#94a3b8', fontSize: 10, rotate: 30 } },
+    xAxis: { type: 'category', data: cats, axisLabel: { color: _cssVar('--text-3'), fontSize: 10, rotate: 30 } },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#94a3b8', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#1e293b' } },
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
     },
     series: [{
       type: 'line',
       data: cpiSeries,
       connectNulls: true,
       smooth: false,
-      lineStyle: { color: '#3b82f6', width: 2 },
+      lineStyle: { color: _cssVar('--primary'), width: 2 },
       itemStyle: {
         color: params => {
           const v = params.value;
-          if (v == null) return '#3b82f6';
-          return v >= 1 ? '#3b82f6' : v >= 0.9 ? '#fbbf24' : '#f87171';
+          if (v == null) return _cssVar('--primary');
+          return v >= 1 ? _cssVar('--primary') : v >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
         },
       },
       label: {
@@ -2285,16 +2312,16 @@ function _buildCpiOption(trends) {
           return `{${style}|${v.toFixed(2)}}`;
         },
         rich: {
-          good: { color: '#3b82f6', fontWeight: 700, fontSize: 10 },
-          amber: { color: '#fbbf24', fontWeight: 700, fontSize: 10 },
-          red:   { color: '#f87171', fontWeight: 700, fontSize: 10 },
+          good: { color: _cssVar('--primary'), fontWeight: 700, fontSize: 10 },
+          amber: { color: _cssVar('--amber'), fontWeight: 700, fontSize: 10 },
+          red:   { color: _cssVar('--red'), fontWeight: 700, fontSize: 10 },
         },
       },
       markLine: {
         silent: true,
         symbol: 'none',
-        lineStyle: { color: '#94a3b8', type: 'dashed', width: 1 },
-        label: { formatter: 'IDP = 1.0', color: '#94a3b8', fontSize: 10 },
+        lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1 },
+        label: { formatter: 'IDP = 1.0', color: _cssVar('--text-3'), fontSize: 10 },
         data: [{ yAxis: 1.0 }],
       },
     }],
@@ -2325,21 +2352,21 @@ function _buildPepCpiOption(peps, allCycleNames) {
     toolbox: _toolbox({}, 'PMAS-CPI-PEP'),
     title: {
       text: _t('pepcpi.title'),
-      textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 600 },
+      textStyle: { color: _cssVar('--text'), fontSize: 14, fontWeight: 600 },
       left: 'center', top: 8,
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e293b',
-      borderColor: '#334155',
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      backgroundColor: _cssVar('--card'),
+      borderColor: _cssVar('--border'),
+      textStyle: { color: _cssVar('--text'), fontSize: 12 },
       formatter: params => {
         const header = `<b>${escHtml(params[0]?.axisValue)}</b><br/>`;
         const lines  = params
           .filter(p => p.value != null)
           .map(p => {
             const cpiVal = p.value;
-            const color  = cpiVal >= 1.0 ? '#3b82f6' : cpiVal >= 0.9 ? '#f59e0b' : '#ef4444';
+            const color  = cpiVal >= 1.0 ? _cssVar('--primary') : cpiVal >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
             const dot    = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
             return `${dot}${escHtml(p.seriesName)}: <b style="color:${color}">${cpiVal.toFixed(2)}</b>`;
           })
@@ -2349,30 +2376,30 @@ function _buildPepCpiOption(peps, allCycleNames) {
     },
     legend: {
       bottom: 0,
-      textStyle: { color: '#94a3b8', fontSize: 10 },
+      textStyle: { color: _cssVar('--text-3'), fontSize: 10 },
       itemWidth: 14, itemHeight: 3,
     },
     grid: { top: 48, bottom: 64, left: 48, right: 16, containLabel: true },
     xAxis: {
       type: 'category',
       data: allCycleNames,
-      axisLabel: { color: '#94a3b8', fontSize: 10, rotate: allCycleNames.length > 6 ? 30 : 0 },
-      axisLine:  { lineStyle: { color: '#334155' } },
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 10, rotate: allCycleNames.length > 6 ? 30 : 0 },
+      axisLine:  { lineStyle: { color: _cssVar('--border') } },
       splitLine: { show: false },
     },
     yAxis: {
       name: 'CPI',
-      nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-      axisLabel: { color: '#94a3b8', formatter: v => v.toFixed(2) },
-      axisLine:  { lineStyle: { color: '#334155' } },
-      splitLine: { lineStyle: { color: '#1e293b' } },
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
+      axisLine:  { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
       min: v => Math.max(0, +(v.min - 0.15).toFixed(1)),
       max: v => +(v.max + 0.15).toFixed(1),
       markLine: {
         silent: true,
         symbol: 'none',
-        lineStyle: { color: '#64748b', type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: '#64748b', fontSize: 10 } }],
+        lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
+        data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
     series,
@@ -2660,7 +2687,7 @@ function _renderProjectsTable(projects) {
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
-        ${_isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
+        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`).join('');
@@ -3128,7 +3155,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const tz  = document.getElementById('timezoneSelect').value;
   const msg = document.getElementById('configMsg');
   if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
-    msg.style.color = '#ef4444';
+    msg.style.color = _cssVar('--red');
     msg.textContent = 'Os valores devem ser números positivos.';
     return;
   }
@@ -3139,11 +3166,11 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       anomaly_max_daily_hours: _anomalyMaxHours,
       timezone: tz,
     });
-    msg.style.color = '#22c55e';
+    msg.style.color = _cssVar('--green');
     msg.textContent = 'Fatores salvos com sucesso.';
     setTimeout(() => { msg.textContent = ''; }, 3000);
   } catch (e) {
-    msg.style.color = '#ef4444';
+    msg.style.color = _cssVar('--red');
     msg.textContent = e.message;
   }
 });
@@ -3206,7 +3233,11 @@ function notify(msg, type = 'info') {
   setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
-function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : Number(h).toFixed(1); }
+function fmt(h) {
+  return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  });
+}
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -3405,12 +3436,12 @@ const _CHART_SERIES_NAMES = {
 // ---------------------------------------------------------------------------
 const _THEME_PRESETS = {
   pmas: {
-    color_primary: '#4f8ef7', color_background: '#1a1a2e',
-    color_surface: '#16213e', color_accent: '#e94560',
-    color_success: '#2ecc71', color_warning: '#f39c12',
-    color_danger:  '#e74c3c', color_text: '#e0e0e0',
-    color_text_muted: '#8892a4', density: 'normal',
-    chart_palette: ['#4f8ef7','#e94560','#2ecc71','#f39c12','#9b59b6','#1abc9c'],
+    color_primary: '#4f8ef7', color_background: '#081122',
+    color_surface: '#0e2038', color_accent: '#07b3d7',
+    color_success: '#5ad388', color_warning: '#d9b273',
+    color_danger:  '#c56d76', color_text: '#e0e0e0',
+    color_text_muted: '#818998', density: 'normal',
+    chart_palette: ['#4f8ef7','#d9b273','#a78bfa','#35a1f3','#5ad388','#01c1b9'],
   },
   corporate: {
     color_primary: '#0070f3', color_background: '#0a0a23',
@@ -3522,6 +3553,9 @@ async function _loadTheme() {
     const density = _DENSITY_MAP[t.density] || _DENSITY_MAP.normal;
     root.style.setProperty('--density-spacing',   density.spacing);
     root.style.setProperty('--density-font-size', density.fontSize);
+
+    // Font family
+    if (t.font_family) root.style.setProperty('--font-family', t.font_family);
 
     // Chart palette
     window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
@@ -3699,7 +3733,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     fd.append('file', file);
     const resp = await fetch('/api/upload-timesheet', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      headers: _authHeaders(),
       body: fd,
     });
     const json = await resp.json();
@@ -3742,15 +3776,15 @@ function _renderMyHistory(rows) {
       : r.status === 'warnings' ? 'history.status.warnings'
       : r.status === 'quarantine' ? 'history.status.quarantine'
       : 'history.status.rejected';
-    const warnCell = r.warning_count > 0 ? `<strong style="color:#f59e0b">${r.warning_count}</strong>` : '0';
-    const infoCell = r.info_count    > 0 ? `<strong style="color:#60a5fa">${r.info_count}</strong>`    : '0';
+    const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
+    const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
     return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
       <td style="text-align:right">${r.records_inserted}</td>
       <td style="text-align:right">${r.records_skipped}</td>
-      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:#f59e0b">${r.quarantine_added}</strong>` : '0'}</td>
+      <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.quarantine_added}</strong>` : '0'}</td>
       <td style="text-align:right">${warnCell}</td>
       <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
@@ -3975,7 +4009,7 @@ async function deleteRule(id) {
 let _qrCache = [];
 
 function _qrStatusBadge(status) {
-  const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'encerrado' : 'suspenso';
+  const cls = status === 'approved' ? 'ativo' : status === 'rejected' ? 'rejected' : 'suspenso';
   return `<span class="badge-status ${cls}">${_t('qr.status.' + status)}</span>`;
 }
 
@@ -4053,7 +4087,7 @@ async function _openSessionDetail(sessionId) {
     counts.innerHTML =
       chip('Inseridos',  r.records_inserted,        '#2ecc71') +
       chip('Ignorados',  r.records_skipped,          '#94a3b8') +
-      chip('Quarentena', r.quarantine_added,         '#f59e0b') +
+      chip('Quarentena', r.quarantine_added,         _cssVar('--amber')) +
       chip('Avisos',     r.warning_count,            '#f97316') +
       chip('Infos',      r.info_count,               '#60a5fa');
 
@@ -4113,6 +4147,9 @@ function _applyThemePreset(key) {
     document.querySelectorAll('.theme-density-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.density === preset.density);
     });
+    const d = _DENSITY_MAP[preset.density] || _DENSITY_MAP.normal;
+    document.documentElement.style.setProperty('--density-spacing',   d.spacing);
+    document.documentElement.style.setProperty('--density-font-size', d.fontSize);
   }
   if (preset.chart_palette) {
     preset.chart_palette.forEach((c, i) => {
@@ -4251,7 +4288,7 @@ document.getElementById('logoUploadInput')?.addEventListener('change', async (e)
   try {
     const resp = await fetch('/api/theme/logo', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` },
+      headers: _authHeaders(),
       body: fd,
     });
     if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
@@ -4286,7 +4323,12 @@ async function loadSemaphore() {
   if (!bar) return;
   try {
     const data = await apiFetch('/api/portfolio-health');
-    if (!data.length) { bar.style.display = 'none'; return; }
+    if (!data.length) {
+      bar.style.display = 'none';
+      const hdr = document.getElementById('headerSemaphore');
+      if (hdr) hdr.style.display = 'none';
+      return;
+    }
 
     const classify = p => {
       if (!p.budget_hours && !p.budget_cost) return 'grey';
@@ -4310,18 +4352,26 @@ async function loadSemaphore() {
       ? `<span class="sem-count" title="${label}"><span class="sem-dot ${cls}"></span>${counts[cls]}</span>`
       : '';
 
+    const summaryHtml =
+      `<span class="sem-title">Portfólio</span>
+      ${dot('green',  'OK — dentro do budget')}
+      ${dot('yellow', 'Atenção — ≥ 90% do budget')}
+      ${dot('red',    'Estourado — ≥ 100% do budget')}
+      ${dot('grey',   'Sem budget definido')}`;
+
     bar.innerHTML =
-      `<div class="sem-summary">
-        <span class="sem-title">Portfólio</span>
-        ${dot('green',  'OK — dentro do budget')}
-        ${dot('yellow', 'Atenção — ≥ 90% do budget')}
-        ${dot('red',    'Estourado — ≥ 100% do budget')}
-        ${dot('grey',   'Sem budget definido')}
-      </div>
+      `<div class="sem-summary">${summaryHtml}</div>
       <div class="sem-divider"></div>
       <div class="sem-projects">${pills.join('')}</div>`;
     bar.style.display = 'flex';
-  } catch (_) { bar.style.display = 'none'; }
+
+    const hdr = document.getElementById('headerSemaphore');
+    if (hdr) { hdr.innerHTML = summaryHtml; hdr.style.display = 'flex'; }
+  } catch (_) {
+    bar.style.display = 'none';
+    const hdr = document.getElementById('headerSemaphore');
+    if (hdr) hdr.style.display = 'none';
+  }
 }
 
 // ---------------------------------------------------------------------------

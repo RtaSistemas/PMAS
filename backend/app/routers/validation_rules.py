@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -34,15 +34,15 @@ def create_rule(payload: ValidationRuleIn, db: DbSession, current_user: AdminUse
         action=payload.action,
         description=payload.description,
         created_by=current_user.username,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(rule)
-    db.commit()
-    db.refresh(rule)
+    db.flush()
     log_audit(db, current_user, "create", "validation_rule", rule.id, {
         "field": rule.field, "operator": rule.operator, "value": rule.value, "action": rule.action,
     })
     db.commit()
+    db.refresh(rule)
     return rule
 
 
@@ -76,13 +76,12 @@ def update_rule(rule_id: int, payload: ValidationRuleIn, db: DbSession, current_
         rule.action = payload.action
         rule.description = payload.description
     rule.updated_by = current_user.username
-    rule.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(rule)
+    rule.updated_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "update", "validation_rule", rule.id, {
         "field": rule.field, "operator": rule.operator, "value": rule.value, "action": rule.action,
     })
     db.commit()
+    db.refresh(rule)
     return rule
 
 
@@ -105,11 +104,10 @@ def toggle_rule(rule_id: int, db: DbSession, current_user: AdminUser):
         raise HTTPException(status_code=404, detail="Regra não encontrada.")
     rule.is_active = not rule.is_active
     rule.updated_by = current_user.username
-    rule.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(rule)
+    rule.updated_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "toggle", "validation_rule", rule.id, {"is_active": rule.is_active})
     db.commit()
+    db.refresh(rule)
     return rule
 
 
@@ -120,8 +118,7 @@ def reorder_rules(order_map: dict[int, int], db: DbSession, current_user: AdminU
     for rule in rules:
         rule.order = max(1, order_map[rule.id])
         rule.updated_by = current_user.username
-        rule.updated_at = datetime.utcnow()
-    db.commit()
+        rule.updated_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "reorder", "validation_rule", None, {"order_map": order_map})
     db.commit()
     return db.query(ValidationRule).order_by(ValidationRule.order, ValidationRule.id).all()

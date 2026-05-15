@@ -64,6 +64,7 @@ class Cycle(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     records = relationship("TimesheetRecord", back_populates="cycle")
+    project_plans = relationship("ProjectCyclePlan", back_populates="cycle")
 
 
 class TimesheetRecord(Base):
@@ -119,7 +120,7 @@ class ProjectCyclePlan(Base):
     planned_hours = Column(Float, nullable=False)
 
     project = relationship("Project", back_populates="plans")
-    cycle = relationship("Cycle")
+    cycle = relationship("Cycle", back_populates="project_plans")
 
     __table_args__ = (
         Index("ix_project_cycle_plan_unique", "project_id", "cycle_id", unique=True),
@@ -144,7 +145,7 @@ class GlobalConfig(Base):
 
     id = Column(Integer, primary_key=True)          # singleton — always id=1
     extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
-    standby_hours_multiplier = Column(Float, default=1.0, nullable=False)
+    standby_hours_multiplier = Column(Float, default=0.33, nullable=False)
     anomaly_max_daily_hours = Column(Float, default=24.0, nullable=False)
     timezone = Column(String, nullable=False, default="America/Sao_Paulo")
     ui_theme = Column(JSON, nullable=True)
