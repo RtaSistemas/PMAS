@@ -3430,12 +3430,12 @@ const _CHART_SERIES_NAMES = {
 // ---------------------------------------------------------------------------
 const _THEME_PRESETS = {
   pmas: {
-    color_primary: '#4f8ef7', color_background: '#1a1a2e',
-    color_surface: '#16213e', color_accent: '#e94560',
-    color_success: '#2ecc71', color_warning: '#f39c12',
-    color_danger:  '#e74c3c', color_text: '#e0e0e0',
+    color_primary: '#4f8ef7', color_background: '#141548',
+    color_surface: '#1c2b54', color_accent: '#1aa7ff',
+    color_success: '#5ad388', color_warning: '#d9b273',
+    color_danger:  '#c56d76', color_text: '#e0e0e0',
     color_text_muted: '#8892a4', density: 'normal',
-    chart_palette: ['#4f8ef7','#e94560','#2ecc71','#f39c12','#9b59b6','#1abc9c'],
+    chart_palette: ['#4f8ef7','#d9b273','#a168c0','#1aa7ff','#9b59b6','#1abc9c'],
   },
   corporate: {
     color_primary: '#0070f3', color_background: '#0a0a23',
