@@ -2032,7 +2032,7 @@ function _buildTreemapOption(health, evmMode = false) {
               ? _cssVar('--text-3')
               : budget != null && consumed / budget >= 1.0
                 ? _cssVar('--red')
-                : budget != null && consumed / budget >= 0.75
+                : budget != null && consumed / budget >= 0.9
                   ? _cssVar('--amber')
                   : _cssVar('--primary'),
             borderColor: _cssVar('--bg'),
@@ -2049,7 +2049,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map((d, i) => {
     const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.75 ? _cssVar('--amber') : _cssVar('--primary');
+    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.9 ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
