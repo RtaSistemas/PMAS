@@ -3227,7 +3227,11 @@ function notify(msg, type = 'info') {
   setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
-function fmt(h) { return h >= 1000 ? (h / 1000).toFixed(1) + 'k' : Number(h).toFixed(1); }
+function fmt(h) {
+  return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  });
+}
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');

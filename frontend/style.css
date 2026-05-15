@@ -431,7 +431,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   gap: 0.75rem;
 }
 .stat-card {
-  background: var(--card-alt); border: 1px solid var(--border);
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 0.75rem 0.9rem; text-align: center;
   transition: border-color 0.15s;
 }
