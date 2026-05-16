@@ -706,7 +706,7 @@ document.getElementById('cpiToggleBtn').addEventListener('click', () => {
 });
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
-  if (!_lastEffortData.length) { notify('Carregue dados antes de exportar.', 'info'); return; }
+  if (!_lastEffortData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
   const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
@@ -743,10 +743,10 @@ function _createMS(el, placeholder, onChange) {
   return ms;
 }
 
-const cycleMs        = _createMS(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
-const pepMs          = _createMS(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
-const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
-const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
+const cycleMs        = _createMS(document.getElementById('cycleMs'),        _t('ms.cycle_ph'),    onCycleChange);
+const pepMs          = _createMS(document.getElementById('pepMs'),           _t('ms.pep_ph'),      onPepChange);
+const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
+const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
 
 let pepDataCache = {};
 
@@ -834,7 +834,7 @@ function _showIngestResult(json, filename) {
         ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
   }
-  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
+  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">${_t('msg.no_warnings_infos')}</p>`;
   panel.hidden = false;
   clearTimeout(panel._dismissTimer);
   panel._dismissTimer = setTimeout(() => { panel.hidden = true; }, 6000);
@@ -1610,7 +1610,7 @@ async function _renderPlanTable(pep_wbs) {
 
   const tbody = document.getElementById('planBody');
   if (!_planProjectId) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} (PEP não cadastrado)</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} ${_t('msg.pep_not_registered')}</td></tr>`;
     return;
   }
   try {
@@ -1630,7 +1630,7 @@ async function _renderPlanTable(pep_wbs) {
 
 async function deletePlan(cycle_id) {
   if (!_planProjectId) return;
-  if (!confirm('Remover esta linha do baseline?')) return;
+  if (!confirm(_t('confirm.remove_baseline'))) return;
   try {
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
     await _renderPlanTable(_currentForecastPep);
@@ -1673,7 +1673,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
     _addPlanAvailableCycles = allCycles.filter(c => !plannedCycleIds.has(c.id));
-    if (!_addPlanAvailableCycles.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
+    if (!_addPlanAvailableCycles.length) { notify(_t('msg.all_baseline_set'), 'info'); return; }
     document.getElementById('addPlanRows').innerHTML = '';
     document.getElementById('addPlanError').textContent = '';
     _addPlanRow(_addPlanAvailableCycles);
@@ -1702,9 +1702,9 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
     const inp = row.querySelector('input');
     const cycleId = parseInt(sel.value);
     const hours = parseFloat(inp.value);
-    if (!cycleId) { errEl.textContent = 'Selecione um ciclo em todas as linhas.'; return; }
-    if (seenIds.has(cycleId)) { errEl.textContent = 'Ciclo duplicado na lista.'; return; }
-    if (isNaN(hours) || hours < 0) { errEl.textContent = 'Informe horas válidas (≥ 0) em todas as linhas.'; return; }
+    if (!cycleId) { errEl.textContent = _t('msg.select_cycle_all'); return; }
+    if (seenIds.has(cycleId)) { errEl.textContent = _t('msg.duplicate_cycle'); return; }
+    if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
     seenIds.add(cycleId);
     entries.push({ cycle_id: cycleId, planned_hours: hours });
   }
@@ -2739,7 +2739,7 @@ document.getElementById('cycleSaveBtn').addEventListener('click', async () => {
     end_date:   document.getElementById('cycleEndInput').value,
   };
   if (!body.name || !body.start_date || !body.end_date) {
-    document.getElementById('cycleError').textContent = 'Preencha todos os campos obrigatórios.';
+    document.getElementById('cycleError').textContent = _t('msg.fields_required');
     return;
   }
   try {
@@ -2768,13 +2768,13 @@ document.getElementById('cycleSearch').addEventListener('input', e => {
 
 async function deleteCycle(id, name, count) {
   if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
-  if (!confirm(`Excluir o ciclo "${name}"?`)) return;
+  if (!confirm(_t('confirm.delete_cycle'))) return;
   try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 document.getElementById('exportCyclesBtn').addEventListener('click', () => {
-  if (!_allCycles.length) { notify('Nenhum ciclo para exportar.', 'info'); return; }
+  if (!_allCycles.length) { notify(_t('msg.no_cycles_export'), 'info'); return; }
   const header = 'name,start_date,end_date,is_closed,record_count';
   const rows = _allCycles.map(c =>
     `"${c.name}",${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
@@ -2883,7 +2883,7 @@ function closeProjectModal() { document.getElementById('projectModal').hidden = 
 
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
-  if (!pep) { document.getElementById('projectError').textContent = 'Código PEP é obrigatório.'; return; }
+  if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
   const budget     = document.getElementById('projectBudgetInput').value;
   const budgetCost = document.getElementById('projectBudgetCostInput').value;
   const body = {
@@ -2923,7 +2923,7 @@ document.getElementById('projectSearch').addEventListener('input', e => {
 });
 
 async function deleteProject(id, pep) {
-  if (!confirm(`Excluir o projeto "${pep}"?`)) return;
+  if (!confirm(_t('confirm.delete_project'))) return;
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -2935,7 +2935,7 @@ let _aclProjectId = null;
 
 async function _openAclModal(projectId, pepWbs) {
   _aclProjectId = projectId;
-  document.getElementById('aclModalTitle').textContent = `Acesso — ${pepWbs}`;
+  document.getElementById('aclModalTitle').textContent = _t('msg.acl_title') + pepWbs;
   document.getElementById('aclError').textContent = '';
   document.getElementById('aclModal').hidden = false;
   await Promise.all([_loadAclEntries(), _populateAclUserSelect()]);
@@ -2947,14 +2947,14 @@ async function _loadAclEntries() {
   try {
     const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
     if (!entries.length) {
-      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Nenhum acesso concedido.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('msg.no_access_granted')}</td></tr>`;
       return;
     }
     tbody.innerHTML = entries.map(e => `
       <tr>
         <td>${escHtml(e.username)}</td>
         <td style="text-align:right">
-          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">Revogar</button>
+          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">${_t('btn.revoke')}</button>
         </td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -2964,7 +2964,7 @@ async function _populateAclUserSelect() {
   const sel = document.getElementById('aclUserSelect');
   try {
     const users = await apiFetch('/api/users');
-    sel.innerHTML = '<option value="">— selecione —</option>' +
+    sel.innerHTML = `<option value="">${_t('ms.select_ph')}</option>` +
       users.filter(u => u.role !== 'admin').map(u =>
         `<option value="${u.id}">${escHtml(u.username)}</option>`
       ).join('');
@@ -2975,7 +2975,7 @@ document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
   const sel = document.getElementById('aclUserSelect');
   const userId = parseInt(sel.value);
   const errEl  = document.getElementById('aclError');
-  if (!userId) { errEl.textContent = 'Selecione um usuário.'; return; }
+  if (!userId) { errEl.textContent = _t('msg.select_user'); return; }
   errEl.textContent = '';
   try {
     await apiFetchJSON(`/api/projects/${_aclProjectId}/access`, 'POST', { user_id: userId });
@@ -2985,7 +2985,7 @@ document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
 });
 
 async function _revokeAccess(userId) {
-  if (!confirm('Revogar acesso deste usuário?')) return;
+  if (!confirm(_t('confirm.revoke_access'))) return;
   try {
     await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
     await _loadAclEntries();
@@ -2996,7 +2996,7 @@ document.getElementById('aclModalClose')?.addEventListener('click', () => { docu
 document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
-  if (!_allProjects.length) { notify('Nenhum projeto para exportar.', 'info'); return; }
+  if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
   const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status';
   const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
   const rows = _allProjects.map(p =>
@@ -3111,7 +3111,7 @@ async function loadTeamTable() {
     _renderTeamTable(_applySort('teamTable', _allTeam));
     // Populate bulk seniority select
     const bulkSel = document.getElementById('bulkSenioritySelect');
-    bulkSel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+    bulkSel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
       _allSeniorityLevels.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3119,7 +3119,7 @@ async function loadTeamTable() {
 // Seniority level modal
 function openSeniorityModal(id = null) {
   _seniorityEditId = id;
-  document.getElementById('seniorityModalTitle').textContent = id ? 'Editar Nível' : 'Novo Nível de Senioridade';
+  document.getElementById('seniorityModalTitle').textContent = id ? _t('sm.title_edit') : _t('sm.title_new');
   document.getElementById('seniorityError').textContent = '';
   const l = id ? _allSeniorityLevels.find(x => x.id === id) : null;
   document.getElementById('seniorityNameInput').value = l ? l.name : '';
@@ -3129,7 +3129,7 @@ function closeSeniorityModal() { document.getElementById('seniorityModal').hidde
 
 document.getElementById('senioritySaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('seniorityNameInput').value.trim();
-  if (!name) { document.getElementById('seniorityError').textContent = 'Nome é obrigatório.'; return; }
+  if (!name) { document.getElementById('seniorityError').textContent = _t('msg.name_required'); return; }
   try {
     if (_seniorityEditId) {
       await apiFetchJSON(`/api/seniority-levels/${_seniorityEditId}`, 'PUT', { name });
@@ -3145,7 +3145,7 @@ document.getElementById('seniorityModalClose').addEventListener('click', closeSe
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
-  if (!_allSeniorityLevels.length) { notify('Nenhum nível para exportar.', 'info'); return; }
+  if (!_allSeniorityLevels.length) { notify(_t('msg.no_levels_export'), 'info'); return; }
   const rows = _allSeniorityLevels.map(l => `"${l.name.replace(/"/g, '""')}"`);
   const blob = new Blob(['﻿' + ['name', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -3171,7 +3171,7 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
 });
 
 async function deleteSeniorityLevel(id, name) {
-  if (!confirm(`Excluir o nível "${name}"?`)) return;
+  if (!confirm(_t('confirm.delete_level'))) return;
   try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3186,7 +3186,7 @@ function _populateLevelSelect(selectId, selectedId = null) {
 
 function openRateCardModal(id = null) {
   _rateCardEditId = id;
-  document.getElementById('rateCardModalTitle').textContent = id ? 'Editar Taxa' : 'Nova Taxa';
+  document.getElementById('rateCardModalTitle').textContent = id ? _t('rm.title_edit') : _t('rm.title_new');
   document.getElementById('rateCardError').textContent = '';
   const c = id ? _allRateCards.find(x => x.id === id) : null;
   _populateLevelSelect('rateCardLevelInput', c?.seniority_level_id ?? null);
@@ -3200,7 +3200,7 @@ function closeRateCardModal() { document.getElementById('rateCardModal').hidden 
 document.getElementById('rateCardSaveBtn').addEventListener('click', async () => {
   const rate = document.getElementById('rateCardRateInput').value;
   const from = document.getElementById('rateCardFromInput').value;
-  if (!rate || !from) { document.getElementById('rateCardError').textContent = 'Preencha os campos obrigatórios.'; return; }
+  if (!rate || !from) { document.getElementById('rateCardError').textContent = _t('msg.fields_required'); return; }
   const to = document.getElementById('rateCardToInput').value;
   const body = {
     seniority_level_id: parseInt(document.getElementById('rateCardLevelInput').value),
@@ -3224,7 +3224,7 @@ document.getElementById('rateCardModalClose').addEventListener('click', closeRat
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
-  if (!_allRateCards.length) { notify('Nenhuma taxa para exportar.', 'info'); return; }
+  if (!_allRateCards.length) { notify(_t('msg.no_rates_export'), 'info'); return; }
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
   const rows = _allRateCards.map(r =>
     `${esc(r.seniority_level_name)},${r.valid_from},${r.valid_to ?? ''},${r.hourly_rate}`
@@ -3261,10 +3261,10 @@ async function deleteRateCard(id) {
 // Assign seniority modal
 function openAssignSeniority(collabId, name, currentLevelId) {
   _assignCollabId = collabId;
-  document.getElementById('assignSeniorityTitle').textContent = `Senioridade — ${name}`;
+  document.getElementById('assignSeniorityTitle').textContent = _t('msg.seniority_title') + name;
   document.getElementById('assignSeniorityError').textContent = '';
   const sel = document.getElementById('assignSenioritySelect');
-  sel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+  sel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
     _allSeniorityLevels.map(l =>
       `<option value="${l.id}" ${l.id === currentLevelId ? 'selected' : ''}>${escHtml(l.name)}</option>`
     ).join('');
@@ -3289,8 +3289,8 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
   const val = document.getElementById('bulkSenioritySelect').value;
   const label = val
     ? _allSeniorityLevels.find(l => l.id === parseInt(val))?.name
-    : 'Sem senioridade';
-  if (!confirm(`Atribuir "${label}" a TODOS os colaboradores?`)) return;
+    : _t('as.none_opt');
+  if (!confirm(_t('confirm.assign_all'))) return;
   try {
     const body = { seniority_level_id: val ? parseInt(val) : null };
     await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
@@ -3337,7 +3337,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const msg = document.getElementById('configMsg');
   if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0 || isNaN(wt) || isNaN(ct) || wt <= 0 || ct <= 0) {
     msg.style.color = _cssVar('--red');
-    msg.textContent = 'Os valores devem ser números positivos.';
+    msg.textContent = _t('msg.positive_numbers');
     return;
   }
   try {
@@ -3353,7 +3353,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     _budgetCritical = ct;
     _updateBulletLegend();
     msg.style.color = _cssVar('--green');
-    msg.textContent = 'Fatores salvos com sucesso.';
+    msg.textContent = _t('msg.config_saved');
     setTimeout(() => { msg.textContent = ''; }, 3000);
   } catch (e) {
     msg.style.color = _cssVar('--red');
@@ -3446,7 +3446,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      errEl.textContent = j.detail ?? 'Credenciais inválidas.';
+      errEl.textContent = j.detail ?? _t('msg.invalid_credentials');
       return;
     }
     const { access_token } = await res.json();
@@ -3456,7 +3456,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     document.getElementById('appShell').removeAttribute('hidden');
     _bootApp();
   } catch (_) {
-    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.textContent = _t('msg.connection_error');
   }
 });
 
@@ -3516,12 +3516,12 @@ document.getElementById('userSaveBtn').addEventListener('click', async () => {
   const role     = document.getElementById('userRoleSelect').value;
   const errEl    = document.getElementById('userError');
   errEl.textContent = '';
-  if (!username || !password) { errEl.textContent = 'Preencha todos os campos obrigatórios.'; return; }
+  if (!username || !password) { errEl.textContent = _t('msg.fields_required'); return; }
   try {
     await apiFetchJSON('/api/users', 'POST', { username, password, role });
     document.getElementById('userModal').hidden = true;
     loadUsersTable();
-    notify(`Usuário "${escHtml(username)}" criado com sucesso.`, 'success');
+    notify(_t('msg.user_created'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -3540,16 +3540,16 @@ document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   const new_password = document.getElementById('pwdNewInput').value;
   const errEl       = document.getElementById('pwdError');
   errEl.textContent = '';
-  if (!new_password) { errEl.textContent = 'Informe a nova senha.'; return; }
+  if (!new_password) { errEl.textContent = _t('msg.pwd_field_required'); return; }
   try {
     await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
     document.getElementById('pwdModal').hidden = true;
-    notify('Senha alterada com sucesso.', 'success');
+    notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
 async function deleteUser(id, username) {
-  if (!confirm(`Excluir o usuário "${username}"?`)) return;
+  if (!confirm(_t('confirm.delete_user'))) return;
   try {
     await apiFetchJSON(`/api/users/${id}`, 'DELETE');
     loadUsersTable();
@@ -3890,19 +3890,19 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   const newPwd     = document.getElementById('myNewPwdInput').value.trim();
   const errEl      = document.getElementById('myPwdError');
   errEl.textContent = '';
-  if (!currentPwd || !newPwd) { errEl.textContent = 'Preencha todos os campos.'; return; }
+  if (!currentPwd || !newPwd) { errEl.textContent = _t('msg.pwd_fill_all'); return; }
   try {
     const stored = sessionStorage.getItem('username') || '';
     // Find own user id first
     const users = await apiFetch('/api/users');
     const me = users.find(u => u.username === stored);
-    if (!me) { errEl.textContent = 'Usuário não encontrado.'; return; }
+    if (!me) { errEl.textContent = _t('msg.user_not_found'); return; }
     await apiFetchJSON(`/api/users/${me.id}/password`, 'PATCH', {
       new_password: newPwd,
       current_password: currentPwd,
     });
     document.getElementById('myPwdModal').setAttribute('hidden', '');
-    notify('Senha alterada com sucesso.', 'success');
+    notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -3954,7 +3954,7 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_import_sessions')}</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -4006,7 +4006,7 @@ function _renderMyQrTable(rows) {
   const tbody = document.getElementById('myQrBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
     const pg = document.getElementById('myQrPagination');
     if (pg) pg.hidden = true;
     return;
@@ -4033,7 +4033,7 @@ function _renderMyQrTable(rows) {
     pg.hidden = totalPages <= 1;
     if (!pg.hidden) {
       pg.style.display = 'flex';
-      document.getElementById('myQrPageLabel').textContent = `Página ${_qrPage + 1} de ${totalPages}`;
+      document.getElementById('myQrPageLabel').textContent = `${_t('page.label')} ${_qrPage + 1} ${_t('page.of')} ${totalPages}`;
       document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
       document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
     }
@@ -4126,7 +4126,7 @@ function _renderRulesList() {
       try {
         await apiFetchJSON('/api/validation-rules/reorder', 'POST', orderMap);
         loadRulesList();
-      } catch (e) { notify(`Erro ao reordenar: ${e.message}`, 'error'); }
+      } catch (e) { notify(`${_t('msg.rule_reorder_error')}: ${e.message}`, 'error'); }
     },
   });
 }
