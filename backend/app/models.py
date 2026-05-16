@@ -146,6 +146,8 @@ class GlobalConfig(Base):
     id = Column(Integer, primary_key=True)          # singleton — always id=1
     extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
     standby_hours_multiplier = Column(Float, default=0.33, nullable=False)
+    budget_warning_threshold = Column(Float, default=0.9, nullable=False)
+    budget_critical_threshold = Column(Float, default=1.0, nullable=False)
     anomaly_max_daily_hours = Column(Float, default=24.0, nullable=False)
     timezone = Column(String, nullable=False, default="America/Sao_Paulo")
     ui_theme = Column(JSON, nullable=True)

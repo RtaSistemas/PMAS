@@ -104,6 +104,8 @@ const _LANG = {
     'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Budget (R$)',
     'stat.vs_budget_cost':'Realizado vs Budget',
     'budget.exceeded':'Estourado','budget.warning':'Atenção ≥90%',
+    'config.warning_threshold_lbl':'Limiar de Atenção (0–1)',
+    'config.critical_threshold_lbl':'Limiar Crítico (0–1)',
     'lbl.admin':'Admin','lbl.user':'Usuário',
     'loading':'Carregando…','no_cycles':'Nenhum ciclo encontrado.',
     'no_projects':'Nenhum projeto encontrado.','no_seniority':'Nenhum nível cadastrado.',
@@ -284,6 +286,8 @@ const _LANG = {
     'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
     'stat.vs_budget_cost':'Actual vs Budget',
     'budget.exceeded':'Exceeded','budget.warning':'Warning ≥90%',
+    'config.warning_threshold_lbl':'Warning Threshold (0–1)',
+    'config.critical_threshold_lbl':'Critical Threshold (0–1)',
     'lbl.admin':'Admin','lbl.user':'User',
     'loading':'Loading…','no_cycles':'No cycles found.',
     'no_projects':'No projects found.','no_seniority':'No levels registered.',
@@ -2030,9 +2034,9 @@ function _buildTreemapOption(health, evmMode = false) {
           itemStyle: {
             color: !d.is_registered
               ? _cssVar('--text-3')
-              : budget != null && consumed / budget >= 1.0
+              : budget != null && consumed / budget >= _budgetCritical
                 ? _cssVar('--red')
-                : budget != null && consumed / budget >= 0.9
+                : budget != null && consumed / budget >= _budgetWarning
                   ? _cssVar('--amber')
                   : _cssVar('--primary'),
             borderColor: _cssVar('--bg'),
@@ -2049,7 +2053,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map((d, i) => {
     const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.9 ? _cssVar('--amber') : _cssVar('--primary');
+    const color = pct >= _budgetCritical ? _cssVar('--red') : pct >= _budgetWarning ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
@@ -2641,8 +2645,8 @@ function _buildBudgetCell(p) {
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
   if (!consumed) return budgetStr;
   const pct = consumed / p.budget_hours;
-  if (pct >= 1.0) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (pct >= 0.9) return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')}</span>`;
+  if (pct >= _budgetCritical) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
+  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')}</span>`;
   return budgetStr;
 }
 
@@ -3113,6 +3117,8 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
 
 // Global config (multipliers)
 let _anomalyMaxHours = 24;
+let _budgetWarning  = 0.9;
+let _budgetCritical = 1.0;
 
 async function loadGlobalConfig() {
   try {
@@ -3121,6 +3127,8 @@ async function loadGlobalConfig() {
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
     if (cfg.anomaly_max_daily_hours) _anomalyMaxHours = cfg.anomaly_max_daily_hours;
     if (cfg.timezone) document.getElementById('timezoneSelect').value = cfg.timezone;
+    if (cfg.budget_warning_threshold  != null) { _budgetWarning  = cfg.budget_warning_threshold;  document.getElementById('budgetWarningInput').value  = cfg.budget_warning_threshold; }
+    if (cfg.budget_critical_threshold != null) { _budgetCritical = cfg.budget_critical_threshold; document.getElementById('budgetCriticalInput').value = cfg.budget_critical_threshold; }
   } catch (e) { /* non-critical, leave placeholders */ }
 }
 
@@ -3128,8 +3136,10 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
   const tz  = document.getElementById('timezoneSelect').value;
+  const wt  = parseFloat(document.getElementById('budgetWarningInput').value);
+  const ct  = parseFloat(document.getElementById('budgetCriticalInput').value);
   const msg = document.getElementById('configMsg');
-  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
+  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0 || isNaN(wt) || isNaN(ct) || wt <= 0 || ct <= 0) {
     msg.style.color = _cssVar('--red');
     msg.textContent = 'Os valores devem ser números positivos.';
     return;
@@ -3140,6 +3150,8 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       standby_hours_multiplier: sm,
       anomaly_max_daily_hours: _anomalyMaxHours,
       timezone: tz,
+      budget_warning_threshold: wt,
+      budget_critical_threshold: ct,
     });
     msg.style.color = _cssVar('--green');
     msg.textContent = 'Fatores salvos com sucesso.';
@@ -4335,7 +4347,7 @@ async function loadSemaphore() {
       const pctH = p.budget_hours ? p.consumed_hours / p.budget_hours : 0;
       const pctC = p.budget_cost  ? p.actual_cost    / p.budget_cost  : 0;
       const max  = Math.max(pctH, pctC);
-      return max >= 1.0 ? 'red' : max >= 0.9 ? 'yellow' : 'green';
+      return max >= _budgetCritical ? 'red' : max >= _budgetWarning ? 'yellow' : 'green';
     };
 
     const counts = { green: 0, yellow: 0, red: 0, grey: 0 };

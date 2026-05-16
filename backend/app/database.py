@@ -137,6 +137,16 @@ def _migrate_columns() -> None:
                     "ALTER TABLE global_config"
                     " ADD COLUMN anomaly_max_daily_hours FLOAT NOT NULL DEFAULT 24.0"
                 ))
+            if "budget_warning_threshold" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN budget_warning_threshold FLOAT NOT NULL DEFAULT 0.9"
+                ))
+            if "budget_critical_threshold" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN budget_critical_threshold FLOAT NOT NULL DEFAULT 1.0"
+                ))
             if "ui_theme" not in gc_cols:
                 conn.execute(text("ALTER TABLE global_config ADD COLUMN ui_theme JSON"))
             if "logo_path" not in gc_cols:

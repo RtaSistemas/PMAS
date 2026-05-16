@@ -51,6 +51,8 @@ class GlobalConfigIn(BaseModel):
     standby_hours_multiplier: float = Field(gt=0)
     anomaly_max_daily_hours: float = Field(default=24.0, gt=0)  # deprecated: use ValidationRule engine
     timezone: str = "America/Sao_Paulo"
+    budget_warning_threshold: float = Field(default=0.9, gt=0, le=1)
+    budget_critical_threshold: float = Field(default=1.0, gt=0, le=2)
 
 
 class GlobalConfigOut(BaseModel):
@@ -58,6 +60,8 @@ class GlobalConfigOut(BaseModel):
     standby_hours_multiplier: float
     anomaly_max_daily_hours: float
     timezone: str
+    budget_warning_threshold: float
+    budget_critical_threshold: float
 
 
 class UserCreateIn(BaseModel):
