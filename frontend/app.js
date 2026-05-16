@@ -258,6 +258,17 @@ const _LANG = {
     'confirm.remove_baseline':'Remover esta linha do baseline?',
     'page.label':'Página','page.of':'de',
     'sm.title_edit':'Editar Nível','rm.title_edit':'Editar Taxa',
+    'runway.title':'Runway do Portfólio',
+    'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
+    'runway.empty':'Nenhum PEP com orçamento encontrado.',
+    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.consumed':'Consumido (h)',
+    'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
+    'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
+    'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
+    'conc.title':'Concentração de Risco por Projeto',
+    'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
+    'conc.empty':'Nenhum dado de horas encontrado.',
+    'conc.others':'Outros',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -513,6 +524,17 @@ const _LANG = {
     'confirm.remove_baseline':'Remove this baseline row?',
     'page.label':'Page','page.of':'of',
     'sm.title_edit':'Edit Level','rm.title_edit':'Edit Rate',
+    'runway.title':'Portfolio Runway',
+    'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
+    'runway.empty':'No PEPs with budget found.',
+    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.consumed':'Consumed (h)',
+    'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
+    'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
+    'runway.overrun':'Overrun','runway.no_budget':'No budget',
+    'conc.title':'Project Concentration Risk',
+    'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
+    'conc.empty':'No hour data found.',
+    'conc.others':'Others',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -888,6 +910,10 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('effortStats').innerHTML = '';
   document.getElementById('portfolioStats').innerHTML = '';
   document.getElementById('bulletPanel').hidden  = true;
+  document.getElementById('runwayTable').hidden = true;
+  document.getElementById('runwayEmpty').hidden = true;
+  document.getElementById('concentrationPanel').hidden = true;
+  document.getElementById('concentrationGrid').innerHTML = '';
   _showEmpty('effortEmpty',    false);
   _showEmpty('portfolioEmpty', false);
   _showEmpty('trendsEmpty',    false);
@@ -1017,6 +1043,130 @@ async function _renderEffortTab() {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Portfolio Runway panel
+// ---------------------------------------------------------------------------
+function _riskColor(risk) {
+  const colors = {
+    ok:       'var(--primary, #4f8ef7)',
+    warning:  'var(--amber,   #d9b273)',
+    critical: 'var(--red,     #c56d76)',
+    overrun:  'var(--red,     #c56d76)',
+    no_budget:'var(--text-3,  #818998)',
+  };
+  return colors[risk] || colors.no_budget;
+}
+
+function _renderRunwayPanel(runway) {
+  const table  = document.getElementById('runwayTable');
+  const empty  = document.getElementById('runwayEmpty');
+  const tbody  = document.getElementById('runwayBody');
+  tbody.innerHTML = '';
+
+  const withBudget = runway.filter(r => r.budget_hours != null);
+  if (!withBudget.length) {
+    table.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  table.hidden = false;
+
+  withBudget.forEach(item => {
+    const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
+    const color = _riskColor(item.risk);
+
+    // Progresso bar
+    const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
+      `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
+      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${item.pct_consumed != null ? item.pct_consumed.toFixed(1) + '%' : '—'}</span>`;
+
+    // Ciclos restantes
+    let cyclesCell = '—';
+    if (item.risk === 'overrun') {
+      cyclesCell = `<span style="color:var(--red,#c56d76);font-weight:600">${_t('runway.overrun')}</span>`;
+    } else if (item.cycles_to_complete != null) {
+      cyclesCell = item.cycles_to_complete.toFixed(1);
+    }
+
+    // CPI
+    let cpiCell = '—';
+    if (item.cpi != null) {
+      const cpiColor = item.cpi >= 1 ? 'var(--primary,#4f8ef7)' : item.cpi >= 0.8 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
+    }
+
+    // Row background tint
+    const rowBg = (item.risk === 'critical' || item.risk === 'overrun')
+      ? 'background:rgba(197,109,118,.07)'
+      : '';
+
+    const tr = document.createElement('tr');
+    tr.style.cssText = rowBg;
+    tr.innerHTML = `
+      <td style="font-family:monospace;font-size:.82rem">${item.pep_wbs}</td>
+      <td style="font-size:.82rem;color:#94a3b8">${item.name || '—'}</td>
+      <td style="text-align:right">${item.consumed_hours.toFixed(1)}</td>
+      <td style="white-space:nowrap">${bar}</td>
+      <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${cyclesCell}</td>
+      <td style="font-size:.82rem">${item.estimated_completion_cycle || '—'}</td>
+      <td style="text-align:right">${cpiCell}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Concentration Risk panel
+// ---------------------------------------------------------------------------
+function _renderConcentrationPanel(concentration) {
+  const panel = document.getElementById('concentrationPanel');
+  const empty = document.getElementById('concentrationEmpty');
+  const grid  = document.getElementById('concentrationGrid');
+  grid.innerHTML = '';
+
+  if (!concentration || !concentration.length) {
+    panel.hidden = false;
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  panel.hidden = false;
+
+  const riskIcon = { high: '🔴', medium: '🟡', low: '🟢' };
+
+  concentration.forEach(item => {
+    const top1 = item.top_contributors.length > 0 ? item.top_contributors[0].pct : 0;
+
+    const barsHtml = item.top_contributors.map(c => {
+      const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
+      const color = _riskColor(item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok');
+      return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
+        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${c.name}">${c.name}</span>` +
+        `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
+          `<div style="height:8px;border-radius:2px;background:${color};width:${barWidth}%"></div>` +
+        `</div>` +
+        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${c.pct.toFixed(0)}%</span>` +
+        `</div>`;
+    }).join('');
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
+    row.innerHTML = `
+      <div style="min-width:16px;font-size:.9rem">${riskIcon[item.risk] || '⚪'}</div>
+      <div style="min-width:130px">
+        <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${item.pep_wbs}</div>
+        <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${item.name || ''}">${item.name || ''}</div>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
+      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${item.total_hours.toFixed(0)}h</div>
+    `;
+    grid.appendChild(row);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Saúde do Portfólio
 // ---------------------------------------------------------------------------
 async function _renderPortfolioTab() {
@@ -1037,9 +1187,11 @@ async function _renderPortfolioTab() {
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    const [health, trends] = await Promise.all([
+    const [health, trends, runway, concentration] = await Promise.all([
       apiFetch(`/api/portfolio-health?${p}`),
       apiFetch(`/api/trends?${p}`).catch(() => []),
+      apiFetch(`/api/portfolio-runway?${p}`).catch(() => []),
+      apiFetch(`/api/portfolio-concentration?${p}`).catch(() => []),
     ]);
 
     // Stats row — rendered before the empty-state guard so it clears on no data
@@ -1048,6 +1200,12 @@ async function _renderPortfolioTab() {
     if (health.length > 0) {
       statsEl.appendChild(_buildPortfolioStatsRow(health, trends));
     }
+
+    // Runway panel — always rendered (shows empty state if no budgeted PEPs)
+    _renderRunwayPanel(runway);
+
+    // Concentration panel
+    _renderConcentrationPanel(concentration);
 
     if (!health.length) {
       _showEmpty('portfolioEmpty', true);

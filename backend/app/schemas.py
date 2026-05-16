@@ -450,3 +450,38 @@ class UIThemeIn(BaseModel):
 
 class UIThemeOut(UIThemeIn):
     logo_url: Optional[str] = None
+
+
+# ── Portfolio Runway ──────────────────────────────────────────────────────────
+
+class RunwayItem(BaseModel):
+    pep_wbs: str
+    pep_description: Optional[str] = None
+    name: Optional[str] = None
+    budget_hours: Optional[float] = None
+    consumed_hours: float
+    actual_cost: float
+    pct_consumed: Optional[float] = None
+    avg_hours_per_cycle: float
+    cycles_to_complete: Optional[float] = None
+    estimated_completion_cycle: Optional[str] = None
+    cpi: Optional[float] = None
+    risk: str  # ok | warning | critical | overrun | no_budget
+
+
+# ── Portfolio Concentration ───────────────────────────────────────────────────
+
+class ConcentrationContributor(BaseModel):
+    name: str
+    hours: float
+    pct: float
+
+
+class ConcentrationItem(BaseModel):
+    pep_wbs: str
+    pep_description: Optional[str] = None
+    name: Optional[str] = None
+    total_hours: float
+    top_contributors: List[ConcentrationContributor]
+    top1_pct: float
+    risk: str  # high | medium | low
