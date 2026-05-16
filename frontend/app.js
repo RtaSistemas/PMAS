@@ -507,6 +507,29 @@ function _getOrCreateChart(id) {
   return _charts[id];
 }
 
+function _showChartSkeleton(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.position = 'relative';
+  let sk = el.querySelector('.chart-skeleton');
+  if (!sk) {
+    sk = document.createElement('div');
+    sk.className = 'chart-skeleton';
+    sk.innerHTML =
+      '<div class="sk-bar" style="width:35%;height:12px;margin-bottom:.5rem"></div>' +
+      '<div style="flex:1;display:flex;align-items:flex-end;gap:6px">' +
+        ['55%','80%','40%','90%','65%','75%','45%','85%','60%','70%']
+          .map(h => `<div class="sk-bar" style="flex:1;height:${h}"></div>`).join('') +
+      '</div>';
+    el.appendChild(sk);
+  }
+  sk.removeAttribute('hidden');
+}
+
+function _hideChartSkeleton(id) {
+  document.getElementById(id)?.querySelector('.chart-skeleton')?.setAttribute('hidden', '');
+}
+
 // ResizeObserver — resize all live charts when container changes
 const _ro = new ResizeObserver(() => {
   Object.values(_charts).forEach(c => { try { if (!c.isDisposed()) c.resize(); } catch (_) {} });
@@ -766,6 +789,7 @@ function _showEmpty(id, show) {
 let _lastEffortData = [];
 
 async function _renderEffortTab() {
+  _showChartSkeleton('effortChart');
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
@@ -820,6 +844,7 @@ async function _renderEffortTab() {
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);
+    _hideChartSkeleton('effortChart');
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
@@ -829,7 +854,11 @@ async function _renderEffortTab() {
     // Trends + CPI charts — full filter passthrough with cycle window logic
     await _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo);
 
-  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+  } catch (err) {
+    notify(`Erro: ${err.message}`, 'error');
+  } finally {
+    _hideChartSkeleton('effortChart');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -852,6 +881,8 @@ async function _renderPortfolioTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  _showChartSkeleton('treemapChart');
+  _showChartSkeleton('bulletChart');
   try {
     const [health, trends] = await Promise.all([
       apiFetch(`/api/portfolio-health?${p}`),
@@ -1073,6 +1104,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       notify(`CPI por PEP — erro: ${err.message}`, 'error');
     }
   } catch (err) { notify(`Erro ao carregar tendências: ${err.message}`, 'error'); }
+  finally {
+    _hideChartSkeleton('treemapChart');
+    _hideChartSkeleton('bulletChart');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1390,6 +1425,7 @@ async function _renderForecastTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  _showChartSkeleton('forecastChart');
   try {
     const fc = await apiFetch(`/api/forecast?${p}`);
     _showEmpty('forecastEmpty', false);
@@ -1407,6 +1443,8 @@ async function _renderForecastTab() {
     document.getElementById('planCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
+  } finally {
+    _hideChartSkeleton('forecastChart');
   }
 }
 
@@ -3729,6 +3767,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     const msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}` : ''}`;
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
+    _refreshTabBadges();
     loadMyHistory();
     loadMyQr();
   } catch (e) {
@@ -4036,6 +4075,7 @@ async function _doQRAction(id, action) {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     document.getElementById('qrDetailModal').setAttribute('hidden', '');
     notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
+    _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -4387,6 +4427,35 @@ async function loadSemaphore() {
 }
 
 // ---------------------------------------------------------------------------
+// Tab badges — pending quarantine indicators
+// ---------------------------------------------------------------------------
+async function _refreshTabBadges() {
+  // Admin badge — pending quarantine records (admin only)
+  if (_isAdmin()) {
+    try {
+      const rows = await apiFetch('/api/quarantine?review_status=pending');
+      const badge = document.getElementById('adminTabBadge');
+      if (badge) {
+        const n = rows.length;
+        if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.removeAttribute('hidden'); }
+        else badge.setAttribute('hidden', '');
+      }
+    } catch (_) {}
+  }
+  // Minha Área badge — user's own pending quarantine records
+  try {
+    const rows = await apiFetch('/api/my/quarantine');
+    const pending = rows.filter(r => r.review_status === 'pending');
+    const badge = document.getElementById('myTabBadge');
+    if (badge) {
+      const n = pending.length;
+      if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.removeAttribute('hidden'); }
+      else badge.setAttribute('hidden', '');
+    }
+  } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
 // Wire up sortable column headers
 // ---------------------------------------------------------------------------
 _makeSortable('cyclesTable',
@@ -4416,6 +4485,7 @@ function _bootApp() {
   _updateHeaderUser();
   loadDashboardCycles();
   loadSemaphore();
+  _refreshTabBadges();
   _renderActiveTab();
 }
 
