@@ -3195,6 +3195,17 @@ let _anomalyMaxHours = 24;
 let _budgetWarning  = 0.9;
 let _budgetCritical = 1.0;
 
+function _updateBulletLegend() {
+  const wPct = Math.round(_budgetWarning  * 100);
+  const cPct = Math.round(_budgetCritical * 100);
+  const okEl   = document.getElementById('bulletOkLabel');
+  const warnEl = document.getElementById('bulletWarnLabel');
+  const critEl = document.getElementById('bulletCritLabel');
+  if (okEl)   okEl.textContent   = `< ${wPct}%`;
+  if (warnEl) warnEl.textContent = `${wPct}–${cPct - 1}%`;
+  if (critEl) critEl.textContent = `≥ ${cPct}%`;
+}
+
 async function loadGlobalConfig() {
   try {
     const cfg = await apiFetch('/api/config');
@@ -3204,7 +3215,8 @@ async function loadGlobalConfig() {
     if (cfg.timezone) document.getElementById('timezoneSelect').value = cfg.timezone;
     if (cfg.budget_warning_threshold  != null) { _budgetWarning  = cfg.budget_warning_threshold;  document.getElementById('budgetWarningInput').value  = cfg.budget_warning_threshold; }
     if (cfg.budget_critical_threshold != null) { _budgetCritical = cfg.budget_critical_threshold; document.getElementById('budgetCriticalInput').value = cfg.budget_critical_threshold; }
-  } catch (e) { /* non-critical, leave placeholders */ }
+    _updateBulletLegend();
+  } catch (e) { _updateBulletLegend(); /* use defaults */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
@@ -3228,6 +3240,9 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       budget_warning_threshold: wt,
       budget_critical_threshold: ct,
     });
+    _budgetWarning  = wt;
+    _budgetCritical = ct;
+    _updateBulletLegend();
     msg.style.color = _cssVar('--green');
     msg.textContent = 'Fatores salvos com sucesso.';
     setTimeout(() => { msg.textContent = ''; }, 3000);

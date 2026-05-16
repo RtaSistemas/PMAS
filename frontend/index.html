@@ -264,9 +264,9 @@
       <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
         <div class="panel-note" style="margin-bottom:0.75rem">
-          <span class="threshold-dot blue"></span> &lt; 75%&nbsp;
-          <span class="threshold-dot amber"></span> 75–99%&nbsp;
-          <span class="threshold-dot red"></span> ≥ 100%
+          <span class="threshold-dot blue"></span> <span id="bulletOkLabel"></span>&nbsp;
+          <span class="threshold-dot amber"></span> <span id="bulletWarnLabel"></span>&nbsp;
+          <span class="threshold-dot red"></span> <span id="bulletCritLabel"></span>
         </div>
         <div id="bulletChart" style="width:100%;height:300px"></div>
       </div>
