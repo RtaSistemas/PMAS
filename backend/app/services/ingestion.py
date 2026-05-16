@@ -198,11 +198,13 @@ def ingest_file(
 
         # Phase 2: ValidationRule per-row evaluation
         row_fields = {
-            "horas_individuais": total_h,
-            "pep_wbs": pep_code,
-            "dia_semana": record_date.weekday(),
-            "hora_extra": _str_or_none(row.get(_COL_EXTRA)),
-            "hora_sobreaviso": _str_or_none(row.get(_COL_STANDBY)),
+            "horas_individuais":    total_h,
+            "pep_wbs":              pep_code,
+            "dia_semana":           record_date.weekday(),
+            "hora_extra":           _str_or_none(row.get(_COL_EXTRA)),
+            "hora_sobreaviso":      _str_or_none(row.get(_COL_STANDBY)),
+            "hora_extra_horas":     total_h if _is_yes(row.get(_COL_EXTRA, ""))    else 0.0,
+            "hora_sobreaviso_horas": total_h if _is_yes(row.get(_COL_STANDBY, "")) else 0.0,
         }
         result = evaluate_row_rules(rules, row_fields)
 

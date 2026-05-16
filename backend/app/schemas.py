@@ -323,6 +323,7 @@ class AuditLogItem(BaseModel):
 
 _VALID_RULE_FIELDS = {
     "horas_individuais", "hora_extra", "hora_sobreaviso",
+    "hora_extra_horas", "hora_sobreaviso_horas",
     "pep_wbs", "dia_semana", "soma_diaria", "soma_semanal",
 }
 
