@@ -509,28 +509,6 @@ function _getOrCreateChart(id) {
   return _charts[id];
 }
 
-function _showChartSkeleton(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.position = 'relative';
-  let sk = el.querySelector('.chart-skeleton');
-  if (!sk) {
-    sk = document.createElement('div');
-    sk.className = 'chart-skeleton';
-    sk.innerHTML =
-      '<div class="sk-bar" style="width:35%;height:12px;margin-bottom:.5rem"></div>' +
-      '<div style="flex:1;display:flex;align-items:flex-end;gap:6px">' +
-        ['55%','80%','40%','90%','65%','75%','45%','85%','60%','70%']
-          .map(h => `<div class="sk-bar" style="flex:1;height:${h}"></div>`).join('') +
-      '</div>';
-    el.appendChild(sk);
-  }
-  sk.removeAttribute('hidden');
-}
-
-function _hideChartSkeleton(id) {
-  document.getElementById(id)?.querySelector('.chart-skeleton')?.setAttribute('hidden', '');
-}
 
 // ResizeObserver — resize all live charts when container changes
 const _ro = new ResizeObserver(() => {
@@ -826,7 +804,6 @@ function _showEmpty(id, show) {
 let _lastEffortData = [];
 
 async function _renderEffortTab() {
-  _showChartSkeleton('effortChart');
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
@@ -881,7 +858,6 @@ async function _renderEffortTab() {
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);
-    _hideChartSkeleton('effortChart');
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
@@ -893,8 +869,6 @@ async function _renderEffortTab() {
 
   } catch (err) {
     notify(`Erro: ${err.message}`, 'error');
-  } finally {
-    _hideChartSkeleton('effortChart');
   }
 }
 
@@ -918,8 +892,6 @@ async function _renderPortfolioTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
-  _showChartSkeleton('treemapChart');
-  _showChartSkeleton('bulletChart');
   try {
     const [health, trends] = await Promise.all([
       apiFetch(`/api/portfolio-health?${p}`),
@@ -993,10 +965,6 @@ async function _renderPortfolioTab() {
     await _renderAllocationTab();
 
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
-  finally {
-    _hideChartSkeleton('treemapChart');
-    _hideChartSkeleton('bulletChart');
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1462,7 +1430,6 @@ async function _renderForecastTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
-  _showChartSkeleton('forecastChart');
   try {
     const fc = await apiFetch(`/api/forecast?${p}`);
     _showEmpty('forecastEmpty', false);
@@ -1480,8 +1447,6 @@ async function _renderForecastTab() {
     document.getElementById('planCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
-  } finally {
-    _hideChartSkeleton('forecastChart');
   }
 }
 
