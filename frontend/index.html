@@ -128,11 +128,26 @@
 </div>
 
 <nav class="app-tabs">
-  <button type="button" class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  <button type="button" class="tab-btn" data-tab="projects" data-i18n="tab.projects">Projetos</button>
-  <button type="button" class="tab-btn" data-tab="team" data-i18n="tab.team">Equipe</button>
-  <button type="button" class="tab-btn" data-tab="my" data-i18n="tab.my">Minha Área</button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>Admin</button>
+  <button type="button" class="tab-btn active" data-tab="dashboard">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="projects">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    <span data-i18n="tab.projects">Projetos</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="team">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span data-i18n="tab.team">Equipe</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="my">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span data-i18n="tab.my">Minha Área</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+    <span>Admin</span>
+  </button>
 </nav>
 
 <main>
@@ -163,9 +178,18 @@
 
     <!-- Analytics sub-tab navigation -->
     <nav class="analytics-tabs" id="analyticsTabsNav">
-      <button type="button" class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
-      <button type="button" class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
-      <button type="button" class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>
+      <button type="button" class="atab-btn active" data-atab="effort">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="atab.effort">Esforço da Equipe</span>
+      </button>
+      <button type="button" class="atab-btn" data-atab="portfolio">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span data-i18n="atab.portfolio">Saúde do Portfólio</span>
+      </button>
+      <button type="button" class="atab-btn" data-atab="forecast">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <span data-i18n="atab.forecast">Previsão</span>
+      </button>
     </nav>
 
     <!-- ============================================================ -->

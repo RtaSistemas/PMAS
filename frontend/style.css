@@ -181,7 +181,9 @@ header {
   padding: 0.7rem 1.15rem; cursor: pointer;
   transition: color 0.15s, border-color 0.15s; white-space: nowrap;
   font-family: inherit;
+  display: inline-flex; align-items: center; gap: 0.4rem;
 }
+.tab-btn svg { flex-shrink: 0; }
 .tab-btn:hover { color: var(--text-2); }
 .tab-btn.active { color: var(--text); border-bottom-color: var(--primary); }
 
@@ -399,7 +401,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   color: var(--text-3); font-size: 0.79rem; font-weight: 500;
   padding: 0.65rem 1.1rem; cursor: pointer; font-family: inherit;
   transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 0.35rem;
 }
+.atab-btn svg { flex-shrink: 0; }
 .atab-btn:hover { color: var(--text-2); }
 .atab-btn.active { color: var(--text); border-bottom-color: var(--cyan); }
 
