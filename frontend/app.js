@@ -993,6 +993,10 @@ async function _renderPortfolioTab() {
     await _renderAllocationTab();
 
   } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+  finally {
+    _hideChartSkeleton('treemapChart');
+    _hideChartSkeleton('bulletChart');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1141,10 +1145,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       notify(`CPI por PEP — erro: ${err.message}`, 'error');
     }
   } catch (err) { notify(`Erro ao carregar tendências: ${err.message}`, 'error'); }
-  finally {
-    _hideChartSkeleton('treemapChart');
-    _hideChartSkeleton('bulletChart');
-  }
 }
 
 // ---------------------------------------------------------------------------
