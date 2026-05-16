@@ -11,6 +11,7 @@ const _LANG = {
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
     'btn.load':'Carregar','btn.clear':'Limpar',
+    'btn.last_month':'Últ. mês','btn.last_quarter':'Últ. trimestre','btn.this_year':'Este ano',
     'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação','atab.forecast':'Previsão',
     'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
     'allocation.collaborator':'Colaborador','allocation.total':'Total',
@@ -193,6 +194,7 @@ const _LANG = {
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
     'btn.load':'Load','btn.clear':'Clear',
+    'btn.last_month':'Last month','btn.last_quarter':'Last quarter','btn.this_year':'This year',
     'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends','atab.allocation':'Allocation','atab.forecast':'Forecast',
     'allocation.empty':'No data found for the selected filters.',
     'allocation.collaborator':'Collaborator','allocation.total':'Total',
@@ -768,6 +770,41 @@ clearBtn.addEventListener('click', () => {
   _showEmpty('portfolioEmpty', false);
   _showEmpty('trendsEmpty',    false);
 });
+
+// ---------------------------------------------------------------------------
+// Date filter shortcuts
+// ---------------------------------------------------------------------------
+(function () {
+  function _isoDate(d) {
+    return d.toISOString().slice(0, 10);
+  }
+  function _applyDates(from, to) {
+    document.getElementById('dateFromInput').value = _isoDate(from);
+    document.getElementById('dateToInput').value   = _isoDate(to);
+    loadBtn.click();
+  }
+  document.getElementById('shortcutLastMonth')?.addEventListener('click', () => {
+    const now = new Date();
+    _applyDates(
+      new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      new Date(now.getFullYear(), now.getMonth(), 0)
+    );
+  });
+  document.getElementById('shortcutLastQuarter')?.addEventListener('click', () => {
+    const now = new Date();
+    const q = Math.floor(now.getMonth() / 3);
+    const prevQ = q === 0 ? 3 : q - 1;
+    const prevQYear = q === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    _applyDates(
+      new Date(prevQYear, prevQ * 3, 1),
+      new Date(prevQYear, prevQ * 3 + 3, 0)
+    );
+  });
+  document.getElementById('shortcutThisYear')?.addEventListener('click', () => {
+    const y = new Date().getFullYear();
+    _applyDates(new Date(y, 0, 1), new Date(y, 11, 31));
+  });
+})();
 
 // ---------------------------------------------------------------------------
 // Analytics — render dispatcher
@@ -3824,10 +3861,13 @@ document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMy
 // My Area — Quarentena sub-tab
 // ---------------------------------------------------------------------------
 let _myQrCache = [];
+let _qrPage = 0;
+const _QR_PAGE_SIZE = 50;
 
 async function loadMyQr() {
+  _qrPage = 0;
   const filter = document.getElementById('myQrFilter')?.value;
-  const params = new URLSearchParams({ limit: 200 });
+  const params = new URLSearchParams({ limit: 500 });
   if (filter === 'pending')   params.set('review_status', 'pending');
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
@@ -3843,9 +3883,14 @@ function _renderMyQrTable(rows) {
   if (!tbody) return;
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    const pg = document.getElementById('myQrPagination');
+    if (pg) pg.hidden = true;
     return;
   }
-  tbody.innerHTML = rows.map(r => {
+  const totalPages = Math.ceil(rows.length / _QR_PAGE_SIZE);
+  _qrPage = Math.min(_qrPage, totalPages - 1);
+  const pageRows = rows.slice(_qrPage * _QR_PAGE_SIZE, (_qrPage + 1) * _QR_PAGE_SIZE);
+  tbody.innerHTML = pageRows.map(r => {
     const raw  = r.raw_data || {};
     const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
@@ -3859,10 +3904,27 @@ function _renderMyQrTable(rows) {
       <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
   }).join('');
+  const pg = document.getElementById('myQrPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    if (!pg.hidden) {
+      pg.style.display = 'flex';
+      document.getElementById('myQrPageLabel').textContent = `Página ${_qrPage + 1} de ${totalPages}`;
+      document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
+      document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
+    }
+  }
 }
 
 document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
+document.getElementById('myQrPrevBtn')?.addEventListener('click', () => {
+  if (_qrPage > 0) { _qrPage--; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
+});
+document.getElementById('myQrNextBtn')?.addEventListener('click', () => {
+  const totalPages = Math.ceil(_myQrCache.length / _QR_PAGE_SIZE);
+  if (_qrPage < totalPages - 1) { _qrPage++; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
+});
 
 // ---------------------------------------------------------------------------
 // My Area — Exportar quarentena (item 5)

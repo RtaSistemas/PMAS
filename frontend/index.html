@@ -171,6 +171,9 @@
         <div class="field btn-group">
           <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
           <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
+          <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
+          <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
+          <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
         </div>
       </div>
     </div>
@@ -622,6 +625,11 @@
           </tr></thead>
           <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm">‹ Anterior</button>
+          <span id="myQrPageLabel" style="font-size:.8rem;color:#94a3b8"></span>
+          <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm">Próximo ›</button>
+        </div>
       </div>
     </div>
 
