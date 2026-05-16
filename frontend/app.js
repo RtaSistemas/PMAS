@@ -166,8 +166,16 @@ const _LANG = {
     'vr.title':'Regras de Validação','vr.btn.new':'+ Nova Regra',
     'vr.th.order':'Ordem','vr.th.field':'Campo','vr.th.operator':'Operador',
     'vr.th.value':'Valor','vr.th.action':'Ação','vr.th.description':'Descrição',
-    'vr.th.active':'Ativo','vr.th.system':'Sistema',
+    'vr.th.active':'Ativa','vr.th.system':'Sistema',
     'vr.badge.system':'Sistema','vr.hint.aggregate':'Regras de agregado permitem apenas info ou warning.',
+    'vr.system_hint':'Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.',
+    'vr.empty':'Nenhuma regra cadastrada.',
+    'vr.modal.new':'Nova Regra de Validação','vr.modal.edit':'Editar Regra',
+    'vr.btn.activate':'Ativar','vr.btn.deactivate':'Desativar',
+    'vr.saved':'Regra salva.',
+    'vr.desc_ph':'Descrição legível da regra','vr.value_ph':'Ex: 24 ou 5,6',
+    'opt.yes':'Sim','opt.no':'Não',
+    'pwdm.current_lbl':'Senha atual *','pwdm.current_ph':'senha atual',
     'prefs.customize':'⚙ Personalizar Layout','prefs.save':'Salvar preferências',
     'prefs.saved':'Preferências salvas.','prefs.save_error':'Erro ao salvar preferências.',
     'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
@@ -351,6 +359,14 @@ const _LANG = {
     'vr.th.value':'Value','vr.th.action':'Action','vr.th.description':'Description',
     'vr.th.active':'Active','vr.th.system':'System',
     'vr.badge.system':'System','vr.hint.aggregate':'Aggregate rules only allow info or warning.',
+    'vr.system_hint':'System rules (🔒) cannot be edited or deleted, but can be activated/deactivated.',
+    'vr.empty':'No rules registered.',
+    'vr.modal.new':'New Validation Rule','vr.modal.edit':'Edit Rule',
+    'vr.btn.activate':'Activate','vr.btn.deactivate':'Deactivate',
+    'vr.saved':'Rule saved.',
+    'vr.desc_ph':'Human-readable rule description','vr.value_ph':'E.g.: 24 or 5,6',
+    'opt.yes':'Yes','opt.no':'No',
+    'pwdm.current_lbl':'Current password *','pwdm.current_ph':'current password',
     'prefs.customize':'⚙ Customize Layout','prefs.save':'Save preferences',
     'prefs.saved':'Preferences saved.','prefs.save_error':'Error saving preferences.',
     'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
@@ -3942,18 +3958,18 @@ function _renderRulesList() {
   const ul = document.getElementById('rulesList');
   if (!ul) return;
   if (!_rules.length) {
-    ul.innerHTML = '<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Nenhuma regra cadastrada.</li>';
+    ul.innerHTML = `<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">${_t('vr.empty')}</li>`;
     return;
   }
   ul.innerHTML = _rules.map(r => {
     const actionBadge = `<span class="rule-badge ${r.action}">${r.action}</span>`;
-    const systemBadge = r.is_system ? '<span class="rule-badge system">🔒 sistema</span>' : '';
+    const systemBadge = r.is_system ? `<span class="rule-badge system">🔒 ${_t('vr.badge.system')}</span>` : '';
     const activeClass = r.is_active ? '' : 'rule-inactive';
     const editBtn  = r.is_system ? '' :
       `<button class="btn btn-secondary btn-sm" onclick="openEditRule(${r.id})">✎</button>`;
     const delBtn = r.is_system ? '' :
       `<button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">✕</button>`;
-    const toggleTitle = r.is_active ? 'Desativar' : 'Ativar';
+    const toggleTitle = _t(r.is_active ? 'vr.btn.deactivate' : 'vr.btn.activate');
     return `<li class="sortable-item ${activeClass}" data-rule-id="${r.id}">
       <span class="sortable-handle">⠿</span>
       <span class="sortable-item-label">
@@ -4008,7 +4024,7 @@ function _updateRuleActionOptions() {
 
 function _openRuleModal(rule = null) {
   _editingRuleId = rule ? rule.id : null;
-  document.getElementById('ruleModalTitle').textContent = rule ? 'Editar Regra' : 'Nova Regra de Validação';
+  document.getElementById('ruleModalTitle').textContent = _t(rule ? 'vr.modal.edit' : 'vr.modal.new');
   document.getElementById('ruleFieldInput').value    = rule?.field    || 'horas_individuais';
   document.getElementById('ruleOperatorInput').value = rule?.operator || 'gt';
   document.getElementById('ruleValueInput').value    = rule?.value    || '';
@@ -4051,7 +4067,7 @@ document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
     }
     document.getElementById('ruleModal').setAttribute('hidden', '');
     loadRulesList();
-    notify('Regra salva.', 'success');
+    notify(_t('vr.saved'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 

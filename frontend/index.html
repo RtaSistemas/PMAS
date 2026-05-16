@@ -659,12 +659,12 @@
     <!-- Validation Rules -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Regras de Validação</h2>
-        <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn">+ Nova regra</button>
+        <h2 class="card-title" data-i18n="vr.title">Regras de Validação</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn" data-i18n="vr.btn.new">+ Nova Regra</button>
       </div>
-      <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
+      <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
       <ul class="sortable-list" id="rulesList">
-        <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Carregando…</li>
+        <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem" data-i18n="loading">Carregando…</li>
       </ul>
     </div>
 
@@ -979,9 +979,11 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Campo</label>
+        <label data-i18n="vr.th.field">Campo</label>
         <select class="form-select" id="ruleFieldInput">
           <option value="horas_individuais">horas_individuais</option>
+          <option value="hora_extra_horas">hora_extra_horas</option>
+          <option value="hora_sobreaviso_horas">hora_sobreaviso_horas</option>
           <option value="soma_diaria">soma_diaria</option>
           <option value="soma_semanal">soma_semanal</option>
           <option value="dia_semana">dia_semana</option>
@@ -989,14 +991,14 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Operador</label>
+        <label data-i18n="vr.th.operator">Operador</label>
         <select class="form-select" id="ruleOperatorInput">
-          <option value="gt">gt (maior que)</option>
+          <option value="gt">gt (&gt;)</option>
           <option value="gte">gte (≥)</option>
-          <option value="lt">lt (menor que)</option>
+          <option value="lt">lt (&lt;)</option>
           <option value="lte">lte (≤)</option>
-          <option value="eq">eq (igual)</option>
-          <option value="neq">neq (diferente)</option>
+          <option value="eq">eq (=)</option>
+          <option value="neq">neq (≠)</option>
           <option value="vazio">vazio</option>
           <option value="nao_vazio">nao_vazio</option>
           <option value="contem">contem</option>
@@ -1005,11 +1007,11 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Valor</label>
-        <input type="text" id="ruleValueInput" placeholder="Ex: 24 ou 5,6" />
+        <label data-i18n="vr.th.value">Valor</label>
+        <input type="text" id="ruleValueInput" data-i18n-ph="vr.value_ph" placeholder="Ex: 24 ou 5,6" />
       </div>
       <div class="form-group">
-        <label>Ação</label>
+        <label data-i18n="vr.th.action">Ação</label>
         <select class="form-select" id="ruleActionInput">
           <option value="info">info</option>
           <option value="warning">warning</option>
@@ -1019,25 +1021,25 @@
         <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:#f59e0b" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
       </div>
       <div class="form-group">
-        <label>Ordem</label>
+        <label data-i18n="vr.th.order">Ordem</label>
         <input type="number" id="ruleOrderInput" value="10" min="1" />
       </div>
       <div class="form-group">
-        <label>Ativa</label>
+        <label data-i18n="vr.th.active">Ativa</label>
         <select class="form-select" id="ruleActiveInput">
-          <option value="true">Sim</option>
-          <option value="false">Não</option>
+          <option value="true" data-i18n="opt.yes">Sim</option>
+          <option value="false" data-i18n="opt.no">Não</option>
         </select>
       </div>
       <div class="form-group full">
-        <label>Descrição</label>
-        <input type="text" id="ruleDescInput" placeholder="Descrição legível da regra" />
+        <label data-i18n="vr.th.description">Descrição</label>
+        <input type="text" id="ruleDescInput" data-i18n-ph="vr.desc_ph" placeholder="Descrição legível da regra" />
       </div>
     </div>
     <div class="error-msg" id="ruleError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="ruleCancelBtn">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="ruleSaveBtn">Salvar</button>
+      <button type="button" class="btn btn-secondary" id="ruleCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="ruleSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -1048,23 +1050,23 @@
 <div class="modal-backdrop" id="myPwdModal" hidden>
   <div class="modal-box" role="dialog" aria-modal="true">
     <div class="modal-header">
-      <h3>Alterar Minha Senha</h3>
+      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="myPwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="myCurrentPwdInput">Senha atual *</label>
-        <input type="password" id="myCurrentPwdInput" placeholder="senha atual" autocomplete="current-password" />
+        <label for="myCurrentPwdInput" data-i18n="pwdm.current_lbl">Senha atual *</label>
+        <input type="password" id="myCurrentPwdInput" data-i18n-ph="pwdm.current_ph" placeholder="senha atual" autocomplete="current-password" />
       </div>
       <div class="form-group">
-        <label for="myNewPwdInput">Nova senha *</label>
-        <input type="password" id="myNewPwdInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        <label for="myNewPwdInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
+        <input type="password" id="myNewPwdInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
       </div>
     </div>
     <div class="error-msg" id="myPwdError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="myPwdSaveBtn">Salvar</button>
+      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="myPwdSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
