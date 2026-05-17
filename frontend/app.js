@@ -104,7 +104,7 @@ const _LANG = {
     'stat.cost_standby':'Custo Sobreaviso','stat.cost_total':'Custo Total Real',
     'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Orçamento (R$)',
     'stat.vs_budget_cost':'Realizado vs Orçado',
-    'budget.exceeded':'Estourado','budget.warning':'Atenção ≥90%',
+    'budget.exceeded':'Estourado','budget.warning':'Atenção',
     'config.warning_threshold_lbl':'Limiar de Atenção (0–1)',
     'config.critical_threshold_lbl':'Limiar Crítico (0–1)',
     'lbl.admin':'Admin','lbl.user':'Usuário',
@@ -370,7 +370,7 @@ const _LANG = {
     'stat.cost_standby':'Standby Cost','stat.cost_total':'Total Actual Cost',
     'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
     'stat.vs_budget_cost':'Actual vs Budget',
-    'budget.exceeded':'Exceeded','budget.warning':'Warning ≥90%',
+    'budget.exceeded':'Exceeded','budget.warning':'Warning',
     'config.warning_threshold_lbl':'Warning Threshold (0–1)',
     'config.critical_threshold_lbl':'Critical Threshold (0–1)',
     'lbl.admin':'Admin','lbl.user':'User',
@@ -742,6 +742,31 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
+document.getElementById('runwayExportBtn').addEventListener('click', () => {
+  if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
+  const header = 'PEP,Projeto,Consumido (h),Orçado (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const rows = _lastRunwayData.map(d => {
+    const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
+    return [
+      `"${d.pep_wbs}"`, `"${d.name || ''}"`,
+      d.consumed_hours.toFixed(1),
+      d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
+      d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
+      d.avg_hours_per_cycle.toFixed(1),
+      d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
+      `"${d.estimated_completion_cycle || ''}"`,
+      d.cpi != null ? d.cpi.toFixed(2) : '',
+      `"${risk}"`,
+    ].join(',');
+  });
+  const csv  = [header, ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'runway-portfolio.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById('stackToggleBtn').addEventListener('click', () => {
   _stackMode = !_stackMode;
   document.getElementById('stackToggleBtn').textContent =
@@ -972,6 +997,7 @@ function _showEmpty(id, show) {
 // Esforço da Equipe
 // ---------------------------------------------------------------------------
 let _lastEffortData = [];
+let _lastRunwayData = [];
 
 async function _renderEffortTab() {
   const cycleIds  = cycleMs.getValues();
@@ -1058,12 +1084,15 @@ function _riskColor(risk) {
 }
 
 function _renderRunwayPanel(runway) {
-  const table  = document.getElementById('runwayTable');
-  const empty  = document.getElementById('runwayEmpty');
-  const tbody  = document.getElementById('runwayBody');
+  _lastRunwayData = runway;
+  const table     = document.getElementById('runwayTable');
+  const empty     = document.getElementById('runwayEmpty');
+  const tbody     = document.getElementById('runwayBody');
+  const exportBtn = document.getElementById('runwayExportBtn');
   tbody.innerHTML = '';
 
   const withBudget = runway.filter(r => r.budget_hours != null);
+  if (exportBtn) exportBtn.hidden = !runway.length;
   if (!withBudget.length) {
     table.hidden = true;
     empty.hidden = false;
@@ -2987,8 +3016,9 @@ function _buildBudgetCell(p) {
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
   if (!consumed) return budgetStr;
   const pct = consumed / p.budget_hours;
+  const wPct = Math.round(_budgetWarning * 100);
   if (pct >= _budgetCritical) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')}</span>`;
+  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
   return budgetStr;
 }
 
@@ -4734,14 +4764,17 @@ async function loadSemaphore() {
       return max >= _budgetCritical ? 'red' : max >= _budgetWarning ? 'yellow' : 'green';
     };
 
+    const wPct = Math.round(_budgetWarning  * 100);
+    const cPct = Math.round(_budgetCritical * 100);
+
     const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
     const pills  = data.map(p => {
       const s = classify(p);
       counts[s]++;
       const pH = p.budget_hours ? (p.consumed_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
       const pC = p.budget_cost  ? (p.actual_cost    / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
-      const tip = `${p.pep_wbs}: ${pH} · ${pC}`;
-      return `<span class="sem-project ${s}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
+      const tip = `${p.pep_wbs}: ${pH} · ${pC} — clique para detalhar`;
+      return `<span class="sem-project ${s}" data-pep="${escHtml(p.pep_wbs)}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
     });
 
     const dot = (cls, label) => counts[cls]
@@ -4750,9 +4783,9 @@ async function loadSemaphore() {
 
     const summaryHtml =
       `<span class="sem-title">Portfólio</span>
-      ${dot('green',  'OK — dentro do budget')}
-      ${dot('yellow', 'Atenção — ≥ 90% do budget')}
-      ${dot('red',    'Estourado — ≥ 100% do budget')}
+      ${dot('green',  `OK — abaixo de ${wPct}% do budget`)}
+      ${dot('yellow', `Atenção — ≥ ${wPct}% do budget`)}
+      ${dot('red',    `Estourado — ≥ ${cPct}% do budget`)}
       ${dot('grey',   'Sem budget definido')}`;
 
     bar.innerHTML =
@@ -4768,6 +4801,39 @@ async function loadSemaphore() {
     const hdr = document.getElementById('headerSemaphore');
     if (hdr) hdr.style.display = 'none';
   }
+}
+
+// ---------------------------------------------------------------------------
+// Semaphore drill-down: click a pill → filter Portfolio tab by that PEP
+// ---------------------------------------------------------------------------
+document.getElementById('semaphoreBar').addEventListener('click', e => {
+  const pill = e.target.closest('[data-pep]');
+  if (pill) _drillDownToPep(pill.dataset.pep);
+});
+
+async function _drillDownToPep(pepCode) {
+  // Navigate to Dashboard tab
+  document.querySelector('.tab-btn[data-tab="dashboard"]')?.click();
+
+  // Reset all filters so we fetch the full PEP list, then pin to target PEP
+  cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
+  document.getElementById('dateFromInput').value = '';
+  document.getElementById('dateToInput').value   = '';
+  await refreshPeps();
+  pepMs.selectOnly(pepCode);
+  refreshPepDescriptions();
+
+  // Switch to portfolio sub-tab programmatically and render
+  _disposeTabCharts(_activeATab);
+  document.querySelectorAll('.atab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.atab-section').forEach(s => { s.hidden = true; });
+  const portfolioBtn = document.querySelector('.atab-btn[data-atab="portfolio"]');
+  if (portfolioBtn) portfolioBtn.classList.add('active');
+  _activeATab = 'portfolio';
+  document.getElementById('atab-portfolio').hidden = false;
+
+  await _renderPortfolioTab();
+  document.getElementById('runwayPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---------------------------------------------------------------------------

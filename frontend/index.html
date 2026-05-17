@@ -250,8 +250,11 @@
       <div id="portfolioStats"></div>
       <div class="card" id="runwayPanel">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="runway.title">Runway do Portfólio</span>
-          <span class="panel-note" data-i18n="runway.note">Ciclos restantes no ritmo atual · apenas PEPs com orçamento</span>
+          <div>
+            <span class="panel-title" data-i18n="runway.title">Runway do Portfólio</span>
+            <span class="panel-note" data-i18n="runway.note">Ciclos restantes no ritmo atual · apenas PEPs com orçamento</span>
+          </div>
+          <button type="button" id="runwayExportBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" hidden>Exportar CSV</button>
         </div>
         <div id="runwayEmpty" class="chart-empty" hidden data-i18n="runway.empty">Nenhum PEP com orçamento encontrado.</div>
         <table class="data-table" id="runwayTable" hidden>
