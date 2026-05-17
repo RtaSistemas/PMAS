@@ -119,6 +119,8 @@ const _LANG = {
     'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
     'collab.timeline_title': 'Evolução por Ciclo — ',
     'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
+    'collab.section_cycles': 'Horas por Ciclo',
+    'collab.section_calendar': 'Atividade Diária',
     'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
     'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
     'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
@@ -397,6 +399,8 @@ const _LANG = {
     'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
     'collab.timeline_title': 'Cycle Evolution — ',
     'collab.timeline_empty': 'No data found for this collaborator.',
+    'collab.section_cycles': 'Hours by Cycle',
+    'collab.section_calendar': 'Daily Activity',
     'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
     'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
     'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
@@ -678,7 +682,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart', 'costCompositionChart'],
+  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart'],
 };
@@ -1022,6 +1026,9 @@ function _showEmpty(id, show) {
 // ---------------------------------------------------------------------------
 let _lastEffortData = [];
 let _lastRunwayData = [];
+let _selectedCollaborator = null;
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth() + 1; // 1-12
 
 async function _renderEffortTab() {
   const cycleIds  = cycleMs.getValues();
@@ -1081,7 +1088,13 @@ async function _renderEffortTab() {
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
-      if (params && params.name) await _openCollabTimelineModal(params.name);
+      if (params && params.name) {
+        if (_selectedCollaborator === params.name) {
+          _closeCollabDetail();
+        } else {
+          await _openCollabDetail(params.name);
+        }
+      }
     });
 
     // Trends + CPI charts — full filter passthrough with cycle window logic
@@ -2614,114 +2627,189 @@ function _buildBulletOption(withBudget, evmMode = false) {
 }
 
 // ---------------------------------------------------------------------------
-// Collaborator Timeline Modal
+// Collaborator Inline Detail Panel
 // ---------------------------------------------------------------------------
-async function _openCollabTimelineModal(collaboratorName) {
-  // 1. Pega filtros ativos da tela
-  const pepCodes  = pepMs.getValues();
-  const pepDescs  = pepDescMs.getValues();
-  const dateFrom  = document.getElementById('dateFromInput').value;
-  const dateTo    = document.getElementById('dateToInput').value;
+function _closeCollabDetail() {
+  _selectedCollaborator = null;
+  document.getElementById('collabDetailPanel').hidden = true;
+  // dispose inline charts
+  ['collabInlineTimelineChart','collabCalendarChart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const c = echarts.getInstanceByDom(el);
+    if (c && !c.isDisposed()) c.dispose();
+  });
+  // remove highlight from effort chart
+  const effEl = document.getElementById('effortChart');
+  if (effEl) { const c = echarts.getInstanceByDom(effEl); if (c) c.dispatchAction({ type: 'downplay' }); }
+}
 
-  // 2. Monta query string
+async function _openCollabDetail(name) {
+  _selectedCollaborator = name;
+
+  // highlight bar in effort chart
+  const effEl = document.getElementById('effortChart');
+  if (effEl) {
+    const c = echarts.getInstanceByDom(effEl);
+    if (c) {
+      c.dispatchAction({ type: 'downplay' });
+      c.dispatchAction({ type: 'highlight', name });
+    }
+  }
+
+  // show panel, set title
+  const panel = document.getElementById('collabDetailPanel');
+  panel.hidden = false;
+  document.getElementById('collabDetailName').textContent = name;
+
+  // scroll panel into view smoothly
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Section 1: cycle timeline
+  await _renderCollabTimeline(name);
+
+  // Section 2: calendar heatmap — use current calendar month
+  _calYear  = new Date().getFullYear();
+  _calMonth = new Date().getMonth() + 1;
+  await _renderCollabCalendar(name, _calYear, _calMonth);
+}
+
+async function _renderCollabTimeline(name) {
+  const emptyEl = document.getElementById('collabInlineTimelineEmpty');
+  const chartEl = document.getElementById('collabInlineTimelineChart');
+
+  // reuse existing filters from the main filter bar
+  const pepCodes = pepMs.getValues();
+  const pepDescs = pepDescMs.getValues();
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
+
   const p = new URLSearchParams();
-  p.set('collaborator_name', collaboratorName);
+  p.set('collaborator_name', name);
   pepCodes.forEach(c => p.append('pep_code', c));
   pepDescs.forEach(d => p.append('pep_description', d));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
-  // 3. Chama o endpoint
   let rows = [];
-  try {
-    rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`);
-  } catch (err) {
-    notify('Erro ao carregar timeline do colaborador.', 'error');
-    return;
-  }
+  try { rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`); }
+  catch (e) { notify('Erro ao carregar timeline.', 'error'); return; }
 
-  // 4. Função auxiliar de fechar
-  function _closeCollabModal() {
-    const chartEl = document.getElementById('collabTimelineChart');
-    const c = echarts.getInstanceByDom(chartEl);
-    if (c && !c.isDisposed()) c.dispose();
-    chartEl.style.display = 'none';
-    modal.style.display = 'none';
-  }
-
-  // 5. Cria modal apenas uma vez
-  let modal = document.getElementById('collabTimelineModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'collabTimelineModal';
-    modal.style.cssText = `
-      position:fixed;inset:0;z-index:9999;
-      display:flex;align-items:center;justify-content:center;
-      background:rgba(0,0,0,0.7);
-    `;
-    modal.innerHTML = `
-      <div style="background:${_cssVar('--card')};border:1px solid ${_cssVar('--border')};border-radius:10px;
-                  padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <span id="collabTimelineTitle"
-            style="font-size:1rem;font-weight:600;color:${_cssVar('--text')};"></span>
-          <button id="collabTimelineClose"
-            style="background:none;border:none;color:${_cssVar('--text-3')};font-size:1.4rem;
-                   cursor:pointer;line-height:1;">✕</button>
-        </div>
-        <div id="collabTimelineEmpty"
-          style="color:${_cssVar('--text-3')};text-align:center;padding:2rem;" hidden></div>
-        <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('collabTimelineClose').addEventListener('click', () => {
-      _closeCollabModal();
-    });
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) _closeCollabModal();
-    });
-  }
-
-  // 6. Exibe o modal
-  modal.style.display = 'flex';
-
-  // 7. Atualiza título
-  document.getElementById('collabTimelineTitle').textContent =
-    _t('collab.timeline_title') + collaboratorName;
-
-  // 8. Sem dados
-  const emptyEl = document.getElementById('collabTimelineEmpty');
-  const chartEl = document.getElementById('collabTimelineChart');
-
-  if (!rows.length) {
-    emptyEl.textContent = _t('collab.timeline_empty');
-    emptyEl.hidden = false;
-    chartEl.style.display = 'none';
-    return;
-  }
-
-  emptyEl.hidden = true;
-  chartEl.style.display = '';
-
-  // 9. Destrói instância anterior se existir
+  // dispose old chart
   const existing = echarts.getInstanceByDom(chartEl);
   if (existing && !existing.isDisposed()) existing.dispose();
 
-  // 10. Renderiza gráfico — G3 ✅
+  if (!rows.length) {
+    emptyEl.hidden = false;
+    chartEl.style.visibility = 'hidden';
+    return;
+  }
+  emptyEl.hidden = true;
+  chartEl.style.visibility = '';
+
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   tc.setOption(_buildHoursBarOption({
-    data:        rows,
-    categoryKey: 'cycle_name',
-    orientation: 'vertical',
-    stacked:     true,
-    showTotal:   true,
-    richLabel:   false,
-    maxItems:     40,
-    toolboxName: 'PMAS-Timeline',
+    data: rows, categoryKey: 'cycle_name',
+    orientation: 'vertical', stacked: true,
+    showTotal: true, richLabel: false,
+    maxItems: 40, toolboxName: 'PMAS-CollabTimeline',
   }), true);
+}
+
+async function _renderCollabCalendar(name, year, month) {
+  const emptyEl = document.getElementById('collabCalendarEmpty');
+  const chartEl = document.getElementById('collabCalendarChart');
+  const statsEl = document.getElementById('collabCalendarStats');
+  const label   = document.getElementById('calMonthLabel');
+
+  // month label (pt-BR)
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  label.textContent = `${monthNames[month-1]} ${year}`;
+
+  let data = [];
+  try {
+    data = await apiFetch(`/api/dashboard/collaborator-daily?collaborator_name=${encodeURIComponent(name)}&year=${year}&month=${month}`);
+  } catch(e) { notify('Erro ao carregar dados diários.', 'error'); return; }
+
+  // dispose old
+  const existing = echarts.getInstanceByDom(chartEl);
+  if (existing && !existing.isDisposed()) existing.dispose();
+
+  const points = data.filter(d => d.hours > 0);
+  if (!points.length) {
+    emptyEl.hidden = false;
+    chartEl.style.visibility = 'hidden';
+    statsEl.innerHTML = '';
+    return;
+  }
+  emptyEl.hidden = true;
+  chartEl.style.visibility = '';
+
+  // build [date, hours] pairs for ECharts calendar
+  const calData = points.map(d => [d.date, d.hours]);
+  const quarantineDates = new Set(data.filter(d => d.has_quarantine).map(d => d.date));
+
+  const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const rangeEnd = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const maxHours = Math.max(...points.map(d => d.hours), 8);
+
+  const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  cc.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      formatter(p) {
+        if (!p.value) return '';
+        const [d_date, hrs] = p.value;
+        const q = quarantineDates.has(d_date) ? ' ⚠' : '';
+        return `${d_date}${q}<br/><b>${(+hrs).toFixed(1)}h</b>`;
+      },
+    },
+    visualMap: {
+      show: false, min: 0, max: maxHours,
+      inRange: { color: ['#0f172a', '#4f8ef7'] },
+    },
+    calendar: {
+      top: 10, left: 30, right: 10, bottom: 10,
+      range: [rangeStart, rangeEnd],
+      cellSize: ['auto', 22],
+      dayLabel: {
+        firstDay: 0,
+        nameMap: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+        color: '#64748b', fontSize: 10,
+      },
+      monthLabel: { show: false },
+      yearLabel: { show: false },
+      itemStyle: { color: '#1e293b', borderColor: '#0f172a', borderWidth: 2 },
+      splitLine: { show: false },
+    },
+    series: [{
+      type: 'heatmap',
+      coordinateSystem: 'calendar',
+      data: calData,
+      emphasis: { itemStyle: { shadowBlur: 6, shadowColor: '#4f8ef7' } },
+    }],
+  }, true);
+
+  // stats row
+  const totalHours = points.reduce((s, d) => s + d.hours, 0);
+  const workDays   = points.length;
+  const avgPerDay  = workDays > 0 ? totalHours / workDays : 0;
+  const peak       = points.reduce((m, d) => d.hours > m.hours ? d : m, points[0]);
+
+  const stat = (lbl, val) =>
+    `<div style="display:flex;flex-direction:column;gap:.15rem">
+       <span style="font-size:.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">${lbl}</span>
+       <span style="font-size:.88rem;font-weight:600;color:var(--text)">${val}</span>
+     </div>`;
+
+  statsEl.innerHTML =
+    stat('Total', `${totalHours.toFixed(1)}h`) +
+    stat('Dias ativos', workDays) +
+    stat('Média/dia', `${avgPerDay.toFixed(1)}h`) +
+    stat('Pico', `${peak.hours.toFixed(1)}h (${peak.date})`) +
+    (quarantineDates.size ? stat('⚠ Em quarentena', `${quarantineDates.size} dia(s)`) : '');
 }
 
 // ---------------------------------------------------------------------------
@@ -3766,6 +3854,20 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.removeItem('role');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
+});
+
+document.getElementById('collabDetailClose').addEventListener('click', _closeCollabDetail);
+document.getElementById('calPrevMonth').addEventListener('click', async () => {
+  if (!_selectedCollaborator) return;
+  _calMonth--;
+  if (_calMonth < 1) { _calMonth = 12; _calYear--; }
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+});
+document.getElementById('calNextMonth').addEventListener('click', async () => {
+  if (!_selectedCollaborator) return;
+  _calMonth++;
+  if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
 });
 
 // ---------------------------------------------------------------------------
