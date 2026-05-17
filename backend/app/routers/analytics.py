@@ -143,6 +143,15 @@ def get_trends(
                     + TimesheetRecord.standby_hours * sm
                 )
             ).label("actual_cost"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * TimesheetRecord.normal_hours
+            ).label("normal_cost"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * TimesheetRecord.extra_hours * em
+            ).label("extra_cost"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * TimesheetRecord.standby_hours * sm
+            ).label("standby_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
     )
@@ -245,6 +254,9 @@ def get_trends(
             "standby_hours": r.standby_hours or 0.0,
             "actual_cost": r.actual_cost or 0.0,
             "cpi": cpi,
+            "normal_cost": r.normal_cost or 0.0,
+            "extra_cost": r.extra_cost or 0.0,
+            "standby_cost": r.standby_cost or 0.0,
         })
     return result
 
@@ -571,6 +583,23 @@ def get_portfolio_runway(
         .all()
     )
     cycle_index_map = {c.id: i for i, c in enumerate(all_cycles)}
+    cycle_start_by_id = {c.id: c.start_date for c in all_cycles}
+
+    # Batch-fetch all ProjectCyclePlan entries for the relevant projects (avoid N+1)
+    project_ids = [p.id for p in projects.values()]
+    all_plans = (
+        db.query(ProjectCyclePlan)
+        .filter(ProjectCyclePlan.project_id.in_(project_ids))
+        .all()
+        if project_ids else []
+    )
+    # Group plans by project_id → list of (cycle_start_date, planned_hours)
+    from collections import defaultdict as _defaultdict
+    plans_by_project: dict[int, list] = _defaultdict(list)
+    for plan in all_plans:
+        c_start = cycle_start_by_id.get(plan.cycle_id)
+        if c_start is not None:
+            plans_by_project[plan.project_id].append((c_start, plan.planned_hours))
 
     result = []
     for key, data in pep_data.items():
@@ -624,6 +653,30 @@ def get_portfolio_runway(
         if budget_cost and actual_cost > 0:
             cpi = round(budget_cost / actual_cost, 3)
 
+        # SPI — Schedule Performance Index based on planned vs actual hours
+        spi = None
+        schedule_status = "no_baseline"
+        if proj:
+            # Find the max cycle start_date used by this PEP (to cap cumulative planned)
+            pep_cycle_ids = data["cycle_ids"]
+            max_cycle_start = max(
+                (cycle_start_by_id[cid] for cid in pep_cycle_ids if cid in cycle_start_by_id),
+                default=None,
+            )
+            if max_cycle_start is not None:
+                proj_plans = plans_by_project.get(proj.id, [])
+                cumulative_planned = sum(
+                    ph for c_start, ph in proj_plans if c_start <= max_cycle_start
+                )
+                if cumulative_planned > 0:
+                    spi = round(consumed_hours / cumulative_planned, 3)
+                    if spi >= 1.0:
+                        schedule_status = "on_track"
+                    elif spi >= 0.9:
+                        schedule_status = "at_risk"
+                    else:
+                        schedule_status = "behind"
+
         result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
@@ -635,6 +688,8 @@ def get_portfolio_runway(
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
             "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None else None,
             "estimated_completion_cycle": estimated_completion_cycle,
+            "spi": spi,
+            "schedule_status": schedule_status,
             "cpi": cpi,
             "risk": risk,
         })
