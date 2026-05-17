@@ -265,6 +265,12 @@ const _LANG = {
     'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
+    'runway.th.spi':'SPI','runway.th.status':'Status',
+    'runway.status.on_track':'No prazo','runway.status.at_risk':'Atenção',
+    'runway.status.behind':'Atrasado','runway.status.no_baseline':'Sem baseline',
+    'costcomp.title':'Composição de Custo por Tipo de Hora',
+    'costcomp.note':'Custo de horas regulares · extras · sobreaviso por ciclo',
+    'costcomp.empty':'Nenhum dado de custo encontrado.',
     'conc.title':'Concentração de Risco por Projeto',
     'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
     'conc.empty':'Nenhum dado de horas encontrado.',
@@ -537,6 +543,12 @@ const _LANG = {
     'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
+    'runway.th.spi':'SPI','runway.th.status':'Status',
+    'runway.status.on_track':'On track','runway.status.at_risk':'At risk',
+    'runway.status.behind':'Behind','runway.status.no_baseline':'No baseline',
+    'costcomp.title':'Cost Composition by Hour Type',
+    'costcomp.note':'Cost of regular · overtime · standby hours per cycle',
+    'costcomp.empty':'No cost data found.',
     'conc.title':'Project Concentration Risk',
     'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
     'conc.empty':'No hour data found.',
@@ -666,7 +678,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart'],
+  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart', 'costCompositionChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart'],
 };
@@ -1130,6 +1142,23 @@ function _renderRunwayPanel(runway) {
       cyclesCell = item.cycles_to_complete.toFixed(1);
     }
 
+    // SPI
+    let spiCell = '—';
+    if (item.spi != null) {
+      const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
+    }
+
+    // Status
+    const statusMap = {
+      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: 'var(--primary,#4f8ef7)' },
+      at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
+      behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
+      no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: '#475569' },
+    };
+    const st = statusMap[item.schedule_status] || statusMap.no_baseline;
+    const statusCell = `<span style="font-size:.78rem;font-weight:600;color:${st.color}">${st.label}</span>`;
+
     // CPI
     let cpiCell = '—';
     if (item.cpi != null) {
@@ -1152,6 +1181,8 @@ function _renderRunwayPanel(runway) {
       <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
       <td style="text-align:right">${cyclesCell}</td>
       <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
+      <td style="text-align:right">${spiCell}</td>
+      <td>${statusCell}</td>
       <td style="text-align:right">${cpiCell}</td>
     `;
     tbody.appendChild(tr);
@@ -1311,6 +1342,70 @@ async function _renderPortfolioTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Cost Composition by Hour Type chart
+// ---------------------------------------------------------------------------
+function _renderCostCompositionChart(trends) {
+  const panel = document.getElementById('costCompositionPanel');
+  const emptyEl = document.getElementById('costCompositionEmpty');
+
+  const filtered = (trends || []).filter(t =>
+    (t.normal_cost || 0) + (t.extra_cost || 0) + (t.standby_cost || 0) > 0
+  );
+
+  if (!filtered.length) {
+    panel.hidden = false;
+    emptyEl.hidden = false;
+    if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
+      _charts['costCompositionChart'].dispose();
+      delete _charts['costCompositionChart'];
+    }
+    document.getElementById('costCompositionChart').style.visibility = 'hidden';
+    return;
+  }
+
+  panel.hidden = false;
+  emptyEl.hidden = true;
+  document.getElementById('costCompositionChart').style.visibility = '';
+
+  const sym = document.getElementById('currencySymbol')?.value || 'R$';
+  const factor = parseFloat(document.getElementById('currencyFactor')?.value) || 1;
+
+  const categories = filtered.map(t => t.cycle_name);
+  const normalData  = filtered.map(t => +((t.normal_cost  || 0) * factor).toFixed(2));
+  const extraData   = filtered.map(t => +((t.extra_cost   || 0) * factor).toFixed(2));
+  const standbyData = filtered.map(t => +((t.standby_cost || 0) * factor).toFixed(2));
+
+  const cc = _getOrCreateChart('costCompositionChart');
+  cc.setOption({
+    backgroundColor: 'transparent',
+    legend: { top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter(params) {
+        const total = params.reduce((s, p) => s + (p.value || 0), 0);
+        let html = `<b>${params[0].axisValue}</b><br/>`;
+        params.forEach(p => {
+          const pct = total > 0 ? (p.value / total * 100).toFixed(1) : '0.0';
+          html += `${p.marker}${p.seriesName}: ${sym} ${p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${pct}%)<br/>`;
+        });
+        html += `<b>Total: ${sym} ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
+        return html;
+      },
+    },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
+    yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
+    series: [
+      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: '#4f8ef7' } },
+      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: '#d9b273' } },
+      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: '#94a3b8' } },
+    ],
+  }, true);
+  cc.resize();
+}
+
+// ---------------------------------------------------------------------------
 // Compute date window for Queima/IDP when cycles are selected.
 // Returns {dateFrom, dateTo} covering selected cycles ±1 neighbor.
 // If no cycles selected, returns the manually entered date range unchanged.
@@ -1364,6 +1459,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
         _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
       }
+      document.getElementById('costCompositionPanel').hidden = true;
+      if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
+        _charts['costCompositionChart'].dispose(); delete _charts['costCompositionChart'];
+      }
       return;
     }
     _showEmpty('trendsEmpty', false);
@@ -1395,6 +1494,9 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
       }
     }
+
+    // Cost Composition chart — G3
+    _renderCostCompositionChart(trends);
 
     // Per-PEP CPI panel (toggle-controlled)
     if (!_pepCpiMode) {
