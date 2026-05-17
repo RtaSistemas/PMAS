@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from backend.app.audit import log_audit
@@ -109,7 +109,7 @@ def list_quarantine(
     rule_id: int | None = None,
     source_file: str | None = None,
     username: str | None = None,
-    limit: int = 200,
+    limit: int = Query(default=200, le=1000),
     offset: int = 0,
 ):
     q = (

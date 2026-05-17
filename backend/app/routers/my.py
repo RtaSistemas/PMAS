@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from backend.app.database import DbSession
@@ -50,7 +50,7 @@ def save_preferences(payload: UserPreferenceIn, db: DbSession, current_user: Cur
 # ── Upload history ────────────────────────────────────────────────────────────
 
 @router.get("/upload-history", response_model=list[UploadSessionOut])
-def my_upload_history(db: DbSession, current_user: CurrentUser, limit: int = 200, offset: int = 0):
+def my_upload_history(db: DbSession, current_user: CurrentUser, limit: int = Query(default=200, le=1000), offset: int = 0):
     q = db.query(UploadSession).order_by(UploadSession.uploaded_at.desc())
     if current_user.role != "admin":
         q = q.filter(UploadSession.uploaded_by_user_id == current_user.id)
@@ -75,7 +75,7 @@ def my_quarantine(
     current_user: CurrentUser,
     reviewed: bool | None = None,
     source_file: str | None = None,
-    limit: int = 200,
+    limit: int = Query(default=200, le=1000),
     offset: int = 0,
 ):
     q = db.query(QuarantineRecord).order_by(QuarantineRecord.ingested_at.desc())

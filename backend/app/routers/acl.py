@@ -26,7 +26,7 @@ def _access_out(entry: UserProjectAccess, pep_wbs: str) -> dict:
 
 
 @router.get("/{project_id}/access", response_model=list[UserProjectAccessOut])
-def list_access(project_id: int, db: DbSession):
+def list_access(project_id: int, db: DbSession, _admin: AdminUser):
     """List all users with explicit ACL access to a project."""
     project = db.get(Project, project_id)
     if project is None:

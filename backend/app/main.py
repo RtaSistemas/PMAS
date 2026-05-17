@@ -71,6 +71,16 @@ def _frontend_dir() -> str:
     return os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
 
 
+def _static_dir() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.join(sys._MEIPASS, "static")
+    return os.path.join(os.path.dirname(__file__), "..", "..", "static")
+
+
+_static_path = _static_dir()
+if os.path.isdir(_static_path):
+    app.mount("/static", StaticFiles(directory=_static_path), name="static_assets")
+
 app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="frontend")
 
 

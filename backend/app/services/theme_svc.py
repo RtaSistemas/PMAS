@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.app.models import GlobalConfig
 from backend.app.schemas import UIThemeOut
 
-LOGO_DIR = Path("static/assets/logos")
+LOGO_DIR = Path(__file__).resolve().parents[3] / "static" / "assets" / "logos"
 ALLOWED_EXT: frozenset[str] = frozenset({".png", ".jpg", ".jpeg", ".svg", ".webp"})
 MAX_LOGO_BYTES = 2 * 1024 * 1024  # 2 MB
 

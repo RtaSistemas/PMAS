@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from datetime import date as DateType
 from typing import List, Optional
 
@@ -9,8 +10,17 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord
-from backend.app.schemas import AllocationItem, BurnHistoryPoint, ForecastOut, PortfolioHealthItem, TrendItem
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord, UserProjectAccess
+from backend.app.schemas import (
+    AllocationItem,
+    BurnHistoryPoint,
+    ConcentrationContributor,
+    ConcentrationItem,
+    ForecastOut,
+    PortfolioHealthItem,
+    RunwayItem,
+    TrendItem,
+)
 
 router = APIRouter(prefix="/api", tags=["analytics"], dependencies=[Depends(get_current_user)])
 
@@ -448,3 +458,331 @@ def get_forecast(
         "estimated_completion_cycle": est_completion,
         "history": history,
     }
+
+
+@router.get("/portfolio-runway", summary="Runway do portfólio: ciclos restantes por PEP", response_model=list[RunwayItem])
+def get_portfolio_runway(
+    db: DbSession,
+    current_user=Depends(get_current_user),
+    cycle_id: List[int] = Query(default=[]),
+    pep_wbs: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    warning_threshold = cfg.budget_warning_threshold if cfg else 0.9
+    critical_threshold = cfg.budget_critical_threshold if cfg else 1.0
+
+    # ACL filtering: if user has project access entries, restrict to those PEPs
+    if current_user.role != "admin":
+        allowed = (
+            db.query(Project.pep_wbs)
+            .join(UserProjectAccess, UserProjectAccess.project_id == Project.id)
+            .filter(UserProjectAccess.user_id == current_user.id)
+            .all()
+        )
+        if allowed:
+            allowed_peps = [r[0] for r in allowed]
+            if pep_wbs:
+                pep_wbs = [p for p in pep_wbs if p in allowed_peps]
+            else:
+                pep_wbs = allowed_peps
+
+    # Query per (pep_wbs, pep_description, cycle_id) to get period hours/cost
+    q = (
+        db.query(
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            TimesheetRecord.cycle_id,
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("period_hours"),
+            func.sum(
+                TimesheetRecord.cost_per_hour * (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
+                )
+            ).label("period_cost"),
+        )
+        .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+        .filter(
+            TimesheetRecord.pep_wbs.isnot(None),
+        )
+    )
+    if cycle_id:
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
+    if pep_wbs:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        q = q.filter(Collaborator.id.in_(collaborator_id))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
+
+    rows = q.group_by(
+        TimesheetRecord.pep_wbs,
+        TimesheetRecord.pep_description,
+        TimesheetRecord.cycle_id,
+    ).all()
+
+    if not rows:
+        return []
+
+    # Aggregate per PEP
+    from collections import defaultdict
+    pep_data: dict[str, dict] = {}
+    for r in rows:
+        key = r.pep_wbs
+        if key not in pep_data:
+            pep_data[key] = {
+                "pep_wbs": r.pep_wbs,
+                "pep_description": r.pep_description,
+                "consumed_hours": 0.0,
+                "actual_cost": 0.0,
+                "cycle_ids": set(),
+            }
+        pep_data[key]["consumed_hours"] += r.period_hours or 0.0
+        pep_data[key]["actual_cost"]    += r.period_cost  or 0.0
+        pep_data[key]["cycle_ids"].add(r.cycle_id)
+
+    # Fetch projects for budget info
+    projects = {
+        p.pep_wbs: p
+        for p in db.query(Project)
+        .filter(Project.pep_wbs.in_(list(pep_data.keys())))
+        .all()
+    }
+
+    # All active cycles ordered by start_date for estimated completion
+    all_cycles = (
+        db.query(Cycle)
+        .order_by(Cycle.start_date)
+        .all()
+    )
+    cycle_index_map = {c.id: i for i, c in enumerate(all_cycles)}
+
+    result = []
+    for key, data in pep_data.items():
+        proj = projects.get(key)
+        budget_hours = proj.budget_hours if proj else None
+        budget_cost  = proj.budget_cost  if proj else None
+        name         = proj.name         if proj else None
+
+        consumed_hours = data["consumed_hours"]
+        actual_cost    = data["actual_cost"]
+        num_cycles     = len(data["cycle_ids"])
+
+        avg_hours_per_cycle = consumed_hours / num_cycles if num_cycles > 0 else 0.0
+
+        pct_consumed       = None
+        remaining_hours    = None
+        cycles_to_complete = None
+        cpi                = None
+        risk               = "no_budget"
+        estimated_completion_cycle = None
+
+        if budget_hours is not None and budget_hours > 0:
+            pct_consumed    = consumed_hours / budget_hours * 100
+            remaining_hours = budget_hours - consumed_hours
+
+            if pct_consumed >= 100:
+                risk = "overrun"
+            elif pct_consumed >= critical_threshold * 100:
+                risk = "critical"
+            elif pct_consumed >= warning_threshold * 100:
+                risk = "warning"
+            else:
+                risk = "ok"
+
+            if avg_hours_per_cycle > 0 and remaining_hours is not None:
+                cycles_to_complete = remaining_hours / avg_hours_per_cycle
+
+                if remaining_hours > 0 and cycles_to_complete > 0:
+                    # Find last cycle used by this PEP
+                    pep_cycle_ids = data["cycle_ids"]
+                    last_cycle_idx = max(
+                        (cycle_index_map[cid] for cid in pep_cycle_ids if cid in cycle_index_map),
+                        default=None,
+                    )
+                    if last_cycle_idx is not None:
+                        n = math.ceil(cycles_to_complete)
+                        target_idx = last_cycle_idx + n
+                        if target_idx < len(all_cycles):
+                            estimated_completion_cycle = all_cycles[target_idx].name
+
+        if budget_cost and actual_cost > 0:
+            cpi = round(budget_cost / actual_cost, 3)
+
+        result.append({
+            "pep_wbs": key,
+            "pep_description": data["pep_description"],
+            "name": name,
+            "budget_hours": budget_hours,
+            "consumed_hours": round(consumed_hours, 2),
+            "actual_cost": round(actual_cost, 2),
+            "pct_consumed": round(pct_consumed, 1) if pct_consumed is not None else None,
+            "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
+            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None else None,
+            "estimated_completion_cycle": estimated_completion_cycle,
+            "cpi": cpi,
+            "risk": risk,
+        })
+
+    result.sort(key=lambda x: x["consumed_hours"], reverse=True)
+    return result
+
+
+@router.get("/portfolio-concentration", summary="Concentração de horas por colaborador por PEP", response_model=list[ConcentrationItem])
+def get_portfolio_concentration(
+    db: DbSession,
+    current_user=Depends(get_current_user),
+    cycle_id: List[int] = Query(default=[]),
+    pep_wbs: List[str] = Query(default=[]),
+    pep_description: List[str] = Query(default=[]),
+    collaborator_id: List[int] = Query(default=[]),
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+):
+    # ACL filtering
+    if current_user.role != "admin":
+        allowed = (
+            db.query(Project.pep_wbs)
+            .join(UserProjectAccess, UserProjectAccess.project_id == Project.id)
+            .filter(UserProjectAccess.user_id == current_user.id)
+            .all()
+        )
+        if allowed:
+            allowed_peps = [r[0] for r in allowed]
+            if pep_wbs:
+                pep_wbs = [p for p in pep_wbs if p in allowed_peps]
+            else:
+                pep_wbs = allowed_peps
+
+    q = (
+        db.query(
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            Collaborator.name.label("collaborator_name"),
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+        .filter(
+            TimesheetRecord.pep_wbs.isnot(None),
+        )
+    )
+    if cycle_id:
+        q = q.filter(TimesheetRecord.cycle_id.in_(cycle_id))
+    if pep_wbs:
+        q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
+    if pep_description:
+        q = q.filter(TimesheetRecord.pep_description.in_(pep_description))
+    if collaborator_id:
+        q = q.filter(Collaborator.id.in_(collaborator_id))
+    if date_from is not None:
+        q = q.filter(TimesheetRecord.record_date >= date_from)
+    if date_to is not None:
+        q = q.filter(TimesheetRecord.record_date <= date_to)
+
+    rows = q.group_by(
+        TimesheetRecord.pep_wbs,
+        TimesheetRecord.pep_description,
+        Collaborator.name,
+    ).all()
+
+    if not rows:
+        return []
+
+    # Aggregate per PEP
+    from collections import defaultdict
+    pep_contribs: dict[str, dict] = {}
+    for r in rows:
+        key = r.pep_wbs
+        if key not in pep_contribs:
+            pep_contribs[key] = {
+                "pep_wbs": r.pep_wbs,
+                "pep_description": r.pep_description,
+                "contributors": {},
+            }
+        hours = r.total_hours or 0.0
+        pep_contribs[key]["contributors"][r.collaborator_name] = (
+            pep_contribs[key]["contributors"].get(r.collaborator_name, 0.0) + hours
+        )
+
+    # Fetch project names
+    projects = {
+        p.pep_wbs: p
+        for p in db.query(Project)
+        .filter(Project.pep_wbs.in_(list(pep_contribs.keys())))
+        .all()
+    }
+
+    result = []
+    for key, data in pep_contribs.items():
+        contributors = data["contributors"]
+        total_hours = sum(contributors.values())
+        if total_hours == 0:
+            continue
+
+        # Sort contributors descending
+        sorted_contribs = sorted(contributors.items(), key=lambda x: x[1], reverse=True)
+
+        top_contributors = []
+        if len(sorted_contribs) <= 3:
+            for name, hours in sorted_contribs:
+                top_contributors.append(ConcentrationContributor(
+                    name=name,
+                    hours=round(hours, 2),
+                    pct=round(hours / total_hours * 100, 1),
+                ))
+        else:
+            for name, hours in sorted_contribs[:3]:
+                top_contributors.append(ConcentrationContributor(
+                    name=name,
+                    hours=round(hours, 2),
+                    pct=round(hours / total_hours * 100, 1),
+                ))
+            others_hours = sum(h for _, h in sorted_contribs[3:])
+            others_count = len(sorted_contribs) - 3
+            top_contributors.append(ConcentrationContributor(
+                name=f"Outros ({others_count})",
+                hours=round(others_hours, 2),
+                pct=round(others_hours / total_hours * 100, 1),
+            ))
+
+        top1_pct = round(sorted_contribs[0][1] / total_hours * 100, 1)
+        if top1_pct >= 60:
+            risk = "high"
+        elif top1_pct >= 40:
+            risk = "medium"
+        else:
+            risk = "low"
+
+        proj = projects.get(key)
+        result.append({
+            "pep_wbs": key,
+            "pep_description": data["pep_description"],
+            "name": proj.name if proj else None,
+            "total_hours": round(total_hours, 2),
+            "top_contributors": [c.model_dump() for c in top_contributors],
+            "top1_pct": top1_pct,
+            "risk": risk,
+        })
+
+    result.sort(key=lambda x: x["total_hours"], reverse=True)
+    return result

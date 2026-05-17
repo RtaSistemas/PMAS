@@ -41,14 +41,14 @@
     <div class="login-divider"></div>
     <form id="loginForm" autocomplete="on" style="display:flex;flex-direction:column;gap:1rem">
       <div class="login-field">
-        <label for="loginUsername">Usuário</label>
-        <input id="loginUsername" type="text" autocomplete="username" required placeholder="admin" />
+        <label for="loginUsername" data-i18n="login.user_lbl">Usuário</label>
+        <input id="loginUsername" type="text" autocomplete="username" required data-i18n-ph="login.user_ph" placeholder="usuário" />
       </div>
       <div class="login-field">
-        <label for="loginPassword">Senha</label>
-        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••" />
+        <label for="loginPassword" data-i18n="login.pwd_lbl">Senha</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required data-i18n-ph="login.pwd_ph" placeholder="senha" />
       </div>
-      <button type="submit" class="btn btn-primary login-btn">Entrar</button>
+      <button type="submit" class="btn btn-primary login-btn" data-i18n="login.btn">Entrar</button>
       <p id="loginError" class="login-error"></p>
     </form>
   </div>
@@ -102,7 +102,7 @@
 <div id="sessionDetailModal" class="modal-backdrop" hidden>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:600px">
     <div class="modal-header">
-      <h3 id="sessionDetailTitle">Detalhes da Importação</h3>
+      <h3 id="sessionDetailTitle" data-i18n="session.title">Detalhes da Importação</h3>
       <button type="button" class="modal-close" onclick="document.getElementById('sessionDetailModal').hidden=true">✕</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:1rem">
@@ -110,29 +110,46 @@
       <div id="sessionDetailCounts" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
       <div id="sessionDetailWarnings" hidden>
         <div id="sessionDetailWarningsHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-          <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>
+          <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0" data-i18n="session.warnings">⚠ Avisos</p>
         </div>
         <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#fcd34d;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
       <div id="sessionDetailInfos" hidden>
         <div id="sessionDetailInfosHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-          <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>
+          <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0" data-i18n="session.infos">ℹ Informações</p>
         </div>
         <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true">Fechar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
 
 <nav class="app-tabs">
-  <button type="button" class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  <button type="button" class="tab-btn" data-tab="projects" data-i18n="tab.projects">Projetos</button>
-  <button type="button" class="tab-btn" data-tab="team" data-i18n="tab.team">Equipe</button>
-  <button type="button" class="tab-btn" data-tab="my" data-i18n="tab.my">Minha Área</button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>Admin</button>
+  <button type="button" class="tab-btn active" data-tab="dashboard">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="projects">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    <span data-i18n="tab.projects">Projetos</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="team">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span data-i18n="tab.team">Equipe</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="my">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span data-i18n="tab.my">Minha Área</span>
+    <span class="tab-badge" id="myTabBadge" hidden></span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+    <span>Admin</span>
+    <span class="tab-badge" id="adminTabBadge" hidden></span>
+  </button>
 </nav>
 
 <main>
@@ -154,6 +171,9 @@
         <div class="field btn-group">
           <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
           <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
+          <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
+          <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
+          <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
         </div>
       </div>
     </div>
@@ -163,9 +183,18 @@
 
     <!-- Analytics sub-tab navigation -->
     <nav class="analytics-tabs" id="analyticsTabsNav">
-      <button type="button" class="atab-btn active" data-atab="effort" data-i18n="atab.effort">Esforço da Equipe</button>
-      <button type="button" class="atab-btn" data-atab="portfolio" data-i18n="atab.portfolio">Saúde do Portfólio</button>
-      <button type="button" class="atab-btn" data-atab="forecast" data-i18n="atab.forecast">Previsão</button>
+      <button type="button" class="atab-btn active" data-atab="effort">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="atab.effort">Esforço da Equipe</span>
+      </button>
+      <button type="button" class="atab-btn" data-atab="portfolio">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span data-i18n="atab.portfolio">Saúde do Portfólio</span>
+      </button>
+      <button type="button" class="atab-btn" data-atab="forecast">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <span data-i18n="atab.forecast">Previsão</span>
+      </button>
     </nav>
 
     <!-- ============================================================ -->
@@ -235,9 +264,9 @@
       <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
         <div class="panel-note" style="margin-bottom:0.75rem">
-          <span class="threshold-dot blue"></span> &lt; 75%&nbsp;
-          <span class="threshold-dot amber"></span> 75–99%&nbsp;
-          <span class="threshold-dot red"></span> ≥ 100%
+          <span class="threshold-dot blue"></span> <span id="bulletOkLabel"></span>&nbsp;
+          <span class="threshold-dot amber"></span> <span id="bulletWarnLabel"></span>&nbsp;
+          <span class="threshold-dot red"></span> <span id="bulletCritLabel"></span>
         </div>
         <div id="bulletChart" style="width:100%;height:300px"></div>
       </div>
@@ -251,6 +280,14 @@
         </div>
         <div id="scatterChart" style="width:100%;height:690px"></div>
       </div>
+      <div class="card" id="concentrationPanel" hidden>
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="conc.title">Concentração de Risco por Projeto</span>
+          <span class="panel-note" data-i18n="conc.note">% de horas por colaborador · ⚠ risco quando um único colaborador detém &gt;60%</span>
+        </div>
+        <div id="concentrationEmpty" class="chart-empty" hidden data-i18n="conc.empty">Nenhum dado de horas encontrado.</div>
+        <div id="concentrationGrid" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </div>
       <div class="card chart-panel">
         <div class="panel-header">
           <span class="panel-title" data-i18n="atab.allocation">Alocação</span>
@@ -262,6 +299,29 @@
           Nenhum dado encontrado.
         </div>
         <div id="allocationMatrix" style="overflow-x:auto;padding:.5rem 0"></div>
+      </div>
+      <div class="card" id="runwayPanel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-title" data-i18n="runway.title">Runway do Portfólio</span>
+            <span class="panel-note" data-i18n="runway.note">Ciclos restantes no ritmo atual · apenas PEPs com orçamento</span>
+          </div>
+          <button type="button" id="runwayExportBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" hidden>Exportar CSV</button>
+        </div>
+        <div id="runwayEmpty" class="chart-empty" hidden data-i18n="runway.empty">Nenhum PEP com orçamento encontrado.</div>
+        <table class="data-table" id="runwayTable" hidden>
+          <thead><tr>
+            <th data-i18n="runway.th.pep">PEP</th>
+            <th data-i18n="runway.th.project">Projeto</th>
+            <th data-i18n="runway.th.consumed">Consumido (h)</th>
+            <th data-i18n="runway.th.progress">Progresso</th>
+            <th data-i18n="runway.th.avg">Média/ciclo</th>
+            <th data-i18n="runway.th.cycles">Ciclos restantes</th>
+            <th data-i18n="runway.th.completion">Conclusão estimada</th>
+            <th>CPI</th>
+          </tr></thead>
+          <tbody id="runwayBody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -440,7 +500,15 @@
           <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
         </div>
         <div class="form-group">
-          <label for="timezoneSelect">Fuso horário</label>
+          <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
+          <input type="number" id="budgetWarningInput" min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
+        </div>
+        <div class="form-group">
+          <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
+          <input type="number" id="budgetCriticalInput" min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
+        </div>
+        <div class="form-group">
+          <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
           <select id="timezoneSelect" class="form-select">
             <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
             <option value="America/Manaus">America/Manaus (UTC-4)</option>
@@ -484,7 +552,7 @@
   <section id="tab-my" class="tab-section" hidden>
 
     <nav class="my-area-nav">
-      <button type="button" class="my-tab-btn active" data-my-tab="profile">Perfil</button>
+      <button type="button" class="my-tab-btn active" data-my-tab="profile" data-i18n="myarea.profile">Perfil</button>
       <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
     </nav>
 
@@ -494,18 +562,18 @@
 
         <!-- Profile card -->
         <div class="card">
-          <h2 class="card-title">Meu Perfil</h2>
+          <h2 class="card-title" data-i18n="myarea.profile_title">Meu Perfil</h2>
           <p id="myProfileUsername" style="font-size:.9rem;margin-bottom:1rem;color:#94a3b8"></p>
-          <button type="button" class="btn btn-secondary btn-sm" id="myChangePwdBtn">Alterar senha</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="myChangePwdBtn" data-i18n="myarea.change_pwd">Alterar senha</button>
         </div>
 
         <!-- Dashboard layout customization -->
         <div class="card">
           <div class="section-header" style="margin-bottom:.75rem">
-            <h2 class="card-title" style="margin-bottom:0">Layout do Dashboard</h2>
-            <button type="button" class="btn btn-primary btn-sm" id="saveLayoutBtn">Salvar layout</button>
+            <h2 class="card-title" style="margin-bottom:0" data-i18n="myarea.layout_title">Layout do Dashboard</h2>
+            <button type="button" class="btn btn-primary btn-sm" id="saveLayoutBtn" data-i18n="myarea.layout_save">Salvar layout</button>
           </div>
-          <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem">Arraste para reordenar os painéis do dashboard.</p>
+          <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem" data-i18n="myarea.layout_hint">Arraste para reordenar os painéis do dashboard.</p>
           <ul class="sortable-list" id="chartLayoutList">
             <li class="sortable-item" data-chart="effort">
               <span class="sortable-handle">⠿</span>
@@ -529,7 +597,7 @@
     <div id="my-tab-upload" class="my-tab-section" hidden>
       <div class="card" style="max-width:520px">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
-        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem">Importe um arquivo CSV ou XLSX de timesheets.</p>
+        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
         <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem">
           <span data-i18n="btn.import_ts">⬆ Importar</span>
           <input type="file" id="myAreaCsvInput" accept=".csv,.xlsx,.xls" hidden />
@@ -543,17 +611,17 @@
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
           <button type="button" class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn">↺ Atualizar</button>
         </div>
-        <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
+        <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
             <th data-i18n="history.th.file">Arquivo</th>
-            <th>Enviado por</th>
+            <th data-i18n="history.th.sent_by">Enviado por</th>
             <th style="text-align:right" data-i18n="history.th.inserted">Inseridos</th>
             <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
             <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
             <th style="text-align:right" data-i18n="history.th.warnings">Avisos</th>
-            <th style="text-align:right">Infos</th>
+            <th style="text-align:right" data-i18n="history.th.infos">Infos</th>
             <th data-i18n="history.th.status">Status</th>
           </tr></thead>
           <tbody id="myHistoryBody"><tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
@@ -575,19 +643,24 @@
             <button type="button" class="btn btn-secondary btn-sm" id="myQrExportBtn">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem">Registros em quarentena. Clique para ver detalhes.</p>
+        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
             <th data-i18n="qr.th.collaborator">Colaborador</th>
-            <th>Data reg.</th>
+            <th data-i18n="qr.th.ingested">Data reg.</th>
             <th style="text-align:right" data-i18n="qr.th.hours">Horas</th>
             <th data-i18n="qr.th.pep">PEP</th>
             <th data-i18n="qr.th.reason">Motivo</th>
-            <th>Status</th>
+            <th data-i18n="qr.th.status">Status</th>
           </tr></thead>
           <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm">‹ Anterior</button>
+          <span id="myQrPageLabel" style="font-size:.8rem;color:#94a3b8"></span>
+          <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm">Próximo ›</button>
+        </div>
       </div>
     </div>
 
@@ -617,12 +690,12 @@
     <!-- Validation Rules -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Regras de Validação</h2>
-        <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn">+ Nova regra</button>
+        <h2 class="card-title" data-i18n="vr.title">Regras de Validação</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn" data-i18n="vr.btn.new">+ Nova Regra</button>
       </div>
-      <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
+      <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
       <ul class="sortable-list" id="rulesList">
-        <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Carregando…</li>
+        <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem" data-i18n="loading">Carregando…</li>
       </ul>
     </div>
 
@@ -937,9 +1010,11 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Campo</label>
+        <label data-i18n="vr.th.field">Campo</label>
         <select class="form-select" id="ruleFieldInput">
           <option value="horas_individuais">horas_individuais</option>
+          <option value="hora_extra_horas">hora_extra_horas</option>
+          <option value="hora_sobreaviso_horas">hora_sobreaviso_horas</option>
           <option value="soma_diaria">soma_diaria</option>
           <option value="soma_semanal">soma_semanal</option>
           <option value="dia_semana">dia_semana</option>
@@ -947,14 +1022,14 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Operador</label>
+        <label data-i18n="vr.th.operator">Operador</label>
         <select class="form-select" id="ruleOperatorInput">
-          <option value="gt">gt (maior que)</option>
+          <option value="gt">gt (&gt;)</option>
           <option value="gte">gte (≥)</option>
-          <option value="lt">lt (menor que)</option>
+          <option value="lt">lt (&lt;)</option>
           <option value="lte">lte (≤)</option>
-          <option value="eq">eq (igual)</option>
-          <option value="neq">neq (diferente)</option>
+          <option value="eq">eq (=)</option>
+          <option value="neq">neq (≠)</option>
           <option value="vazio">vazio</option>
           <option value="nao_vazio">nao_vazio</option>
           <option value="contem">contem</option>
@@ -963,11 +1038,11 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Valor</label>
-        <input type="text" id="ruleValueInput" placeholder="Ex: 24 ou 5,6" />
+        <label data-i18n="vr.th.value">Valor</label>
+        <input type="text" id="ruleValueInput" data-i18n-ph="vr.value_ph" placeholder="Ex: 24 ou 5,6" />
       </div>
       <div class="form-group">
-        <label>Ação</label>
+        <label data-i18n="vr.th.action">Ação</label>
         <select class="form-select" id="ruleActionInput">
           <option value="info">info</option>
           <option value="warning">warning</option>
@@ -977,25 +1052,25 @@
         <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:#f59e0b" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
       </div>
       <div class="form-group">
-        <label>Ordem</label>
+        <label data-i18n="vr.th.order">Ordem</label>
         <input type="number" id="ruleOrderInput" value="10" min="1" />
       </div>
       <div class="form-group">
-        <label>Ativa</label>
+        <label data-i18n="vr.th.active">Ativa</label>
         <select class="form-select" id="ruleActiveInput">
-          <option value="true">Sim</option>
-          <option value="false">Não</option>
+          <option value="true" data-i18n="opt.yes">Sim</option>
+          <option value="false" data-i18n="opt.no">Não</option>
         </select>
       </div>
       <div class="form-group full">
-        <label>Descrição</label>
-        <input type="text" id="ruleDescInput" placeholder="Descrição legível da regra" />
+        <label data-i18n="vr.th.description">Descrição</label>
+        <input type="text" id="ruleDescInput" data-i18n-ph="vr.desc_ph" placeholder="Descrição legível da regra" />
       </div>
     </div>
     <div class="error-msg" id="ruleError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="ruleCancelBtn">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="ruleSaveBtn">Salvar</button>
+      <button type="button" class="btn btn-secondary" id="ruleCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="ruleSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -1006,23 +1081,23 @@
 <div class="modal-backdrop" id="myPwdModal" hidden>
   <div class="modal-box" role="dialog" aria-modal="true">
     <div class="modal-header">
-      <h3>Alterar Minha Senha</h3>
+      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="myPwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
       <div class="form-group">
-        <label for="myCurrentPwdInput">Senha atual *</label>
-        <input type="password" id="myCurrentPwdInput" placeholder="senha atual" autocomplete="current-password" />
+        <label for="myCurrentPwdInput" data-i18n="pwdm.current_lbl">Senha atual *</label>
+        <input type="password" id="myCurrentPwdInput" data-i18n-ph="pwdm.current_ph" placeholder="senha atual" autocomplete="current-password" />
       </div>
       <div class="form-group">
-        <label for="myNewPwdInput">Nova senha *</label>
-        <input type="password" id="myNewPwdInput" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        <label for="myNewPwdInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
+        <input type="password" id="myNewPwdInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
       </div>
     </div>
     <div class="error-msg" id="myPwdError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="myPwdSaveBtn">Salvar</button>
+      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="myPwdSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
@@ -1037,28 +1112,28 @@
     <div class="modal-body">
       <table class="data-table" style="margin-bottom:1rem">
         <tbody>
-          <tr><th style="width:160px;text-align:left">Colaborador</th><td id="qrDCollab">—</td></tr>
-          <tr><th style="text-align:left">Data</th><td id="qrDDate">—</td></tr>
-          <tr><th style="text-align:left">Horas</th><td id="qrDHours">—</td></tr>
-          <tr><th style="text-align:left">PEP</th><td id="qrDPep">—</td></tr>
-          <tr><th style="text-align:left">Hora Extra</th><td id="qrDExtra">—</td></tr>
-          <tr><th style="text-align:left">Sobreaviso</th><td id="qrDStandby">—</td></tr>
-          <tr><th style="text-align:left">Motivo</th><td id="qrDReason" style="color:#f59e0b">—</td></tr>
-          <tr><th style="text-align:left">Regra violada</th><td id="qrDRule">—</td></tr>
-          <tr><th style="text-align:left">Upload Session</th><td id="qrDSession">—</td></tr>
-          <tr><th style="text-align:left">Status</th><td id="qrDStatus">—</td></tr>
-          <tr><th style="text-align:left">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
+          <tr><th style="width:160px;text-align:left" data-i18n="qr.modal.collab">Colaborador</th><td id="qrDCollab">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.date">Data</th><td id="qrDDate">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.hours">Horas</th><td id="qrDHours">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.pep">PEP</th><td id="qrDPep">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.extra">Hora Extra</th><td id="qrDExtra">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.standby">Sobreaviso</th><td id="qrDStandby">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.reason">Motivo</th><td id="qrDReason" style="color:#f59e0b">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.rule">Regra violada</th><td id="qrDRule">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.session">Upload Session</th><td id="qrDSession">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.status">Status</th><td id="qrDStatus">—</td></tr>
+          <tr><th style="text-align:left" data-i18n="qr.modal.reviewed_by">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
         </tbody>
       </table>
       <details style="margin-bottom:.5rem">
-        <summary style="cursor:pointer;font-size:.8rem;color:#94a3b8">Dados brutos (raw data)</summary>
+        <summary style="cursor:pointer;font-size:.8rem;color:#94a3b8" data-i18n="qr.modal.raw">Dados brutos (raw data)</summary>
         <pre id="qrDRawData" style="font-size:.72rem;background:#0b1829;padding:.75rem;border-radius:.4rem;overflow:auto;max-height:260px;margin-top:.5rem"></pre>
       </details>
     </div>
     <div class="modal-footer">
-      <button type="button" id="qrApproveBtn" class="btn btn-primary" style="background:#10d98a;border-color:#10d98a">✅ Aprovar</button>
-      <button type="button" id="qrRejectBtn"  class="btn btn-primary" style="background:#f04040;border-color:#f04040">❌ Rejeitar</button>
-      <button type="button" id="qrModalCloseBtn" class="btn btn-secondary">Fechar</button>
+      <button type="button" id="qrApproveBtn" class="btn btn-primary" style="background:#10d98a;border-color:#10d98a" data-i18n="qr.btn.approve">✅ Aprovar</button>
+      <button type="button" id="qrRejectBtn"  class="btn btn-primary" style="background:#f04040;border-color:#f04040" data-i18n="qr.btn.reject">❌ Rejeitar</button>
+      <button type="button" id="qrModalCloseBtn" class="btn btn-secondary" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -1068,15 +1143,15 @@
 <div class="modal-backdrop" id="aclModal" hidden>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:520px">
     <div class="modal-header">
-      <h3 id="aclModalTitle">Controle de Acesso</h3>
+      <h3 id="aclModalTitle" data-i18n="acl.title">Controle de Acesso</h3>
       <button type="button" class="modal-close" id="aclModalClose">×</button>
     </div>
     <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem">
-      <p style="font-size:.8rem;color:#94a3b8;margin:0">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
+      <p style="font-size:.8rem;color:#94a3b8;margin:0" data-i18n="acl.hint">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
 
       <!-- Existing grants -->
       <div>
-        <p style="font-size:.78rem;font-weight:600;color:#cbd5e1;margin:0 0 .5rem">Acessos concedidos</p>
+        <p style="font-size:.78rem;font-weight:600;color:#cbd5e1;margin:0 0 .5rem" data-i18n="acl.granted">Acessos concedidos</p>
         <table class="data-table" id="aclEntriesTable" style="font-size:.8rem">
           <thead><tr><th>Usuário</th><th></th></tr></thead>
           <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1rem">Carregando…</td></tr></tbody>
@@ -1086,17 +1161,17 @@
       <!-- Add new grant (admin only) -->
       <div id="aclAddRow" style="display:flex;gap:.5rem;align-items:flex-end">
         <div style="flex:1">
-          <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem">Adicionar usuário</label>
+          <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem" data-i18n="acl.add_user">Adicionar usuário</label>
           <select id="aclUserSelect" class="form-select" style="height:2rem;font-size:.82rem;width:100%">
             <option value="">— selecione —</option>
           </select>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="aclGrantBtn">Conceder</button>
+        <button type="button" class="btn btn-primary btn-sm" id="aclGrantBtn" data-i18n="btn.grant">Conceder</button>
       </div>
       <div id="aclError" style="color:#f87171;font-size:.8rem;min-height:1rem"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="aclModalCloseBtn">Fechar</button>
+      <button type="button" class="btn btn-secondary" id="aclModalCloseBtn" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>

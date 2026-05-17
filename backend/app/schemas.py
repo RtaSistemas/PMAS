@@ -51,6 +51,8 @@ class GlobalConfigIn(BaseModel):
     standby_hours_multiplier: float = Field(gt=0)
     anomaly_max_daily_hours: float = Field(default=24.0, gt=0)  # deprecated: use ValidationRule engine
     timezone: str = "America/Sao_Paulo"
+    budget_warning_threshold: float = Field(default=0.9, gt=0, le=1)
+    budget_critical_threshold: float = Field(default=1.0, gt=0, le=2)
 
 
 class GlobalConfigOut(BaseModel):
@@ -58,6 +60,8 @@ class GlobalConfigOut(BaseModel):
     standby_hours_multiplier: float
     anomaly_max_daily_hours: float
     timezone: str
+    budget_warning_threshold: float
+    budget_critical_threshold: float
 
 
 class UserCreateIn(BaseModel):
@@ -314,11 +318,14 @@ class AuditLogItem(BaseModel):
     detail: str | None
     timestamp: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 # ── Validation rules ─────────────────────────────────────────────────────────
 
 _VALID_RULE_FIELDS = {
     "horas_individuais", "hora_extra", "hora_sobreaviso",
+    "hora_extra_horas", "hora_sobreaviso_horas",
     "pep_wbs", "dia_semana", "soma_diaria", "soma_semanal",
 }
 
@@ -445,3 +452,38 @@ class UIThemeIn(BaseModel):
 
 class UIThemeOut(UIThemeIn):
     logo_url: Optional[str] = None
+
+
+# ── Portfolio Runway ──────────────────────────────────────────────────────────
+
+class RunwayItem(BaseModel):
+    pep_wbs: str
+    pep_description: Optional[str] = None
+    name: Optional[str] = None
+    budget_hours: Optional[float] = None
+    consumed_hours: float
+    actual_cost: float
+    pct_consumed: Optional[float] = None
+    avg_hours_per_cycle: float
+    cycles_to_complete: Optional[float] = None
+    estimated_completion_cycle: Optional[str] = None
+    cpi: Optional[float] = None
+    risk: str  # ok | warning | critical | overrun | no_budget
+
+
+# ── Portfolio Concentration ───────────────────────────────────────────────────
+
+class ConcentrationContributor(BaseModel):
+    name: str
+    hours: float
+    pct: float
+
+
+class ConcentrationItem(BaseModel):
+    pep_wbs: str
+    pep_description: Optional[str] = None
+    name: Optional[str] = None
+    total_hours: float
+    top_contributors: List[ConcentrationContributor]
+    top1_pct: float
+    risk: str  # high | medium | low

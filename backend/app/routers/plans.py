@@ -17,6 +17,8 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 
+MAX_CSV_BYTES = 10 * 1024 * 1024  # 10 MB
+
 
 def _plan_to_dict(p: ProjectCyclePlan) -> dict:
     return {
@@ -72,7 +74,10 @@ def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
 def import_plans(file: UploadFile, db: DbSession, current_user: CurrentUser):
     """CSV esperado: pep_wbs, cycle_name, planned_hours (cabeçalho obrigatório)."""
     try:
-        text = file.file.read().decode("utf-8-sig")
+        raw = file.file.read()
+        if len(raw) > MAX_CSV_BYTES:
+            raise HTTPException(status_code=413, detail="Arquivo CSV excede o limite de 10 MB.")
+        text = raw.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text))
         rows = list(reader)
     except Exception as exc:

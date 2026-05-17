@@ -34,7 +34,7 @@ class RateCard(Base):
     __tablename__ = "rate_card"
 
     id = Column(Integer, primary_key=True, index=True)
-    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=False)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id", ondelete="RESTRICT"), nullable=False)
     hourly_rate = Column(Float, nullable=False)
     valid_from = Column(Date, nullable=False)
     valid_to = Column(Date, nullable=True)
@@ -47,7 +47,7 @@ class Collaborator(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
-    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=True)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id", ondelete="SET NULL"), nullable=True)
 
     records = relationship("TimesheetRecord", back_populates="collaborator")
     seniority_level = relationship("SeniorityLevel", back_populates="collaborators")
@@ -71,8 +71,8 @@ class TimesheetRecord(Base):
     __tablename__ = "timesheet_record"
 
     id = Column(Integer, primary_key=True, index=True)
-    collaborator_id = Column(Integer, ForeignKey("collaborator.id"), nullable=False)
-    cycle_id = Column(Integer, ForeignKey("cycle.id"), nullable=False)
+    collaborator_id = Column(Integer, ForeignKey("collaborator.id", ondelete="RESTRICT"), nullable=False)
+    cycle_id = Column(Integer, ForeignKey("cycle.id", ondelete="RESTRICT"), nullable=False)
     record_date = Column(Date, nullable=False)
     pep_wbs = Column(String, nullable=True, index=True)
     pep_description = Column(String, nullable=True, index=True)
@@ -146,6 +146,8 @@ class GlobalConfig(Base):
     id = Column(Integer, primary_key=True)          # singleton — always id=1
     extra_hours_multiplier = Column(Float, default=1.5, nullable=False)
     standby_hours_multiplier = Column(Float, default=0.33, nullable=False)
+    budget_warning_threshold = Column(Float, default=0.9, nullable=False)
+    budget_critical_threshold = Column(Float, default=1.0, nullable=False)
     anomaly_max_daily_hours = Column(Float, default=24.0, nullable=False)
     timezone = Column(String, nullable=False, default="America/Sao_Paulo")
     ui_theme = Column(JSON, nullable=True)

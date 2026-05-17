@@ -11,6 +11,7 @@ const _LANG = {
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
     'btn.load':'Carregar','btn.clear':'Limpar',
+    'btn.last_month':'Últ. mês','btn.last_quarter':'Últ. trimestre','btn.this_year':'Este ano',
     'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação','atab.forecast':'Previsão',
     'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
     'allocation.collaborator':'Colaborador','allocation.total':'Total',
@@ -38,8 +39,8 @@ const _LANG = {
     'btn.view_cpi':'Ver: CPI por PEP','btn.hide_cpi':'Ocultar CPI por PEP',
     'bullet.title':'Orçado vs. Realizado — Bullet Chart',
     'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
-    'pepcpi.note':'Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos',
-    'pepcpi.empty':'Sem dados de budget. Defina budget_cost nos projetos para habilitar o rastreamento de CPI.',
+    'pepcpi.note':'Orçamento / Custo Real por ciclo · Linha de referência em 1.0 · Requer orçamento (R$) nos projetos',
+    'pepcpi.empty':'Sem dados de orçamento. Defina o orçamento (R$) nos projetos para habilitar o rastreamento de CPI.',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
     'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
@@ -51,7 +52,7 @@ const _LANG = {
     'projects.search_ph':'Buscar por PEP, nome ou cliente…',
     'projects.th.pep':'Código PEP','projects.th.name':'Nome do Projeto',
     'projects.th.client':'Cliente','projects.th.mgr':'Gerente',
-    'projects.th.budget':'Budget (h)','projects.th.status':'Status',
+    'projects.th.budget':'Orçamento (h)','projects.th.status':'Status',
     'seniority.title':'Níveis de Senioridade','seniority.th.name':'Nome',
     'btn.new_seniority':'+ Novo nível',
     'ratecard.title':'Tabela de Taxas (Rate Card)','btn.new_ratecard':'+ Nova taxa',
@@ -76,7 +77,7 @@ const _LANG = {
     'pm.name_lbl':'Nome do Projeto','pm.name_ph':'Nome descritivo',
     'pm.client_lbl':'Cliente','pm.client_ph':'Nome do cliente',
     'pm.mgr_lbl':'Gerente','pm.mgr_ph':'Nome do gerente',
-    'pm.bh_lbl':'Budget de horas','pm.bc_lbl':'Budget (R$)',
+    'pm.bh_lbl':'Orçamento de horas','pm.bc_lbl':'Orçamento (R$)',
     'opt.ativo':'Ativo','opt.suspenso':'Suspenso','opt.encerrado':'Encerrado',
     'sm.title_new':'Novo Nível de Senioridade','sm.name_lbl':'Nome *','sm.name_ph':'Ex: Pleno, Sênior',
     'rm.title_new':'Nova Taxa','rm.level_lbl':'Nível de Senioridade *',
@@ -89,7 +90,7 @@ const _LANG = {
     'opt.user':'Usuário',
     'pwdm.title':'Alterar Senha','pwdm.new_lbl':'Nova senha *','pwdm.new_ph':'mínimo 6 caracteres',
     'ch.normal_h':'Horas Normais','ch.extra_h':'Horas Extras','ch.standby_h':'Sobreaviso',
-    'ch.budget':'Budget','ch.actual':'Realizado','ch.hours':'Horas','ch.cost':'Custo (R$)',
+    'ch.budget':'Orçado','ch.actual':'Realizado','ch.hours':'Horas','ch.cost':'Custo (R$)',
     'ch.cycle_axis':'Ciclo','ch.cost_axis':'Custo Real (R$)',
     'badge.quarantine':'Quarentena','badge.regular':'Regular',
     'title.lock':'Bloquear ciclo','title.unlock':'Desbloquear ciclo',
@@ -98,12 +99,14 @@ const _LANG = {
     'anomaly.title':'⚠ Alertas de Anomalia na Importação',
     'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
     'stat.total':'Total','stat.collabs':'Colaboradores',
-    'stat.budgeted':'Orçado (PEPs c/ budget)','stat.vs_budget':'Realizado vs Orçado',
+    'stat.budgeted':'Orçado (PEPs c/ orçamento)','stat.vs_budget':'Realizado vs Orçado',
     'stat.cost_normal':'Custo Horas Normais','stat.cost_extra':'Custo Horas Extras',
     'stat.cost_standby':'Custo Sobreaviso','stat.cost_total':'Custo Total Real',
-    'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Budget (R$)',
-    'stat.vs_budget_cost':'Realizado vs Budget',
-    'budget.exceeded':'Estourado','budget.warning':'Atenção ≥90%',
+    'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Orçamento (R$)',
+    'stat.vs_budget_cost':'Realizado vs Orçado',
+    'budget.exceeded':'Estourado','budget.warning':'Atenção',
+    'config.warning_threshold_lbl':'Limiar de Atenção (0–1)',
+    'config.critical_threshold_lbl':'Limiar Crítico (0–1)',
     'lbl.admin':'Admin','lbl.user':'Usuário',
     'loading':'Carregando…','no_cycles':'Nenhum ciclo encontrado.',
     'no_projects':'Nenhum projeto encontrado.','no_seniority':'Nenhum nível cadastrado.',
@@ -134,7 +137,7 @@ const _LANG = {
     'plan.modal_title':'Adicionar ciclos ao baseline',
     'plan.modal_hint':'Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.',
     'plan.modal_add_row':'+ Mais um ciclo',
-    'myarea.upload':'Upload','myarea.history':'Histórico de Importações',
+    'myarea.upload':'Importação de Arquivo','myarea.history':'Histórico de Importações',
     'myarea.quarantine':'Quarentena',
     'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
     'upload.quarantine':'registros em quarentena','upload.warnings':'avisos','upload.infos':'informações',
@@ -156,22 +159,30 @@ const _LANG = {
     'qr.modal.date':'Data','qr.modal.hours':'Horas','qr.modal.pep':'PEP',
     'qr.modal.extra':'Hora Extra','qr.modal.standby':'Sobreaviso',
     'qr.modal.reason':'Motivo','qr.modal.rule':'Regra violada',
-    'qr.modal.session':'Upload Session','qr.modal.status':'Status',
+    'qr.modal.session':'Sessão de Importação','qr.modal.status':'Status',
     'qr.modal.reviewed_by':'Revisado por','qr.modal.raw':'Dados brutos',
     'alerts.th.rule':'Regra','alerts.th.occurrences':'Ocorrências',
     'alerts.th.last':'Último disparo','alerts.th.action':'Ação','alerts.th.trend':'Tendência',
     'vr.title':'Regras de Validação','vr.btn.new':'+ Nova Regra',
     'vr.th.order':'Ordem','vr.th.field':'Campo','vr.th.operator':'Operador',
     'vr.th.value':'Valor','vr.th.action':'Ação','vr.th.description':'Descrição',
-    'vr.th.active':'Ativo','vr.th.system':'Sistema',
+    'vr.th.active':'Ativa','vr.th.system':'Sistema',
     'vr.badge.system':'Sistema','vr.hint.aggregate':'Regras de agregado permitem apenas info ou warning.',
+    'vr.system_hint':'Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.',
+    'vr.empty':'Nenhuma regra cadastrada.',
+    'vr.modal.new':'Nova Regra de Validação','vr.modal.edit':'Editar Regra',
+    'vr.btn.activate':'Ativar','vr.btn.deactivate':'Desativar',
+    'vr.saved':'Regra salva.',
+    'vr.desc_ph':'Descrição legível da regra','vr.value_ph':'Ex: 24 ou 5,6',
+    'opt.yes':'Sim','opt.no':'Não',
+    'pwdm.current_lbl':'Senha atual *','pwdm.current_ph':'senha atual',
     'prefs.customize':'⚙ Personalizar Layout','prefs.save':'Salvar preferências',
     'prefs.saved':'Preferências salvas.','prefs.save_error':'Erro ao salvar preferências.',
     'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
     'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
     'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
     'chart.cpiChart':'CPI por Ciclo','chart.pepCpiChart':'CPI por PEP',
-    'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Budget vs Realizado',
+    'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Orçado vs Realizado',
     'chart.scatterChart':'Dispersão Custo × Horas','chart.forecastChart':'Previsão de Conclusão',
     'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
     'appearance.logo':'Logo','appearance.logo_upload':'⬆ Enviar novo logo',
@@ -183,6 +194,87 @@ const _LANG = {
     'appearance.preset.high_contrast':'● Alto Contraste',
     'appearance.restore':'Restaurar padrões','appearance.save':'Salvar aparência',
     'appearance.saved':'Aparência salva com sucesso.',
+    'login.user_lbl':'Usuário','login.user_ph':'usuário',
+    'login.pwd_lbl':'Senha','login.pwd_ph':'senha',
+    'login.btn':'Entrar',
+    'btn.close':'Fechar',
+    'session.title':'Detalhes da Importação',
+    'session.warnings':'⚠ Avisos','session.infos':'ℹ Informações',
+    'myarea.profile':'Perfil','myarea.profile_title':'Meu Perfil',
+    'myarea.change_pwd':'Alterar senha',
+    'myarea.layout_title':'Layout do Dashboard',
+    'myarea.layout_save':'Salvar layout',
+    'myarea.layout_hint':'Arraste para reordenar os painéis do dashboard.',
+    'myarea.upload_hint':'Importe um arquivo CSV ou XLSX de timesheets.',
+    'myarea.history_hint':'Clique em uma linha para ver o detalhe completo de avisos e informações.',
+    'myarea.quarantine_hint':'Registros em quarentena. Clique para ver detalhes.',
+    'history.th.sent_by':'Enviado por','history.th.infos':'Infos',
+    'qr.th.ingested':'Data reg.','qr.th.status':'Status',
+    'config.timezone_lbl':'Fuso horário',
+    'acl.title':'Controle de Acesso',
+    'acl.hint':'Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.',
+    'acl.granted':'Acessos concedidos',
+    'acl.add_user':'Adicionar usuário',
+    'btn.grant':'Conceder','btn.revoke':'Revogar',
+    'ms.cycle_ph':'— Selecione ciclo(s) —','ms.pep_ph':'— Todos os PEPs —',
+    'ms.pep_desc_ph':'— Todas as descrições —','ms.collab_ph':'— Todos —',
+    'ms.select_ph':'— selecione —',
+    'msg.load_before_export':'Carregue dados antes de exportar.',
+    'msg.no_cycles_export':'Nenhum ciclo para exportar.',
+    'msg.no_projects_export':'Nenhum projeto para exportar.',
+    'msg.no_levels_export':'Nenhum nível para exportar.',
+    'msg.no_rates_export':'Nenhuma taxa para exportar.',
+    'msg.no_baseline_export':'Nenhum baseline para exportar.',
+    'msg.fields_required':'Preencha todos os campos obrigatórios.',
+    'msg.pep_required':'Código PEP é obrigatório.',
+    'msg.positive_numbers':'Os valores devem ser números positivos.',
+    'msg.config_saved':'Fatores salvos com sucesso.',
+    'msg.invalid_credentials':'Credenciais inválidas.',
+    'msg.connection_error':'Erro de conexão. Tente novamente.',
+    'msg.pwd_changed':'Senha alterada com sucesso.',
+    'msg.pwd_fill_all':'Preencha todos os campos.',
+    'msg.user_not_found':'Usuário não encontrado.',
+    'msg.name_required':'Nome é obrigatório.',
+    'msg.select_user':'Selecione um usuário.',
+    'msg.rule_reorder_error':'Erro ao reordenar regras.',
+    'msg.select_cycle_all':'Selecione um ciclo em todas as linhas.',
+    'msg.duplicate_cycle':'Ciclo duplicado na lista.',
+    'msg.valid_hours':'Informe horas válidas (≥ 0) em todas as linhas.',
+    'msg.all_baseline_set':'Todos os ciclos já têm baseline definido.',
+    'msg.baseline_removed':'Linha removida.',
+    'msg.pep_not_registered':'(PEP não cadastrado)',
+    'msg.no_import_sessions':'Nenhuma importação registrada.',
+    'msg.no_quarantine':'Nenhum registro em quarentena.',
+    'msg.no_access_granted':'Nenhum acesso concedido.',
+    'msg.no_warnings_infos':'Sem avisos ou informações adicionais.',
+    'msg.user_created':'Usuário criado com sucesso.',
+    'msg.seniority_title':'Senioridade — ','msg.acl_title':'Acesso — ',
+    'msg.pwd_field_required':'Informe a nova senha.',
+    'confirm.delete_cycle':'Excluir o ciclo?','confirm.delete_project':'Excluir o projeto?',
+    'confirm.delete_user':'Excluir este usuário?',
+    'confirm.delete_level':'Excluir este nível?',
+    'confirm.revoke_access':'Revogar acesso deste usuário?',
+    'confirm.assign_all':'Atribuir esta senioridade a TODOS os colaboradores?',
+    'confirm.remove_baseline':'Remover esta linha do baseline?',
+    'page.label':'Página','page.of':'de',
+    'sm.title_edit':'Editar Nível','rm.title_edit':'Editar Taxa',
+    'runway.title':'Runway do Portfólio',
+    'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
+    'runway.empty':'Nenhum PEP com orçamento encontrado.',
+    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.consumed':'Consumido (h)',
+    'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
+    'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
+    'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
+    'conc.title':'Concentração de Risco por Projeto',
+    'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
+    'conc.empty':'Nenhum dado de horas encontrado.',
+    'conc.others':'Outros',
+    'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
+    'msg.import_done':'Importação concluída',
+    'msg.created_n':'criado(s)','msg.updated_n':'atualizado(s)','msg.errors_n':'erro(s)',
+    'msg.qr_approved':'Registro aprovado e inserido.','msg.qr_rejected':'Registro rejeitado.',
+    'confirm.lock_cycle':'Bloquear este ciclo?','confirm.unlock_cycle':'Desbloquear este ciclo?',
+    'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -191,6 +283,7 @@ const _LANG = {
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
     'filter.dfrom':'Start date','filter.dto':'End date',
     'btn.load':'Load','btn.clear':'Clear',
+    'btn.last_month':'Last month','btn.last_quarter':'Last quarter','btn.this_year':'This year',
     'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends','atab.allocation':'Allocation','atab.forecast':'Forecast',
     'allocation.empty':'No data found for the selected filters.',
     'allocation.collaborator':'Collaborator','allocation.total':'Total',
@@ -283,7 +376,9 @@ const _LANG = {
     'stat.cost_standby':'Standby Cost','stat.cost_total':'Total Actual Cost',
     'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
     'stat.vs_budget_cost':'Actual vs Budget',
-    'budget.exceeded':'Exceeded','budget.warning':'Warning ≥90%',
+    'budget.exceeded':'Exceeded','budget.warning':'Warning',
+    'config.warning_threshold_lbl':'Warning Threshold (0–1)',
+    'config.critical_threshold_lbl':'Critical Threshold (0–1)',
     'lbl.admin':'Admin','lbl.user':'User',
     'loading':'Loading…','no_cycles':'No cycles found.',
     'no_projects':'No projects found.','no_seniority':'No levels registered.',
@@ -345,6 +440,14 @@ const _LANG = {
     'vr.th.value':'Value','vr.th.action':'Action','vr.th.description':'Description',
     'vr.th.active':'Active','vr.th.system':'System',
     'vr.badge.system':'System','vr.hint.aggregate':'Aggregate rules only allow info or warning.',
+    'vr.system_hint':'System rules (🔒) cannot be edited or deleted, but can be activated/deactivated.',
+    'vr.empty':'No rules registered.',
+    'vr.modal.new':'New Validation Rule','vr.modal.edit':'Edit Rule',
+    'vr.btn.activate':'Activate','vr.btn.deactivate':'Deactivate',
+    'vr.saved':'Rule saved.',
+    'vr.desc_ph':'Human-readable rule description','vr.value_ph':'E.g.: 24 or 5,6',
+    'opt.yes':'Yes','opt.no':'No',
+    'pwdm.current_lbl':'Current password *','pwdm.current_ph':'current password',
     'prefs.customize':'⚙ Customize Layout','prefs.save':'Save preferences',
     'prefs.saved':'Preferences saved.','prefs.save_error':'Error saving preferences.',
     'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
@@ -363,6 +466,87 @@ const _LANG = {
     'appearance.preset.high_contrast':'● High Contrast',
     'appearance.restore':'Restore defaults','appearance.save':'Save appearance',
     'appearance.saved':'Appearance saved successfully.',
+    'login.user_lbl':'Username','login.user_ph':'username',
+    'login.pwd_lbl':'Password','login.pwd_ph':'password',
+    'login.btn':'Sign In',
+    'btn.close':'Close',
+    'session.title':'Import Details',
+    'session.warnings':'⚠ Warnings','session.infos':'ℹ Info',
+    'myarea.profile':'Profile','myarea.profile_title':'My Profile',
+    'myarea.change_pwd':'Change password',
+    'myarea.layout_title':'Dashboard Layout',
+    'myarea.layout_save':'Save layout',
+    'myarea.layout_hint':'Drag to reorder dashboard panels.',
+    'myarea.upload_hint':'Import a CSV or XLSX timesheet file.',
+    'myarea.history_hint':'Click a row to see full details of warnings and info.',
+    'myarea.quarantine_hint':'Quarantine records. Click to view details.',
+    'history.th.sent_by':'Sent by','history.th.infos':'Info',
+    'qr.th.ingested':'Recorded','qr.th.status':'Status',
+    'config.timezone_lbl':'Timezone',
+    'acl.title':'Access Control',
+    'acl.hint':'Users with explicit permission to import timesheets into this project. Admins have unrestricted access.',
+    'acl.granted':'Granted access',
+    'acl.add_user':'Add user',
+    'btn.grant':'Grant','btn.revoke':'Revoke',
+    'ms.cycle_ph':'— Select cycle(s) —','ms.pep_ph':'— All PEPs —',
+    'ms.pep_desc_ph':'— All descriptions —','ms.collab_ph':'— All —',
+    'ms.select_ph':'— select —',
+    'msg.load_before_export':'Load data before exporting.',
+    'msg.no_cycles_export':'No cycles to export.',
+    'msg.no_projects_export':'No projects to export.',
+    'msg.no_levels_export':'No levels to export.',
+    'msg.no_rates_export':'No rates to export.',
+    'msg.no_baseline_export':'No baseline to export.',
+    'msg.fields_required':'Fill in all required fields.',
+    'msg.pep_required':'PEP code is required.',
+    'msg.positive_numbers':'Values must be positive numbers.',
+    'msg.config_saved':'Factors saved successfully.',
+    'msg.invalid_credentials':'Invalid credentials.',
+    'msg.connection_error':'Connection error. Please try again.',
+    'msg.pwd_changed':'Password changed successfully.',
+    'msg.pwd_fill_all':'Fill in all fields.',
+    'msg.user_not_found':'User not found.',
+    'msg.name_required':'Name is required.',
+    'msg.select_user':'Select a user.',
+    'msg.rule_reorder_error':'Error reordering rules.',
+    'msg.select_cycle_all':'Select a cycle in all rows.',
+    'msg.duplicate_cycle':'Duplicate cycle in list.',
+    'msg.valid_hours':'Enter valid hours (≥ 0) in all rows.',
+    'msg.all_baseline_set':'All cycles already have a baseline defined.',
+    'msg.baseline_removed':'Row removed.',
+    'msg.pep_not_registered':'(PEP not registered)',
+    'msg.no_import_sessions':'No imports recorded.',
+    'msg.no_quarantine':'No quarantine records.',
+    'msg.no_access_granted':'No access granted.',
+    'msg.no_warnings_infos':'No warnings or additional info.',
+    'msg.user_created':'User created successfully.',
+    'msg.seniority_title':'Seniority — ','msg.acl_title':'Access — ',
+    'msg.pwd_field_required':'Enter the new password.',
+    'confirm.delete_cycle':'Delete this cycle?','confirm.delete_project':'Delete this project?',
+    'confirm.delete_user':'Delete this user?',
+    'confirm.delete_level':'Delete this level?',
+    'confirm.revoke_access':'Revoke this user\'s access?',
+    'confirm.assign_all':'Assign this seniority to ALL collaborators?',
+    'confirm.remove_baseline':'Remove this baseline row?',
+    'page.label':'Page','page.of':'of',
+    'sm.title_edit':'Edit Level','rm.title_edit':'Edit Rate',
+    'runway.title':'Portfolio Runway',
+    'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
+    'runway.empty':'No PEPs with budget found.',
+    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.consumed':'Consumed (h)',
+    'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
+    'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
+    'runway.overrun':'Overrun','runway.no_budget':'No budget',
+    'conc.title':'Project Concentration Risk',
+    'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
+    'conc.empty':'No hour data found.',
+    'conc.others':'Others',
+    'msg.pep_not_available': 'PEP not available for your profile.',
+    'msg.import_done':'Import complete',
+    'msg.created_n':'created','msg.updated_n':'updated','msg.errors_n':'error(s)',
+    'msg.qr_approved':'Record approved and inserted.','msg.qr_rejected':'Record rejected.',
+    'confirm.lock_cycle':'Lock this cycle?','confirm.unlock_cycle':'Unlock this cycle?',
+    'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -503,6 +687,7 @@ function _getOrCreateChart(id) {
   return _charts[id];
 }
 
+
 // ResizeObserver — resize all live charts when container changes
 const _ro = new ResizeObserver(() => {
   Object.values(_charts).forEach(c => { try { if (!c.isDisposed()) c.resize(); } catch (_) {} });
@@ -555,7 +740,7 @@ document.getElementById('cpiToggleBtn').addEventListener('click', () => {
 });
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
-  if (!_lastEffortData.length) { notify('Carregue dados antes de exportar.', 'info'); return; }
+  if (!_lastEffortData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
   const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
@@ -566,6 +751,31 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = 'esforco-equipe.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('runwayExportBtn').addEventListener('click', () => {
+  if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
+  const header = 'PEP,Projeto,Consumido (h),Orçado (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const rows = _lastRunwayData.map(d => {
+    const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
+    return [
+      `"${d.pep_wbs}"`, `"${d.name || ''}"`,
+      d.consumed_hours.toFixed(1),
+      d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
+      d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
+      d.avg_hours_per_cycle.toFixed(1),
+      d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
+      `"${d.estimated_completion_cycle || ''}"`,
+      d.cpi != null ? d.cpi.toFixed(2) : '',
+      `"${risk}"`,
+    ].join(',');
+  });
+  const csv  = [header, ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'runway-portfolio.csv'; a.click();
   URL.revokeObjectURL(url);
 });
 
@@ -592,10 +802,10 @@ function _createMS(el, placeholder, onChange) {
   return ms;
 }
 
-const cycleMs        = _createMS(document.getElementById('cycleMs'),        '— Selecione ciclo(s) —',   onCycleChange);
-const pepMs          = _createMS(document.getElementById('pepMs'),           '— Todos os PEPs —',        onPepChange);
-const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       '— Todas as descrições —',  onPepDescChange);
-const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  '— Todos —',                onCollabChange);
+const cycleMs        = _createMS(document.getElementById('cycleMs'),        _t('ms.cycle_ph'),    onCycleChange);
+const pepMs          = _createMS(document.getElementById('pepMs'),           _t('ms.pep_ph'),      onPepChange);
+const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
+const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
 
 let pepDataCache = {};
 
@@ -683,7 +893,7 @@ function _showIngestResult(json, filename) {
         ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
   }
-  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">Sem avisos ou informações adicionais.</p>`;
+  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">${_t('msg.no_warnings_infos')}</p>`;
   panel.hidden = false;
   clearTimeout(panel._dismissTimer);
   panel._dismissTimer = setTimeout(() => { panel.hidden = true; }, 6000);
@@ -737,10 +947,49 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('effortStats').innerHTML = '';
   document.getElementById('portfolioStats').innerHTML = '';
   document.getElementById('bulletPanel').hidden  = true;
+  document.getElementById('runwayTable').hidden = true;
+  document.getElementById('runwayEmpty').hidden = true;
+  document.getElementById('concentrationPanel').hidden = true;
+  document.getElementById('concentrationGrid').innerHTML = '';
   _showEmpty('effortEmpty',    false);
   _showEmpty('portfolioEmpty', false);
   _showEmpty('trendsEmpty',    false);
 });
+
+// ---------------------------------------------------------------------------
+// Date filter shortcuts
+// ---------------------------------------------------------------------------
+(function () {
+  function _isoDate(d) {
+    return d.toISOString().slice(0, 10);
+  }
+  function _applyDates(from, to) {
+    document.getElementById('dateFromInput').value = _isoDate(from);
+    document.getElementById('dateToInput').value   = _isoDate(to);
+    loadBtn.click();
+  }
+  document.getElementById('shortcutLastMonth')?.addEventListener('click', () => {
+    const now = new Date();
+    _applyDates(
+      new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      new Date(now.getFullYear(), now.getMonth(), 0)
+    );
+  });
+  document.getElementById('shortcutLastQuarter')?.addEventListener('click', () => {
+    const now = new Date();
+    const q = Math.floor(now.getMonth() / 3);
+    const prevQ = q === 0 ? 3 : q - 1;
+    const prevQYear = q === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    _applyDates(
+      new Date(prevQYear, prevQ * 3, 1),
+      new Date(prevQYear, prevQ * 3 + 3, 0)
+    );
+  });
+  document.getElementById('shortcutThisYear')?.addEventListener('click', () => {
+    const y = new Date().getFullYear();
+    _applyDates(new Date(y, 0, 1), new Date(y, 11, 31));
+  });
+})();
 
 // ---------------------------------------------------------------------------
 // Analytics — render dispatcher
@@ -760,6 +1009,7 @@ function _showEmpty(id, show) {
 // Esforço da Equipe
 // ---------------------------------------------------------------------------
 let _lastEffortData = [];
+let _lastRunwayData = [];
 
 async function _renderEffortTab() {
   const cycleIds  = cycleMs.getValues();
@@ -825,7 +1075,136 @@ async function _renderEffortTab() {
     // Trends + CPI charts — full filter passthrough with cycle window logic
     await _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo);
 
-  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+  } catch (err) {
+    notify(`Erro: ${err.message}`, 'error');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Portfolio Runway panel
+// ---------------------------------------------------------------------------
+function _riskColor(risk) {
+  const colors = {
+    ok:       'var(--primary, #4f8ef7)',
+    warning:  'var(--amber,   #d9b273)',
+    critical: 'var(--red,     #c56d76)',
+    overrun:  'var(--red,     #c56d76)',
+    no_budget:'var(--text-3,  #818998)',
+  };
+  return colors[risk] || colors.no_budget;
+}
+
+function _renderRunwayPanel(runway) {
+  _lastRunwayData = runway;
+  const table     = document.getElementById('runwayTable');
+  const empty     = document.getElementById('runwayEmpty');
+  const tbody     = document.getElementById('runwayBody');
+  const exportBtn = document.getElementById('runwayExportBtn');
+  tbody.innerHTML = '';
+
+  const withBudget = runway.filter(r => r.budget_hours != null);
+  if (exportBtn) exportBtn.hidden = !runway.length;
+  if (!withBudget.length) {
+    table.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  table.hidden = false;
+
+  withBudget.forEach(item => {
+    const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
+    const color = _riskColor(item.risk);
+
+    // Progresso bar
+    const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
+      `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
+      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${item.pct_consumed != null ? item.pct_consumed.toFixed(1) + '%' : '—'}</span>`;
+
+    // Ciclos restantes
+    let cyclesCell = '—';
+    if (item.risk === 'overrun') {
+      cyclesCell = `<span style="color:var(--red,#c56d76);font-weight:600">${_t('runway.overrun')}</span>`;
+    } else if (item.cycles_to_complete != null) {
+      cyclesCell = item.cycles_to_complete.toFixed(1);
+    }
+
+    // CPI
+    let cpiCell = '—';
+    if (item.cpi != null) {
+      const cpiColor = item.cpi >= 1 ? 'var(--primary,#4f8ef7)' : item.cpi >= 0.8 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
+    }
+
+    // Row background tint
+    const rowBg = (item.risk === 'critical' || item.risk === 'overrun')
+      ? 'background:rgba(197,109,118,.07)'
+      : '';
+
+    const tr = document.createElement('tr');
+    tr.style.cssText = rowBg;
+    tr.innerHTML = `
+      <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
+      <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
+      <td style="text-align:right">${item.consumed_hours.toFixed(1)}</td>
+      <td style="white-space:nowrap">${bar}</td>
+      <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${cyclesCell}</td>
+      <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
+      <td style="text-align:right">${cpiCell}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Concentration Risk panel
+// ---------------------------------------------------------------------------
+function _renderConcentrationPanel(concentration) {
+  const panel = document.getElementById('concentrationPanel');
+  const empty = document.getElementById('concentrationEmpty');
+  const grid  = document.getElementById('concentrationGrid');
+  grid.innerHTML = '';
+
+  if (!concentration || !concentration.length) {
+    panel.hidden = false;
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  panel.hidden = false;
+
+  const riskIcon = { high: '🔴', medium: '🟡', low: '🟢' };
+
+  concentration.forEach(item => {
+    const top1 = item.top_contributors.length > 0 ? item.top_contributors[0].pct : 0;
+
+    const barsHtml = item.top_contributors.map(c => {
+      const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
+      const color = _riskColor(item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok');
+      return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
+        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
+        `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
+          `<div style="height:8px;border-radius:2px;background:${color};width:${barWidth}%"></div>` +
+        `</div>` +
+        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${c.pct.toFixed(0)}%</span>` +
+        `</div>`;
+    }).join('');
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
+    row.innerHTML = `
+      <div style="min-width:16px;font-size:.9rem">${riskIcon[item.risk] || '⚪'}</div>
+      <div style="min-width:130px">
+        <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${escHtml(item.pep_wbs)}</div>
+        <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
+      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${item.total_hours.toFixed(0)}h</div>
+    `;
+    grid.appendChild(row);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -849,9 +1228,11 @@ async function _renderPortfolioTab() {
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    const [health, trends] = await Promise.all([
+    const [health, trends, runway, concentration] = await Promise.all([
       apiFetch(`/api/portfolio-health?${p}`),
       apiFetch(`/api/trends?${p}`).catch(() => []),
+      apiFetch(`/api/portfolio-runway?${p}`).catch(() => []),
+      apiFetch(`/api/portfolio-concentration?${p}`).catch(() => []),
     ]);
 
     // Stats row — rendered before the empty-state guard so it clears on no data
@@ -860,6 +1241,12 @@ async function _renderPortfolioTab() {
     if (health.length > 0) {
       statsEl.appendChild(_buildPortfolioStatsRow(health, trends));
     }
+
+    // Runway panel — always rendered (shows empty state if no budgeted PEPs)
+    _renderRunwayPanel(runway);
+
+    // Concentration panel
+    _renderConcentrationPanel(concentration);
 
     if (!health.length) {
       _showEmpty('portfolioEmpty', true);
@@ -1422,7 +1809,7 @@ async function _renderPlanTable(pep_wbs) {
 
   const tbody = document.getElementById('planBody');
   if (!_planProjectId) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} (PEP não cadastrado)</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} ${_t('msg.pep_not_registered')}</td></tr>`;
     return;
   }
   try {
@@ -1442,7 +1829,7 @@ async function _renderPlanTable(pep_wbs) {
 
 async function deletePlan(cycle_id) {
   if (!_planProjectId) return;
-  if (!confirm('Remover esta linha do baseline?')) return;
+  if (!confirm(_t('confirm.remove_baseline'))) return;
   try {
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
     await _renderPlanTable(_currentForecastPep);
@@ -1485,7 +1872,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
     _addPlanAvailableCycles = allCycles.filter(c => !plannedCycleIds.has(c.id));
-    if (!_addPlanAvailableCycles.length) { notify('Todos os ciclos já têm baseline definido.', 'info'); return; }
+    if (!_addPlanAvailableCycles.length) { notify(_t('msg.all_baseline_set'), 'info'); return; }
     document.getElementById('addPlanRows').innerHTML = '';
     document.getElementById('addPlanError').textContent = '';
     _addPlanRow(_addPlanAvailableCycles);
@@ -1514,9 +1901,9 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
     const inp = row.querySelector('input');
     const cycleId = parseInt(sel.value);
     const hours = parseFloat(inp.value);
-    if (!cycleId) { errEl.textContent = 'Selecione um ciclo em todas as linhas.'; return; }
-    if (seenIds.has(cycleId)) { errEl.textContent = 'Ciclo duplicado na lista.'; return; }
-    if (isNaN(hours) || hours < 0) { errEl.textContent = 'Informe horas válidas (≥ 0) em todas as linhas.'; return; }
+    if (!cycleId) { errEl.textContent = _t('msg.select_cycle_all'); return; }
+    if (seenIds.has(cycleId)) { errEl.textContent = _t('msg.duplicate_cycle'); return; }
+    if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
     seenIds.add(cycleId);
     entries.push({ cycle_id: cycleId, planned_hours: hours });
   }
@@ -2030,9 +2417,9 @@ function _buildTreemapOption(health, evmMode = false) {
           itemStyle: {
             color: !d.is_registered
               ? _cssVar('--text-3')
-              : budget != null && consumed / budget >= 1.0
+              : budget != null && consumed / budget >= _budgetCritical
                 ? _cssVar('--red')
-                : budget != null && consumed / budget >= 0.9
+                : budget != null && consumed / budget >= _budgetWarning
                   ? _cssVar('--amber')
                   : _cssVar('--primary'),
             borderColor: _cssVar('--bg'),
@@ -2049,7 +2436,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map((d, i) => {
     const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= 1.0 ? _cssVar('--red') : pct >= 0.9 ? _cssVar('--amber') : _cssVar('--primary');
+    const color = pct >= _budgetCritical ? _cssVar('--red') : pct >= _budgetWarning ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
@@ -2503,8 +2890,7 @@ function _renderCyclesTable(cycles) {
 }
 
 async function toggleCycleLock(id, isClosed) {
-  const label = isClosed ? 'Desbloquear' : 'Bloquear';
-  if (!confirm(`${label} este ciclo?`)) return;
+  if (!confirm(_t(isClosed ? 'confirm.unlock_cycle' : 'confirm.lock_cycle'))) return;
   try {
     await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
     loadCyclesTable();
@@ -2512,8 +2898,7 @@ async function toggleCycleLock(id, isClosed) {
 }
 
 async function toggleCycleArchive(id, isActive) {
-  const label = isActive ? 'Arquivar' : 'Restaurar';
-  if (!confirm(`${label} este ciclo?`)) return;
+  if (!confirm(_t(isActive ? 'confirm.archive_cycle' : 'confirm.restore_cycle'))) return;
   try {
     await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
     loadCyclesTable();
@@ -2551,7 +2936,7 @@ document.getElementById('cycleSaveBtn').addEventListener('click', async () => {
     end_date:   document.getElementById('cycleEndInput').value,
   };
   if (!body.name || !body.start_date || !body.end_date) {
-    document.getElementById('cycleError').textContent = 'Preencha todos os campos obrigatórios.';
+    document.getElementById('cycleError').textContent = _t('msg.fields_required');
     return;
   }
   try {
@@ -2580,13 +2965,13 @@ document.getElementById('cycleSearch').addEventListener('input', e => {
 
 async function deleteCycle(id, name, count) {
   if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
-  if (!confirm(`Excluir o ciclo "${name}"?`)) return;
+  if (!confirm(_t('confirm.delete_cycle'))) return;
   try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
 document.getElementById('exportCyclesBtn').addEventListener('click', () => {
-  if (!_allCycles.length) { notify('Nenhum ciclo para exportar.', 'info'); return; }
+  if (!_allCycles.length) { notify(_t('msg.no_cycles_export'), 'info'); return; }
   const header = 'name,start_date,end_date,is_closed,record_count';
   const rows = _allCycles.map(c =>
     `"${c.name}",${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
@@ -2607,8 +2992,8 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
     const res = await fetch('/api/cycles/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadCyclesTable();
     loadDashboardCycles();
@@ -2641,8 +3026,9 @@ function _buildBudgetCell(p) {
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
   if (!consumed) return budgetStr;
   const pct = consumed / p.budget_hours;
-  if (pct >= 1.0) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (pct >= 0.9) return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')}</span>`;
+  const wPct = Math.round(_budgetWarning * 100);
+  if (pct >= _budgetCritical) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
+  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
   return budgetStr;
 }
 
@@ -2695,7 +3081,7 @@ function closeProjectModal() { document.getElementById('projectModal').hidden = 
 
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
-  if (!pep) { document.getElementById('projectError').textContent = 'Código PEP é obrigatório.'; return; }
+  if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
   const budget     = document.getElementById('projectBudgetInput').value;
   const budgetCost = document.getElementById('projectBudgetCostInput').value;
   const body = {
@@ -2735,7 +3121,7 @@ document.getElementById('projectSearch').addEventListener('input', e => {
 });
 
 async function deleteProject(id, pep) {
-  if (!confirm(`Excluir o projeto "${pep}"?`)) return;
+  if (!confirm(_t('confirm.delete_project'))) return;
   try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -2747,7 +3133,7 @@ let _aclProjectId = null;
 
 async function _openAclModal(projectId, pepWbs) {
   _aclProjectId = projectId;
-  document.getElementById('aclModalTitle').textContent = `Acesso — ${pepWbs}`;
+  document.getElementById('aclModalTitle').textContent = _t('msg.acl_title') + pepWbs;
   document.getElementById('aclError').textContent = '';
   document.getElementById('aclModal').hidden = false;
   await Promise.all([_loadAclEntries(), _populateAclUserSelect()]);
@@ -2755,18 +3141,18 @@ async function _openAclModal(projectId, pepWbs) {
 
 async function _loadAclEntries() {
   const tbody = document.getElementById('aclEntriesBody');
-  tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Carregando…</td></tr>';
+  tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('loading')}</td></tr>`;
   try {
     const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
     if (!entries.length) {
-      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Nenhum acesso concedido.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('msg.no_access_granted')}</td></tr>`;
       return;
     }
     tbody.innerHTML = entries.map(e => `
       <tr>
         <td>${escHtml(e.username)}</td>
         <td style="text-align:right">
-          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">Revogar</button>
+          <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">${_t('btn.revoke')}</button>
         </td>
       </tr>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -2776,7 +3162,7 @@ async function _populateAclUserSelect() {
   const sel = document.getElementById('aclUserSelect');
   try {
     const users = await apiFetch('/api/users');
-    sel.innerHTML = '<option value="">— selecione —</option>' +
+    sel.innerHTML = `<option value="">${_t('ms.select_ph')}</option>` +
       users.filter(u => u.role !== 'admin').map(u =>
         `<option value="${u.id}">${escHtml(u.username)}</option>`
       ).join('');
@@ -2787,7 +3173,7 @@ document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
   const sel = document.getElementById('aclUserSelect');
   const userId = parseInt(sel.value);
   const errEl  = document.getElementById('aclError');
-  if (!userId) { errEl.textContent = 'Selecione um usuário.'; return; }
+  if (!userId) { errEl.textContent = _t('msg.select_user'); return; }
   errEl.textContent = '';
   try {
     await apiFetchJSON(`/api/projects/${_aclProjectId}/access`, 'POST', { user_id: userId });
@@ -2797,7 +3183,7 @@ document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
 });
 
 async function _revokeAccess(userId) {
-  if (!confirm('Revogar acesso deste usuário?')) return;
+  if (!confirm(_t('confirm.revoke_access'))) return;
   try {
     await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
     await _loadAclEntries();
@@ -2808,7 +3194,7 @@ document.getElementById('aclModalClose')?.addEventListener('click', () => { docu
 document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
-  if (!_allProjects.length) { notify('Nenhum projeto para exportar.', 'info'); return; }
+  if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
   const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status';
   const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
   const rows = _allProjects.map(p =>
@@ -2830,8 +3216,8 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
     const res = await fetch('/api/projects/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}, ${data.updated} ${_t('msg.updated_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadProjectsTable();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -2923,7 +3309,7 @@ async function loadTeamTable() {
     _renderTeamTable(_applySort('teamTable', _allTeam));
     // Populate bulk seniority select
     const bulkSel = document.getElementById('bulkSenioritySelect');
-    bulkSel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+    bulkSel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
       _allSeniorityLevels.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -2931,7 +3317,7 @@ async function loadTeamTable() {
 // Seniority level modal
 function openSeniorityModal(id = null) {
   _seniorityEditId = id;
-  document.getElementById('seniorityModalTitle').textContent = id ? 'Editar Nível' : 'Novo Nível de Senioridade';
+  document.getElementById('seniorityModalTitle').textContent = id ? _t('sm.title_edit') : _t('sm.title_new');
   document.getElementById('seniorityError').textContent = '';
   const l = id ? _allSeniorityLevels.find(x => x.id === id) : null;
   document.getElementById('seniorityNameInput').value = l ? l.name : '';
@@ -2941,7 +3327,7 @@ function closeSeniorityModal() { document.getElementById('seniorityModal').hidde
 
 document.getElementById('senioritySaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('seniorityNameInput').value.trim();
-  if (!name) { document.getElementById('seniorityError').textContent = 'Nome é obrigatório.'; return; }
+  if (!name) { document.getElementById('seniorityError').textContent = _t('msg.name_required'); return; }
   try {
     if (_seniorityEditId) {
       await apiFetchJSON(`/api/seniority-levels/${_seniorityEditId}`, 'PUT', { name });
@@ -2957,7 +3343,7 @@ document.getElementById('seniorityModalClose').addEventListener('click', closeSe
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
-  if (!_allSeniorityLevels.length) { notify('Nenhum nível para exportar.', 'info'); return; }
+  if (!_allSeniorityLevels.length) { notify(_t('msg.no_levels_export'), 'info'); return; }
   const rows = _allSeniorityLevels.map(l => `"${l.name.replace(/"/g, '""')}"`);
   const blob = new Blob(['﻿' + ['name', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -2974,8 +3360,8 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
     const res = await fetch('/api/seniority-levels/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -2983,7 +3369,7 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
 });
 
 async function deleteSeniorityLevel(id, name) {
-  if (!confirm(`Excluir o nível "${name}"?`)) return;
+  if (!confirm(_t('confirm.delete_level'))) return;
   try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
   catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -2998,7 +3384,7 @@ function _populateLevelSelect(selectId, selectedId = null) {
 
 function openRateCardModal(id = null) {
   _rateCardEditId = id;
-  document.getElementById('rateCardModalTitle').textContent = id ? 'Editar Taxa' : 'Nova Taxa';
+  document.getElementById('rateCardModalTitle').textContent = id ? _t('rm.title_edit') : _t('rm.title_new');
   document.getElementById('rateCardError').textContent = '';
   const c = id ? _allRateCards.find(x => x.id === id) : null;
   _populateLevelSelect('rateCardLevelInput', c?.seniority_level_id ?? null);
@@ -3012,7 +3398,7 @@ function closeRateCardModal() { document.getElementById('rateCardModal').hidden 
 document.getElementById('rateCardSaveBtn').addEventListener('click', async () => {
   const rate = document.getElementById('rateCardRateInput').value;
   const from = document.getElementById('rateCardFromInput').value;
-  if (!rate || !from) { document.getElementById('rateCardError').textContent = 'Preencha os campos obrigatórios.'; return; }
+  if (!rate || !from) { document.getElementById('rateCardError').textContent = _t('msg.fields_required'); return; }
   const to = document.getElementById('rateCardToInput').value;
   const body = {
     seniority_level_id: parseInt(document.getElementById('rateCardLevelInput').value),
@@ -3036,7 +3422,7 @@ document.getElementById('rateCardModalClose').addEventListener('click', closeRat
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
-  if (!_allRateCards.length) { notify('Nenhuma taxa para exportar.', 'info'); return; }
+  if (!_allRateCards.length) { notify(_t('msg.no_rates_export'), 'info'); return; }
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
   const rows = _allRateCards.map(r =>
     `${esc(r.seniority_level_name)},${r.valid_from},${r.valid_to ?? ''},${r.hourly_rate}`
@@ -3056,8 +3442,8 @@ document.getElementById('importRateCardInput').addEventListener('change', async 
     const res = await fetch('/api/rate-cards/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}, ${data.updated} ${_t('msg.updated_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -3073,10 +3459,10 @@ async function deleteRateCard(id) {
 // Assign seniority modal
 function openAssignSeniority(collabId, name, currentLevelId) {
   _assignCollabId = collabId;
-  document.getElementById('assignSeniorityTitle').textContent = `Senioridade — ${name}`;
+  document.getElementById('assignSeniorityTitle').textContent = _t('msg.seniority_title') + name;
   document.getElementById('assignSeniorityError').textContent = '';
   const sel = document.getElementById('assignSenioritySelect');
-  sel.innerHTML = '<option value="">— Sem senioridade —</option>' +
+  sel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
     _allSeniorityLevels.map(l =>
       `<option value="${l.id}" ${l.id === currentLevelId ? 'selected' : ''}>${escHtml(l.name)}</option>`
     ).join('');
@@ -3101,8 +3487,8 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
   const val = document.getElementById('bulkSenioritySelect').value;
   const label = val
     ? _allSeniorityLevels.find(l => l.id === parseInt(val))?.name
-    : 'Sem senioridade';
-  if (!confirm(`Atribuir "${label}" a TODOS os colaboradores?`)) return;
+    : _t('as.none_opt');
+  if (!confirm(_t('confirm.assign_all'))) return;
   try {
     const body = { seniority_level_id: val ? parseInt(val) : null };
     await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
@@ -3113,6 +3499,19 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', async () =
 
 // Global config (multipliers)
 let _anomalyMaxHours = 24;
+let _budgetWarning  = 0.9;
+let _budgetCritical = 1.0;
+
+function _updateBulletLegend() {
+  const wPct = Math.round(_budgetWarning  * 100);
+  const cPct = Math.round(_budgetCritical * 100);
+  const okEl   = document.getElementById('bulletOkLabel');
+  const warnEl = document.getElementById('bulletWarnLabel');
+  const critEl = document.getElementById('bulletCritLabel');
+  if (okEl)   okEl.textContent   = `< ${wPct}%`;
+  if (warnEl) warnEl.textContent = `${wPct}–${cPct - 1}%`;
+  if (critEl) critEl.textContent = `≥ ${cPct}%`;
+}
 
 async function loadGlobalConfig() {
   try {
@@ -3121,17 +3520,22 @@ async function loadGlobalConfig() {
     document.getElementById('standbyMultiplierInput').value = cfg.standby_hours_multiplier;
     if (cfg.anomaly_max_daily_hours) _anomalyMaxHours = cfg.anomaly_max_daily_hours;
     if (cfg.timezone) document.getElementById('timezoneSelect').value = cfg.timezone;
-  } catch (e) { /* non-critical, leave placeholders */ }
+    if (cfg.budget_warning_threshold  != null) { _budgetWarning  = cfg.budget_warning_threshold;  document.getElementById('budgetWarningInput').value  = cfg.budget_warning_threshold; }
+    if (cfg.budget_critical_threshold != null) { _budgetCritical = cfg.budget_critical_threshold; document.getElementById('budgetCriticalInput').value = cfg.budget_critical_threshold; }
+    _updateBulletLegend();
+  } catch (e) { _updateBulletLegend(); /* use defaults */ }
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   const em  = parseFloat(document.getElementById('extraMultiplierInput').value);
   const sm  = parseFloat(document.getElementById('standbyMultiplierInput').value);
   const tz  = document.getElementById('timezoneSelect').value;
+  const wt  = parseFloat(document.getElementById('budgetWarningInput').value);
+  const ct  = parseFloat(document.getElementById('budgetCriticalInput').value);
   const msg = document.getElementById('configMsg');
-  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0) {
+  if (isNaN(em) || isNaN(sm) || em <= 0 || sm <= 0 || isNaN(wt) || isNaN(ct) || wt <= 0 || ct <= 0) {
     msg.style.color = _cssVar('--red');
-    msg.textContent = 'Os valores devem ser números positivos.';
+    msg.textContent = _t('msg.positive_numbers');
     return;
   }
   try {
@@ -3140,9 +3544,14 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       standby_hours_multiplier: sm,
       anomaly_max_daily_hours: _anomalyMaxHours,
       timezone: tz,
+      budget_warning_threshold: wt,
+      budget_critical_threshold: ct,
     });
+    _budgetWarning  = wt;
+    _budgetCritical = ct;
+    _updateBulletLegend();
     msg.style.color = _cssVar('--green');
-    msg.textContent = 'Fatores salvos com sucesso.';
+    msg.textContent = _t('msg.config_saved');
     setTimeout(() => { msg.textContent = ''; }, 3000);
   } catch (e) {
     msg.style.color = _cssVar('--red');
@@ -3235,7 +3644,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      errEl.textContent = j.detail ?? 'Credenciais inválidas.';
+      errEl.textContent = j.detail ?? _t('msg.invalid_credentials');
       return;
     }
     const { access_token } = await res.json();
@@ -3245,7 +3654,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     document.getElementById('appShell').removeAttribute('hidden');
     _bootApp();
   } catch (_) {
-    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.textContent = _t('msg.connection_error');
   }
 });
 
@@ -3305,12 +3714,12 @@ document.getElementById('userSaveBtn').addEventListener('click', async () => {
   const role     = document.getElementById('userRoleSelect').value;
   const errEl    = document.getElementById('userError');
   errEl.textContent = '';
-  if (!username || !password) { errEl.textContent = 'Preencha todos os campos obrigatórios.'; return; }
+  if (!username || !password) { errEl.textContent = _t('msg.fields_required'); return; }
   try {
     await apiFetchJSON('/api/users', 'POST', { username, password, role });
     document.getElementById('userModal').hidden = true;
     loadUsersTable();
-    notify(`Usuário "${escHtml(username)}" criado com sucesso.`, 'success');
+    notify(_t('msg.user_created'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -3329,16 +3738,16 @@ document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   const new_password = document.getElementById('pwdNewInput').value;
   const errEl       = document.getElementById('pwdError');
   errEl.textContent = '';
-  if (!new_password) { errEl.textContent = 'Informe a nova senha.'; return; }
+  if (!new_password) { errEl.textContent = _t('msg.pwd_field_required'); return; }
   try {
     await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
     document.getElementById('pwdModal').hidden = true;
-    notify('Senha alterada com sucesso.', 'success');
+    notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
 async function deleteUser(id, username) {
-  if (!confirm(`Excluir o usuário "${username}"?`)) return;
+  if (!confirm(_t('confirm.delete_user'))) return;
   try {
     await apiFetchJSON(`/api/users/${id}`, 'DELETE');
     loadUsersTable();
@@ -3679,19 +4088,19 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   const newPwd     = document.getElementById('myNewPwdInput').value.trim();
   const errEl      = document.getElementById('myPwdError');
   errEl.textContent = '';
-  if (!currentPwd || !newPwd) { errEl.textContent = 'Preencha todos os campos.'; return; }
+  if (!currentPwd || !newPwd) { errEl.textContent = _t('msg.pwd_fill_all'); return; }
   try {
     const stored = sessionStorage.getItem('username') || '';
     // Find own user id first
     const users = await apiFetch('/api/users');
     const me = users.find(u => u.username === stored);
-    if (!me) { errEl.textContent = 'Usuário não encontrado.'; return; }
+    if (!me) { errEl.textContent = _t('msg.user_not_found'); return; }
     await apiFetchJSON(`/api/users/${me.id}/password`, 'PATCH', {
       new_password: newPwd,
       current_password: currentPwd,
     });
     document.getElementById('myPwdModal').setAttribute('hidden', '');
-    notify('Senha alterada com sucesso.', 'success');
+    notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -3717,6 +4126,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     const msg = `✅ ${json.records_inserted} ${_t('upload.inserted')}${json.quarantine_records_added ? ` · ⚠ ${json.quarantine_records_added} ${_t('upload.quarantine')}` : ''}`;
     resultEl.textContent = msg;
     notify(msg, json.quarantine_records_added ? 'warning' : 'success');
+    _refreshTabBadges();
     loadMyHistory();
     loadMyQr();
   } catch (e) {
@@ -3742,7 +4152,7 @@ function _renderMyHistory(rows) {
   const tbody = document.getElementById('myHistoryBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">Nenhuma importação registrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_import_sessions')}</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -3773,10 +4183,13 @@ document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMy
 // My Area — Quarentena sub-tab
 // ---------------------------------------------------------------------------
 let _myQrCache = [];
+let _qrPage = 0;
+const _QR_PAGE_SIZE = 50;
 
 async function loadMyQr() {
+  _qrPage = 0;
   const filter = document.getElementById('myQrFilter')?.value;
-  const params = new URLSearchParams({ limit: 200 });
+  const params = new URLSearchParams({ limit: 500 });
   if (filter === 'pending')   params.set('review_status', 'pending');
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
@@ -3791,10 +4204,15 @@ function _renderMyQrTable(rows) {
   const tbody = document.getElementById('myQrBody');
   if (!tbody) return;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">Nenhum registro em quarentena.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
+    const pg = document.getElementById('myQrPagination');
+    if (pg) pg.hidden = true;
     return;
   }
-  tbody.innerHTML = rows.map(r => {
+  const totalPages = Math.ceil(rows.length / _QR_PAGE_SIZE);
+  _qrPage = Math.min(_qrPage, totalPages - 1);
+  const pageRows = rows.slice(_qrPage * _QR_PAGE_SIZE, (_qrPage + 1) * _QR_PAGE_SIZE);
+  tbody.innerHTML = pageRows.map(r => {
     const raw  = r.raw_data || {};
     const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
@@ -3808,10 +4226,27 @@ function _renderMyQrTable(rows) {
       <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
   }).join('');
+  const pg = document.getElementById('myQrPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    if (!pg.hidden) {
+      pg.style.display = 'flex';
+      document.getElementById('myQrPageLabel').textContent = `${_t('page.label')} ${_qrPage + 1} ${_t('page.of')} ${totalPages}`;
+      document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
+      document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
+    }
+  }
 }
 
 document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
+document.getElementById('myQrPrevBtn')?.addEventListener('click', () => {
+  if (_qrPage > 0) { _qrPage--; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
+});
+document.getElementById('myQrNextBtn')?.addEventListener('click', () => {
+  const totalPages = Math.ceil(_myQrCache.length / _QR_PAGE_SIZE);
+  if (_qrPage < totalPages - 1) { _qrPage++; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
+});
 
 // ---------------------------------------------------------------------------
 // My Area — Exportar quarentena (item 5)
@@ -3849,18 +4284,18 @@ function _renderRulesList() {
   const ul = document.getElementById('rulesList');
   if (!ul) return;
   if (!_rules.length) {
-    ul.innerHTML = '<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">Nenhuma regra cadastrada.</li>';
+    ul.innerHTML = `<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">${_t('vr.empty')}</li>`;
     return;
   }
   ul.innerHTML = _rules.map(r => {
     const actionBadge = `<span class="rule-badge ${r.action}">${r.action}</span>`;
-    const systemBadge = r.is_system ? '<span class="rule-badge system">🔒 sistema</span>' : '';
+    const systemBadge = r.is_system ? `<span class="rule-badge system">🔒 ${_t('vr.badge.system')}</span>` : '';
     const activeClass = r.is_active ? '' : 'rule-inactive';
     const editBtn  = r.is_system ? '' :
       `<button class="btn btn-secondary btn-sm" onclick="openEditRule(${r.id})">✎</button>`;
     const delBtn = r.is_system ? '' :
       `<button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">✕</button>`;
-    const toggleTitle = r.is_active ? 'Desativar' : 'Ativar';
+    const toggleTitle = _t(r.is_active ? 'vr.btn.deactivate' : 'vr.btn.activate');
     return `<li class="sortable-item ${activeClass}" data-rule-id="${r.id}">
       <span class="sortable-handle">⠿</span>
       <span class="sortable-item-label">
@@ -3889,7 +4324,7 @@ function _renderRulesList() {
       try {
         await apiFetchJSON('/api/validation-rules/reorder', 'POST', orderMap);
         loadRulesList();
-      } catch (e) { notify(`Erro ao reordenar: ${e.message}`, 'error'); }
+      } catch (e) { notify(`${_t('msg.rule_reorder_error')}: ${e.message}`, 'error'); }
     },
   });
 }
@@ -3915,7 +4350,7 @@ function _updateRuleActionOptions() {
 
 function _openRuleModal(rule = null) {
   _editingRuleId = rule ? rule.id : null;
-  document.getElementById('ruleModalTitle').textContent = rule ? 'Editar Regra' : 'Nova Regra de Validação';
+  document.getElementById('ruleModalTitle').textContent = _t(rule ? 'vr.modal.edit' : 'vr.modal.new');
   document.getElementById('ruleFieldInput').value    = rule?.field    || 'horas_individuais';
   document.getElementById('ruleOperatorInput').value = rule?.operator || 'gt';
   document.getElementById('ruleValueInput').value    = rule?.value    || '';
@@ -3958,7 +4393,7 @@ document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
     }
     document.getElementById('ruleModal').setAttribute('hidden', '');
     loadRulesList();
-    notify('Regra salva.', 'success');
+    notify(_t('vr.saved'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -4023,7 +4458,8 @@ async function _doQRAction(id, action) {
   try {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     document.getElementById('qrDetailModal').setAttribute('hidden', '');
-    notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
+    notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
+    _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -4335,8 +4771,11 @@ async function loadSemaphore() {
       const pctH = p.budget_hours ? p.consumed_hours / p.budget_hours : 0;
       const pctC = p.budget_cost  ? p.actual_cost    / p.budget_cost  : 0;
       const max  = Math.max(pctH, pctC);
-      return max >= 1.0 ? 'red' : max >= 0.9 ? 'yellow' : 'green';
+      return max >= _budgetCritical ? 'red' : max >= _budgetWarning ? 'yellow' : 'green';
     };
+
+    const wPct = Math.round(_budgetWarning  * 100);
+    const cPct = Math.round(_budgetCritical * 100);
 
     const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
     const pills  = data.map(p => {
@@ -4344,8 +4783,8 @@ async function loadSemaphore() {
       counts[s]++;
       const pH = p.budget_hours ? (p.consumed_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
       const pC = p.budget_cost  ? (p.actual_cost    / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
-      const tip = `${p.pep_wbs}: ${pH} · ${pC}`;
-      return `<span class="sem-project ${s}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
+      const tip = `${p.pep_wbs}: ${pH} · ${pC} — clique para detalhar`;
+      return `<span class="sem-project ${s}" data-pep="${escHtml(p.pep_wbs)}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
     });
 
     const dot = (cls, label) => counts[cls]
@@ -4354,9 +4793,9 @@ async function loadSemaphore() {
 
     const summaryHtml =
       `<span class="sem-title">Portfólio</span>
-      ${dot('green',  'OK — dentro do budget')}
-      ${dot('yellow', 'Atenção — ≥ 90% do budget')}
-      ${dot('red',    'Estourado — ≥ 100% do budget')}
+      ${dot('green',  `OK — abaixo de ${wPct}% do budget`)}
+      ${dot('yellow', `Atenção — ≥ ${wPct}% do budget`)}
+      ${dot('red',    `Estourado — ≥ ${cPct}% do budget`)}
       ${dot('grey',   'Sem budget definido')}`;
 
     bar.innerHTML =
@@ -4372,6 +4811,72 @@ async function loadSemaphore() {
     const hdr = document.getElementById('headerSemaphore');
     if (hdr) hdr.style.display = 'none';
   }
+}
+
+// ---------------------------------------------------------------------------
+// Semaphore drill-down: click a pill → filter Portfolio tab by that PEP
+// ---------------------------------------------------------------------------
+document.getElementById('semaphoreBar').addEventListener('click', e => {
+  const pill = e.target.closest('[data-pep]');
+  if (pill) _drillDownToPep(pill.dataset.pep);
+});
+
+async function _drillDownToPep(pepCode) {
+  // Navigate to Dashboard tab
+  document.querySelector('.tab-btn[data-tab="dashboard"]')?.click();
+
+  // Reset all filters so we fetch the full PEP list, then pin to target PEP
+  cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
+  document.getElementById('dateFromInput').value = '';
+  document.getElementById('dateToInput').value   = '';
+  await refreshPeps();
+  if (!pepMs.items.some(i => String(i.value) === String(pepCode))) {
+    notify(_t('msg.pep_not_available'), 'warning');
+    return;
+  }
+  pepMs.selectOnly(pepCode);
+  refreshPepDescriptions();
+
+  // Switch to portfolio sub-tab programmatically and render
+  _disposeTabCharts(_activeATab);
+  document.querySelectorAll('.atab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.atab-section').forEach(s => { s.hidden = true; });
+  const portfolioBtn = document.querySelector('.atab-btn[data-atab="portfolio"]');
+  if (portfolioBtn) portfolioBtn.classList.add('active');
+  _activeATab = 'portfolio';
+  document.getElementById('atab-portfolio').hidden = false;
+
+  await _renderPortfolioTab();
+  document.getElementById('runwayPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------------------------------------------------------------------------
+// Tab badges — pending quarantine indicators
+// ---------------------------------------------------------------------------
+async function _refreshTabBadges() {
+  // Admin badge — pending quarantine records (admin only)
+  if (_isAdmin()) {
+    try {
+      const rows = await apiFetch('/api/quarantine?review_status=pending');
+      const badge = document.getElementById('adminTabBadge');
+      if (badge) {
+        const n = rows.length;
+        if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.removeAttribute('hidden'); }
+        else badge.setAttribute('hidden', '');
+      }
+    } catch (_) {}
+  }
+  // Minha Área badge — user's own pending quarantine records
+  try {
+    const rows = await apiFetch('/api/my/quarantine');
+    const pending = rows.filter(r => r.review_status === 'pending');
+    const badge = document.getElementById('myTabBadge');
+    if (badge) {
+      const n = pending.length;
+      if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.removeAttribute('hidden'); }
+      else badge.setAttribute('hidden', '');
+    }
+  } catch (_) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -4404,6 +4909,7 @@ function _bootApp() {
   _updateHeaderUser();
   loadDashboardCycles();
   loadSemaphore();
+  _refreshTabBadges();
   _renderActiveTab();
 }
 

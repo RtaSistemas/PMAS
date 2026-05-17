@@ -69,6 +69,13 @@ class MultiSelect {
 
   getValues() { return [...this.selected]; }
 
+  selectOnly(value) {
+    this.selected.clear();
+    if (value != null) this.selected.add(String(value));
+    this._renderPanel();
+    this._updateBtn();
+  }
+
   clear() { this.selected.clear(); this._renderPanel(); this._updateBtn(); }
 
   _updateBtn() {
