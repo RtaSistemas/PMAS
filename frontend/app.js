@@ -269,6 +269,7 @@ const _LANG = {
     'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
     'conc.empty':'Nenhum dado de horas encontrado.',
     'conc.others':'Outros',
+    'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -535,6 +536,7 @@ const _LANG = {
     'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
     'conc.empty':'No hour data found.',
     'conc.others':'Others',
+    'msg.pep_not_available': 'PEP not available for your profile.',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -1133,13 +1135,13 @@ function _renderRunwayPanel(runway) {
     const tr = document.createElement('tr');
     tr.style.cssText = rowBg;
     tr.innerHTML = `
-      <td style="font-family:monospace;font-size:.82rem">${item.pep_wbs}</td>
-      <td style="font-size:.82rem;color:#94a3b8">${item.name || '—'}</td>
+      <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
+      <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
       <td style="text-align:right">${item.consumed_hours.toFixed(1)}</td>
       <td style="white-space:nowrap">${bar}</td>
       <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
       <td style="text-align:right">${cyclesCell}</td>
-      <td style="font-size:.82rem">${item.estimated_completion_cycle || '—'}</td>
+      <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
       <td style="text-align:right">${cpiCell}</td>
     `;
     tbody.appendChild(tr);
@@ -1172,7 +1174,7 @@ function _renderConcentrationPanel(concentration) {
       const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
       const color = _riskColor(item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok');
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
-        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${c.name}">${c.name}</span>` +
+        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${color};width:${barWidth}%"></div>` +
         `</div>` +
@@ -1185,8 +1187,8 @@ function _renderConcentrationPanel(concentration) {
     row.innerHTML = `
       <div style="min-width:16px;font-size:.9rem">${riskIcon[item.risk] || '⚪'}</div>
       <div style="min-width:130px">
-        <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${item.pep_wbs}</div>
-        <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${item.name || ''}">${item.name || ''}</div>
+        <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${escHtml(item.pep_wbs)}</div>
+        <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
       <div style="font-size:.72rem;color:#475569;white-space:nowrap">${item.total_hours.toFixed(0)}h</div>
@@ -4820,6 +4822,10 @@ async function _drillDownToPep(pepCode) {
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
   await refreshPeps();
+  if (!pepMs.items.some(i => String(i.value) === String(pepCode))) {
+    notify(_t('msg.pep_not_available'), 'warning');
+    return;
+  }
   pepMs.selectOnly(pepCode);
   refreshPepDescriptions();
 

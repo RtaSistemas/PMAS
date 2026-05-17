@@ -43,11 +43,11 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `SeniorityLevel` — unique name, linked to RateCard and Collaborator
   - `RateCard` — hourly_rate with valid_from / valid_to date range per seniority level
   - `Collaborator` — unique name, optional `seniority_level_id` FK, linked to records
-  - `Cycle` — billing period with `start_date`, `end_date`, `is_quarantine`, `is_active` flags
+  - `Cycle` — billing period with `start_date`, `end_date`, `is_closed` and `is_active` flags
   - `TimesheetRecord` — core entity linking collaborator + cycle + PEP + 4 hour fields + `cost_per_hour` (frozen at ingestion via EVM freeze pattern)
   - `Project` — PEP registry with `budget_hours` and `budget_cost` for EVM tracking
   - `ProjectCyclePlan` — planned hours/cost per (project, cycle) for baseline S-curve
-  - `User` — username, hashed_password, role (`admin`/`viewer`), active flag
+  - `User` — username, hashed_password, role (`admin`/`user`)
   - `GlobalConfig` — key/value store (logo path, UI theme overrides)
   - `AuditLog` — structured log: user, action, entity, old/new JSON snapshot
   - `UserProjectAccess` — per-user PEP whitelist (empty = access all)

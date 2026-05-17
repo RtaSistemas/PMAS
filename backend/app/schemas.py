@@ -318,6 +318,8 @@ class AuditLogItem(BaseModel):
     detail: str | None
     timestamp: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 # ── Validation rules ─────────────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
@@ -86,7 +86,7 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
 
 
 @router.get("/upload-history", response_model=list[UploadSessionOut])
-def list_upload_sessions(db: DbSession, current_user: CurrentUser, limit: int = 200, offset: int = 0):
+def list_upload_sessions(db: DbSession, current_user: CurrentUser, limit: int = Query(default=200, le=1000), offset: int = 0):
     q = db.query(UploadSession).order_by(UploadSession.uploaded_at.desc())
     if current_user.role != "admin":
         q = q.filter(UploadSession.uploaded_by_user_id == current_user.id)

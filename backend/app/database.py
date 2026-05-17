@@ -34,6 +34,7 @@ engine = create_engine(
 def _set_sqlite_pragmas(dbapi_conn, _):
     dbapi_conn.execute("PRAGMA journal_mode=WAL")
     dbapi_conn.execute("PRAGMA synchronous=NORMAL")
+    dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -122,6 +123,14 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN manager_id INTEGER REFERENCES user(id)"
                 ))
+            if "status" not in p_cols:
+                conn.execute(text(
+                    "ALTER TABLE project ADD COLUMN status VARCHAR NOT NULL DEFAULT 'ativo'"
+                ))
+            if "client" not in p_cols:
+                conn.execute(text("ALTER TABLE project ADD COLUMN client VARCHAR"))
+            if "manager" not in p_cols:
+                conn.execute(text("ALTER TABLE project ADD COLUMN manager VARCHAR"))
             cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
             if "is_closed" not in cy_cols:
                 conn.execute(text(

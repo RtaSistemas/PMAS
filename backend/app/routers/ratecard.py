@@ -355,7 +355,7 @@ def bulk_assign_seniority(body: CollaboratorSeniorityIn, db: DbSession, _admin: 
 
 
 @router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)
-def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession, current_user: CurrentUser):
+def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSession, _admin: AdminUser):
     collab = db.get(Collaborator, collab_id)
     if not collab:
         raise HTTPException(status_code=404, detail="Colaborador não encontrado.")
@@ -363,7 +363,7 @@ def assign_seniority(collab_id: int, body: CollaboratorSeniorityIn, db: DbSessio
         raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
     previous = collab.seniority_level_id
     collab.seniority_level_id = body.seniority_level_id
-    log_audit(db, current_user, "assign_seniority", "collaborator", collab_id,
+    log_audit(db, _admin, "assign_seniority", "collaborator", collab_id,
               {"from": previous, "to": body.seniority_level_id})
     db.commit()
     return {"id": collab.id, "seniority_level_id": collab.seniority_level_id}

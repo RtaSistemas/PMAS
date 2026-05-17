@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import CurrentUser, get_current_user
+from backend.app.deps import AdminUser, get_current_user
 from backend.app.models import Project
 from backend.app.schemas import ImportResultOut, ProjectIn, ProjectOut
 
@@ -53,8 +53,11 @@ def list_projects(db: DbSession):
     return [_project_to_dict(p) for p in projects]
 
 
+MAX_CSV_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 @router.post("", summary="Criar projeto", status_code=201, response_model=ProjectOut)
-def create_project(body: ProjectIn, db: DbSession, current_user: CurrentUser):
+def create_project(body: ProjectIn, db: DbSession, current_user: AdminUser):
     if db.query(Project).filter(Project.pep_wbs == body.pep_wbs).first():
         raise HTTPException(status_code=409, detail="Já existe um projeto com esse código PEP.")
     project = Project(**body.model_dump())
@@ -67,7 +70,7 @@ def create_project(body: ProjectIn, db: DbSession, current_user: CurrentUser):
 
 
 @router.put("/{project_id}", summary="Atualizar projeto", response_model=ProjectOut)
-def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user: CurrentUser):
+def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user: AdminUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
@@ -85,9 +88,12 @@ def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user
 
 
 @router.post("/import", summary="Importar projetos via CSV", response_model=ImportResultOut)
-def import_projects(file: UploadFile, db: DbSession, current_user: CurrentUser):
+def import_projects(file: UploadFile, db: DbSession, current_user: AdminUser):
     try:
-        df = pd.read_csv(io.BytesIO(file.file.read()))
+        raw = file.file.read()
+        if len(raw) > MAX_CSV_BYTES:
+            raise HTTPException(status_code=413, detail="Arquivo CSV excede o limite de 10 MB.")
+        df = pd.read_csv(io.BytesIO(raw))
         df.columns = [c.strip() for c in df.columns]
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {e}")
@@ -132,7 +138,7 @@ def import_projects(file: UploadFile, db: DbSession, current_user: CurrentUser):
 
 
 @router.delete("/{project_id}", summary="Excluir projeto", status_code=204)
-def delete_project(project_id: int, db: DbSession, current_user: CurrentUser):
+def delete_project(project_id: int, db: DbSession, current_user: AdminUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
