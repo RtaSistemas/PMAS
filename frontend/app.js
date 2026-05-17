@@ -119,8 +119,16 @@ const _LANG = {
     'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
     'collab.timeline_title': 'Evolução por Ciclo — ',
     'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
+    'collab.calendar_empty': 'Sem atividade neste mês.',
     'collab.section_cycles': 'Horas por Ciclo',
     'collab.section_calendar': 'Atividade Diária',
+    'cal.stat.total': 'Total',
+    'cal.stat.active_days': 'Dias ativos',
+    'cal.stat.avg_day': 'Média/dia',
+    'cal.stat.peak': 'Pico',
+    'cal.stat.quarantine': '⚠ Em quarentena',
+    'cal.months': ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+    'cal.day_names': ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
     'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
     'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
@@ -399,8 +407,16 @@ const _LANG = {
     'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
     'collab.timeline_title': 'Cycle Evolution — ',
     'collab.timeline_empty': 'No data found for this collaborator.',
+    'collab.calendar_empty': 'No activity this month.',
     'collab.section_cycles': 'Hours by Cycle',
     'collab.section_calendar': 'Daily Activity',
+    'cal.stat.total': 'Total',
+    'cal.stat.active_days': 'Active days',
+    'cal.stat.avg_day': 'Avg/day',
+    'cal.stat.peak': 'Peak',
+    'cal.stat.quarantine': '⚠ In quarantine',
+    'cal.months': ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    'cal.day_names': ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
     'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
     'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
@@ -760,7 +776,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-    return `"${d.collaborator}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
+    return `"${d.collaborator.replace(/"/g, '""')}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
   });
   const csv  = [header, ...rows].join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1031,6 +1047,7 @@ let _calYear  = new Date().getFullYear();
 let _calMonth = new Date().getMonth() + 1; // 1-12
 
 async function _renderEffortTab() {
+  _closeCollabDetail();
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
@@ -2708,6 +2725,7 @@ async function _renderCollabTimeline(name) {
   chartEl.style.visibility = '';
 
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
     orientation: 'vertical', stacked: true,
@@ -2722,10 +2740,7 @@ async function _renderCollabCalendar(name, year, month) {
   const statsEl = document.getElementById('collabCalendarStats');
   const label   = document.getElementById('calMonthLabel');
 
-  // month label (pt-BR)
-  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  label.textContent = `${monthNames[month-1]} ${year}`;
+  label.textContent = `${_t('cal.months')[month-1]} ${year}`;
 
   let data = [];
   try {
@@ -2736,8 +2751,12 @@ async function _renderCollabCalendar(name, year, month) {
   const existing = echarts.getInstanceByDom(chartEl);
   if (existing && !existing.isDisposed()) existing.dispose();
 
-  const points = data.filter(d => d.hours > 0);
-  if (!points.length) {
+  const workPoints = data.filter(d => d.hours > 0);
+  const quarantineDates = new Set(data.filter(d => d.has_quarantine).map(d => d.date));
+  // include quarantine-only days so tooltip can show ⚠ even when hours=0
+  const calPoints = data.filter(d => d.hours > 0 || d.has_quarantine);
+
+  if (!calPoints.length) {
     emptyEl.hidden = false;
     chartEl.style.visibility = 'hidden';
     statsEl.innerHTML = '';
@@ -2747,15 +2766,15 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.visibility = '';
 
   // build [date, hours] pairs for ECharts calendar
-  const calData = points.map(d => [d.date, d.hours]);
-  const quarantineDates = new Set(data.filter(d => d.has_quarantine).map(d => d.date));
+  const calData = calPoints.map(d => [d.date, d.hours]);
 
   const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const rangeEnd = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  const maxHours = Math.max(...points.map(d => d.hours), 8);
+  const maxHours = Math.max(...workPoints.map(d => d.hours), 8);
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  _charts['collabCalendarChart'] = cc;
   cc.setOption({
     backgroundColor: 'transparent',
     tooltip: {
@@ -2776,7 +2795,7 @@ async function _renderCollabCalendar(name, year, month) {
       cellSize: ['auto', 22],
       dayLabel: {
         firstDay: 0,
-        nameMap: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+        nameMap: _t('cal.day_names'),
         color: '#64748b', fontSize: 10,
       },
       monthLabel: { show: false },
@@ -2793,10 +2812,10 @@ async function _renderCollabCalendar(name, year, month) {
   }, true);
 
   // stats row
-  const totalHours = points.reduce((s, d) => s + d.hours, 0);
-  const workDays   = points.length;
+  const totalHours = workPoints.reduce((s, d) => s + d.hours, 0);
+  const workDays   = workPoints.length;
   const avgPerDay  = workDays > 0 ? totalHours / workDays : 0;
-  const peak       = points.reduce((m, d) => d.hours > m.hours ? d : m, points[0]);
+  const peak       = workPoints.length ? workPoints.reduce((m, d) => d.hours > m.hours ? d : m, workPoints[0]) : null;
 
   const stat = (lbl, val) =>
     `<div style="display:flex;flex-direction:column;gap:.15rem">
@@ -2805,11 +2824,11 @@ async function _renderCollabCalendar(name, year, month) {
      </div>`;
 
   statsEl.innerHTML =
-    stat('Total', `${totalHours.toFixed(1)}h`) +
-    stat('Dias ativos', workDays) +
-    stat('Média/dia', `${avgPerDay.toFixed(1)}h`) +
-    stat('Pico', `${peak.hours.toFixed(1)}h (${peak.date})`) +
-    (quarantineDates.size ? stat('⚠ Em quarentena', `${quarantineDates.size} dia(s)`) : '');
+    stat(_t('cal.stat.total'), `${totalHours.toFixed(1)}h`) +
+    stat(_t('cal.stat.active_days'), workDays) +
+    stat(_t('cal.stat.avg_day'), `${avgPerDay.toFixed(1)}h`) +
+    (peak ? stat(_t('cal.stat.peak'), `${peak.hours.toFixed(1)}h (${peak.date})`) : '') +
+    (quarantineDates.size ? stat(_t('cal.stat.quarantine'), quarantineDates.size) : '');
 }
 
 // ---------------------------------------------------------------------------
@@ -3865,6 +3884,8 @@ document.getElementById('calPrevMonth').addEventListener('click', async () => {
 });
 document.getElementById('calNextMonth').addEventListener('click', async () => {
   if (!_selectedCollaborator) return;
+  const now = new Date();
+  if (_calYear > now.getFullYear() || (_calYear === now.getFullYear() && _calMonth >= now.getMonth() + 1)) return;
   _calMonth++;
   if (_calMonth > 12) { _calMonth = 1; _calYear++; }
   await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
