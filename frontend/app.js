@@ -270,6 +270,11 @@ const _LANG = {
     'conc.empty':'Nenhum dado de horas encontrado.',
     'conc.others':'Outros',
     'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
+    'msg.import_done':'Importação concluída',
+    'msg.created_n':'criado(s)','msg.updated_n':'atualizado(s)','msg.errors_n':'erro(s)',
+    'msg.qr_approved':'Registro aprovado e inserido.','msg.qr_rejected':'Registro rejeitado.',
+    'confirm.lock_cycle':'Bloquear este ciclo?','confirm.unlock_cycle':'Desbloquear este ciclo?',
+    'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -537,6 +542,11 @@ const _LANG = {
     'conc.empty':'No hour data found.',
     'conc.others':'Others',
     'msg.pep_not_available': 'PEP not available for your profile.',
+    'msg.import_done':'Import complete',
+    'msg.created_n':'created','msg.updated_n':'updated','msg.errors_n':'error(s)',
+    'msg.qr_approved':'Record approved and inserted.','msg.qr_rejected':'Record rejected.',
+    'confirm.lock_cycle':'Lock this cycle?','confirm.unlock_cycle':'Unlock this cycle?',
+    'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -2880,8 +2890,7 @@ function _renderCyclesTable(cycles) {
 }
 
 async function toggleCycleLock(id, isClosed) {
-  const label = isClosed ? 'Desbloquear' : 'Bloquear';
-  if (!confirm(`${label} este ciclo?`)) return;
+  if (!confirm(_t(isClosed ? 'confirm.unlock_cycle' : 'confirm.lock_cycle'))) return;
   try {
     await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
     loadCyclesTable();
@@ -2889,8 +2898,7 @@ async function toggleCycleLock(id, isClosed) {
 }
 
 async function toggleCycleArchive(id, isActive) {
-  const label = isActive ? 'Arquivar' : 'Restaurar';
-  if (!confirm(`${label} este ciclo?`)) return;
+  if (!confirm(_t(isActive ? 'confirm.archive_cycle' : 'confirm.restore_cycle'))) return;
   try {
     await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
     loadCyclesTable();
@@ -2984,8 +2992,8 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
     const res = await fetch('/api/cycles/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadCyclesTable();
     loadDashboardCycles();
@@ -3133,7 +3141,7 @@ async function _openAclModal(projectId, pepWbs) {
 
 async function _loadAclEntries() {
   const tbody = document.getElementById('aclEntriesBody');
-  tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">Carregando…</td></tr>';
+  tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('loading')}</td></tr>`;
   try {
     const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
     if (!entries.length) {
@@ -3208,8 +3216,8 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
     const res = await fetch('/api/projects/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0,3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}, ${data.updated} ${_t('msg.updated_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadProjectsTable();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -3352,8 +3360,8 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
     const res = await fetch('/api/seniority-levels/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -3434,8 +3442,8 @@ document.getElementById('importRateCardInput').addEventListener('change', async 
     const res = await fetch('/api/rate-cards/import', { method: 'POST', headers: _authHeaders(), body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)` +
-      (data.errors.length ? `; ${data.errors.length} erro(s): ${data.errors.slice(0, 3).join('; ')}` : '');
+    const msg = `${_t('msg.import_done')}: ${data.created} ${_t('msg.created_n')}, ${data.updated} ${_t('msg.updated_n')}` +
+      (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
   } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
@@ -4450,7 +4458,7 @@ async function _doQRAction(id, action) {
   try {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     document.getElementById('qrDetailModal').setAttribute('hidden', '');
-    notify(action === 'approve' ? 'Registro aprovado e inserido.' : 'Registro rejeitado.', 'success');
+    notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
     _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }

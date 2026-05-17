@@ -34,7 +34,7 @@ class RateCard(Base):
     __tablename__ = "rate_card"
 
     id = Column(Integer, primary_key=True, index=True)
-    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=False)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id", ondelete="RESTRICT"), nullable=False)
     hourly_rate = Column(Float, nullable=False)
     valid_from = Column(Date, nullable=False)
     valid_to = Column(Date, nullable=True)
@@ -47,7 +47,7 @@ class Collaborator(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
-    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id"), nullable=True)
+    seniority_level_id = Column(Integer, ForeignKey("seniority_level.id", ondelete="SET NULL"), nullable=True)
 
     records = relationship("TimesheetRecord", back_populates="collaborator")
     seniority_level = relationship("SeniorityLevel", back_populates="collaborators")
@@ -71,8 +71,8 @@ class TimesheetRecord(Base):
     __tablename__ = "timesheet_record"
 
     id = Column(Integer, primary_key=True, index=True)
-    collaborator_id = Column(Integer, ForeignKey("collaborator.id"), nullable=False)
-    cycle_id = Column(Integer, ForeignKey("cycle.id"), nullable=False)
+    collaborator_id = Column(Integer, ForeignKey("collaborator.id", ondelete="RESTRICT"), nullable=False)
+    cycle_id = Column(Integer, ForeignKey("cycle.id", ondelete="RESTRICT"), nullable=False)
     record_date = Column(Date, nullable=False)
     pep_wbs = Column(String, nullable=True, index=True)
     pep_description = Column(String, nullable=True, index=True)
