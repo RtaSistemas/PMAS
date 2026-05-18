@@ -2896,17 +2896,29 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.visibility = '';
 
   // data: [date, total, normal, extra, standby]
-  const calData = calPoints.map(d => [
-    d.date, d.hours,
-    d.normal_hours  || 0,
-    d.extra_hours   || 0,
-    d.standby_hours || 0,
-  ]);
+  // All days in the month — inactive days use value=-1 so visualMap.outOfRange
+  // applies a neutral background while the label still shows the day number.
+  const allDaysData = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec = data.find(r => r.date === dateStr);
+    if (rec) {
+      allDaysData.push([dateStr, rec.hours, rec.normal_hours || 0, rec.extra_hours || 0, rec.standby_hours || 0]);
+    } else {
+      allDaysData.push([dateStr, -1, 0, 0, 0]);
+    }
+  }
 
   const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
-  const lastDay    = new Date(year, month, 0).getDate();
   const rangeEnd   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
+
+  // Read theme CSS variables so the chart adapts to Admin > Aparência settings
+  const primaryColor = _cssVar('--primary')    || '#0ea5e9';
+  const cardColor    = _cssVar('--card')       || '#0e2038';
+  const borderColor  = _cssVar('--border-hi')  || '#1d4068';
+  const inactiveText = _cssVar('--text-3')     || '#3d6080';
+  const activeText   = _cssVar('--text-2')     || '#7ba0c0';
 
   // Square cell size clamped to a readable range
   const containerW = chartEl.offsetWidth || 560;
@@ -2923,7 +2935,7 @@ async function _renderCollabCalendar(name, year, month) {
     backgroundColor: 'transparent',
     tooltip: {
       formatter(p) {
-        if (!p.value) return '';
+        if (!p.value || p.value[1] < 0) return '';
         const [d_date, , n, e, s] = p.value;
         const q = quarantineDates.has(d_date) ? ' ⚠' : '';
         let tip = `<b>${d_date}</b>${q}`;
@@ -2934,8 +2946,12 @@ async function _renderCollabCalendar(name, year, month) {
       },
     },
     visualMap: {
-      show: false, min: 0, max: maxHours,
-      inRange: { color: ['#162032', '#1e40af'] },
+      show: false,
+      min: 0, max: maxHours,
+      // Active days: gradient from dim navy → primary sky-blue
+      inRange:    { color: ['#163152', primaryColor] },
+      // Inactive days (value=-1): card background — they recede visually
+      outOfRange: { color: [cardColor] },
     },
     calendar: {
       orient: 'vertical',
@@ -2945,23 +2961,25 @@ async function _renderCollabCalendar(name, year, month) {
       dayLabel: {
         firstDay: 0,
         nameMap: _t('cal.day_names'),
-        color: '#64748b', fontSize: 10,
+        color: inactiveText, fontSize: 10,
         position: 'start',
       },
       monthLabel: { show: false },
       yearLabel:  { show: false },
-      itemStyle:  { color: '#1e293b', borderColor: '#0f172a', borderWidth: 2 },
+      itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 1.5 },
       splitLine:  { show: false },
     },
     series: [{
       type: 'heatmap',
       coordinateSystem: 'calendar',
-      data: calData,
+      data: allDaysData,
       label: {
         show: true,
         formatter(params) {
-          const [d_date, , n, e, s] = params.data;
+          const [d_date, total, n, e, s] = params.data;
           const day = parseInt(d_date.split('-')[2], 10);
+          // Inactive day — show only muted day number
+          if (total < 0) return `{inactive|${day}}`;
           const isQ = quarantineDates.has(d_date);
           const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
           const lines = [dayStr];
@@ -2971,14 +2989,15 @@ async function _renderCollabCalendar(name, year, month) {
           return lines.join('\n');
         },
         rich: {
-          day:  { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', lineHeight: 15, align: 'center' },
-          qday: { fontSize: 10, fontWeight: 'bold', color: '#f59e0b', lineHeight: 15, align: 'center' },
+          inactive: { fontSize: 10, color: inactiveText, lineHeight: 15, align: 'center' },
+          day:  { fontSize: 10, fontWeight: 'bold', color: activeText,  lineHeight: 15, align: 'center' },
+          qday: { fontSize: 10, fontWeight: 'bold', color: '#f59e0b',   lineHeight: 15, align: 'center' },
           n:    { fontSize: 10, color: '#e2e8f0', lineHeight: 14, align: 'center' },
           e:    { fontSize: 10, color: '#fbbf24', lineHeight: 14, align: 'center' },
           s:    { fontSize: 10, color: '#60a5fa', lineHeight: 14, align: 'center' },
         },
       },
-      emphasis: { itemStyle: { shadowBlur: 6, shadowColor: '#4f8ef7' } },
+      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
     }],
   }, true);
 
