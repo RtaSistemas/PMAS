@@ -2767,13 +2767,27 @@ async function _renderCollabCalendar(name, year, month) {
   emptyEl.hidden = true;
   chartEl.style.visibility = '';
 
-  // build [date, hours] pairs for ECharts calendar
-  const calData = calPoints.map(d => [d.date, d.hours]);
+  // data: [date, total, normal, extra, standby]
+  const calData = calPoints.map(d => [
+    d.date, d.hours,
+    d.normal_hours  || 0,
+    d.extra_hours   || 0,
+    d.standby_hours || 0,
+  ]);
 
   const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const rangeEnd = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  const maxHours = Math.max(...workPoints.map(d => d.hours), 8);
+  const lastDay    = new Date(year, month, 0).getDate();
+  const rangeEnd   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
+
+  // Square cell size clamped to a readable range
+  const containerW = chartEl.offsetWidth || 560;
+  const cellW      = Math.min(Math.max(Math.floor((containerW - 16) / 7), 44), 70);
+
+  // Dynamic height: header row + weeks
+  const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
+  chartEl.style.height = `${numWeeks * cellW + 34}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   _charts['collabCalendarChart'] = cc;
@@ -2782,20 +2796,24 @@ async function _renderCollabCalendar(name, year, month) {
     tooltip: {
       formatter(p) {
         if (!p.value) return '';
-        const [d_date, hrs] = p.value;
+        const [d_date, , n, e, s] = p.value;
         const q = quarantineDates.has(d_date) ? ' ⚠' : '';
-        return `${d_date}${q}<br/><b>${(+hrs).toFixed(1)}h</b>`;
+        let tip = `<b>${d_date}</b>${q}`;
+        if (n > 0) tip += `<br/>Normal: ${n.toFixed(1)}h`;
+        if (e > 0) tip += `<br/>Extra: ${e.toFixed(1)}h`;
+        if (s > 0) tip += `<br/>Sobreaviso: ${s.toFixed(1)}h`;
+        return tip;
       },
     },
     visualMap: {
       show: false, min: 0, max: maxHours,
-      inRange: { color: ['#0f172a', '#4f8ef7'] },
+      inRange: { color: ['#162032', '#1e40af'] },
     },
     calendar: {
       orient: 'vertical',
-      top: 28, left: 8, right: 8, bottom: 4,
+      top: 28, left: 4, right: 4, bottom: 4,
       range: [rangeStart, rangeEnd],
-      cellSize: ['auto', 'auto'],
+      cellSize: [cellW, cellW],
       dayLabel: {
         firstDay: 0,
         nameMap: _t('cal.day_names'),
@@ -2803,14 +2821,35 @@ async function _renderCollabCalendar(name, year, month) {
         position: 'start',
       },
       monthLabel: { show: false },
-      yearLabel: { show: false },
-      itemStyle: { color: '#1e293b', borderColor: '#0f172a', borderWidth: 2 },
-      splitLine: { show: false },
+      yearLabel:  { show: false },
+      itemStyle:  { color: '#1e293b', borderColor: '#0f172a', borderWidth: 2 },
+      splitLine:  { show: false },
     },
     series: [{
       type: 'heatmap',
       coordinateSystem: 'calendar',
       data: calData,
+      label: {
+        show: true,
+        formatter(params) {
+          const [d_date, , n, e, s] = params.data;
+          const day = parseInt(d_date.split('-')[2], 10);
+          const isQ = quarantineDates.has(d_date);
+          const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
+          const lines = [dayStr];
+          if (n > 0) lines.push(`{n|${n.toFixed(1)}}`);
+          if (e > 0) lines.push(`{e|${e.toFixed(1)}}`);
+          if (s > 0) lines.push(`{s|${s.toFixed(1)}}`);
+          return lines.join('\n');
+        },
+        rich: {
+          day:  { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', lineHeight: 15, align: 'center' },
+          qday: { fontSize: 10, fontWeight: 'bold', color: '#f59e0b', lineHeight: 15, align: 'center' },
+          n:    { fontSize: 10, color: '#e2e8f0', lineHeight: 14, align: 'center' },
+          e:    { fontSize: 10, color: '#fbbf24', lineHeight: 14, align: 'center' },
+          s:    { fontSize: 10, color: '#60a5fa', lineHeight: 14, align: 'center' },
+        },
+      },
       emphasis: { itemStyle: { shadowBlur: 6, shadowColor: '#4f8ef7' } },
     }],
   }, true);

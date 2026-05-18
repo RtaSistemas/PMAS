@@ -255,6 +255,9 @@ def get_collaborator_daily(
     rows = (
         db.query(
             TimesheetRecord.record_date,
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
             func.sum(
                 TimesheetRecord.normal_hours
                 + TimesheetRecord.extra_hours
@@ -271,7 +274,15 @@ def get_collaborator_daily(
         .all()
     )
 
-    hours_by_date = {r.record_date: round(r.hours or 0.0, 2) for r in rows}
+    hours_by_date = {
+        r.record_date: {
+            "hours":   round(r.hours        or 0.0, 2),
+            "normal":  round(r.normal_hours  or 0.0, 2),
+            "extra":   round(r.extra_hours   or 0.0, 2),
+            "standby": round(r.standby_hours or 0.0, 2),
+        }
+        for r in rows
+    }
 
     # Collect pending quarantine dates for this collaborator/period.
     # raw_data stores the original CSV row dict; we filter in Python.
@@ -303,15 +314,19 @@ def get_collaborator_daily(
         if date_from <= parsed <= date_to:
             quarantine_dates.add(parsed)
 
+    _empty = {"hours": 0.0, "normal": 0.0, "extra": 0.0, "standby": 0.0}
     all_dates = set(hours_by_date.keys()) | quarantine_dates
     result = []
     for d_ in sorted(all_dates):
-        h = hours_by_date.get(d_, 0.0)
+        hdata = hours_by_date.get(d_, _empty)
         has_q = d_ in quarantine_dates
-        if h > 0 or has_q:
+        if hdata["hours"] > 0 or has_q:
             result.append({
-                "date": str(d_),
-                "hours": h,
+                "date":          str(d_),
+                "hours":         hdata["hours"],
+                "normal_hours":  hdata["normal"],
+                "extra_hours":   hdata["extra"],
+                "standby_hours": hdata["standby"],
                 "has_quarantine": has_q,
             })
     return result
