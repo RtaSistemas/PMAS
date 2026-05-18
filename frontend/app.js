@@ -2966,7 +2966,7 @@ async function _renderCollabCalendar(name, year, month) {
   // Dynamic height: header row + weeks
   const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
-  chartEl.style.height = `${numWeeks * cellW + 36}px`;
+  chartEl.style.height = `${numWeeks * cellW + 34}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   _charts['collabCalendarChart'] = cc;
@@ -2994,16 +2994,18 @@ async function _renderCollabCalendar(name, year, month) {
       outOfRange: { color: [cardColor] },
     },
     calendar: {
-      orient: 'vertical',
-      top: 30, left: 4, right: 4, bottom: 4,
+      orient: 'horizontal',
+      top: 26, left: 4, right: 4, bottom: 4,
       width: calWidth,
       range: [rangeStart, rangeEnd],
       cellSize: [cellW, cellW],
       dayLabel: {
+        show: true,
         firstDay: 0,
         nameMap: _t('cal.day_names'),
         color: textMuted, fontSize: 10, fontWeight: 600,
         position: 'start',
+        margin: 6,
       },
       monthLabel: { show: false },
       yearLabel:  { show: false },
