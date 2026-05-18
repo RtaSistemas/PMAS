@@ -2995,8 +2995,9 @@ async function _renderCollabCalendar(name, year, month) {
     visualMap: {
       show: false,
       min: 0, max: maxHours,
-      // Active days: 3-stop gradient — dark navy → primary → bright accent
-      inRange:    { color: ['#0f2d5a', primaryColor, accentColor] },
+      // Active days: 5-stop gradient — dark-but-visible navy → vivid accent
+      // Steps map the 0–24h range to clearly distinct visual levels
+      inRange:    { color: ['#163560', '#1a5496', '#2879d4', primaryColor, accentColor] },
       // Inactive days (value=-1): card background — they recede visually
       outOfRange: { color: [cardColor] },
     },
