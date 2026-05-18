@@ -825,7 +825,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
+  effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart'],
 };
@@ -1528,6 +1528,7 @@ function _renderCostCompositionChart(trends) {
   const extraData   = filtered.map(t => +((t.extra_cost   || 0) * factor).toFixed(2));
   const standbyData = filtered.map(t => +((t.standby_cost || 0) * factor).toFixed(2));
 
+  const pal = _getPalette();
   const cc = _getOrCreateChart('costCompositionChart');
   cc.setOption({
     backgroundColor: 'transparent',
@@ -1550,9 +1551,9 @@ function _renderCostCompositionChart(trends) {
     xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
     yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
     series: [
-      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: '#4f8ef7' } },
-      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: '#d9b273' } },
-      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: '#94a3b8' } },
+      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
+      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
+      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
     ],
   }, true);
   cc.resize();
@@ -1608,10 +1609,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       if (_charts['trendsChart'] && !_charts['trendsChart'].isDisposed()) {
         _charts['trendsChart'].dispose(); delete _charts['trendsChart'];
       }
-      document.getElementById('cpiChartCard').hidden = true;
-      if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
-        _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
-      }
       document.getElementById('costCompositionPanel').hidden = true;
       if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
         _charts['costCompositionChart'].dispose(); delete _charts['costCompositionChart'];
@@ -1634,19 +1631,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     }), true);
     tc.resize();
 
-    const cpiCard = document.getElementById('cpiChartCard');
-    const cpiData = trends.filter(t => t.cpi != null);
-    if (cpiData.length) {
-      cpiCard.hidden = false;
-      const cc = _getOrCreateChart('cpiChart');
-      cc.setOption(_buildCpiOption(trends), true);
-      cc.resize();
-    } else {
-      cpiCard.hidden = true;
-      if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
-        _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
-      }
-    }
 
     // Cost Composition chart — G3
     _renderCostCompositionChart(trends);
@@ -2966,15 +2950,21 @@ async function _renderCollabCalendar(name, year, month) {
   const borderColor   = _cssVar('--border-hi')  || '#1d4068';
   const inactiveText  = _cssVar('--text-3')     || '#3d6080';
   const activeText    = _cssVar('--text')       || '#e0e0e0';
+  const textMuted     = _cssVar('--text-2')     || '#94a3b8';
+  const pal           = _getPalette();
 
-  // Square cell size clamped to a readable range
-  const containerW = chartEl.offsetWidth || 560;
-  const cellW      = Math.min(Math.max(Math.floor((containerW - 16) / 7), 44), 70);
+  // Square cell size — compute from container, then force chart width to match exactly
+  const containerW = chartEl.parentElement?.offsetWidth || chartEl.offsetWidth || 560;
+  const cellW      = Math.min(Math.max(Math.floor((containerW - 16) / 7), 44), 80);
+  const calWidth   = cellW * 7;
+  chartEl.style.width  = `${calWidth + 8}px`;
+  chartEl.style.maxWidth = '100%';
+  chartEl.style.margin = '0 auto';
 
   // Dynamic height: header row + weeks
   const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
-  chartEl.style.height = `${numWeeks * cellW + 34}px`;
+  chartEl.style.height = `${numWeeks * cellW + 36}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   _charts['collabCalendarChart'] = cc;
@@ -3003,13 +2993,14 @@ async function _renderCollabCalendar(name, year, month) {
     },
     calendar: {
       orient: 'vertical',
-      top: 28, left: 4, right: 4, bottom: 4,
+      top: 30, left: 4, right: 4, bottom: 4,
+      width: calWidth,
       range: [rangeStart, rangeEnd],
       cellSize: [cellW, cellW],
       dayLabel: {
         firstDay: 0,
         nameMap: _t('cal.day_names'),
-        color: inactiveText, fontSize: 10,
+        color: textMuted, fontSize: 10, fontWeight: 600,
         position: 'start',
       },
       monthLabel: { show: false },
@@ -3037,12 +3028,12 @@ async function _renderCollabCalendar(name, year, month) {
           return lines.join('\n');
         },
         rich: {
-          inactive: { fontSize: 9, color: inactiveText, lineHeight: 14, align: 'center' },
-          day:  { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
-          qday: { fontSize: 9, fontWeight: 'bold', color: '#f59e0b', lineHeight: 14, align: 'center' },
-          n:    { fontSize: 9, color: '#ffffff', lineHeight: 13, align: 'center' },
-          e:    { fontSize: 9, color: '#fbbf24', lineHeight: 13, align: 'center' },
-          s:    { fontSize: 9, color: '#93c5fd', lineHeight: 13, align: 'center' },
+          inactive: { fontSize: 9, color: inactiveText,  lineHeight: 14, align: 'center' },
+          day:      { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
+          qday: { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
+          n:    { fontSize: 9, color: pal[0] || '#4f8ef7', lineHeight: 13, align: 'center' },
+          e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
+          s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
         },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
@@ -3070,9 +3061,9 @@ async function _renderCollabCalendar(name, year, month) {
 }
 
 // ---------------------------------------------------------------------------
-// CPI trend chart
+// (cpiChart removed — IDP por ciclo merged into trends; see _buildHoursBarOption)
 // ---------------------------------------------------------------------------
-function _buildCpiOption(trends) {
+function _buildCpiOption_unused(trends) {
   const cats = trends.map(d => d.cycle_name);
   const cpiSeries = trends.map(d => d.cpi != null ? +d.cpi.toFixed(3) : null);
   return {
@@ -4279,7 +4270,6 @@ document.getElementById('auditActionFilter').addEventListener('change', loadAudi
 const _CHART_SERIES_NAMES = {
   effortChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
   trendsChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
-  cpiChart:      ['CPI'],
   treemapChart:  [],
   bulletChart:   ['Planejado', 'Realizado'],
   scatterChart:  [],
