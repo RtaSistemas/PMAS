@@ -2917,14 +2917,17 @@ async function _renderCollabCalendar(name, year, month) {
   // include quarantine-only days so tooltip can show ⚠ even when hours=0
   const calPoints = data.filter(d => d.hours > 0 || d.has_quarantine);
 
+  const dayHeaderEl = document.getElementById('calDayHeader');
   if (!calPoints.length) {
     emptyEl.hidden = false;
     chartEl.style.visibility = 'hidden';
+    if (dayHeaderEl) dayHeaderEl.style.display = 'none';
     statsEl.innerHTML = '';
     return;
   }
   emptyEl.hidden = true;
   chartEl.style.visibility = '';
+  if (dayHeaderEl) dayHeaderEl.style.display = 'flex';
 
   // data: [date, total, normal, extra, standby]
   // All days in the month — inactive days use value=-1 so visualMap.outOfRange
@@ -2963,10 +2966,20 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.maxWidth = '100%';
   chartEl.style.margin = '0 auto';
 
-  // Dynamic height: header row + weeks
+  // Day-of-week header row rendered in HTML (ECharts vertical orient puts dayLabel on left)
+  const dayHeader = document.getElementById('calDayHeader');
+  if (dayHeader) {
+    const dayNames = _t('cal.day_names');
+    dayHeader.style.cssText = `display:flex;width:${calWidth + 8}px;max-width:100%;margin:0 auto 2px`;
+    dayHeader.innerHTML = dayNames.map(n =>
+      `<div style="flex:0 0 ${cellW}px;text-align:center;font-size:10px;font-weight:600;color:${textMuted}">${n}</div>`
+    ).join('');
+  }
+
+  // Dynamic height: weeks
   const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
-  chartEl.style.height = `${numWeeks * cellW + 34}px`;
+  chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   _charts['collabCalendarChart'] = cc;
@@ -2994,19 +3007,12 @@ async function _renderCollabCalendar(name, year, month) {
       outOfRange: { color: [cardColor] },
     },
     calendar: {
-      orient: 'horizontal',
-      top: 26, left: 4, right: 4, bottom: 4,
+      orient: 'vertical',
+      top: 4, left: 4, right: 4, bottom: 4,
       width: calWidth,
       range: [rangeStart, rangeEnd],
       cellSize: [cellW, cellW],
-      dayLabel: {
-        show: true,
-        firstDay: 0,
-        nameMap: _t('cal.day_names'),
-        color: textMuted, fontSize: 10, fontWeight: 600,
-        position: 'start',
-        margin: 6,
-      },
+      dayLabel: { show: false },
       monthLabel: { show: false },
       yearLabel:  { show: false },
       itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 2 },
