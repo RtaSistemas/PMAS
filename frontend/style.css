@@ -330,8 +330,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 /* ── Calendar month nav input ────────────────────────────────── */
 #calMonthInput {
   height: 2.1rem;
-  width: auto;
-  min-width: 9rem;
+  width: 13rem;
+  min-width: 11rem;
   padding: 0 .5rem;
   border-color: var(--border);
 }
