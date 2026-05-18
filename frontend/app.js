@@ -119,6 +119,16 @@ const _LANG = {
     'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
     'collab.timeline_title': 'Evolução por Ciclo — ',
     'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
+    'collab.calendar_empty': 'Sem atividade neste mês.',
+    'collab.section_cycles': 'Horas por Ciclo',
+    'collab.section_calendar': 'Atividade Diária',
+    'cal.stat.total': 'Total',
+    'cal.stat.active_days': 'Dias ativos',
+    'cal.stat.avg_day': 'Média/dia',
+    'cal.stat.peak': 'Pico',
+    'cal.stat.quarantine': '⚠ Em quarentena',
+    'cal.months': ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+    'cal.day_names': ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
     'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
     'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
@@ -265,6 +275,12 @@ const _LANG = {
     'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
+    'runway.th.spi':'SPI','runway.th.status':'Status',
+    'runway.status.on_track':'No prazo','runway.status.at_risk':'Atenção',
+    'runway.status.behind':'Atrasado','runway.status.no_baseline':'Sem baseline',
+    'costcomp.title':'Composição de Custo por Tipo de Hora',
+    'costcomp.note':'Custo de horas regulares · extras · sobreaviso por ciclo',
+    'costcomp.empty':'Nenhum dado de custo encontrado.',
     'conc.title':'Concentração de Risco por Projeto',
     'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
     'conc.empty':'Nenhum dado de horas encontrado.',
@@ -391,6 +407,16 @@ const _LANG = {
     'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
     'collab.timeline_title': 'Cycle Evolution — ',
     'collab.timeline_empty': 'No data found for this collaborator.',
+    'collab.calendar_empty': 'No activity this month.',
+    'collab.section_cycles': 'Hours by Cycle',
+    'collab.section_calendar': 'Daily Activity',
+    'cal.stat.total': 'Total',
+    'cal.stat.active_days': 'Active days',
+    'cal.stat.avg_day': 'Avg/day',
+    'cal.stat.peak': 'Peak',
+    'cal.stat.quarantine': '⚠ In quarantine',
+    'cal.months': ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    'cal.day_names': ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
     'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
     'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
@@ -537,6 +563,12 @@ const _LANG = {
     'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
+    'runway.th.spi':'SPI','runway.th.status':'Status',
+    'runway.status.on_track':'On track','runway.status.at_risk':'At risk',
+    'runway.status.behind':'Behind','runway.status.no_baseline':'No baseline',
+    'costcomp.title':'Cost Composition by Hour Type',
+    'costcomp.note':'Cost of regular · overtime · standby hours per cycle',
+    'costcomp.empty':'No cost data found.',
     'conc.title':'Project Concentration Risk',
     'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
     'conc.empty':'No hour data found.',
@@ -555,6 +587,131 @@ function _applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = _t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = _t(el.dataset.i18nPh); });
 }
+
+// ---------------------------------------------------------------------------
+// EVM glossary — tooltip shown on any [data-evm="KEY"] element
+// ---------------------------------------------------------------------------
+const _EVM_TERMS = {
+  CPI: {
+    pt: {
+      name: 'IDC — Índice de Desempenho de Custo',
+      desc: 'Mede a eficiência do custo realizado. > 1,0 = abaixo do orçamento; < 1,0 = acima.',
+      formula: 'IDC = VA ÷ CR\n  VA = Valor Agregado\n  CR = Custo Real acumulado',
+    },
+    en: {
+      name: 'CPI — Cost Performance Index',
+      desc: 'Measures cost efficiency. > 1.0 = under budget; < 1.0 = over budget.',
+      formula: 'CPI = EV ÷ AC\n  EV = Earned Value\n  AC = Actual Cost',
+    },
+  },
+  SPI: {
+    pt: {
+      name: 'IDP — Índice de Desempenho de Prazo',
+      desc: 'Mede a eficiência do cronograma. > 1,0 = adiantado; < 1,0 = atrasado.',
+      formula: 'IDP = VA ÷ VP\n  VA = Valor Agregado\n  VP = Valor Planejado acumulado',
+    },
+    en: {
+      name: 'SPI — Schedule Performance Index',
+      desc: 'Measures schedule efficiency. > 1.0 = ahead of schedule; < 1.0 = behind.',
+      formula: 'SPI = EV ÷ PV\n  EV = Earned Value\n  PV = Planned Value (cumulative)',
+    },
+  },
+  EAC: {
+    pt: {
+      name: 'EAC — Estimativa para Conclusão',
+      desc: 'Projeção do custo total do projeto com base no desempenho de custo atual.',
+      formula: 'EAC = OAC ÷ IDC\n  OAC = Orçamento ao Término (BAC)',
+    },
+    en: {
+      name: 'EAC — Estimate at Completion',
+      desc: 'Projected total cost of the project at the current cost performance rate.',
+      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion',
+    },
+  },
+  SV: {
+    pt: {
+      name: 'VS — Variação de Prazo',
+      desc: 'Diferença entre o valor do trabalho realizado e o planejado. Negativo = atrasado.',
+      formula: 'VS = VA − VP\n  VA = Valor Agregado\n  VP = Valor Planejado',
+    },
+    en: {
+      name: 'SV — Schedule Variance',
+      desc: 'Difference between earned and planned value. Negative = behind schedule.',
+      formula: 'SV = EV − PV\n  EV = Earned Value\n  PV = Planned Value',
+    },
+  },
+  PV: {
+    pt: {
+      name: 'VP — Valor Planejado',
+      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline).',
+      formula: 'VP = Σ (horas planejadas por ciclo)\naté o ciclo de referência',
+    },
+    en: {
+      name: 'PV — Planned Value',
+      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline).',
+      formula: 'PV = Σ (planned hours per cycle)\nup to the reference cycle',
+    },
+  },
+  EVM: {
+    pt: {
+      name: 'EVM — Gestão de Valor Agregado',
+      desc: 'Metodologia que integra escopo, prazo e custo para medir o desempenho real do projeto e projetar tendências.',
+      formula: 'Indicadores: IDC (CPI), IDP (SPI),\n  EAC, VS (SV), VP (PV)',
+    },
+    en: {
+      name: 'EVM — Earned Value Management',
+      desc: 'Methodology integrating scope, schedule and cost to measure actual project performance and forecast trends.',
+      formula: 'Metrics: CPI, SPI, EAC, SV, PV',
+    },
+  },
+};
+
+let _evmTipEl    = null;
+let _evmTipTimer = null;
+
+function _showEvmTip(anchor) {
+  const key  = anchor.dataset.evm;
+  const term = _EVM_TERMS[key];
+  if (!term) return;
+  const loc  = term[_locale] || term.pt;
+
+  if (!_evmTipEl) {
+    _evmTipEl = document.createElement('div');
+    _evmTipEl.className = 'evm-tooltip';
+    document.body.appendChild(_evmTipEl);
+  }
+  _evmTipEl.innerHTML =
+    `<div class="evm-tip-name">${escHtml(loc.name)}</div>` +
+    `<div class="evm-tip-desc">${escHtml(loc.desc)}</div>` +
+    `<div class="evm-tip-formula">${escHtml(loc.formula)}</div>`;
+  _evmTipEl.hidden = false;
+
+  const rect = anchor.getBoundingClientRect();
+  const tipW = 270;
+  let left = rect.left;
+  let top  = rect.bottom + 6;
+  if (left + tipW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tipW - 8);
+  if (top + 120 > window.innerHeight)      top  = rect.top - 8 - (_evmTipEl.offsetHeight || 120);
+  _evmTipEl.style.left = `${left}px`;
+  _evmTipEl.style.top  = `${top}px`;
+}
+
+function _hideEvmTip() {
+  clearTimeout(_evmTipTimer);
+  if (_evmTipEl) _evmTipEl.hidden = true;
+}
+
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('[data-evm]');
+  if (!el) return;
+  clearTimeout(_evmTipTimer);
+  _evmTipTimer = setTimeout(() => _showEvmTip(el), 350);
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('[data-evm]')) return;
+  clearTimeout(_evmTipTimer);
+  _hideEvmTip();
+});
 
 // ---------------------------------------------------------------------------
 // Multi-currency display (UI-only conversion, no backend calls)
@@ -666,7 +823,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart'],
+  effort:     ['effortChart', 'trendsChart', 'cpiChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart'],
 };
@@ -744,7 +901,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-    return `"${d.collaborator}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
+    return `"${d.collaborator.replace(/"/g, '""')}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
   });
   const csv  = [header, ...rows].join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1010,8 +1167,12 @@ function _showEmpty(id, show) {
 // ---------------------------------------------------------------------------
 let _lastEffortData = [];
 let _lastRunwayData = [];
+let _selectedCollaborator = null;
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth() + 1; // 1-12
 
 async function _renderEffortTab() {
+  _closeCollabDetail();
   const cycleIds  = cycleMs.getValues();
   const pepCodes  = pepMs.getValues();
   const pepDescs  = pepDescMs.getValues();
@@ -1069,7 +1230,13 @@ async function _renderEffortTab() {
     ch.resize();
     ch.off('click');
     ch.on('click', async (params) => {
-      if (params && params.name) await _openCollabTimelineModal(params.name);
+      if (params && params.name) {
+        if (_selectedCollaborator === params.name) {
+          _closeCollabDetail();
+        } else {
+          await _openCollabDetail(params.name);
+        }
+      }
     });
 
     // Trends + CPI charts — full filter passthrough with cycle window logic
@@ -1130,6 +1297,23 @@ function _renderRunwayPanel(runway) {
       cyclesCell = item.cycles_to_complete.toFixed(1);
     }
 
+    // SPI
+    let spiCell = '—';
+    if (item.spi != null) {
+      const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
+    }
+
+    // Status
+    const statusMap = {
+      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: 'var(--primary,#4f8ef7)' },
+      at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
+      behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
+      no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: '#475569' },
+    };
+    const st = statusMap[item.schedule_status] || statusMap.no_baseline;
+    const statusCell = `<span style="font-size:.78rem;font-weight:600;color:${st.color}">${st.label}</span>`;
+
     // CPI
     let cpiCell = '—';
     if (item.cpi != null) {
@@ -1152,6 +1336,8 @@ function _renderRunwayPanel(runway) {
       <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
       <td style="text-align:right">${cyclesCell}</td>
       <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
+      <td style="text-align:right">${spiCell}</td>
+      <td>${statusCell}</td>
       <td style="text-align:right">${cpiCell}</td>
     `;
     tbody.appendChild(tr);
@@ -1311,6 +1497,70 @@ async function _renderPortfolioTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Cost Composition by Hour Type chart
+// ---------------------------------------------------------------------------
+function _renderCostCompositionChart(trends) {
+  const panel = document.getElementById('costCompositionPanel');
+  const emptyEl = document.getElementById('costCompositionEmpty');
+
+  const filtered = (trends || []).filter(t =>
+    (t.normal_cost || 0) + (t.extra_cost || 0) + (t.standby_cost || 0) > 0
+  );
+
+  if (!filtered.length) {
+    panel.hidden = false;
+    emptyEl.hidden = false;
+    if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
+      _charts['costCompositionChart'].dispose();
+      delete _charts['costCompositionChart'];
+    }
+    document.getElementById('costCompositionChart').style.visibility = 'hidden';
+    return;
+  }
+
+  panel.hidden = false;
+  emptyEl.hidden = true;
+  document.getElementById('costCompositionChart').style.visibility = '';
+
+  const sym = document.getElementById('currencySymbol')?.value || 'R$';
+  const factor = parseFloat(document.getElementById('currencyFactor')?.value) || 1;
+
+  const categories = filtered.map(t => t.cycle_name);
+  const normalData  = filtered.map(t => +((t.normal_cost  || 0) * factor).toFixed(2));
+  const extraData   = filtered.map(t => +((t.extra_cost   || 0) * factor).toFixed(2));
+  const standbyData = filtered.map(t => +((t.standby_cost || 0) * factor).toFixed(2));
+
+  const cc = _getOrCreateChart('costCompositionChart');
+  cc.setOption({
+    backgroundColor: 'transparent',
+    legend: { top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter(params) {
+        const total = params.reduce((s, p) => s + (p.value || 0), 0);
+        let html = `<b>${params[0].axisValue}</b><br/>`;
+        params.forEach(p => {
+          const pct = total > 0 ? (p.value / total * 100).toFixed(1) : '0.0';
+          html += `${p.marker}${p.seriesName}: ${sym} ${p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${pct}%)<br/>`;
+        });
+        html += `<b>Total: ${sym} ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
+        return html;
+      },
+    },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
+    yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
+    series: [
+      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: '#4f8ef7' } },
+      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: '#d9b273' } },
+      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: '#94a3b8' } },
+    ],
+  }, true);
+  cc.resize();
+}
+
+// ---------------------------------------------------------------------------
 // Compute date window for Queima/IDP when cycles are selected.
 // Returns {dateFrom, dateTo} covering selected cycles ±1 neighbor.
 // If no cycles selected, returns the manually entered date range unchanged.
@@ -1364,6 +1614,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       if (_charts['cpiChart'] && !_charts['cpiChart'].isDisposed()) {
         _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
       }
+      document.getElementById('costCompositionPanel').hidden = true;
+      if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
+        _charts['costCompositionChart'].dispose(); delete _charts['costCompositionChart'];
+      }
       return;
     }
     _showEmpty('trendsEmpty', false);
@@ -1395,6 +1649,9 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         _charts['cpiChart'].dispose(); delete _charts['cpiChart'];
       }
     }
+
+    // Cost Composition chart — G3
+    _renderCostCompositionChart(trends);
 
     // Per-PEP CPI panel (toggle-controlled)
     if (!_pepCpiMode) {
@@ -1612,15 +1869,18 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
                                                               lbl: _t('forecast.remaining'),    cls: over ? 'red' : 'neutral' },
     { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
-    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls              },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral'           },
-    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls              },
-    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls               },
-    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'            },
+    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls,   evm: 'CPI' },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral', evm: 'EAC' },
+    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls,   evm: 'SPI' },
+    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls,    evm: 'SV'  },
+    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'              },
   ];
-  return cards.map(({ val, lbl, cls }) =>
-    `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${escHtml(lbl)}</div></div>`
-  ).join('');
+  return cards.map(({ val, lbl, cls, evm }) => {
+    const lblHtml = evm
+      ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
+      : escHtml(lbl);
+    return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
+  }).join('');
 }
 
 function _buildForecastOption(fc) {
@@ -2512,114 +2772,267 @@ function _buildBulletOption(withBudget, evmMode = false) {
 }
 
 // ---------------------------------------------------------------------------
-// Collaborator Timeline Modal
+// Collaborator Inline Detail Panel
 // ---------------------------------------------------------------------------
-async function _openCollabTimelineModal(collaboratorName) {
-  // 1. Pega filtros ativos da tela
-  const pepCodes  = pepMs.getValues();
-  const pepDescs  = pepDescMs.getValues();
-  const dateFrom  = document.getElementById('dateFromInput').value;
-  const dateTo    = document.getElementById('dateToInput').value;
+function _closeCollabDetail() {
+  _selectedCollaborator = null;
+  document.getElementById('collabDetailPanel').hidden = true;
+  // dispose inline charts
+  ['collabInlineTimelineChart','collabCalendarChart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const c = echarts.getInstanceByDom(el);
+    if (c && !c.isDisposed()) c.dispose();
+  });
+  // remove highlight from effort chart
+  const effEl = document.getElementById('effortChart');
+  if (effEl) { const c = echarts.getInstanceByDom(effEl); if (c) c.dispatchAction({ type: 'downplay' }); }
+}
 
-  // 2. Monta query string
+async function _openCollabDetail(name) {
+  _selectedCollaborator = name;
+
+  // highlight bar in effort chart
+  const effEl = document.getElementById('effortChart');
+  if (effEl) {
+    const c = echarts.getInstanceByDom(effEl);
+    if (c) {
+      c.dispatchAction({ type: 'downplay' });
+      c.dispatchAction({ type: 'highlight', name });
+    }
+  }
+
+  // show panel, set title
+  const panel = document.getElementById('collabDetailPanel');
+  panel.hidden = false;
+  document.getElementById('collabDetailName').textContent = name;
+
+  // scroll panel into view smoothly
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Section 1: cycle timeline
+  await _renderCollabTimeline(name);
+
+  // Section 2: calendar heatmap — use current calendar month
+  _calYear  = new Date().getFullYear();
+  _calMonth = new Date().getMonth() + 1;
+  await _renderCollabCalendar(name, _calYear, _calMonth);
+}
+
+async function _renderCollabTimeline(name) {
+  const emptyEl = document.getElementById('collabInlineTimelineEmpty');
+  const chartEl = document.getElementById('collabInlineTimelineChart');
+
+  // reuse existing filters from the main filter bar
+  const pepCodes = pepMs.getValues();
+  const pepDescs = pepDescMs.getValues();
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
+
   const p = new URLSearchParams();
-  p.set('collaborator_name', collaboratorName);
+  p.set('collaborator_name', name);
   pepCodes.forEach(c => p.append('pep_code', c));
   pepDescs.forEach(d => p.append('pep_description', d));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
-  // 3. Chama o endpoint
   let rows = [];
-  try {
-    rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`);
-  } catch (err) {
-    notify('Erro ao carregar timeline do colaborador.', 'error');
-    return;
-  }
+  try { rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`); }
+  catch (e) { notify('Erro ao carregar timeline.', 'error'); return; }
 
-  // 4. Função auxiliar de fechar
-  function _closeCollabModal() {
-    const chartEl = document.getElementById('collabTimelineChart');
-    const c = echarts.getInstanceByDom(chartEl);
-    if (c && !c.isDisposed()) c.dispose();
-    chartEl.style.display = 'none';
-    modal.style.display = 'none';
-  }
-
-  // 5. Cria modal apenas uma vez
-  let modal = document.getElementById('collabTimelineModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'collabTimelineModal';
-    modal.style.cssText = `
-      position:fixed;inset:0;z-index:9999;
-      display:flex;align-items:center;justify-content:center;
-      background:rgba(0,0,0,0.7);
-    `;
-    modal.innerHTML = `
-      <div style="background:${_cssVar('--card')};border:1px solid ${_cssVar('--border')};border-radius:10px;
-                  padding:1.5rem;width:min(860px,95vw);max-height:90vh;overflow:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <span id="collabTimelineTitle"
-            style="font-size:1rem;font-weight:600;color:${_cssVar('--text')};"></span>
-          <button id="collabTimelineClose"
-            style="background:none;border:none;color:${_cssVar('--text-3')};font-size:1.4rem;
-                   cursor:pointer;line-height:1;">✕</button>
-        </div>
-        <div id="collabTimelineEmpty"
-          style="color:${_cssVar('--text-3')};text-align:center;padding:2rem;" hidden></div>
-        <div id="collabTimelineChart" style="width:100%;height:360px;"></div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('collabTimelineClose').addEventListener('click', () => {
-      _closeCollabModal();
-    });
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) _closeCollabModal();
-    });
-  }
-
-  // 6. Exibe o modal
-  modal.style.display = 'flex';
-
-  // 7. Atualiza título
-  document.getElementById('collabTimelineTitle').textContent =
-    _t('collab.timeline_title') + collaboratorName;
-
-  // 8. Sem dados
-  const emptyEl = document.getElementById('collabTimelineEmpty');
-  const chartEl = document.getElementById('collabTimelineChart');
-
-  if (!rows.length) {
-    emptyEl.textContent = _t('collab.timeline_empty');
-    emptyEl.hidden = false;
-    chartEl.style.display = 'none';
-    return;
-  }
-
-  emptyEl.hidden = true;
-  chartEl.style.display = '';
-
-  // 9. Destrói instância anterior se existir
+  // dispose old chart
   const existing = echarts.getInstanceByDom(chartEl);
   if (existing && !existing.isDisposed()) existing.dispose();
 
-  // 10. Renderiza gráfico — G3 ✅
+  if (!rows.length) {
+    emptyEl.hidden = false;
+    chartEl.style.visibility = 'hidden';
+    return;
+  }
+  emptyEl.hidden = true;
+  chartEl.style.visibility = '';
+
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
-    data:        rows,
-    categoryKey: 'cycle_name',
-    orientation: 'vertical',
-    stacked:     true,
-    showTotal:   true,
-    richLabel:   false,
-    maxItems:     40,
-    toolboxName: 'PMAS-Timeline',
+    data: rows, categoryKey: 'cycle_name',
+    orientation: 'vertical', stacked: true,
+    showTotal: true, richLabel: false,
+    maxItems: 40, toolboxName: 'PMAS-CollabTimeline',
   }), true);
+
+  // Click a cycle bar → jump the calendar to that cycle's start month
+  tc.off('click');
+  tc.on('click', async (params) => {
+    if (!params?.name) return;
+    const rec = rows.find(r => r.cycle_name === params.name);
+    if (!rec?.cycle_start) return;
+    const [y, m] = rec.cycle_start.split('-').map(Number);
+    _calYear  = y;
+    _calMonth = m;
+    await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+    document.getElementById('collabCalendarChart')
+      .scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+async function _renderCollabCalendar(name, year, month) {
+  const emptyEl  = document.getElementById('collabCalendarEmpty');
+  const chartEl  = document.getElementById('collabCalendarChart');
+  const statsEl  = document.getElementById('collabCalendarStats');
+  const inputEl  = document.getElementById('calMonthInput');
+
+  const nowDate  = new Date();
+  inputEl.max    = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,'0')}`;
+  inputEl.value  = `${year}-${String(month).padStart(2,'0')}`;
+
+  let data = [];
+  try {
+    data = await apiFetch(`/api/dashboard/collaborator-daily?collaborator_name=${encodeURIComponent(name)}&year=${year}&month=${month}`);
+  } catch(e) { notify('Erro ao carregar dados diários.', 'error'); return; }
+
+  // dispose old
+  const existing = echarts.getInstanceByDom(chartEl);
+  if (existing && !existing.isDisposed()) existing.dispose();
+
+  const workPoints = data.filter(d => d.hours > 0);
+  const quarantineDates = new Set(data.filter(d => d.has_quarantine).map(d => d.date));
+  // include quarantine-only days so tooltip can show ⚠ even when hours=0
+  const calPoints = data.filter(d => d.hours > 0 || d.has_quarantine);
+
+  if (!calPoints.length) {
+    emptyEl.hidden = false;
+    chartEl.style.visibility = 'hidden';
+    statsEl.innerHTML = '';
+    return;
+  }
+  emptyEl.hidden = true;
+  chartEl.style.visibility = '';
+
+  // data: [date, total, normal, extra, standby]
+  // All days in the month — inactive days use value=-1 so visualMap.outOfRange
+  // applies a neutral background while the label still shows the day number.
+  const allDaysData = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec = data.find(r => r.date === dateStr);
+    if (rec) {
+      allDaysData.push([dateStr, rec.hours, rec.normal_hours || 0, rec.extra_hours || 0, rec.standby_hours || 0]);
+    } else {
+      allDaysData.push([dateStr, -1, 0, 0, 0]);
+    }
+  }
+
+  const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
+  const rangeEnd   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
+
+  // Read theme CSS variables so the chart adapts to Admin > Aparência settings
+  const primaryColor = _cssVar('--primary')    || '#0ea5e9';
+  const cardColor    = _cssVar('--card')       || '#0e2038';
+  const borderColor  = _cssVar('--border-hi')  || '#1d4068';
+  const inactiveText = _cssVar('--text-3')     || '#3d6080';
+  const activeText   = _cssVar('--text-2')     || '#7ba0c0';
+
+  // Square cell size clamped to a readable range
+  const containerW = chartEl.offsetWidth || 560;
+  const cellW      = Math.min(Math.max(Math.floor((containerW - 16) / 7), 44), 70);
+
+  // Dynamic height: header row + weeks
+  const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
+  chartEl.style.height = `${numWeeks * cellW + 34}px`;
+
+  const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  _charts['collabCalendarChart'] = cc;
+  cc.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      formatter(p) {
+        if (!p.value || p.value[1] < 0) return '';
+        const [d_date, , n, e, s] = p.value;
+        const q = quarantineDates.has(d_date) ? ' ⚠' : '';
+        let tip = `<b>${d_date}</b>${q}`;
+        if (n > 0) tip += `<br/>Normal: ${n.toFixed(1)}h`;
+        if (e > 0) tip += `<br/>Extra: ${e.toFixed(1)}h`;
+        if (s > 0) tip += `<br/>Sobreaviso: ${s.toFixed(1)}h`;
+        return tip;
+      },
+    },
+    visualMap: {
+      show: false,
+      min: 0, max: maxHours,
+      // Active days: gradient from dim navy → primary sky-blue
+      inRange:    { color: ['#163152', primaryColor] },
+      // Inactive days (value=-1): card background — they recede visually
+      outOfRange: { color: [cardColor] },
+    },
+    calendar: {
+      orient: 'vertical',
+      top: 28, left: 4, right: 4, bottom: 4,
+      range: [rangeStart, rangeEnd],
+      cellSize: [cellW, cellW],
+      dayLabel: {
+        firstDay: 0,
+        nameMap: _t('cal.day_names'),
+        color: inactiveText, fontSize: 10,
+        position: 'start',
+      },
+      monthLabel: { show: false },
+      yearLabel:  { show: false },
+      itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 1.5 },
+      splitLine:  { show: false },
+    },
+    series: [{
+      type: 'heatmap',
+      coordinateSystem: 'calendar',
+      data: allDaysData,
+      label: {
+        show: true,
+        formatter(params) {
+          const [d_date, total, n, e, s] = params.data;
+          const day = parseInt(d_date.split('-')[2], 10);
+          // Inactive day — show only muted day number
+          if (total < 0) return `{inactive|${day}}`;
+          const isQ = quarantineDates.has(d_date);
+          const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
+          const lines = [dayStr];
+          if (n > 0) lines.push(`{n|${n.toFixed(1)}}`);
+          if (e > 0) lines.push(`{e|${e.toFixed(1)}}`);
+          if (s > 0) lines.push(`{s|${s.toFixed(1)}}`);
+          return lines.join('\n');
+        },
+        rich: {
+          inactive: { fontSize: 10, color: inactiveText, lineHeight: 15, align: 'center' },
+          day:  { fontSize: 10, fontWeight: 'bold', color: activeText,  lineHeight: 15, align: 'center' },
+          qday: { fontSize: 10, fontWeight: 'bold', color: '#f59e0b',   lineHeight: 15, align: 'center' },
+          n:    { fontSize: 10, color: '#e2e8f0', lineHeight: 14, align: 'center' },
+          e:    { fontSize: 10, color: '#fbbf24', lineHeight: 14, align: 'center' },
+          s:    { fontSize: 10, color: '#60a5fa', lineHeight: 14, align: 'center' },
+        },
+      },
+      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
+    }],
+  }, true);
+
+  // stats row
+  const totalHours = workPoints.reduce((s, d) => s + d.hours, 0);
+  const workDays   = workPoints.length;
+  const avgPerDay  = workDays > 0 ? totalHours / workDays : 0;
+  const peak       = workPoints.length ? workPoints.reduce((m, d) => d.hours > m.hours ? d : m, workPoints[0]) : null;
+
+  const stat = (lbl, val) =>
+    `<div style="display:flex;flex-direction:column;gap:.15rem">
+       <span style="font-size:.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">${lbl}</span>
+       <span style="font-size:.88rem;font-weight:600;color:var(--text)">${val}</span>
+     </div>`;
+
+  statsEl.innerHTML =
+    stat(_t('cal.stat.total'), `${totalHours.toFixed(1)}h`) +
+    stat(_t('cal.stat.active_days'), workDays) +
+    stat(_t('cal.stat.avg_day'), `${avgPerDay.toFixed(1)}h`) +
+    (peak ? stat(_t('cal.stat.peak'), `${peak.hours.toFixed(1)}h (${peak.date})`) : '') +
+    (quarantineDates.size ? stat(_t('cal.stat.quarantine'), quarantineDates.size) : '');
 }
 
 // ---------------------------------------------------------------------------
@@ -3664,6 +4077,30 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.removeItem('role');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
+});
+
+document.getElementById('collabDetailClose').addEventListener('click', _closeCollabDetail);
+document.getElementById('calPrevMonth').addEventListener('click', async () => {
+  if (!_selectedCollaborator) return;
+  _calMonth--;
+  if (_calMonth < 1) { _calMonth = 12; _calYear--; }
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+});
+document.getElementById('calNextMonth').addEventListener('click', async () => {
+  if (!_selectedCollaborator) return;
+  const now = new Date();
+  if (_calYear > now.getFullYear() || (_calYear === now.getFullYear() && _calMonth >= now.getMonth() + 1)) return;
+  _calMonth++;
+  if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+});
+document.getElementById('calMonthInput').addEventListener('change', async () => {
+  if (!_selectedCollaborator) return;
+  const val = document.getElementById('calMonthInput').value;
+  if (!val) return;
+  const [y, m] = val.split('-').map(Number);
+  _calYear = y; _calMonth = m;
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
 });
 
 // ---------------------------------------------------------------------------

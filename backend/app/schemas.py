@@ -214,6 +214,7 @@ class DashboardOut(BaseModel):
                                                   # ← linha em branco
 class CollaboratorTimelineItem(BaseModel):
     cycle_name: str
+    cycle_start: str
     normal_hours: float
     extra_hours: float
     standby_hours: float
@@ -239,6 +240,9 @@ class TrendItem(BaseModel):
     standby_hours: float
     actual_cost: float
     cpi: float | None = None
+    normal_cost: float = 0.0
+    extra_cost: float = 0.0
+    standby_cost: float = 0.0
 
 
 class AllocationItem(BaseModel):
@@ -467,6 +471,8 @@ class RunwayItem(BaseModel):
     avg_hours_per_cycle: float
     cycles_to_complete: Optional[float] = None
     estimated_completion_cycle: Optional[str] = None
+    spi: Optional[float] = None
+    schedule_status: str = "no_baseline"  # on_track | at_risk | behind | no_baseline
     cpi: Optional[float] = None
     risk: str  # ok | warning | critical | overrun | no_budget
 

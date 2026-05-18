@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import calendar
 from collections import defaultdict
-from datetime import date as DateType
-from typing import List, Optional
+from datetime import date as DateType, date
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, TimesheetRecord
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, QuarantineRecord, TimesheetRecord
 from backend.app.schemas import CollaboratorTimelineItem, DashboardOut, PepRadarItem
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
@@ -231,13 +232,105 @@ def get_collaborator_timeline(
     )
     return [
         {
-            "cycle_name": r.cycle_name,
-            "normal_hours": round(r.normal_hours or 0.0, 2),
-            "extra_hours": round(r.extra_hours or 0.0, 2),
-            "standby_hours": round(r.standby_hours or 0.0, 2),
+            "cycle_name":   r.cycle_name,
+            "cycle_start":  str(r.cycle_start),
+            "normal_hours": round(r.normal_hours  or 0.0, 2),
+            "extra_hours":  round(r.extra_hours   or 0.0, 2),
+            "standby_hours":round(r.standby_hours or 0.0, 2),
         }
         for r in rows
     ]
+
+
+@router.get("/collaborator-daily", summary="Horas diárias de um colaborador")
+def get_collaborator_daily(
+    collaborator_name: str,
+    year: int,
+    month: int,
+    db: DbSession,
+    _user=Depends(get_current_user),
+) -> List[Dict]:
+    date_from = date(year, month, 1)
+    date_to   = date(year, month, calendar.monthrange(year, month)[1])
+
+    rows = (
+        db.query(
+            TimesheetRecord.record_date,
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("hours"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        .filter(
+            Collaborator.name == collaborator_name,
+            TimesheetRecord.record_date >= date_from,
+            TimesheetRecord.record_date <= date_to,
+        )
+        .group_by(TimesheetRecord.record_date)
+        .all()
+    )
+
+    hours_by_date = {
+        r.record_date: {
+            "hours":   round(r.hours        or 0.0, 2),
+            "normal":  round(r.normal_hours  or 0.0, 2),
+            "extra":   round(r.extra_hours   or 0.0, 2),
+            "standby": round(r.standby_hours or 0.0, 2),
+        }
+        for r in rows
+    }
+
+    # Collect pending quarantine dates for this collaborator/period.
+    # raw_data stores the original CSV row dict; we filter in Python.
+    qr_rows = (
+        db.query(QuarantineRecord)
+        .filter(
+            QuarantineRecord.review_status == "pending",
+        )
+        .all()
+    )
+
+    _COL_DATE   = "Data"
+    _COL_COLLAB = "Colaborador"
+
+    quarantine_dates: set = set()
+    for qr in qr_rows:
+        raw = qr.raw_data or {}
+        if raw.get(_COL_COLLAB) != collaborator_name:
+            continue
+        raw_date = raw.get(_COL_DATE)
+        if raw_date is None:
+            continue
+        try:
+            from datetime import datetime as _dt
+            import pandas as _pd
+            parsed = _pd.to_datetime(raw_date, dayfirst=True).date()
+        except Exception:
+            continue
+        if date_from <= parsed <= date_to:
+            quarantine_dates.add(parsed)
+
+    _empty = {"hours": 0.0, "normal": 0.0, "extra": 0.0, "standby": 0.0}
+    all_dates = set(hours_by_date.keys()) | quarantine_dates
+    result = []
+    for d_ in sorted(all_dates):
+        hdata = hours_by_date.get(d_, _empty)
+        has_q = d_ in quarantine_dates
+        if hdata["hours"] > 0 or has_q:
+            result.append({
+                "date":          str(d_),
+                "hours":         hdata["hours"],
+                "normal_hours":  hdata["normal"],
+                "extra_hours":   hdata["extra"],
+                "standby_hours": hdata["standby"],
+                "has_quarantine": has_q,
+            })
+    return result
 
 
 @router.get("", summary="Dashboard sem filtro de ciclo — toda a base", response_model=DashboardOut)

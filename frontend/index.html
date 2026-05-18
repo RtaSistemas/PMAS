@@ -215,6 +215,30 @@
         </div>
         <div id="effortChart" style="width:100%;height:500px"></div>
       </div>
+      <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem .5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+          <span id="collabDetailName" style="font-size:.95rem;font-weight:600;color:var(--text)"></span>
+          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" aria-label="Fechar">✕</button>
+        </div>
+        <!-- Section 1: horas por ciclo -->
+        <div style="padding:1rem 1.25rem .5rem">
+          <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem" data-i18n="collab.section_cycles">Horas por Ciclo</div>
+          <div id="collabInlineTimelineEmpty" class="chart-empty" hidden data-i18n="collab.timeline_empty">Nenhum dado encontrado para este colaborador.</div>
+          <div id="collabInlineTimelineChart" style="width:100%;height:320px"></div>
+        </div>
+        <!-- Section 2: heatmap calendário -->
+        <div style="padding:.5rem 1.25rem 1.25rem;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+            <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;flex:1" data-i18n="collab.section_calendar">Atividade Diária</div>
+            <button id="calPrevMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8249;</button>
+            <input type="month" id="calMonthInput" style="font-size:.92rem;font-weight:600;text-align:center;width:10rem;flex-shrink:0;cursor:pointer;color-scheme:dark" />
+            <button id="calNextMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8250;</button>
+          </div>
+          <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>
+          <div id="collabCalendarChart" style="width:100%;height:185px"></div>
+          <div id="collabCalendarStats" style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap"></div>
+        </div>
+      </div>
       <div class="card chart-panel" data-chart-id="trendsChart">
         <div class="panel-header">
           <span class="panel-title" data-i18n="trends.title">Queima de Horas por Ciclo</span>
@@ -227,7 +251,7 @@
       </div>
       <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" hidden style="margin-top:0">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="pepcpi.title">CPI por PEP ao longo dos Ciclos</span>
+          <span class="panel-title" data-i18n="pepcpi.title" data-evm="CPI">CPI por PEP ao longo dos Ciclos</span>
           <span class="panel-note"  data-i18n="pepcpi.note">Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos</span>
         </div>
         <div id="pepCpiEmpty" class="chart-empty" hidden data-i18n="pepcpi.empty">
@@ -237,9 +261,17 @@
       </div>
       <div class="card chart-panel" id="cpiChartCard" data-chart-id="cpiChart" hidden>
         <div class="panel-header">
-          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
+          <span class="panel-title" data-i18n="cpi.title" data-evm="CPI">IDP — Índice de Desempenho de Custo por Ciclo</span>
         </div>
         <div id="cpiChart" style="width:100%;height:260px"></div>
+      </div>
+      <div class="card chart-panel" id="costCompositionPanel" hidden>
+        <div class="panel-header">
+          <span class="panel-title" data-i18n="costcomp.title">Composição de Custo por Tipo de Hora</span>
+          <span class="panel-note" data-i18n="costcomp.note">Custo regular · extra · sobreaviso por ciclo</span>
+        </div>
+        <div id="costCompositionEmpty" class="chart-empty" hidden data-i18n="costcomp.empty">Nenhum dado encontrado.</div>
+        <div id="costCompositionChart" style="width:100%;height:360px"></div>
       </div>
     </div>
 
@@ -318,7 +350,9 @@
             <th data-i18n="runway.th.avg">Média/ciclo</th>
             <th data-i18n="runway.th.cycles">Ciclos restantes</th>
             <th data-i18n="runway.th.completion">Conclusão estimada</th>
-            <th>CPI</th>
+            <th data-i18n="runway.th.spi" data-evm="SPI">SPI</th>
+            <th data-i18n="runway.th.status">Status</th>
+            <th data-evm="CPI">CPI</th>
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>
@@ -331,7 +365,7 @@
     <div id="atab-forecast" class="atab-section" hidden>
       <div class="card chart-panel" data-chart-id="forecastChart">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="forecast.title">Previsão de Conclusão</span>
+          <span class="panel-title" data-i18n="forecast.title" data-evm="EVM">Previsão de Conclusão</span>
           <div style="display:flex;gap:.5rem;align-items:center">
             <label for="forecastPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
             <select id="forecastPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:200px">
