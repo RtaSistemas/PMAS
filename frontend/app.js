@@ -2860,6 +2860,20 @@ async function _renderCollabTimeline(name) {
     showTotal: true, richLabel: false,
     maxItems: 40, toolboxName: 'PMAS-CollabTimeline',
   }), true);
+
+  // Click a cycle bar → jump the calendar to that cycle's start month
+  tc.off('click');
+  tc.on('click', async (params) => {
+    if (!params?.name) return;
+    const rec = rows.find(r => r.cycle_name === params.name);
+    if (!rec?.cycle_start) return;
+    const [y, m] = rec.cycle_start.split('-').map(Number);
+    _calYear  = y;
+    _calMonth = m;
+    await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+    document.getElementById('collabCalendarChart')
+      .scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 }
 
 async function _renderCollabCalendar(name, year, month) {

@@ -214,6 +214,7 @@ class DashboardOut(BaseModel):
                                                   # ← linha em branco
 class CollaboratorTimelineItem(BaseModel):
     cycle_name: str
+    cycle_start: str
     normal_hours: float
     extra_hours: float
     standby_hours: float

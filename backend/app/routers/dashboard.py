@@ -232,10 +232,11 @@ def get_collaborator_timeline(
     )
     return [
         {
-            "cycle_name": r.cycle_name,
-            "normal_hours": round(r.normal_hours or 0.0, 2),
-            "extra_hours": round(r.extra_hours or 0.0, 2),
-            "standby_hours": round(r.standby_hours or 0.0, 2),
+            "cycle_name":   r.cycle_name,
+            "cycle_start":  str(r.cycle_start),
+            "normal_hours": round(r.normal_hours  or 0.0, 2),
+            "extra_hours":  round(r.extra_hours   or 0.0, 2),
+            "standby_hours":round(r.standby_hours or 0.0, 2),
         }
         for r in rows
     ]
