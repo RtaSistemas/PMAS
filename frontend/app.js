@@ -589,6 +589,131 @@ function _applyI18n() {
 }
 
 // ---------------------------------------------------------------------------
+// EVM glossary — tooltip shown on any [data-evm="KEY"] element
+// ---------------------------------------------------------------------------
+const _EVM_TERMS = {
+  CPI: {
+    pt: {
+      name: 'IDC — Índice de Desempenho de Custo',
+      desc: 'Mede a eficiência do custo realizado. > 1,0 = abaixo do orçamento; < 1,0 = acima.',
+      formula: 'IDC = VA ÷ CR\n  VA = Valor Agregado\n  CR = Custo Real acumulado',
+    },
+    en: {
+      name: 'CPI — Cost Performance Index',
+      desc: 'Measures cost efficiency. > 1.0 = under budget; < 1.0 = over budget.',
+      formula: 'CPI = EV ÷ AC\n  EV = Earned Value\n  AC = Actual Cost',
+    },
+  },
+  SPI: {
+    pt: {
+      name: 'IDP — Índice de Desempenho de Prazo',
+      desc: 'Mede a eficiência do cronograma. > 1,0 = adiantado; < 1,0 = atrasado.',
+      formula: 'IDP = VA ÷ VP\n  VA = Valor Agregado\n  VP = Valor Planejado acumulado',
+    },
+    en: {
+      name: 'SPI — Schedule Performance Index',
+      desc: 'Measures schedule efficiency. > 1.0 = ahead of schedule; < 1.0 = behind.',
+      formula: 'SPI = EV ÷ PV\n  EV = Earned Value\n  PV = Planned Value (cumulative)',
+    },
+  },
+  EAC: {
+    pt: {
+      name: 'EAC — Estimativa para Conclusão',
+      desc: 'Projeção do custo total do projeto com base no desempenho de custo atual.',
+      formula: 'EAC = OAC ÷ IDC\n  OAC = Orçamento ao Término (BAC)',
+    },
+    en: {
+      name: 'EAC — Estimate at Completion',
+      desc: 'Projected total cost of the project at the current cost performance rate.',
+      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion',
+    },
+  },
+  SV: {
+    pt: {
+      name: 'VS — Variação de Prazo',
+      desc: 'Diferença entre o valor do trabalho realizado e o planejado. Negativo = atrasado.',
+      formula: 'VS = VA − VP\n  VA = Valor Agregado\n  VP = Valor Planejado',
+    },
+    en: {
+      name: 'SV — Schedule Variance',
+      desc: 'Difference between earned and planned value. Negative = behind schedule.',
+      formula: 'SV = EV − PV\n  EV = Earned Value\n  PV = Planned Value',
+    },
+  },
+  PV: {
+    pt: {
+      name: 'VP — Valor Planejado',
+      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline).',
+      formula: 'VP = Σ (horas planejadas por ciclo)\naté o ciclo de referência',
+    },
+    en: {
+      name: 'PV — Planned Value',
+      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline).',
+      formula: 'PV = Σ (planned hours per cycle)\nup to the reference cycle',
+    },
+  },
+  EVM: {
+    pt: {
+      name: 'EVM — Gestão de Valor Agregado',
+      desc: 'Metodologia que integra escopo, prazo e custo para medir o desempenho real do projeto e projetar tendências.',
+      formula: 'Indicadores: IDC (CPI), IDP (SPI),\n  EAC, VS (SV), VP (PV)',
+    },
+    en: {
+      name: 'EVM — Earned Value Management',
+      desc: 'Methodology integrating scope, schedule and cost to measure actual project performance and forecast trends.',
+      formula: 'Metrics: CPI, SPI, EAC, SV, PV',
+    },
+  },
+};
+
+let _evmTipEl    = null;
+let _evmTipTimer = null;
+
+function _showEvmTip(anchor) {
+  const key  = anchor.dataset.evm;
+  const term = _EVM_TERMS[key];
+  if (!term) return;
+  const loc  = term[_locale] || term.pt;
+
+  if (!_evmTipEl) {
+    _evmTipEl = document.createElement('div');
+    _evmTipEl.className = 'evm-tooltip';
+    document.body.appendChild(_evmTipEl);
+  }
+  _evmTipEl.innerHTML =
+    `<div class="evm-tip-name">${escHtml(loc.name)}</div>` +
+    `<div class="evm-tip-desc">${escHtml(loc.desc)}</div>` +
+    `<div class="evm-tip-formula">${escHtml(loc.formula)}</div>`;
+  _evmTipEl.hidden = false;
+
+  const rect = anchor.getBoundingClientRect();
+  const tipW = 270;
+  let left = rect.left;
+  let top  = rect.bottom + 6;
+  if (left + tipW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tipW - 8);
+  if (top + 120 > window.innerHeight)      top  = rect.top - 8 - (_evmTipEl.offsetHeight || 120);
+  _evmTipEl.style.left = `${left}px`;
+  _evmTipEl.style.top  = `${top}px`;
+}
+
+function _hideEvmTip() {
+  clearTimeout(_evmTipTimer);
+  if (_evmTipEl) _evmTipEl.hidden = true;
+}
+
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('[data-evm]');
+  if (!el) return;
+  clearTimeout(_evmTipTimer);
+  _evmTipTimer = setTimeout(() => _showEvmTip(el), 350);
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('[data-evm]')) return;
+  clearTimeout(_evmTipTimer);
+  _hideEvmTip();
+});
+
+// ---------------------------------------------------------------------------
 // Multi-currency display (UI-only conversion, no backend calls)
 // ---------------------------------------------------------------------------
 let _currencyFactor = 1;
@@ -1744,15 +1869,18 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
                                                               lbl: _t('forecast.remaining'),    cls: over ? 'red' : 'neutral' },
     { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
-    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls              },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral'           },
-    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls              },
-    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls               },
-    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'            },
+    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls,   evm: 'CPI' },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral', evm: 'EAC' },
+    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls,   evm: 'SPI' },
+    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls,    evm: 'SV'  },
+    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'              },
   ];
-  return cards.map(({ val, lbl, cls }) =>
-    `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${escHtml(lbl)}</div></div>`
-  ).join('');
+  return cards.map(({ val, lbl, cls, evm }) => {
+    const lblHtml = evm
+      ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
+      : escHtml(lbl);
+    return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
+  }).join('');
 }
 
 function _buildForecastOption(fc) {

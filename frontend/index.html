@@ -251,7 +251,7 @@
       </div>
       <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" hidden style="margin-top:0">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="pepcpi.title">CPI por PEP ao longo dos Ciclos</span>
+          <span class="panel-title" data-i18n="pepcpi.title" data-evm="CPI">CPI por PEP ao longo dos Ciclos</span>
           <span class="panel-note"  data-i18n="pepcpi.note">Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos</span>
         </div>
         <div id="pepCpiEmpty" class="chart-empty" hidden data-i18n="pepcpi.empty">
@@ -261,7 +261,7 @@
       </div>
       <div class="card chart-panel" id="cpiChartCard" data-chart-id="cpiChart" hidden>
         <div class="panel-header">
-          <span class="panel-title" data-i18n="cpi.title">IDP — Índice de Desempenho de Custo por Ciclo</span>
+          <span class="panel-title" data-i18n="cpi.title" data-evm="CPI">IDP — Índice de Desempenho de Custo por Ciclo</span>
         </div>
         <div id="cpiChart" style="width:100%;height:260px"></div>
       </div>
@@ -350,9 +350,9 @@
             <th data-i18n="runway.th.avg">Média/ciclo</th>
             <th data-i18n="runway.th.cycles">Ciclos restantes</th>
             <th data-i18n="runway.th.completion">Conclusão estimada</th>
-            <th data-i18n="runway.th.spi">SPI</th>
+            <th data-i18n="runway.th.spi" data-evm="SPI">SPI</th>
             <th data-i18n="runway.th.status">Status</th>
-            <th>CPI</th>
+            <th data-evm="CPI">CPI</th>
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>
@@ -365,7 +365,7 @@
     <div id="atab-forecast" class="atab-section" hidden>
       <div class="card chart-panel" data-chart-id="forecastChart">
         <div class="panel-header">
-          <span class="panel-title" data-i18n="forecast.title">Previsão de Conclusão</span>
+          <span class="panel-title" data-i18n="forecast.title" data-evm="EVM">Previsão de Conclusão</span>
           <div style="display:flex;gap:.5rem;align-items:center">
             <label for="forecastPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
             <select id="forecastPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:200px">
