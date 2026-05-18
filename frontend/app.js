@@ -809,6 +809,7 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
+    if (btn.dataset.tab === 'dashboard') _renderActiveTab();
     if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
@@ -979,6 +980,7 @@ async function onCollabChange()   { await refreshPeps(); }
 async function loadDashboardCycles() {
   try {
     const cycles = await apiFetch('/api/cycles');
+    _allCycles = cycles;
     cycleMs.setItems(cycles.map(c => ({ value: c.id, label: c.name })));
   } catch (e) { notify(`Erro ao carregar ciclos: ${e.message}`, 'error'); }
 }
@@ -5371,6 +5373,7 @@ function _bootApp() {
   _updateHeaderUser();
   loadDashboardCycles();
   loadSemaphore();
+  loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
 }
