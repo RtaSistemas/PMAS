@@ -2735,12 +2735,14 @@ async function _renderCollabTimeline(name) {
 }
 
 async function _renderCollabCalendar(name, year, month) {
-  const emptyEl = document.getElementById('collabCalendarEmpty');
-  const chartEl = document.getElementById('collabCalendarChart');
-  const statsEl = document.getElementById('collabCalendarStats');
-  const label   = document.getElementById('calMonthLabel');
+  const emptyEl  = document.getElementById('collabCalendarEmpty');
+  const chartEl  = document.getElementById('collabCalendarChart');
+  const statsEl  = document.getElementById('collabCalendarStats');
+  const inputEl  = document.getElementById('calMonthInput');
 
-  label.textContent = `${_t('cal.months')[month-1]} ${year}`;
+  const nowDate  = new Date();
+  inputEl.max    = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,'0')}`;
+  inputEl.value  = `${year}-${String(month).padStart(2,'0')}`;
 
   let data = [];
   try {
@@ -2790,13 +2792,15 @@ async function _renderCollabCalendar(name, year, month) {
       inRange: { color: ['#0f172a', '#4f8ef7'] },
     },
     calendar: {
-      top: 10, left: 30, right: 10, bottom: 10,
+      orient: 'vertical',
+      top: 28, left: 8, right: 8, bottom: 4,
       range: [rangeStart, rangeEnd],
-      cellSize: ['auto', 22],
+      cellSize: ['auto', 'auto'],
       dayLabel: {
         firstDay: 0,
         nameMap: _t('cal.day_names'),
         color: '#64748b', fontSize: 10,
+        position: 'start',
       },
       monthLabel: { show: false },
       yearLabel: { show: false },
@@ -3888,6 +3892,14 @@ document.getElementById('calNextMonth').addEventListener('click', async () => {
   if (_calYear > now.getFullYear() || (_calYear === now.getFullYear() && _calMonth >= now.getMonth() + 1)) return;
   _calMonth++;
   if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+  await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
+});
+document.getElementById('calMonthInput').addEventListener('change', async () => {
+  if (!_selectedCollaborator) return;
+  const val = document.getElementById('calMonthInput').value;
+  if (!val) return;
+  const [y, m] = val.split('-').map(Number);
+  _calYear = y; _calMonth = m;
   await _renderCollabCalendar(_selectedCollaborator, _calYear, _calMonth);
 });
 
