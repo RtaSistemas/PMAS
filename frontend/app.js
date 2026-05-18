@@ -1685,10 +1685,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
         hItems.forEach(d => {
           if (d.budget_cost == null || d.budget_cost === 0 || d.actual_cost === 0) return;
+          if (d.budget_hours == null || d.budget_hours === 0) return;
           if (!pepMap[d.pep_wbs]) {
             pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
           }
-          const cpiVal = +(d.budget_cost / d.actual_cost).toFixed(3);
+          const ev = (d.consumed_hours / d.budget_hours) * d.budget_cost;
+          const cpiVal = +(ev / d.actual_cost).toFixed(3);
           pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
         });
       });
