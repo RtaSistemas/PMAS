@@ -650,8 +650,9 @@ def get_portfolio_runway(
                         if target_idx < len(all_cycles):
                             estimated_completion_cycle = all_cycles[target_idx].name
 
-        if budget_cost and actual_cost > 0:
-            cpi = round(budget_cost / actual_cost, 3)
+        if budget_hours and budget_hours > 0 and budget_cost and actual_cost > 0:
+            ev = (consumed_hours / budget_hours) * budget_cost
+            cpi = round(ev / actual_cost, 3)
 
         # SPI — Schedule Performance Index based on planned vs actual hours
         spi = None

@@ -229,9 +229,12 @@
         <!-- Section 2: heatmap calendário -->
         <div style="padding:.5rem 1.25rem 1.25rem;border-top:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
-            <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;flex:1" data-i18n="collab.section_calendar">Atividade Diária</div>
+            <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;flex:1">
+              <span data-i18n="collab.section_calendar">Atividade Diária</span>
+              <span style="font-size:.7rem;font-weight:400;color:var(--text-3);margin-left:.35rem;text-transform:none;letter-spacing:0" data-i18n="cal.week_range">(Domingo - Sábado)</span>
+            </div>
             <button id="calPrevMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8249;</button>
-            <input type="month" id="calMonthInput" style="font-size:.92rem;font-weight:600;text-align:center;width:10rem;flex-shrink:0;cursor:pointer;color-scheme:dark" />
+            <input type="month" id="calMonthInput" style="font-size:.92rem;font-weight:600;text-align:center;width:13rem;flex-shrink:0;cursor:pointer;color-scheme:dark" />
             <button id="calNextMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8250;</button>
           </div>
           <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>

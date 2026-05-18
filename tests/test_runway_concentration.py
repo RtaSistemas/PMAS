@@ -192,8 +192,8 @@ class TestPortfolioRunway:
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-CPI"), None)
         assert item is not None
-        # actual_cost = 50*10 = 500; budget_cost=1000; cpi = 1000/500 = 2.0
-        assert item["cpi"] == pytest.approx(2.0, abs=0.01)
+        # EV = (50/100)*1000 = 500; AC = 50*10 = 500; CPI = EV/AC = 1.0
+        assert item["cpi"] == pytest.approx(1.0, abs=0.01)
 
     def test_estimated_completion_cycle_returned(self, client, db_session):
         # 2 cycles consumed 40h each → avg 40/cycle, budget 200 → 120h remaining → 3 cycles

@@ -129,6 +129,7 @@ const _LANG = {
     'cal.stat.quarantine': '⚠ Em quarentena',
     'cal.months': ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
     'cal.day_names': ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+    'cal.week_range': '(Domingo - Sábado)',
     'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
     'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
     'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
@@ -417,6 +418,7 @@ const _LANG = {
     'cal.stat.quarantine': '⚠ In quarantine',
     'cal.months': ['January','February','March','April','May','June','July','August','September','October','November','December'],
     'cal.day_names': ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    'cal.week_range': '(Sunday - Saturday)',
     'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
     'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
     'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
@@ -1266,9 +1268,7 @@ function _renderRunwayPanel(runway) {
   _lastRunwayData = runway;
   const table     = document.getElementById('runwayTable');
   const empty     = document.getElementById('runwayEmpty');
-  const tbody     = document.getElementById('runwayBody');
   const exportBtn = document.getElementById('runwayExportBtn');
-  tbody.innerHTML = '';
 
   const withBudget = runway.filter(r => r.budget_hours != null);
   if (exportBtn) exportBtn.hidden = !runway.length;
@@ -1279,17 +1279,20 @@ function _renderRunwayPanel(runway) {
   }
   empty.hidden = true;
   table.hidden = false;
+  _drawRunwayRows(_applySort('runwayTable', withBudget));
+}
 
-  withBudget.forEach(item => {
+function _drawRunwayRows(data) {
+  const tbody = document.getElementById('runwayBody');
+  tbody.innerHTML = '';
+  data.forEach(item => {
     const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
     const color = _riskColor(item.risk);
 
-    // Progresso bar
     const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
       `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${item.pct_consumed != null ? item.pct_consumed.toFixed(1) + '%' : '—'}</span>`;
 
-    // Ciclos restantes
     let cyclesCell = '—';
     if (item.risk === 'overrun') {
       cyclesCell = `<span style="color:var(--red,#c56d76);font-weight:600">${_t('runway.overrun')}</span>`;
@@ -1297,14 +1300,12 @@ function _renderRunwayPanel(runway) {
       cyclesCell = item.cycles_to_complete.toFixed(1);
     }
 
-    // SPI
     let spiCell = '—';
     if (item.spi != null) {
       const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
-    // Status
     const statusMap = {
       on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: 'var(--primary,#4f8ef7)' },
       at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
@@ -1314,14 +1315,12 @@ function _renderRunwayPanel(runway) {
     const st = statusMap[item.schedule_status] || statusMap.no_baseline;
     const statusCell = `<span style="font-size:.78rem;font-weight:600;color:${st.color}">${st.label}</span>`;
 
-    // CPI
     let cpiCell = '—';
     if (item.cpi != null) {
       const cpiColor = item.cpi >= 1 ? 'var(--primary,#4f8ef7)' : item.cpi >= 0.8 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
       cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
     }
 
-    // Row background tint
     const rowBg = (item.risk === 'critical' || item.risk === 'overrun')
       ? 'background:rgba(197,109,118,.07)'
       : '';
@@ -1361,18 +1360,17 @@ function _renderConcentrationPanel(concentration) {
   empty.hidden = true;
   panel.hidden = false;
 
-  const riskIcon = { high: '🔴', medium: '🟡', low: '🟢' };
-
   concentration.forEach(item => {
     const top1 = item.top_contributors.length > 0 ? item.top_contributors[0].pct : 0;
+    const riskKey = item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok';
+    const dotColor = _riskColor(riskKey);
 
     const barsHtml = item.top_contributors.map(c => {
       const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
-      const color = _riskColor(item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok');
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
         `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
-          `<div style="height:8px;border-radius:2px;background:${color};width:${barWidth}%"></div>` +
+          `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
         `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${c.pct.toFixed(0)}%</span>` +
         `</div>`;
@@ -1381,7 +1379,7 @@ function _renderConcentrationPanel(concentration) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
     row.innerHTML = `
-      <div style="min-width:16px;font-size:.9rem">${riskIcon[item.risk] || '⚪'}</div>
+      <div style="min-width:14px;display:flex;align-items:center"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor}"></span></div>
       <div style="min-width:130px">
         <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${escHtml(item.pep_wbs)}</div>
         <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
@@ -1685,10 +1683,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
         hItems.forEach(d => {
           if (d.budget_cost == null || d.budget_cost === 0 || d.actual_cost === 0) return;
+          if (d.budget_hours == null || d.budget_hours === 0) return;
           if (!pepMap[d.pep_wbs]) {
             pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
           }
-          const cpiVal = +(d.budget_cost / d.actual_cost).toFixed(3);
+          const ev = (d.consumed_hours / d.budget_hours) * d.budget_cost;
+          const cpiVal = +(ev / d.actual_cost).toFixed(3);
           pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
         });
       });
@@ -1727,6 +1727,10 @@ document.getElementById('allocToggleBtn').addEventListener('click', () => {
   if (_activeATab === 'portfolio') _renderAllocationTab();
 });
 
+let _lastAllocData  = null;
+let _allocSortCol   = '__total__';
+let _allocSortDir   = -1;
+
 async function _renderAllocationTab() {
   const cycleIds  = cycleMs.getValues();
   const collabIds = collaboratorMs.getValues();
@@ -1743,86 +1747,113 @@ async function _renderAllocationTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to', dateTo);
 
-  const emptyEl  = document.getElementById('allocationEmpty');
-  const matrixEl = document.getElementById('allocationMatrix');
-
   try {
     const data = await apiFetch(`/api/allocation?${p}`);
-
-    if (!data.length) {
-      _showEmpty('allocationEmpty', true);
-      matrixEl.innerHTML = '';
-      return;
-    }
-    _showEmpty('allocationEmpty', false);
-
-    // Collect unique PEPs
-    const pepLabels = {};
-    data.forEach(d => {
-      if (d.pep_wbs) pepLabels[d.pep_wbs] = d.pep_description || d.pep_wbs;
-    });
-
-    // Build value map: matrix[collaborator][pep_wbs] = value
-    const collabTotals = {};
-    const pepTotals    = {};
-    const matrix       = {};
-
-    data.forEach(d => {
-      const pep = d.pep_wbs || '__none__';
-      const val = _allocEvmMode ? d.actual_cost : d.total_hours;
-      if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
-      matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
-      collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
-      pepTotals[pep] = (pepTotals[pep] || 0) + val;
-    });
-
-    const sortedCollabs = Object.keys(collabTotals).sort((a, b) => collabTotals[b] - collabTotals[a]);
-    const sortedPeps    = Object.keys(pepTotals).sort((a, b) => pepTotals[b] - pepTotals[a]);
-    const grandTotal    = Object.values(collabTotals).reduce((a, b) => a + b, 0);
-    const maxVal        = Math.max(...Object.values(collabTotals));
-
-    const fmt = v => _allocEvmMode
-      ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
-      : `${v.toFixed(1)}h`;
-
-    const cellBg = v => {
-      if (!v) return '';
-      const ratio = v / maxVal;
-      const a = (0.08 + ratio * 0.72).toFixed(2);
-      return `background:rgba(14,165,233,${a})`;
-    };
-
-    let html = '<table class="alloc-matrix"><thead><tr>';
-    html += `<th>${_t('allocation.collaborator')}</th>`;
-    sortedPeps.forEach(pep => {
-      const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
-      const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
-      html += `<th title="${escHtml(label)}">${escHtml(short)}</th>`;
-    });
-    html += `<th>${_t('allocation.total')}</th></tr></thead><tbody>`;
-
-    sortedCollabs.forEach(collab => {
-      html += `<tr><td class="alloc-name">${escHtml(collab)}</td>`;
-      sortedPeps.forEach(pep => {
-        const v = matrix[collab]?.[pep] || 0;
-        html += v
-          ? `<td style="${cellBg(v)}">${fmt(v)}</td>`
-          : `<td class="alloc-zero">—</td>`;
-      });
-      html += `<td class="alloc-total">${fmt(collabTotals[collab] || 0)}</td></tr>`;
-    });
-
-    html += `<tr class="alloc-footer"><td>${_t('allocation.total')}</td>`;
-    sortedPeps.forEach(pep => {
-      html += `<td>${fmt(pepTotals[pep] || 0)}</td>`;
-    });
-    html += `<td class="alloc-total">${fmt(grandTotal)}</td></tr>`;
-    html += '</tbody></table>';
-
-    matrixEl.innerHTML = html;
+    _lastAllocData = data;
+    _allocSortCol  = '__total__';
+    _allocSortDir  = -1;
+    _drawAllocMatrix();
   } catch (err) {
     notify(`Erro: ${err.message}`, 'error');
   }
+}
+
+function _drawAllocMatrix() {
+  const data     = _lastAllocData;
+  const emptyEl  = document.getElementById('allocationEmpty');
+  const matrixEl = document.getElementById('allocationMatrix');
+
+  if (!data || !data.length) {
+    _showEmpty('allocationEmpty', true);
+    matrixEl.innerHTML = '';
+    return;
+  }
+  _showEmpty('allocationEmpty', false);
+
+  const pepLabels = {};
+  data.forEach(d => {
+    if (d.pep_wbs) pepLabels[d.pep_wbs] = d.pep_description || d.pep_wbs;
+  });
+
+  const collabTotals = {};
+  const pepTotals    = {};
+  const matrix       = {};
+
+  data.forEach(d => {
+    const pep = d.pep_wbs || '__none__';
+    const val = _allocEvmMode ? d.actual_cost : d.total_hours;
+    if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
+    matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
+    collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
+    pepTotals[pep] = (pepTotals[pep] || 0) + val;
+  });
+
+  const sortedPeps = Object.keys(pepTotals).sort((a, b) => pepTotals[b] - pepTotals[a]);
+  const grandTotal = Object.values(collabTotals).reduce((a, b) => a + b, 0);
+  const maxVal     = Math.max(...Object.values(collabTotals));
+
+  const sortedCollabs = Object.keys(collabTotals).sort((a, b) => {
+    const d = _allocSortDir;
+    if (_allocSortCol === '__name__')  return d * (a < b ? -1 : a > b ? 1 : 0);
+    if (_allocSortCol === '__total__') return d * (collabTotals[a] - collabTotals[b]);
+    const va = matrix[a]?.[_allocSortCol] || 0;
+    const vb = matrix[b]?.[_allocSortCol] || 0;
+    return d * (va - vb);
+  });
+
+  const fmt = v => _allocEvmMode
+    ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+    : `${v.toFixed(1)}h`;
+
+  const cellBg = v => {
+    if (!v) return '';
+    const ratio = v / maxVal;
+    const a = (0.08 + ratio * 0.72).toFixed(2);
+    return `background:rgba(14,165,233,${a})`;
+  };
+
+  const thCls = key => {
+    if (_allocSortCol !== key) return 'sortable';
+    return `sortable ${_allocSortDir > 0 ? 'sort-asc' : 'sort-desc'}`;
+  };
+
+  let html = '<table class="alloc-matrix data-table"><thead><tr>';
+  html += `<th class="${thCls('__name__')}" data-sort-key="__name__">${_t('allocation.collaborator')}</th>`;
+  sortedPeps.forEach(pep => {
+    const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+    const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
+    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(label)}">${escHtml(short)}</th>`;
+  });
+  html += `<th class="${thCls('__total__')}" data-sort-key="__total__">${_t('allocation.total')}</th></tr></thead><tbody>`;
+
+  sortedCollabs.forEach(collab => {
+    html += `<tr><td class="alloc-name">${escHtml(collab)}</td>`;
+    sortedPeps.forEach(pep => {
+      const v = matrix[collab]?.[pep] || 0;
+      html += v
+        ? `<td style="${cellBg(v)}">${fmt(v)}</td>`
+        : `<td class="alloc-zero">—</td>`;
+    });
+    html += `<td class="alloc-total">${fmt(collabTotals[collab] || 0)}</td></tr>`;
+  });
+
+  html += `<tr class="alloc-footer"><td>${_t('allocation.total')}</td>`;
+  sortedPeps.forEach(pep => {
+    html += `<td>${fmt(pepTotals[pep] || 0)}</td>`;
+  });
+  html += `<td class="alloc-total">${fmt(grandTotal)}</td></tr>`;
+  html += '</tbody></table>';
+
+  matrixEl.innerHTML = html;
+
+  matrixEl.querySelector('thead').addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort-key]');
+    if (!th) return;
+    const key = th.dataset.sortKey;
+    if (_allocSortCol === key) { _allocSortDir *= -1; }
+    else { _allocSortCol = key; _allocSortDir = -1; }
+    _drawAllocMatrix();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -2929,11 +2960,12 @@ async function _renderCollabCalendar(name, year, month) {
   const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
 
   // Read theme CSS variables so the chart adapts to Admin > Aparência settings
-  const primaryColor = _cssVar('--primary')    || '#0ea5e9';
-  const cardColor    = _cssVar('--card')       || '#0e2038';
-  const borderColor  = _cssVar('--border-hi')  || '#1d4068';
-  const inactiveText = _cssVar('--text-3')     || '#3d6080';
-  const activeText   = _cssVar('--text-2')     || '#7ba0c0';
+  const primaryColor  = _cssVar('--primary')    || '#4f8ef7';
+  const accentColor   = _cssVar('--accent')     || '#07b3d7';
+  const cardColor     = _cssVar('--card')       || '#0e2038';
+  const borderColor   = _cssVar('--border-hi')  || '#1d4068';
+  const inactiveText  = _cssVar('--text-3')     || '#3d6080';
+  const activeText    = _cssVar('--text')       || '#e0e0e0';
 
   // Square cell size clamped to a readable range
   const containerW = chartEl.offsetWidth || 560;
@@ -2963,8 +2995,9 @@ async function _renderCollabCalendar(name, year, month) {
     visualMap: {
       show: false,
       min: 0, max: maxHours,
-      // Active days: gradient from dim navy → primary sky-blue
-      inRange:    { color: ['#163152', primaryColor] },
+      // Active days: 5-stop gradient — dark-but-visible navy → vivid accent
+      // Steps map the 0–24h range to clearly distinct visual levels
+      inRange:    { color: ['#163560', '#1a5496', '#2879d4', primaryColor, accentColor] },
       // Inactive days (value=-1): card background — they recede visually
       outOfRange: { color: [cardColor] },
     },
@@ -2981,7 +3014,7 @@ async function _renderCollabCalendar(name, year, month) {
       },
       monthLabel: { show: false },
       yearLabel:  { show: false },
-      itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 1.5 },
+      itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 2 },
       splitLine:  { show: false },
     },
     series: [{
@@ -3004,12 +3037,12 @@ async function _renderCollabCalendar(name, year, month) {
           return lines.join('\n');
         },
         rich: {
-          inactive: { fontSize: 10, color: inactiveText, lineHeight: 15, align: 'center' },
-          day:  { fontSize: 10, fontWeight: 'bold', color: activeText,  lineHeight: 15, align: 'center' },
-          qday: { fontSize: 10, fontWeight: 'bold', color: '#f59e0b',   lineHeight: 15, align: 'center' },
-          n:    { fontSize: 10, color: '#e2e8f0', lineHeight: 14, align: 'center' },
-          e:    { fontSize: 10, color: '#fbbf24', lineHeight: 14, align: 'center' },
-          s:    { fontSize: 10, color: '#60a5fa', lineHeight: 14, align: 'center' },
+          inactive: { fontSize: 9, color: inactiveText, lineHeight: 14, align: 'center' },
+          day:  { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
+          qday: { fontSize: 9, fontWeight: 'bold', color: '#f59e0b', lineHeight: 14, align: 'center' },
+          n:    { fontSize: 9, color: '#ffffff', lineHeight: 13, align: 'center' },
+          e:    { fontSize: 9, color: '#fbbf24', lineHeight: 13, align: 'center' },
+          s:    { fontSize: 9, color: '#93c5fd', lineHeight: 13, align: 'center' },
         },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
@@ -5336,7 +5369,8 @@ _makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_leve
 _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
-_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
+_makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
+_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'consumed_hours',type:'num'}, null, {key:'avg_hours_per_cycle',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}, {key:'cpi',type:'num'}], () => (_lastRunwayData||[]).filter(r => r.budget_hours != null), _drawRunwayRows);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
