@@ -2912,6 +2912,7 @@ async function _renderCollabCalendar(name, year, month) {
   // data: [date, total, normal, extra, standby]
   // All days in the month — inactive days use value=-1 so visualMap.outOfRange
   // applies a neutral background while the label still shows the day number.
+  const lastDay    = new Date(year, month, 0).getDate();
   const allDaysData = [];
   for (let d = 1; d <= lastDay; d++) {
     const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
