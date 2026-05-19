@@ -242,7 +242,7 @@ def get_trends(
                 consumed = cycle_pep_consumed.get((cid, pep_code), 0.0)
                 ac = cycle_pep_ac.get((cid, pep_code), 0.0)
                 if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost:
-                    ev = (consumed / proj.budget_hours) * proj.budget_cost
+                    ev = min(consumed / proj.budget_hours, 1.0) * proj.budget_cost
                     total_ev += ev
                     total_ac += ac
             if total_ac > 0:
@@ -425,12 +425,12 @@ def get_forecast(
     sv = None
 
     if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = (consumed_hours / budget_hours) * budget_cost
+        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
         if has_plan and cum_ph > 0:
-            pv_val = (cum_ph / budget_hours) * budget_cost
+            pv_val = min(cum_ph / budget_hours, 1.0) * budget_cost
             spi = round(ev_val / pv_val, 3) if pv_val > 0 else None
             sv = round(ev_val - pv_val, 2)
 
@@ -651,7 +651,7 @@ def get_portfolio_runway(
                             estimated_completion_cycle = all_cycles[target_idx].name
 
         if budget_hours and budget_hours > 0 and budget_cost and actual_cost > 0:
-            ev = (consumed_hours / budget_hours) * budget_cost
+            ev = min(consumed_hours / budget_hours, 1.0) * budget_cost
             cpi = round(ev / actual_cost, 3)
 
         # SPI — Schedule Performance Index based on planned vs actual hours
@@ -669,8 +669,11 @@ def get_portfolio_runway(
                 cumulative_planned = sum(
                     ph for c_start, ph in proj_plans if c_start <= max_cycle_start
                 )
+                # EV in hours is capped at budget_hours so SPI never inflates above
+                # its theoretical max when consumed > budget (EVM rule: EV ≤ BAC)
+                ev_hours = min(consumed_hours, budget_hours) if budget_hours else consumed_hours
                 if cumulative_planned > 0:
-                    spi = round(consumed_hours / cumulative_planned, 3)
+                    spi = round(ev_hours / cumulative_planned, 3)
                     if spi >= 1.0:
                         schedule_status = "on_track"
                     elif spi >= 0.9:
