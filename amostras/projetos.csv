@@ -1,0 +1,11 @@
+pep_wbs,name,client,manager,budget_hours,budget_cost,status
+60IT-001-01,Transformação Digital,Banco Nacional,João Silva,3200,480000,encerrado
+60IT-002-01,App Mobile,RetailMart,Maria Santos,1600,160000,encerrado
+60IT-003-01,Migração Cloud,TechCorp,Carlos Oliveira,2400,264000,encerrado
+60IT-004-01,Plataforma Analytics,IndustriaX,João Silva,4800,528000,encerrado
+60IT-005-01,Implantação ERP,Grupo Delta,Maria Santos,5600,616000,encerrado
+60IT-006-01,Auditoria de Segurança,FinanceGroup,Carlos Oliveira,800,88000,encerrado
+60IT-007-01,Hub de Integrações API,LogiTrans,Ana Ferreira,3200,352000,encerrado
+60IT-008-01,Portal do Cliente,Banco Nacional,João Silva,4800,528000,ativo
+60IT-009-01,Chatbot IA,RetailMart,Gabriel Souza,2400,288000,ativo
+60IT-010-01,Upgrade Infraestrutura,TechCorp,Roberto Costa,3200,352000,ativo
