@@ -1225,7 +1225,8 @@ async function _renderEffortTab() {
     }
     _showEmpty('effortEmpty', false);
 
-    // Effort chart — sort descending by total so top contributors appear at top
+    // Sort ascending — ECharts horizontal bar renders bottom-to-top,
+    // so low→high puts the highest contributor at the visual top.
     const sortedData = [...data].sort((a, b) =>
       (a.normal_hours + a.extra_hours + a.standby_hours) -
       (b.normal_hours + b.extra_hours + b.standby_hours)
