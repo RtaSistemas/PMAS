@@ -28,9 +28,11 @@ const _LANG = {
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
-    'scatter.title':'Eficiência de Custo por PEP',
-    'scatter.note':'Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio',
+    'scatter.title':'Quadrante EVM — CPI × SPI',
+    'scatter.note':'Eixo X = SPI (prazo) · Eixo Y = CPI (custo) · Referência em 1,0',
     'scatter.empty':'Nenhum dado de PEP disponível para os filtros selecionados.',
+    'q.tr':'No prazo e no orçamento','q.tl':'Custo ok · Prazo em risco',
+    'q.br':'Prazo ok · Custo em risco','q.bl':'Custo e prazo em risco',
     'portfolio.treemap_h':'Distribuição de Horas por PEP (Treemap)',
     'portfolio.treemap_r':'Custo Real por PEP (Treemap)',
     'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
@@ -317,9 +319,11 @@ const _LANG = {
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
-    'scatter.title':'Cost Efficiency by PEP',
-    'scatter.note':'Bubble size = budget utilization · Color = CPI health · Dashed line = portfolio avg R$/h',
+    'scatter.title':'EVM Quadrant — CPI × SPI',
+    'scatter.note':'X = SPI (schedule) · Y = CPI (cost) · Reference at 1.0',
     'scatter.empty':'No PEP data available for selected filters.',
+    'q.tr':'On schedule and on budget','q.tl':'Cost ok · Schedule at risk',
+    'q.br':'Schedule ok · Cost at risk','q.bl':'Cost & schedule at risk',
     'portfolio.treemap_h':'Hour Distribution by PEP (Treemap)',
     'portfolio.treemap_r':'Actual Cost by PEP (Treemap)',
     'portfolio.empty':'No hour data found for the selected filters.',
@@ -1466,23 +1470,17 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = true;
     }
 
-    // Scatter — same params as the other charts
-    const scatterItems = await apiFetch(`/api/dashboard/pep-radar?${p}`).catch(() => []);
-    if (scatterItems.length >= 2) {
+    // EVM Quadrant (CPI × SPI) — uses runway data already fetched above
+    const quadrantItems = runway.filter(r => r.cpi != null && r.spi != null);
+    if (quadrantItems.length >= 1) {
       _showEmpty('scatterEmpty', false);
       document.getElementById('scatterPanel').hidden = false;
-      document.getElementById('scatterChart').style.height = '690px';
+      document.getElementById('scatterChart').style.height = '380px';
       const sc = _getOrCreateChart('scatterChart');
-      sc.setOption(_buildScatterOption(scatterItems), true);
+      sc.setOption(_buildEvmQuadrantOption(quadrantItems), true);
       sc.resize();
-      const stotalH = scatterItems.reduce((s, d) => s + d.total_hours, 0);
-      const stotalC = scatterItems.reduce((s, d) => s + d.actual_cost * _currencyFactor, 0);
-      const savgRate = stotalH > 0 ? stotalC / stotalH : 0;
-      const smaxH = Math.max(...scatterItems.map(d => d.total_hours)) * 1.15;
-      const smaxC = Math.max(...scatterItems.map(d => d.actual_cost * _currencyFactor)) * 1.15;
-      _drawScatterRefLine(sc, savgRate, smaxH, smaxC);
     } else {
-      _showEmpty('scatterEmpty', scatterItems.length === 0);
+      _showEmpty('scatterEmpty', quadrantItems.length === 0);
       document.getElementById('scatterPanel').hidden = true;
       if (_charts['scatterChart'] && !_charts['scatterChart'].isDisposed()) {
         _charts['scatterChart'].dispose();
@@ -2505,108 +2503,109 @@ function _buildEffortSeriesOnly(stacked) {
   };
 }
 
-function _buildScatterOption(items) {
-  const totalH  = items.reduce((s, d) => s + d.total_hours, 0);
-  const totalC  = items.reduce((s, d) => s + d.actual_cost, 0);
-  const avgRate = totalH > 0 ? totalC / totalH : 0;
-  const maxH    = Math.max(...items.map(d => d.total_hours)) * 1.15 || 1;
-  const maxC    = Math.max(...items.map(d => d.actual_cost * _currencyFactor)) * 1.15 || 1;
-  const minH    = Math.min(...items.map(d => d.total_hours));
+function _buildEvmQuadrantOption(items) {
+  const red   = _cssVar('--red')    || '#ef4444';
+  const amber = _cssVar('--amber')  || '#f59e0b';
+  const green = _cssVar('--green')  || '#22c55e';
+  const blue  = _cssVar('--primary') || '#4f8ef7';
 
   const colorOf = d => {
-    const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
-    if (rph === 0 || avgRate === 0) return _cssVar('--text-3');
-    if (rph <= avgRate)             return _cssVar('--primary');
-    if (rph <= avgRate * 1.1)       return _cssVar('--amber');
-    return _cssVar('--red');
+    if (d.cpi >= 1.0 && d.spi >= 1.0) return green;
+    if (d.cpi >= 1.0 && d.spi < 1.0)  return amber;
+    if (d.cpi < 1.0  && d.spi >= 1.0) return blue;
+    return red;
   };
 
-  const sizeOf = d => {
-    const range = (maxH / 1.15) - minH || 1;
-    return 18 + ((d.total_hours - minH) / range) * 38;
-  };
+  const spis = items.map(d => d.spi);
+  const cpis = items.map(d => d.cpi);
+  const xMin = +Math.max(0, Math.min(...spis, 0.8) - 0.1).toFixed(2);
+  const xMax = +Math.max(...spis, 1.2).toFixed(2) + 0.1;
+  const yMin = +Math.max(0, Math.min(...cpis, 0.8) - 0.1).toFixed(2);
+  const yMax = +Math.max(...cpis, 1.2).toFixed(2) + 0.1;
 
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Scatter'),
+    toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
     tooltip: {
       trigger: 'item',
       backgroundColor: _cssVar('--card'),
       borderColor: _cssVar('--border'),
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
       formatter: p => {
-        const d   = p.data._raw;
-        const rph = d.total_hours > 0 ? (d.actual_cost / d.total_hours).toFixed(2) : '—';
-        const vs  = avgRate > 0
-          ? ((d.actual_cost / d.total_hours - avgRate) / avgRate * 100).toFixed(1)
-          : '—';
-        const sign = parseFloat(vs) >= 0 ? '+' : '';
+        const d = p.data._raw;
+        const cC = d.cpi >= 1 ? green : d.cpi >= 0.9 ? amber : red;
+        const sC = d.spi >= 1 ? green : d.spi >= 0.9 ? amber : red;
         return [
-          `<b>${escHtml(d.pep_description)}</b>`,
-          `Horas: <b>${d.total_hours.toFixed(0)}h</b>`,
-          `Custo real: <b>${_fmtCost(d.actual_cost)}</b>`,
-          `R$/hora: <b>${_fmtCost(parseFloat(rph))}</b> (${sign}${vs}% vs avg)`,
-        ].join('<br/>');
+          `<b>${escHtml(d.pep_wbs)}</b>`,
+          d.name ? `<span style="color:${_cssVar('--text-3')}">${escHtml(d.name)}</span>` : null,
+          `CPI: <b style="color:${cC}">${d.cpi.toFixed(2)}</b>`,
+          `SPI: <b style="color:${sC}">${d.spi.toFixed(2)}</b>`,
+        ].filter(Boolean).join('<br/>');
       },
     },
-    legend: { show: false },
-    grid: { top: 56, bottom: 48, left: 72, right: 24, containLabel: false },
+    grid: { top: 40, bottom: 52, left: 60, right: 24, containLabel: false },
     xAxis: {
-      name: 'Horas Consumidas',
-      nameLocation: 'middle', nameGap: 32,
+      name: 'SPI — Desempenho de Prazo',
+      nameLocation: 'middle', nameGap: 34,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), formatter: v => v + 'h' },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-      min: 0, max: maxH,
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
+      axisLine: { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { show: false },
+      min: xMin, max: xMax,
     },
     yAxis: {
-      name: 'Custo Real',
-      nameLocation: 'middle', nameGap: 56,
+      name: 'CPI — Desempenho de Custo',
+      nameLocation: 'middle', nameGap: 52,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: {
-        color: _cssVar('--text-3'),
-        formatter: v => v >= 1000
-          ? `${_currencySymbol} ${(v / 1000).toFixed(0)}k`
-          : `${_currencySymbol} ${v.toFixed(0)}`,
-      },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-      min: 0, max: maxC,
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
+      axisLine: { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { show: false },
+      min: yMin, max: yMax,
     },
     series: [{
       type: 'scatter',
-      symbolSize: (val, params) => sizeOf(params.data._raw),
+      symbolSize: 16,
       data: items.map(d => ({
-        value: [d.total_hours, d.actual_cost * _currencyFactor],
-        itemStyle: {
-          color: colorOf(d),
-          opacity: 0.82,
-          borderColor: _cssVar('--bg'),
-          borderWidth: 2,
-        },
+        value: [d.spi, d.cpi],
+        itemStyle: { color: colorOf(d), opacity: 0.9, borderColor: _cssVar('--bg'), borderWidth: 2 },
         label: {
-          show: true,
-          formatter: d.pep_description.length > 20
-            ? d.pep_description.slice(0, 19) + '…'
-            : d.pep_description,
-          color: _cssVar('--text'),
-          fontSize: 10,
-          fontWeight: 600,
-          position: 'top',
-          distance: 6,
+          show: true, formatter: d.pep_wbs,
+          position: 'top', distance: 6,
+          color: _cssVar('--text'), fontSize: 10, fontWeight: 600,
         },
         _raw: d,
       })),
-      emphasis: {
-        scale: 1.15,
-        itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') },
+      emphasis: { scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
+        data: [
+          { xAxis: 1.0, label: { formatter: 'SPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
+          { yAxis: 1.0, label: { formatter: 'CPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
+        ],
+      },
+      markArea: {
+        silent: true,
+        data: [
+          [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
+             label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
+           { coord: [1.0, 1.0] }],
+          [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
+             label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
+           { coord: [xMax + 1, 1.0] }],
+          [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
+             label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
+           { coord: [1.0, yMax + 1] }],
+          [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
+             label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
+           { coord: [xMax + 1, yMax + 1] }],
+        ],
       },
     }],
   };
 }
 
-function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
+function _drawScatterRefLine_unused(chart, avgRate, maxH, maxC) {
   const p0 = chart.convertToPixel({ gridIndex: 0 }, [0, 0]);
   const p1 = chart.convertToPixel({ gridIndex: 0 }, [maxH, Math.min(maxH * avgRate, maxC)]);
   if (!p0 || !p1) return;
