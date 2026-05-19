@@ -2964,7 +2964,7 @@ async function _renderCollabCalendar(name, year, month) {
 
   const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
   const rangeEnd   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
+  // maxHours removed — visualMap now uses discrete pieces, no continuous scale needed
 
   // Read theme CSS variables so the chart adapts to Admin > Aparência settings
   const primaryColor  = _cssVar('--primary')    || '#4f8ef7';
@@ -3017,11 +3017,17 @@ async function _renderCollabCalendar(name, year, month) {
     },
     visualMap: {
       show: false,
-      min: 0, max: maxHours,
-      // Active days: 5-stop gradient — dark-but-visible navy → vivid accent
-      // Steps map the 0–24h range to clearly distinct visual levels
-      inRange:    { color: ['#163560', '#1a5496', '#2879d4', primaryColor, accentColor] },
-      // Inactive days (value=-1): card background — they recede visually
+      type: 'piecewise',
+      // 6 discrete bands matching the blue scale in the reference legend.
+      // Values 0 and -1 (inactive / zero-hour days) fall through to outOfRange.
+      pieces: [
+        { gte:  1, lte:  3, color: '#d4e3f5' },
+        { gte:  4, lte:  6, color: '#96bcdf' },
+        { gte:  7, lte:  9, color: '#5490c8' },
+        { gte: 10, lte: 12, color: '#2662ae' },
+        { gte: 13, lte: 15, color: '#103c8c' },
+        { gt:  15,           color: '#071e60' },
+      ],
       outOfRange: { color: [cardColor] },
     },
     calendar: {
