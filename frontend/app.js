@@ -3068,7 +3068,6 @@ async function _renderCollabCalendar(name, year, month) {
           e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
           s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
         },
-        },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
     }],
