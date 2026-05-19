@@ -3043,18 +3043,25 @@ async function _renderCollabCalendar(name, year, month) {
       label: {
         show: true,
         formatter(params) {
-          const [d_date, total] = params.data;
+          const [d_date, total, n, e, s] = params.data;
           const day = parseInt(d_date.split('-')[2], 10);
           if (total < 0) return `{inactive|${day}}`;
           const isQ = quarantineDates.has(d_date);
           const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
-          return total > 0 ? `${dayStr}\n{tot|${total.toFixed(1)}}` : dayStr;
+          const lines = [dayStr];
+          if (n > 0) lines.push(`{n|${n.toFixed(1)}}`);
+          if (e > 0) lines.push(`{e|${e.toFixed(1)}}`);
+          if (s > 0) lines.push(`{s|${s.toFixed(1)}}`);
+          return lines.join('\n');
         },
         rich: {
-          inactive: { fontSize: 9, color: inactiveText, lineHeight: 14, align: 'center' },
+          inactive: { fontSize: 9, color: inactiveText,  lineHeight: 14, align: 'center' },
           day:      { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
           qday:     { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
-          tot:      { fontSize: 9, color: activeText,  lineHeight: 13, align: 'center' },
+          n:    { fontSize: 9, color: pal[0] || '#4f8ef7', lineHeight: 13, align: 'center' },
+          e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
+          s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
+        },
         },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
