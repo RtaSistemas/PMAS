@@ -22,6 +22,7 @@ const _LANG = {
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
     'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
+    'forecast.now_marker':'Atual',
     'forecast.pv_line':'VP (Valor Planejado)',
     'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
@@ -314,6 +315,7 @@ const _LANG = {
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
     'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
+    'forecast.now_marker':'Now',
     'forecast.pv_line':'PV (Planned Value)',
     'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
     'forecast.no_budget':'No budget registered for this PEP.',
@@ -1223,12 +1225,16 @@ async function _renderEffortTab() {
     }
     _showEmpty('effortEmpty', false);
 
-    // Effort chart — G1 ✅
-    const h = calcHeight(data.length);
+    // Effort chart — sort descending by total so top contributors appear at top
+    const sortedData = [...data].sort((a, b) =>
+      (a.normal_hours + a.extra_hours + a.standby_hours) -
+      (b.normal_hours + b.extra_hours + b.standby_hours)
+    );
+    const h = calcHeight(sortedData.length);
     document.getElementById('effortChart').style.height = `${h}px`;
     const ch = _getOrCreateChart('effortChart');
     ch.setOption(_buildHoursBarOption({
-      data:        data,
+      data:        sortedData,
       categoryKey: 'collaborator',
       orientation: 'horizontal',
       stacked:     _stackMode,
@@ -1924,6 +1930,7 @@ function _buildForecastOption(fc) {
 
   // Realized series: historical values, null for projected slots
   const realizedData = [...historyVals, ...Array(projCount).fill(null)];
+  const lastHistoryCat = historyCats.at(-1) ?? null;
 
   // Projection series: null up to last historical, then projected values (bridged from last historical)
   const projectionData = [
@@ -1953,6 +1960,15 @@ function _buildForecastOption(fc) {
       itemStyle: { color: _fC0 },
       areaStyle: { color: _fC0 + '1a' },
       connectNulls: false,
+      ...(lastHistoryCat ? {
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: _cssVar('--border'), type: 'solid', width: 1 },
+          data: [{ xAxis: lastHistoryCat,
+            label: { show: true, formatter: _t('forecast.now_marker'),
+              color: _cssVar('--text-3'), fontSize: 9, position: 'insideEndTop' } }],
+        },
+      } : {}),
     },
     {
       name: _t('forecast.projection'),
@@ -3026,25 +3042,18 @@ async function _renderCollabCalendar(name, year, month) {
       label: {
         show: true,
         formatter(params) {
-          const [d_date, total, n, e, s] = params.data;
+          const [d_date, total] = params.data;
           const day = parseInt(d_date.split('-')[2], 10);
-          // Inactive day — show only muted day number
           if (total < 0) return `{inactive|${day}}`;
           const isQ = quarantineDates.has(d_date);
           const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
-          const lines = [dayStr];
-          if (n > 0) lines.push(`{n|${n.toFixed(1)}}`);
-          if (e > 0) lines.push(`{e|${e.toFixed(1)}}`);
-          if (s > 0) lines.push(`{s|${s.toFixed(1)}}`);
-          return lines.join('\n');
+          return total > 0 ? `${dayStr}\n{tot|${total.toFixed(1)}}` : dayStr;
         },
         rich: {
-          inactive: { fontSize: 9, color: inactiveText,  lineHeight: 14, align: 'center' },
+          inactive: { fontSize: 9, color: inactiveText, lineHeight: 14, align: 'center' },
           day:      { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
-          qday: { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
-          n:    { fontSize: 9, color: pal[0] || '#4f8ef7', lineHeight: 13, align: 'center' },
-          e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
-          s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
+          qday:     { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
+          tot:      { fontSize: 9, color: activeText,  lineHeight: 13, align: 'center' },
         },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
