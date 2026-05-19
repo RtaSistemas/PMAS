@@ -43,6 +43,7 @@ const _LANG = {
     'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
     'pepcpi.note':'Orçamento / Custo Real por ciclo · Linha de referência em 1.0 · Requer orçamento (R$) nos projetos',
     'pepcpi.empty':'Sem dados de orçamento. Defina o orçamento (R$) nos projetos para habilitar o rastreamento de CPI.',
+    'cpi.zone_critical':'Crítico < 0,9','cpi.zone_warning':'Atenção 0,9–1,0',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
     'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
@@ -334,6 +335,7 @@ const _LANG = {
     'pepcpi.title':'CPI per PEP by Cycle',
     'pepcpi.note':'Budget / Actual Cost per cycle · Reference line at 1.0 · Requires budget_cost on projects',
     'pepcpi.empty':'No budget data found. Set budget_cost on projects to enable CPI tracking.',
+    'cpi.zone_critical':'Critical < 0.9','cpi.zone_warning':'Warning 0.9–1.0',
     'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
     'trends.all':'All',
     'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
@@ -3211,7 +3213,22 @@ function _buildPepCpiOption(peps, allCycleNames) {
         data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
-    series,
+    series: series.map((s, i) => i > 0 ? s : {
+      ...s,
+      markArea: {
+        silent: true,
+        data: [
+          [{ yAxis: 0,   itemStyle: { color: (_cssVar('--red')   || '#ef4444') + '18' },
+             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_critical'),
+               color: _cssVar('--red')   || '#ef4444', fontSize: 9 } },
+           { yAxis: 0.9 }],
+          [{ yAxis: 0.9, itemStyle: { color: (_cssVar('--amber') || '#f59e0b') + '14' },
+             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_warning'),
+               color: _cssVar('--amber') || '#f59e0b', fontSize: 9 } },
+           { yAxis: 1.0 }],
+        ],
+      },
+    }),
   };
 }
 
