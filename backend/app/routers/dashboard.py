@@ -134,7 +134,7 @@ def get_pep_radar(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(

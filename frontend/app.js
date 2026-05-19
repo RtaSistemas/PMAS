@@ -1680,7 +1680,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
           if (!pepMap[d.pep_wbs]) {
             pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
           }
-          const ev = (d.consumed_hours / d.budget_hours) * d.budget_cost;
+          const ev = Math.min(d.consumed_hours / d.budget_hours, 1.0) * d.budget_cost;
           const cpiVal = +(ev / d.actual_cost).toFixed(3);
           pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
         });

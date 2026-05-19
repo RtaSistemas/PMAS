@@ -37,7 +37,7 @@ def get_portfolio_health(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -126,7 +126,7 @@ def get_trends(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -273,7 +273,7 @@ def get_allocation(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -334,7 +334,7 @@ def get_forecast(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
@@ -485,7 +485,7 @@ def get_portfolio_runway(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
     warning_threshold = cfg.budget_warning_threshold if cfg else 0.9
     critical_threshold = cfg.budget_critical_threshold if cfg else 1.0
 
@@ -690,7 +690,7 @@ def get_portfolio_runway(
             "actual_cost": round(actual_cost, 2),
             "pct_consumed": round(pct_consumed, 1) if pct_consumed is not None else None,
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
-            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None else None,
+            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None,
             "estimated_completion_cycle": estimated_completion_cycle,
             "spi": spi,
             "schedule_status": schedule_status,
