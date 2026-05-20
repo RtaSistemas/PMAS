@@ -1319,7 +1319,11 @@ function _drawRunwayRows(data) {
 
     let spiCell = '—';
     if (item.spi != null) {
-      const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      // Convergence guard: spi=1.0 when consumed >= budget hides overrun — use schedule_status
+      const spiConverged = item.spi >= 1.0 && item.schedule_status === 'behind';
+      const spiColor = spiConverged
+        ? 'var(--amber,#d9b273)'
+        : item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
@@ -1910,7 +1914,9 @@ function _buildForecastKpis(fc) {
   const cpiCls = fc.cpi == null ? 'neutral' : fc.cpi >= 1.0 ? 'green' : fc.cpi >= 0.9 ? 'amber' : 'red';
 
   const spiVal = fc.spi != null ? (+fc.spi).toFixed(2) : '—';
-  const spiCls = fc.spi == null ? 'neutral' : fc.spi >= 1.0 ? 'green' : fc.spi >= 0.9 ? 'amber' : 'red';
+  // Convergence guard: spi=1.0 when consumed >= budget — classify as amber, not green
+  const spiConverged = fc.spi != null && fc.spi >= 1.0 && over;
+  const spiCls = fc.spi == null ? 'neutral' : spiConverged ? 'amber' : fc.spi >= 1.0 ? 'green' : fc.spi >= 0.9 ? 'amber' : 'red';
   const svFmt  = fc.sv != null ? (fc.sv >= 0 ? '+' : '') + fmtR(fc.sv) : '—';
   const svCls  = fc.sv == null ? 'neutral' : fc.sv >= 0 ? 'green' : 'red';
 
@@ -2557,9 +2563,11 @@ function _buildEvmQuadrantOption(items) {
   const blue  = _cssVar('--primary') || '#4f8ef7';
 
   const colorOf = d => {
-    if (d.cpi >= 1.0 && d.spi >= 1.0) return green;
-    if (d.cpi >= 1.0 && d.spi < 1.0)  return amber;
-    if (d.cpi < 1.0  && d.spi >= 1.0) return blue;
+    // Respect schedule_status "behind" even when spi=1.0 (EVM convergence guard)
+    const spiOk = d.spi >= 1.0 && d.schedule_status !== 'behind';
+    if (d.cpi >= 1.0 && spiOk)  return green;
+    if (d.cpi >= 1.0 && !spiOk) return amber;
+    if (d.cpi < 1.0  && spiOk)  return blue;
     return red;
   };
 
@@ -2581,7 +2589,7 @@ function _buildEvmQuadrantOption(items) {
       formatter: p => {
         const d = p.data._raw;
         const cC = d.cpi >= 1 ? green : d.cpi >= 0.9 ? amber : red;
-        const sC = d.spi >= 1 ? green : d.spi >= 0.9 ? amber : red;
+        const sC = (d.spi >= 1.0 && d.schedule_status !== 'behind') ? green : d.spi >= 0.9 ? amber : red;
         return [
           `<b>${escHtml(d.pep_wbs)}</b>`,
           d.name ? `<span style="color:${_cssVar('--text-3')}">${escHtml(d.name)}</span>` : null,
