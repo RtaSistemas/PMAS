@@ -279,7 +279,8 @@ const _LANG = {
     'runway.empty':'Nenhum PEP com orçamento encontrado.',
     'runway.th.pep':'PEP','runway.th.project':'Projeto',
     'runway.th.planned':'Planejado (h)','runway.th.planned_r':'Planejado (R$)',
-    'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
+    'runway.th.progress':'Progresso',
+    'runway.th.avg':'Média/ciclo (h)','runway.th.avg_r':'Média/ciclo (R$)',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
     'runway.th.spi':'SPI','runway.th.status':'Status',
@@ -575,7 +576,8 @@ const _LANG = {
     'runway.empty':'No PEPs with budget found.',
     'runway.th.pep':'PEP','runway.th.project':'Project',
     'runway.th.planned':'Planned (h)','runway.th.planned_r':'Planned (R$)',
-    'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
+    'runway.th.progress':'Progress',
+    'runway.th.avg':'Avg/cycle (h)','runway.th.avg_r':'Avg/cycle (R$)',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
     'runway.th.spi':'SPI','runway.th.status':'Status',
@@ -1291,13 +1293,18 @@ function _renderRunwayPanel(runway) {
   const empty     = document.getElementById('runwayEmpty');
   const exportBtn = document.getElementById('runwayExportBtn');
 
-  // Update column header for current mode
+  // Update column headers for current mode
   const plannedTh = document.getElementById('runwayPlannedTh');
   if (plannedTh) plannedTh.textContent = _evmMode ? _t('runway.th.planned_r') : _t('runway.th.planned');
+  const avgTh = document.getElementById('runwayAvgTh');
+  if (avgTh) avgTh.textContent = _evmMode ? _t('runway.th.avg_r') : _t('runway.th.avg');
 
   const withBudget = runway
     .filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null)
-    .map(r => Object.assign({}, r, { _sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0) }));
+    .map(r => Object.assign({}, r, {
+      _sortPlanned: _evmMode ? (r.budget_cost||0)         : (r.budget_hours||0),
+      _sortAvg:     _evmMode ? (r.avg_cost_per_cycle||0)  : (r.avg_hours_per_cycle||0),
+    }));
   if (exportBtn) exportBtn.hidden = !runway.length;
   if (!withBudget.length) {
     table.hidden = true;
@@ -1377,12 +1384,14 @@ function _drawRunwayRows(data) {
         ? (item.budget_cost != null ? `R$ ${item.budget_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
         : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
       <td style="white-space:nowrap">${bar}</td>
-      <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${_evmMode
+        ? `R$ ${item.avg_cost_per_cycle.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+        : item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${cpiCell}</td>
       <td style="text-align:right">${cyclesCell}</td>
       <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
       <td style="text-align:right">${spiCell}</td>
       <td>${statusCell}</td>
-      <td style="text-align:right">${cpiCell}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -5474,7 +5483,7 @@ _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
-_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'avg_hours_per_cycle',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}, {key:'cpi',type:'num'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0)})), _drawRunwayRows);
+_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');

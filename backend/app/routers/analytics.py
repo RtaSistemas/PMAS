@@ -638,6 +638,7 @@ def get_portfolio_runway(
         num_cycles     = len(data["cycle_ids"])
 
         avg_hours_per_cycle = consumed_hours / num_cycles if num_cycles > 0 else 0.0
+        avg_cost_per_cycle  = actual_cost    / num_cycles if num_cycles > 0 else 0.0
 
         pct_consumed       = None
         remaining_hours    = None
@@ -740,6 +741,7 @@ def get_portfolio_runway(
             "pct_consumed": round(pct_consumed, 1) if pct_consumed is not None else None,
             "pct_consumed_cost": pct_consumed_cost,
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
+            "avg_cost_per_cycle":  round(avg_cost_per_cycle,  2),
             "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None,
             "estimated_completion_cycle": estimated_completion_cycle,
             "spi": spi,

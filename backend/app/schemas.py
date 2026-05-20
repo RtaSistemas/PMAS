@@ -471,6 +471,7 @@ class RunwayItem(BaseModel):
     pct_consumed: Optional[float] = None
     pct_consumed_cost: Optional[float] = None
     avg_hours_per_cycle: float
+    avg_cost_per_cycle: float
     cycles_to_complete: Optional[float] = None
     estimated_completion_cycle: Optional[str] = None
     spi: Optional[float] = None
