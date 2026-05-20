@@ -2910,8 +2910,10 @@ async function _openCollabDetail(name) {
     }
   }
 
-  // show panel, set title
+  // show panel, set title — re-anchor after effortPanel in case panels were reordered
   const panel = document.getElementById('collabDetailPanel');
+  const effortPanel = document.getElementById('effortPanel');
+  if (effortPanel && effortPanel.nextSibling !== panel) effortPanel.after(panel);
   panel.hidden = false;
   document.getElementById('collabDetailName').textContent = name;
 
