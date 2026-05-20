@@ -27,7 +27,8 @@ O PMAS transforma planilhas de horas em dashboards interativos. Gerentes de proj
 - **Quanto** já foi consumido vs. o orçado — análise EVM com custo por hora congelado no momento da importação
 - **Como** a equipe evolui ao longo dos ciclos — gráfico de tendências filtrado por PEP
 
-<img width="1920" alt="Dashboard Esforço da Equipe" src="https://github.com/user-attachments/assets/f322a8b2-1bf3-4239-ab6a-12c266b986f4" />
+<img width="1918" height="908" alt="image" src="https://github.com/user-attachments/assets/a858b592-858b-4c47-9418-917804b6d277" />
+
 
 ---
 
@@ -67,7 +68,15 @@ O PMAS transforma planilhas de horas em dashboards interativos. Gerentes de proj
 - **Schema migration** — `ALTER TABLE` automático no startup para bancos existentes (sem perda de dados)
 - **Executável standalone** — build PyInstaller para Linux x64 e Windows x64 (com ícone)
 
-<img width="1920" alt="Saúde do Portfólio" src="https://github.com/user-attachments/assets/c600b225-8f6e-48e1-a221-1a7cb179d6dd" />
+
+<img width="1917" height="911" alt="image" src="https://github.com/user-attachments/assets/8e49971c-eb7d-4e31-ac63-6145f618b54e" />
+--
+<img width="1917" height="907" alt="image" src="https://github.com/user-attachments/assets/6f2093fd-65e2-4a1f-88be-2ea7be12c87c" />
+--
+<img width="1916" height="902" alt="image" src="https://github.com/user-attachments/assets/083e6051-22a5-4711-9aa4-c553f663484d" />
+--
+<img width="1915" height="905" alt="image" src="https://github.com/user-attachments/assets/ebe58695-6c89-4862-b457-5b951d819414" />
+
 
 ---
 
@@ -161,7 +170,7 @@ CI executa a suite em **Python 3.11 e 3.12** a cada push (GitHub Actions).
 
 > Arquivos de exemplo disponíveis em `samples/`.
 
-<img width="1915" alt="Ciclos" src="https://github.com/user-attachments/assets/939c98d7-9636-4c25-b450-4f7ebffd5b14" />
+<img width="1917" height="912" alt="image" src="https://github.com/user-attachments/assets/2eb44e66-560a-4576-aa2c-bad75390a537" />
 
 ---
 
