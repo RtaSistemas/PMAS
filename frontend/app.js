@@ -277,7 +277,7 @@ const _LANG = {
     'runway.title':'Runway do Portfólio',
     'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
     'runway.empty':'Nenhum PEP com orçamento encontrado.',
-    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.consumed':'Consumido (h)',
+    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.planned':'Planejado (h)',
     'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
@@ -572,7 +572,7 @@ const _LANG = {
     'runway.title':'Portfolio Runway',
     'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
     'runway.empty':'No PEPs with budget found.',
-    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.consumed':'Consumed (h)',
+    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.planned':'Planned (h)',
     'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
@@ -928,13 +928,13 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 
 document.getElementById('runwayExportBtn').addEventListener('click', () => {
   if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'PEP,Projeto,Consumido (h),Orçado (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const header = 'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
   const rows = _lastRunwayData.map(d => {
     const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
     return [
       `"${d.pep_wbs}"`, `"${d.name || ''}"`,
-      d.consumed_hours.toFixed(1),
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
+      d.consumed_hours.toFixed(1),
       d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
       d.avg_hours_per_cycle.toFixed(1),
       d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
@@ -1308,9 +1308,12 @@ function _drawRunwayRows(data) {
     const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
     const color = _riskColor(item.risk);
 
+    const pctLabel = item.pct_consumed != null
+      ? `${item.pct_consumed.toFixed(1)}% (${item.consumed_hours.toFixed(1)}h)`
+      : '—';
     const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
-      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${item.pct_consumed != null ? item.pct_consumed.toFixed(1) + '%' : '—'}</span>`;
+      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${pctLabel}</span>`;
 
     let cyclesCell = '—';
     if (item.risk === 'overrun') {
@@ -1353,7 +1356,7 @@ function _drawRunwayRows(data) {
     tr.innerHTML = `
       <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
       <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
-      <td style="text-align:right">${item.consumed_hours.toFixed(1)}</td>
+      <td style="text-align:right">${item.budget_hours != null ? item.budget_hours.toFixed(1) : '—'}</td>
       <td style="white-space:nowrap">${bar}</td>
       <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
       <td style="text-align:right">${cyclesCell}</td>
