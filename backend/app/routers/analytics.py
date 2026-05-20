@@ -780,6 +780,13 @@ def get_portfolio_concentration(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
+            func.sum(
+                (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                ) * TimesheetRecord.cost_per_hour
+            ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
@@ -819,10 +826,15 @@ def get_portfolio_concentration(
                 "pep_wbs": r.pep_wbs,
                 "pep_description": r.pep_description,
                 "contributors": {},
+                "contributors_cost": {},
             }
         hours = r.total_hours or 0.0
+        cost  = r.total_cost  or 0.0
         pep_contribs[key]["contributors"][r.collaborator_name] = (
             pep_contribs[key]["contributors"].get(r.collaborator_name, 0.0) + hours
+        )
+        pep_contribs[key]["contributors_cost"][r.collaborator_name] = (
+            pep_contribs[key]["contributors_cost"].get(r.collaborator_name, 0.0) + cost
         )
 
     # Fetch project names
@@ -835,44 +847,51 @@ def get_portfolio_concentration(
 
     result = []
     for key, data in pep_contribs.items():
-        contributors = data["contributors"]
+        contributors      = data["contributors"]
+        contributors_cost = data["contributors_cost"]
         total_hours = sum(contributors.values())
+        total_cost  = sum(contributors_cost.values())
         if total_hours == 0:
             continue
 
-        # Sort contributors descending
+        # Sort contributors by hours descending (primary ordering)
         sorted_contribs = sorted(contributors.items(), key=lambda x: x[1], reverse=True)
+
+        def _make_contributor(name: str, hours: float) -> ConcentrationContributor:
+            cost_val = contributors_cost.get(name, 0.0)
+            return ConcentrationContributor(
+                name=name,
+                hours=round(hours, 2),
+                cost=round(cost_val, 2),
+                pct=round(hours / total_hours * 100, 1),
+                pct_cost=round(cost_val / total_cost * 100, 1) if total_cost > 0 else 0.0,
+            )
 
         top_contributors = []
         if len(sorted_contribs) <= 3:
             for name, hours in sorted_contribs:
-                top_contributors.append(ConcentrationContributor(
-                    name=name,
-                    hours=round(hours, 2),
-                    pct=round(hours / total_hours * 100, 1),
-                ))
+                top_contributors.append(_make_contributor(name, hours))
         else:
             for name, hours in sorted_contribs[:3]:
-                top_contributors.append(ConcentrationContributor(
-                    name=name,
-                    hours=round(hours, 2),
-                    pct=round(hours / total_hours * 100, 1),
-                ))
+                top_contributors.append(_make_contributor(name, hours))
             others_hours = sum(h for _, h in sorted_contribs[3:])
+            others_cost  = sum(contributors_cost.get(n, 0.0) for n, _ in sorted_contribs[3:])
             others_count = len(sorted_contribs) - 3
             top_contributors.append(ConcentrationContributor(
                 name=f"Outros ({others_count})",
                 hours=round(others_hours, 2),
+                cost=round(others_cost, 2),
                 pct=round(others_hours / total_hours * 100, 1),
+                pct_cost=round(others_cost / total_cost * 100, 1) if total_cost > 0 else 0.0,
             ))
 
         top1_pct = round(sorted_contribs[0][1] / total_hours * 100, 1)
-        if top1_pct >= 60:
-            risk = "high"
-        elif top1_pct >= 40:
-            risk = "medium"
-        else:
-            risk = "low"
+        risk = "high" if top1_pct >= 60 else "medium" if top1_pct >= 40 else "low"
+
+        # Cost-based top-1 — find contributor with highest cost share
+        top1_cost_name = max(contributors_cost, key=lambda n: contributors_cost[n]) if contributors_cost else None
+        top1_pct_cost  = round(contributors_cost[top1_cost_name] / total_cost * 100, 1) if (top1_cost_name and total_cost > 0) else 0.0
+        risk_cost = "high" if top1_pct_cost >= 60 else "medium" if top1_pct_cost >= 40 else "low"
 
         proj = projects.get(key)
         result.append({
@@ -880,9 +899,12 @@ def get_portfolio_concentration(
             "pep_description": data["pep_description"],
             "name": proj.name if proj else None,
             "total_hours": round(total_hours, 2),
+            "total_cost": round(total_cost, 2),
             "top_contributors": [c.model_dump() for c in top_contributors],
             "top1_pct": top1_pct,
+            "top1_pct_cost": top1_pct_cost,
             "risk": risk,
+            "risk_cost": risk_cost,
         })
 
     result.sort(key=lambda x: x["total_hours"], reverse=True)

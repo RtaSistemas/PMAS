@@ -289,6 +289,7 @@ const _LANG = {
     'costcomp.empty':'Nenhum dado de custo encontrado.',
     'conc.title':'Concentração de Risco por Projeto',
     'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
+    'conc.note_cost':'% de custo por colaborador · ⚠ risco quando um único colaborador detém >60%',
     'conc.empty':'Nenhum dado de horas encontrado.',
     'conc.others':'Outros',
     'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
@@ -583,6 +584,7 @@ const _LANG = {
     'costcomp.empty':'No cost data found.',
     'conc.title':'Project Concentration Risk',
     'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
+    'conc.note_cost':'% of cost per collaborator · ⚠ risk when a single collaborator holds >60%',
     'conc.empty':'No hour data found.',
     'conc.others':'Others',
     'msg.pep_not_available': 'PEP not available for your profile.',
@@ -1373,6 +1375,10 @@ function _renderConcentrationPanel(concentration) {
   const grid  = document.getElementById('concentrationGrid');
   grid.innerHTML = '';
 
+  // Update subtitle to reflect current mode
+  const noteEl = document.getElementById('concentrationNote');
+  if (noteEl) noteEl.textContent = _evmMode ? _t('conc.note_cost') : _t('conc.note');
+
   if (!concentration || !concentration.length) {
     panel.hidden = false;
     empty.hidden = false;
@@ -1382,20 +1388,31 @@ function _renderConcentrationPanel(concentration) {
   panel.hidden = false;
 
   concentration.forEach(item => {
-    const top1 = item.top_contributors.length > 0 ? item.top_contributors[0].pct : 0;
-    const riskKey = item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok';
+    // In cost mode re-sort contributors by cost share so bars reflect correct order
+    const contribs = _evmMode
+      ? [...item.top_contributors].sort((a, b) => b.pct_cost - a.pct_cost)
+      : item.top_contributors;
+
+    const top1val  = contribs.length > 0 ? (_evmMode ? contribs[0].pct_cost : contribs[0].pct) : 0;
+    const riskSrc  = _evmMode ? item.risk_cost : item.risk;
+    const riskKey  = riskSrc === 'high' ? 'critical' : riskSrc === 'medium' ? 'warning' : 'ok';
     const dotColor = _riskColor(riskKey);
 
-    const barsHtml = item.top_contributors.map(c => {
-      const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
+    const barsHtml = contribs.map(c => {
+      const pct      = _evmMode ? c.pct_cost : c.pct;
+      const barWidth = top1val > 0 ? Math.round(pct / top1val * 100) : 0;
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
         `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
-        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${c.pct.toFixed(0)}%</span>` +
+        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${pct.toFixed(0)}%</span>` +
         `</div>`;
     }).join('');
+
+    const totalDisplay = _evmMode
+      ? `R$ ${item.total_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${item.total_hours.toFixed(0)}h`;
 
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
@@ -1406,7 +1423,7 @@ function _renderConcentrationPanel(concentration) {
         <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
-      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${item.total_hours.toFixed(0)}h</div>
+      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${totalDisplay}</div>
     `;
     grid.appendChild(row);
   });

@@ -482,7 +482,9 @@ class RunwayItem(BaseModel):
 class ConcentrationContributor(BaseModel):
     name: str
     hours: float
+    cost: float
     pct: float
+    pct_cost: float
 
 
 class ConcentrationItem(BaseModel):
@@ -490,6 +492,9 @@ class ConcentrationItem(BaseModel):
     pep_description: Optional[str] = None
     name: Optional[str] = None
     total_hours: float
+    total_cost: float
     top_contributors: List[ConcentrationContributor]
     top1_pct: float
-    risk: str  # high | medium | low
+    top1_pct_cost: float
+    risk: str       # high | medium | low  (hours-based)
+    risk_cost: str  # high | medium | low  (cost-based)
