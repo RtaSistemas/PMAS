@@ -112,9 +112,9 @@ def export_quarantine_csv(db: DbSession, current_user: CurrentUser):
             rd = rec.raw_data or {}
             writer.writerow([
                 rec.id, rec.ingested_at, rec.upload_session_id, rec.uploaded_by_username,
-                rd.get("collaborator"), rd.get("date"), rd.get("hours"),
-                rd.get("pep_code"), rd.get("pep_desc"),
-                rd.get("extra_hours"), rd.get("standby_hours"),
+                rd.get("Colaborador"), rd.get("Data"), rd.get("Horas totais (decimal)"),
+                rd.get("Código PEP"), rd.get("PEP"),
+                rd.get("Hora extra"), rd.get("Hora sobreaviso"),
                 rec.quarantine_reason, rec.rule_id,
                 rec.reviewed, rec.reviewed_by, rec.reviewed_at,
             ])

@@ -130,6 +130,7 @@ def get_trends(
 
     q = (
         db.query(
+            Cycle.id.label("cycle_id"),
             Cycle.name.label("cycle_name"),
             Cycle.start_date.label("cycle_start"),
             func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
@@ -154,6 +155,7 @@ def get_trends(
             ).label("standby_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+        .filter(Cycle.is_active == True)
     )
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
@@ -180,6 +182,7 @@ def get_trends(
     budgeted_projects = {p.pep_wbs: p for p in budgeted_projects.all()}
 
     # Per-cycle consumed hours for budgeted PEPs
+    from collections import defaultdict
     if budgeted_projects:
         cpi_q = (
             db.query(
@@ -201,6 +204,7 @@ def get_trends(
             .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
             .filter(
                 TimesheetRecord.pep_wbs.in_(list(budgeted_projects.keys())),
+                Cycle.is_active == True,
             )
         )
         if pep_description:
@@ -214,34 +218,33 @@ def get_trends(
             cpi_q = cpi_q.filter(TimesheetRecord.record_date <= date_to)
         cpi_rows = cpi_q.group_by(Cycle.id, TimesheetRecord.pep_wbs).all()
 
-        # Build cumulative consumed_hours per (cycle_id, pep_wbs) for EV calculation
-        from collections import defaultdict
+        # Build per-cycle consumed_hours per (cycle_id, pep_wbs)
         cycle_pep_consumed: dict[tuple, float] = defaultdict(float)
         cycle_pep_ac: dict[tuple, float] = defaultdict(float)
         for cr in cpi_rows:
             cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.consumed_hours or 0.0
             cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)] += cr.actual_cost or 0.0
-
-        # Map cycle name → cycle id
-        cycle_id_map = {r.cycle_name: None for r in rows}
-        for c in db.query(Cycle).filter(Cycle.name.in_(list(cycle_id_map.keys()))).all():
-            cycle_id_map[c.name] = c.id
     else:
-        cycle_id_map = {}
         cycle_pep_consumed = {}
         cycle_pep_ac = {}
+
+    # Cumulative CPI: accumulate consumed hours and AC per PEP across cycles ordered by start_date
+    cumulative_per_pep: dict[str, float] = defaultdict(float)
+    cumulative_ac_per_pep: dict[str, float] = defaultdict(float)
 
     result = []
     for r in rows:
         cpi = None
-        if budgeted_projects and cycle_id_map.get(r.cycle_name):
-            cid = cycle_id_map[r.cycle_name]
+        if budgeted_projects:
+            for pep_code in budgeted_projects:
+                cumulative_per_pep[pep_code] += cycle_pep_consumed.get((r.cycle_id, pep_code), 0.0)
+                cumulative_ac_per_pep[pep_code] += cycle_pep_ac.get((r.cycle_id, pep_code), 0.0)
             total_ev = 0.0
             total_ac = 0.0
             for pep_code, proj in budgeted_projects.items():
-                consumed = cycle_pep_consumed.get((cid, pep_code), 0.0)
-                ac = cycle_pep_ac.get((cid, pep_code), 0.0)
-                if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost:
+                consumed = cumulative_per_pep[pep_code]
+                ac = cumulative_ac_per_pep[pep_code]
+                if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost and ac > 0:
                     ev = min(consumed / proj.budget_hours, 1.0) * proj.budget_cost
                     total_ev += ev
                     total_ac += ac
@@ -625,7 +628,7 @@ def get_portfolio_runway(
             pct_consumed    = consumed_hours / budget_hours * 100
             remaining_hours = budget_hours - consumed_hours
 
-            if pct_consumed >= 100:
+            if pct_consumed > 100:
                 risk = "overrun"
             elif pct_consumed >= critical_threshold * 100:
                 risk = "critical"

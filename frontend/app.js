@@ -47,6 +47,7 @@ const _LANG = {
     'cpi.zone_critical':'Crítico < 0,9','cpi.zone_warning':'Atenção 0,9–1,0',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
+    'trends.normal':'Normal','trends.extra':'Hora Extra','trends.standby':'Sobreaviso',
     'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
     'cycles.title':'Ciclos cadastrados','btn.new_cycle':'+ Novo ciclo',
     'cycles.search_ph':'Buscar por nome de ciclo…',
@@ -340,6 +341,7 @@ const _LANG = {
     'cpi.zone_critical':'Critical < 0.9','cpi.zone_warning':'Warning 0.9–1.0',
     'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
     'trends.all':'All',
+    'trends.normal':'Normal','trends.extra':'Extra Hours','trends.standby':'Standby',
     'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
     'cycles.title':'Registered Cycles','btn.new_cycle':'+ New cycle',
     'cycles.search_ph':'Search by cycle name…',
@@ -2394,8 +2396,7 @@ function _buildHoursBarOption({
 
   // ── 5. Séries de barras ─────────────────────────────────────────────
   // [C1] showBackground preservado: presente em G1 (horizontal), ausente em G2/G3 (vertical)
-  // const bgStyle = isHoriz
-  const bgStyle = true
+  const bgStyle = isHoriz
     ? { showBackground: true, backgroundStyle: { color: 'rgba(180, 180, 180, 0.01)' } }
     : {};
 
@@ -3297,17 +3298,12 @@ function _buildPortfolioStatsRow(health, trends) {
     .reduce((s, d) => s + d.budget_cost, 0);
   const pepsActive  = health.filter(d => d.consumed_hours > 0).length;
 
-  let normalH = 0, extraH = 0, standbyH = 0;
+  let costNormal = 0, costExtra = 0, costStandby = 0;
   (trends || []).forEach(r => {
-    normalH  += r.normal_hours  || 0;
-    extraH   += r.extra_hours   || 0;
-    standbyH += r.standby_hours || 0;
+    costNormal  += r.normal_cost  || 0;
+    costExtra   += r.extra_cost   || 0;
+    costStandby += r.standby_cost || 0;
   });
-  const totalH = normalH + extraH + standbyH;
-
-  const costNormal  = totalH > 0 ? totalCost * (normalH  / totalH) : 0;
-  const costExtra   = totalH > 0 ? totalCost * (extraH   / totalH) : 0;
-  const costStandby = totalH > 0 ? totalCost * (standbyH / totalH) : 0;
 
   const pct  = totalBudget > 0 ? (totalCost / totalBudget * 100).toFixed(1) : '—';
   const over = totalBudget > 0 && totalCost > totalBudget;
@@ -4703,7 +4699,7 @@ async function loadMyQr() {
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    _myQrCache = await apiFetch(`/api/quarantine?${params}`);
+    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
     _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
