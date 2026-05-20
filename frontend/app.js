@@ -277,7 +277,8 @@ const _LANG = {
     'runway.title':'Runway do Portfólio',
     'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
     'runway.empty':'Nenhum PEP com orçamento encontrado.',
-    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.planned':'Planejado (h)',
+    'runway.th.pep':'PEP','runway.th.project':'Projeto',
+    'runway.th.planned':'Planejado (h)','runway.th.planned_r':'Planejado (R$)',
     'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
@@ -572,7 +573,8 @@ const _LANG = {
     'runway.title':'Portfolio Runway',
     'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
     'runway.empty':'No PEPs with budget found.',
-    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.planned':'Planned (h)',
+    'runway.th.pep':'PEP','runway.th.project':'Project',
+    'runway.th.planned':'Planned (h)','runway.th.planned_r':'Planned (R$)',
     'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
@@ -1289,7 +1291,13 @@ function _renderRunwayPanel(runway) {
   const empty     = document.getElementById('runwayEmpty');
   const exportBtn = document.getElementById('runwayExportBtn');
 
-  const withBudget = runway.filter(r => r.budget_hours != null);
+  // Update column header for current mode
+  const plannedTh = document.getElementById('runwayPlannedTh');
+  if (plannedTh) plannedTh.textContent = _evmMode ? _t('runway.th.planned_r') : _t('runway.th.planned');
+
+  const withBudget = runway
+    .filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null)
+    .map(r => Object.assign({}, r, { _sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0) }));
   if (exportBtn) exportBtn.hidden = !runway.length;
   if (!withBudget.length) {
     table.hidden = true;
@@ -1305,12 +1313,21 @@ function _drawRunwayRows(data) {
   const tbody = document.getElementById('runwayBody');
   tbody.innerHTML = '';
   data.forEach(item => {
-    const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
-    const color = _riskColor(item.risk);
+    const rawPct = _evmMode ? item.pct_consumed_cost : item.pct_consumed;
+    const pct    = rawPct != null ? Math.min(rawPct, 100) : 0;
 
-    const pctLabel = item.pct_consumed != null
-      ? `${item.pct_consumed.toFixed(1)}% (${item.consumed_hours.toFixed(1)}h)`
-      : '—';
+    // Bar color: hours mode uses backend risk classification; cost mode derives inline
+    const costRisk = item.pct_consumed_cost == null ? 'no_budget'
+      : item.pct_consumed_cost > 100 ? 'overrun'
+      : item.pct_consumed_cost >= 90  ? 'critical'
+      : item.pct_consumed_cost >= 80  ? 'warning'
+      : 'ok';
+    const color = _riskColor(_evmMode ? costRisk : item.risk);
+
+    const absLabel = _evmMode
+      ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${item.consumed_hours.toFixed(1)}h`;
+    const pctLabel = rawPct != null ? `${rawPct.toFixed(1)}% (${absLabel})` : '—';
     const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
       `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${pctLabel}</span>`;
@@ -1356,7 +1373,9 @@ function _drawRunwayRows(data) {
     tr.innerHTML = `
       <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
       <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
-      <td style="text-align:right">${item.budget_hours != null ? item.budget_hours.toFixed(1) : '—'}</td>
+      <td style="text-align:right">${_evmMode
+        ? (item.budget_cost != null ? `R$ ${item.budget_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
+        : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
       <td style="white-space:nowrap">${bar}</td>
       <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
       <td style="text-align:right">${cyclesCell}</td>
@@ -5455,7 +5474,7 @@ _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
-_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'consumed_hours',type:'num'}, null, {key:'avg_hours_per_cycle',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}, {key:'cpi',type:'num'}], () => (_lastRunwayData||[]).filter(r => r.budget_hours != null), _drawRunwayRows);
+_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'avg_hours_per_cycle',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}, {key:'cpi',type:'num'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0)})), _drawRunwayRows);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');

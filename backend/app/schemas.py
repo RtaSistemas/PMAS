@@ -465,9 +465,11 @@ class RunwayItem(BaseModel):
     pep_description: Optional[str] = None
     name: Optional[str] = None
     budget_hours: Optional[float] = None
+    budget_cost: Optional[float] = None
     consumed_hours: float
     actual_cost: float
     pct_consumed: Optional[float] = None
+    pct_consumed_cost: Optional[float] = None
     avg_hours_per_cycle: float
     cycles_to_complete: Optional[float] = None
     estimated_completion_cycle: Optional[str] = None

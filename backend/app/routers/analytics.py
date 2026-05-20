@@ -723,14 +723,22 @@ def get_portfolio_runway(
                     if schedule_status == "on_track" and budget_hours and consumed_hours >= budget_hours:
                         schedule_status = "behind"
 
+        pct_consumed_cost = (
+            round(actual_cost / budget_cost * 100, 1)
+            if (budget_cost is not None and budget_cost > 0)
+            else None
+        )
+
         result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
             "name": name,
             "budget_hours": budget_hours,
+            "budget_cost": round(budget_cost, 2) if budget_cost is not None else None,
             "consumed_hours": round(consumed_hours, 2),
             "actual_cost": round(actual_cost, 2),
             "pct_consumed": round(pct_consumed, 1) if pct_consumed is not None else None,
+            "pct_consumed_cost": pct_consumed_cost,
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
             "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None,
             "estimated_completion_cycle": estimated_completion_cycle,
