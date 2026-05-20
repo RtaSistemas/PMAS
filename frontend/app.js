@@ -1745,13 +1745,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
 // Alocação — Matriz Colaborador × Projeto
 // ---------------------------------------------------------------------------
 
-let _allocEvmMode = false;
-
-document.getElementById('allocToggleBtn').addEventListener('click', () => {
-  _allocEvmMode = !_allocEvmMode;
-  document.getElementById('allocToggleBtn').textContent = _allocEvmMode ? _t('allocation.btn_r') : _t('allocation.btn_h');
-  if (_activeATab === 'portfolio') _renderAllocationTab();
-});
 
 let _lastAllocData  = null;
 let _allocSortCol   = '__total__';
@@ -1807,7 +1800,7 @@ function _drawAllocMatrix() {
 
   data.forEach(d => {
     const pep = d.pep_wbs || '__none__';
-    const val = _allocEvmMode ? d.actual_cost : d.total_hours;
+    const val = _evmMode ? d.actual_cost : d.total_hours;
     if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
     matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
     collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
@@ -1827,7 +1820,7 @@ function _drawAllocMatrix() {
     return d * (va - vb);
   });
 
-  const fmt = v => _allocEvmMode
+  const fmt = v => _evmMode
     ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
     : `${v.toFixed(1)}h`;
 
