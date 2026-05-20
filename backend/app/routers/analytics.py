@@ -391,17 +391,36 @@ def get_forecast(
         )
         plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
 
+    budget_hours = project.budget_hours if project else None
+    budget_cost = project.budget_cost if project else None
+
+    # Sort plan entries by start_date so cumulative PV is computed correctly
+    # even when plan cycles have no actual data (BUG-B fix)
+    sorted_plans = sorted(plan_by_cycle_start.items()) if plan_by_cycle_start else []
+    has_plan = bool(sorted_plans)
+
     history = []
     cum_h = 0.0
     cum_c = 0.0
-    cum_ph = 0.0
-    has_plan = bool(plan_by_cycle_start)
+    prev_cum_ph = 0.0
+    last_plan_ev: Optional[float] = None
+    last_plan_pv: Optional[float] = None
+
     for r in rows:
         cum_h += r.period_hours or 0.0
         cum_c += r.period_cost or 0.0
-        ph = plan_by_cycle_start.get(r.cycle_start)
-        if ph is not None:
-            cum_ph += ph
+
+        # Cumulative planned hours through all plan cycles up to this cycle's start_date
+        cum_ph = sum(h for s, h in sorted_plans if s <= r.cycle_start) if sorted_plans else 0.0
+
+        # Capture EV/PV at the last cycle where the plan advanced (BUG-A fix):
+        # avoids SPI converging to 1.0 when project overruns past the plan end date
+        if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
+            last_plan_ev = min(cum_h / budget_hours, 1.0) * budget_cost
+            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+            prev_cum_ph = cum_ph
+
+        ph_period = plan_by_cycle_start.get(r.cycle_start)
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -409,7 +428,7 @@ def get_forecast(
             "period_cost": round(r.period_cost or 0.0, 2),
             "cumulative_hours": round(cum_h, 2),
             "cumulative_cost": round(cum_c, 2),
-            "planned_hours": round(ph, 2) if ph is not None else None,
+            "planned_hours": round(ph_period, 2) if ph_period is not None else None,
             "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
         })
 
@@ -418,9 +437,6 @@ def get_forecast(
 
     recent = rows[-3:]
     avg_hours = sum(r.period_hours or 0.0 for r in recent) / len(recent) if recent else 0.0
-
-    budget_hours = project.budget_hours if project else None
-    budget_cost = project.budget_cost if project else None
 
     cpi = None
     eac = None
@@ -432,12 +448,14 @@ def get_forecast(
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
-        if has_plan and cum_ph > 0:
-            pv_val = min(cum_ph / budget_hours, 1.0) * budget_cost
-            spi = round(ev_val / pv_val, 3) if pv_val > 0 else None
-            sv = round(ev_val - pv_val, 2)
+        # BUG-A fix: use EV/PV frozen at the last planned cycle, not final totals;
+        # prevents SPI from converging to 1.0 after the project overruns its schedule
+        if has_plan and last_plan_pv and last_plan_pv > 0:
+            spi = round(last_plan_ev / last_plan_pv, 3)
+            sv = round(last_plan_ev - last_plan_pv, 2)
 
-    remaining_hours = round(budget_hours - consumed_hours, 2) if budget_hours is not None else None
+    # BUG-C fix: floor remaining_hours at 0 so overrun projects don't return negative values
+    remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours is not None else None
 
     est_cycles = None
     est_completion = None
