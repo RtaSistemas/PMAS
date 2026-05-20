@@ -6,10 +6,10 @@ produce consistent results across /api/portfolio-health (runway),
 
 Canonical definitions used throughout:
   AC  = actual cost (Σ cost_per_hour × weighted hours)
-  EV  = (consumed_hours / budget_hours) × budget_cost
+  EV  = min(consumed_hours / budget_hours, 1.0) × budget_cost  ← capped at BAC
   CPI = EV / AC
   EAC = budget_cost / CPI  (= BAC / CPI)
-  PV  = (cumulative_planned_hours / budget_hours) × budget_cost
+  PV  = min(cumulative_planned_hours / budget_hours, 1.0) × budget_cost
   SPI = EV / PV
   SV  = EV − PV
 """
@@ -364,3 +364,152 @@ class TestTrendsCpiConsistency:
         assert f_cpi is not None
         assert abs(t_cpi - r_cpi) < 0.01, f"Trends CPI={t_cpi} vs Runway CPI={r_cpi}"
         assert abs(t_cpi - f_cpi) < 0.01, f"Trends CPI={t_cpi} vs Forecast CPI={f_cpi}"
+
+
+class TestEvmOverBudget:
+    """
+    Scenario: consumed_hours exceeds budget_hours (project over budget in effort).
+
+    Without capping EV at BAC, the formula EV = (consumed/budget) × budget_cost
+    yields EV > BAC, which makes CPI > 1 even though the project is massively
+    over budget — a false positive that masks the overrun.
+
+    With the cap: EV = min(consumed/budget, 1.0) × budget_cost
+
+      budget_hours = 100
+      budget_cost  = 10_000   (BAC)
+      consumed     = 136 h    (136% of budget)
+      cost_per_hour = 100 → AC = 13_600
+
+      EV (capped)  = min(136/100, 1.0) × 10_000 = 10_000  (= BAC)
+      CPI          = 10_000 / 13_600              = 0.735
+      EAC          = 10_000 / 0.735               ≈ 13_600
+    """
+
+    PEP  = "60IT-OVR-01"
+    DESC = "OverBudget"
+    BH   = 100.0
+    BC   = 10_000.0
+    NORM = 136.0
+    CPH  = 100.0
+
+    _EV  = min(NORM / BH, 1.0) * BC   # 10_000 (capped at BAC)
+    _AC  = NORM * CPH                  # 13_600
+    _CPI = _EV / _AC                   # 0.7353
+
+    def _seed(self, db):
+        _global_config(db, em=1.0, sm=1.0)
+        cy = _cycle(db, "Apr/2026", 2026, 4)
+        co = _collab(db, "Oscar")
+        p  = _project(db, self.PEP, self.BH, self.BC)
+        _rec(db, cy, co, self.PEP, self.DESC, normal=self.NORM, cph=self.CPH)
+        return p, cy
+
+    def test_runway_cpi_over_budget(self, client, db_session):
+        """CPI must be < 1 when consumed > budget, not inflated above 1."""
+        self._seed(db_session)
+        resp = client.get("/api/portfolio-runway")
+        assert resp.status_code == 200
+        item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
+        assert item is not None
+        assert item["cpi"] is not None
+        assert item["cpi"] < 1.0, (
+            f"CPI={item['cpi']:.4f} should be < 1.0 for an over-budget project; "
+            f"EV cap at BAC is required."
+        )
+        assert abs(item["cpi"] - self._CPI) < 0.01, (
+            f"Expected CPI={self._CPI:.4f}, got {item['cpi']:.4f}"
+        )
+
+    def test_forecast_cpi_over_budget(self, client, db_session):
+        """Forecast CPI must also reflect cost overrun."""
+        self._seed(db_session)
+        resp = client.get(f"/api/forecast?pep_wbs={self.PEP}")
+        assert resp.status_code == 200
+        fc = resp.json()
+        assert fc["cpi"] is not None
+        assert fc["cpi"] < 1.0, f"Forecast CPI={fc['cpi']} should be < 1 for overrun project"
+        assert abs(fc["cpi"] - self._CPI) < 0.01
+
+    def test_trends_cpi_over_budget(self, client, db_session):
+        """Trends CPI must also reflect cost overrun."""
+        self._seed(db_session)
+        resp = client.get("/api/trends")
+        assert resp.status_code == 200
+        rows = resp.json()
+        row = next((r for r in rows if r.get("cpi") is not None), None)
+        assert row is not None
+        assert row["cpi"] < 1.0, f"Trends CPI={row['cpi']} should be < 1 for overrun project"
+        assert abs(row["cpi"] - self._CPI) < 0.01
+
+
+class TestMultiplierFallback:
+    """
+    When GlobalConfig is absent, em fallback=1.5, sm fallback=0.33 must match
+    the seeded defaults in database.py so actual_cost is consistent with or
+    without a config row.
+
+    Scenario (standby only, to isolate sm):
+      standby_hours = 10, cost_per_hour = 100, sm_fallback = 0.33
+      actual_cost = 10 × 100 × 0.33 = 330
+    """
+
+    PEP  = "60IT-FAL-01"
+    DESC = "Fallback"
+    STANDBY = 10.0
+    CPH = 100.0
+    SM_FALLBACK = 0.33
+    _AC_EXPECTED = STANDBY * CPH * SM_FALLBACK  # 330.0
+
+    def _seed(self, db):
+        # No GlobalConfig — forces the fallback branch
+        cy = _cycle(db, "May/2026", 2026, 5)
+        co = _collab(db, "Eve")
+        _rec(db, cy, co, self.PEP, self.DESC, normal=0.0, standby=self.STANDBY, cph=self.CPH)
+
+    def test_trends_actual_cost_uses_sm_fallback(self, client, db_session):
+        """actual_cost in /api/trends must use sm=0.33 when GlobalConfig is absent."""
+        self._seed(db_session)
+        resp = client.get("/api/trends")
+        assert resp.status_code == 200
+        rows = resp.json()
+        assert len(rows) == 1
+        ac = rows[0]["actual_cost"]
+        assert abs(ac - self._AC_EXPECTED) < 0.01, (
+            f"actual_cost={ac:.2f}, expected {self._AC_EXPECTED:.2f} "
+            f"(standby×cph×sm=10×100×0.33). "
+            f"Fallback sm must equal the seeded default of 0.33, not 1.0."
+        )
+
+
+class TestRunwayNegativeCyclesToComplete:
+    """
+    When consumed_hours > budget_hours the project is already overrun.
+    cycles_to_complete must be null (not a negative number) in the API response.
+    """
+
+    PEP  = "60IT-NEG-01"
+    DESC = "NegCycles"
+    BH   = 50.0
+    BC   = 5_000.0
+    NORM = 80.0  # 60% over budget
+    CPH  = 50.0
+
+    def _seed(self, db):
+        _global_config(db, em=1.0, sm=1.0)
+        cy = _cycle(db, "Jun/2026", 2026, 6)
+        co = _collab(db, "Frank")
+        _project(db, self.PEP, self.BH, self.BC)
+        _rec(db, cy, co, self.PEP, self.DESC, normal=self.NORM, cph=self.CPH)
+
+    def test_cycles_to_complete_null_when_overrun(self, client, db_session):
+        """cycles_to_complete must be null (not negative) for an over-budget project."""
+        self._seed(db_session)
+        resp = client.get("/api/portfolio-runway")
+        assert resp.status_code == 200
+        item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
+        assert item is not None
+        assert item["risk"] == "overrun"
+        assert item["cycles_to_complete"] is None, (
+            f"cycles_to_complete={item['cycles_to_complete']} should be null for overrun project"
+        )

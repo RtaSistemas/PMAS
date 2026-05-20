@@ -238,6 +238,7 @@
             <button id="calNextMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8250;</button>
           </div>
           <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>
+          <div id="calDayHeader" style="display:none;margin:0 auto 2px"></div>
           <div id="collabCalendarChart" style="width:100%;height:185px"></div>
           <div id="collabCalendarStats" style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap"></div>
         </div>
@@ -301,8 +302,8 @@
       </div>
       <div class="card chart-panel" id="scatterPanel" data-chart-id="scatterChart" hidden>
         <div class="panel-header">
-          <span class="panel-title" data-i18n="scatter.title">Eficiência de Custo por PEP</span>
-          <span class="panel-note"  data-i18n="scatter.note">Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio</span>
+          <span class="panel-title" data-i18n="scatter.title">Quadrante EVM — CPI × SPI</span>
+          <span class="panel-note"  data-i18n="scatter.note">Eixo X = SPI (prazo) · Eixo Y = CPI (custo) · Referência em 1,0</span>
         </div>
         <div id="scatterEmpty" class="chart-empty" hidden data-i18n="scatter.empty">
           Nenhum dado de PEP disponível para os filtros selecionados.
@@ -312,7 +313,7 @@
       <div class="card" id="concentrationPanel" hidden>
         <div class="panel-header">
           <span class="panel-title" data-i18n="conc.title">Concentração de Risco por Projeto</span>
-          <span class="panel-note" data-i18n="conc.note">% de horas por colaborador · ⚠ risco quando um único colaborador detém &gt;60%</span>
+          <span id="concentrationNote" class="panel-note" data-i18n="conc.note">% de horas por colaborador · ⚠ risco quando um único colaborador detém &gt;60%</span>
         </div>
         <div id="concentrationEmpty" class="chart-empty" hidden data-i18n="conc.empty">Nenhum dado de horas encontrado.</div>
         <div id="concentrationGrid" style="display:flex;flex-direction:column;gap:.5rem"></div>
@@ -320,9 +321,6 @@
       <div class="card chart-panel">
         <div class="panel-header">
           <span class="panel-title" data-i18n="atab.allocation">Alocação</span>
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <button type="button" id="allocToggleBtn" class="btn btn-secondary btn-sm">Horas</button>
-          </div>
         </div>
         <div id="allocationEmpty" class="chart-empty" hidden data-i18n="allocation.empty">
           Nenhum dado encontrado.
@@ -342,14 +340,14 @@
           <thead><tr>
             <th data-i18n="runway.th.pep">PEP</th>
             <th data-i18n="runway.th.project">Projeto</th>
-            <th data-i18n="runway.th.consumed">Consumido (h)</th>
+            <th id="runwayPlannedTh" data-i18n="runway.th.planned">Planejado (h)</th>
             <th data-i18n="runway.th.progress">Progresso</th>
-            <th data-i18n="runway.th.avg">Média/ciclo</th>
+            <th id="runwayAvgTh" data-i18n="runway.th.avg">Média/ciclo (h)</th>
+            <th data-evm="CPI">CPI</th>
             <th data-i18n="runway.th.cycles">Ciclos restantes</th>
             <th data-i18n="runway.th.completion">Conclusão estimada</th>
             <th data-i18n="runway.th.spi" data-evm="SPI">SPI</th>
             <th data-i18n="runway.th.status">Status</th>
-            <th data-evm="CPI">CPI</th>
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>

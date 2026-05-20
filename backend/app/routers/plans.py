@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import CurrentUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Cycle, Project, ProjectCyclePlan
 from backend.app.schemas import IdOut, ImportResultOut, ProjectCyclePlanIn, ProjectCyclePlanOut
 
@@ -71,7 +71,7 @@ def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/plans/import", summary="Importar baseline de múltiplos projetos via CSV", response_model=ImportResultOut)
-def import_plans(file: UploadFile, db: DbSession, current_user: CurrentUser):
+def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
     """CSV esperado: pep_wbs, cycle_name, planned_hours (cabeçalho obrigatório)."""
     try:
         raw = file.file.read()
@@ -143,7 +143,7 @@ def import_plans(file: UploadFile, db: DbSession, current_user: CurrentUser):
 
 
 @router.put("/{project_id}/plans/{cycle_id}", response_model=ProjectCyclePlanOut)
-def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: DbSession, current_user: CurrentUser):
+def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: DbSession, current_user: AdminUser):
     if db.get(Project, project_id) is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
     if db.get(Cycle, cycle_id) is None:
@@ -169,7 +169,7 @@ def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: Db
 
 
 @router.delete("/{project_id}/plans/{cycle_id}", status_code=204)
-def delete_plan(project_id: int, cycle_id: int, db: DbSession, current_user: CurrentUser):
+def delete_plan(project_id: int, cycle_id: int, db: DbSession, current_user: AdminUser):
     plan = (
         db.query(ProjectCyclePlan)
         .filter(ProjectCyclePlan.project_id == project_id, ProjectCyclePlan.cycle_id == cycle_id)

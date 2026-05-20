@@ -22,15 +22,18 @@ const _LANG = {
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
     'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
+    'forecast.now_marker':'Atual',
     'forecast.pv_line':'VP (Valor Planejado)',
     'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
-    'scatter.title':'Eficiência de Custo por PEP',
-    'scatter.note':'Tamanho = utilização do budget · Cor = saúde do CPI · Linha = média R$/h do portfólio',
+    'scatter.title':'Quadrante EVM — CPI × SPI',
+    'scatter.note':'Eixo X = SPI (prazo) · Eixo Y = CPI (custo) · Referência em 1,0',
     'scatter.empty':'Nenhum dado de PEP disponível para os filtros selecionados.',
+    'q.tr':'No prazo e no orçamento','q.tl':'Custo ok · Prazo em risco',
+    'q.br':'Prazo ok · Custo em risco','q.bl':'Custo e prazo em risco',
     'portfolio.treemap_h':'Distribuição de Horas por PEP (Treemap)',
     'portfolio.treemap_r':'Custo Real por PEP (Treemap)',
     'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
@@ -41,8 +44,10 @@ const _LANG = {
     'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
     'pepcpi.note':'Orçamento / Custo Real por ciclo · Linha de referência em 1.0 · Requer orçamento (R$) nos projetos',
     'pepcpi.empty':'Sem dados de orçamento. Defina o orçamento (R$) nos projetos para habilitar o rastreamento de CPI.',
+    'cpi.zone_critical':'Crítico < 0,9','cpi.zone_warning':'Atenção 0,9–1,0',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
+    'trends.normal':'Normal','trends.extra':'Hora Extra','trends.standby':'Sobreaviso',
     'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
     'cycles.title':'Ciclos cadastrados','btn.new_cycle':'+ Novo ciclo',
     'cycles.search_ph':'Buscar por nome de ciclo…',
@@ -272,8 +277,10 @@ const _LANG = {
     'runway.title':'Runway do Portfólio',
     'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
     'runway.empty':'Nenhum PEP com orçamento encontrado.',
-    'runway.th.pep':'PEP','runway.th.project':'Projeto','runway.th.consumed':'Consumido (h)',
-    'runway.th.progress':'Progresso','runway.th.avg':'Média/ciclo',
+    'runway.th.pep':'PEP','runway.th.project':'Projeto',
+    'runway.th.planned':'Planejado (h)','runway.th.planned_r':'Planejado (R$)',
+    'runway.th.progress':'Progresso',
+    'runway.th.avg':'Média/ciclo (h)','runway.th.avg_r':'Média/ciclo (R$)',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
     'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
     'runway.th.spi':'SPI','runway.th.status':'Status',
@@ -284,6 +291,7 @@ const _LANG = {
     'costcomp.empty':'Nenhum dado de custo encontrado.',
     'conc.title':'Concentração de Risco por Projeto',
     'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
+    'conc.note_cost':'% de custo por colaborador · ⚠ risco quando um único colaborador detém >60%',
     'conc.empty':'Nenhum dado de horas encontrado.',
     'conc.others':'Outros',
     'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
@@ -311,15 +319,18 @@ const _LANG = {
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
     'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
+    'forecast.now_marker':'Now',
     'forecast.pv_line':'PV (Planned Value)',
     'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
     'forecast.no_budget':'No budget registered for this PEP.',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
-    'scatter.title':'Cost Efficiency by PEP',
-    'scatter.note':'Bubble size = budget utilization · Color = CPI health · Dashed line = portfolio avg R$/h',
+    'scatter.title':'EVM Quadrant — CPI × SPI',
+    'scatter.note':'X = SPI (schedule) · Y = CPI (cost) · Reference at 1.0',
     'scatter.empty':'No PEP data available for selected filters.',
+    'q.tr':'On schedule and on budget','q.tl':'Cost ok · Schedule at risk',
+    'q.br':'Schedule ok · Cost at risk','q.bl':'Cost & schedule at risk',
     'portfolio.treemap_h':'Hour Distribution by PEP (Treemap)',
     'portfolio.treemap_r':'Actual Cost by PEP (Treemap)',
     'portfolio.empty':'No hour data found for the selected filters.',
@@ -330,8 +341,10 @@ const _LANG = {
     'pepcpi.title':'CPI per PEP by Cycle',
     'pepcpi.note':'Budget / Actual Cost per cycle · Reference line at 1.0 · Requires budget_cost on projects',
     'pepcpi.empty':'No budget data found. Set budget_cost on projects to enable CPI tracking.',
+    'cpi.zone_critical':'Critical < 0.9','cpi.zone_warning':'Warning 0.9–1.0',
     'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
     'trends.all':'All',
+    'trends.normal':'Normal','trends.extra':'Extra Hours','trends.standby':'Standby',
     'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
     'cycles.title':'Registered Cycles','btn.new_cycle':'+ New cycle',
     'cycles.search_ph':'Search by cycle name…',
@@ -561,8 +574,10 @@ const _LANG = {
     'runway.title':'Portfolio Runway',
     'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
     'runway.empty':'No PEPs with budget found.',
-    'runway.th.pep':'PEP','runway.th.project':'Project','runway.th.consumed':'Consumed (h)',
-    'runway.th.progress':'Progress','runway.th.avg':'Avg/cycle',
+    'runway.th.pep':'PEP','runway.th.project':'Project',
+    'runway.th.planned':'Planned (h)','runway.th.planned_r':'Planned (R$)',
+    'runway.th.progress':'Progress',
+    'runway.th.avg':'Avg/cycle (h)','runway.th.avg_r':'Avg/cycle (R$)',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
     'runway.overrun':'Overrun','runway.no_budget':'No budget',
     'runway.th.spi':'SPI','runway.th.status':'Status',
@@ -573,6 +588,7 @@ const _LANG = {
     'costcomp.empty':'No cost data found.',
     'conc.title':'Project Concentration Risk',
     'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
+    'conc.note_cost':'% of cost per collaborator · ⚠ risk when a single collaborator holds >60%',
     'conc.empty':'No hour data found.',
     'conc.others':'Others',
     'msg.pep_not_available': 'PEP not available for your profile.',
@@ -809,6 +825,7 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
+    if (btn.dataset.tab === 'dashboard') _renderActiveTab();
     if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
@@ -915,13 +932,13 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 
 document.getElementById('runwayExportBtn').addEventListener('click', () => {
   if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'PEP,Projeto,Consumido (h),Orçado (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const header = 'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
   const rows = _lastRunwayData.map(d => {
     const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
     return [
       `"${d.pep_wbs}"`, `"${d.name || ''}"`,
-      d.consumed_hours.toFixed(1),
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
+      d.consumed_hours.toFixed(1),
       d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
       d.avg_hours_per_cycle.toFixed(1),
       d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
@@ -979,6 +996,7 @@ async function onCollabChange()   { await refreshPeps(); }
 async function loadDashboardCycles() {
   try {
     const cycles = await apiFetch('/api/cycles');
+    _allCycles = cycles;
     cycleMs.setItems(cycles.map(c => ({ value: c.id, label: c.name })));
   } catch (e) { notify(`Erro ao carregar ciclos: ${e.message}`, 'error'); }
 }
@@ -995,7 +1013,7 @@ async function refreshPeps() {
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (_) {}
+  } catch (e) { console.warn('refreshPeps:', e); notify(`Erro ao atualizar filtro de PEPs: ${e.message}`, 'warning'); }
 }
 
 function refreshPepDescriptions() {
@@ -1015,7 +1033,7 @@ async function refreshCollaborators() {
   try {
     const collabs = await apiFetch(`/api/collaborators?${p}`);
     collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (_) {}
+  } catch (e) { console.warn('refreshCollaborators:', e); notify(`Erro ao atualizar filtro de colaboradores: ${e.message}`, 'warning'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1215,12 +1233,17 @@ async function _renderEffortTab() {
     }
     _showEmpty('effortEmpty', false);
 
-    // Effort chart — G1 ✅
-    const h = calcHeight(data.length);
+    // Sort ascending — ECharts horizontal bar renders bottom-to-top,
+    // so low→high puts the highest contributor at the visual top.
+    const sortedData = [...data].sort((a, b) =>
+      (a.normal_hours + a.extra_hours + a.standby_hours) -
+      (b.normal_hours + b.extra_hours + b.standby_hours)
+    );
+    const h = calcHeight(sortedData.length);
     document.getElementById('effortChart').style.height = `${h}px`;
     const ch = _getOrCreateChart('effortChart');
     ch.setOption(_buildHoursBarOption({
-      data:        data,
+      data:        sortedData,
       categoryKey: 'collaborator',
       orientation: 'horizontal',
       stacked:     _stackMode,
@@ -1270,7 +1293,18 @@ function _renderRunwayPanel(runway) {
   const empty     = document.getElementById('runwayEmpty');
   const exportBtn = document.getElementById('runwayExportBtn');
 
-  const withBudget = runway.filter(r => r.budget_hours != null);
+  // Update column headers for current mode
+  const plannedTh = document.getElementById('runwayPlannedTh');
+  if (plannedTh) plannedTh.textContent = _evmMode ? _t('runway.th.planned_r') : _t('runway.th.planned');
+  const avgTh = document.getElementById('runwayAvgTh');
+  if (avgTh) avgTh.textContent = _evmMode ? _t('runway.th.avg_r') : _t('runway.th.avg');
+
+  const withBudget = runway
+    .filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null)
+    .map(r => Object.assign({}, r, {
+      _sortPlanned: _evmMode ? (r.budget_cost||0)         : (r.budget_hours||0),
+      _sortAvg:     _evmMode ? (r.avg_cost_per_cycle||0)  : (r.avg_hours_per_cycle||0),
+    }));
   if (exportBtn) exportBtn.hidden = !runway.length;
   if (!withBudget.length) {
     table.hidden = true;
@@ -1286,12 +1320,24 @@ function _drawRunwayRows(data) {
   const tbody = document.getElementById('runwayBody');
   tbody.innerHTML = '';
   data.forEach(item => {
-    const pct   = item.pct_consumed != null ? Math.min(item.pct_consumed, 100) : 0;
-    const color = _riskColor(item.risk);
+    const rawPct = _evmMode ? item.pct_consumed_cost : item.pct_consumed;
+    const pct    = rawPct != null ? Math.min(rawPct, 100) : 0;
 
+    // Bar color: hours mode uses backend risk classification; cost mode derives inline
+    const costRisk = item.pct_consumed_cost == null ? 'no_budget'
+      : item.pct_consumed_cost > 100 ? 'overrun'
+      : item.pct_consumed_cost >= 90  ? 'critical'
+      : item.pct_consumed_cost >= 80  ? 'warning'
+      : 'ok';
+    const color = _riskColor(_evmMode ? costRisk : item.risk);
+
+    const absLabel = _evmMode
+      ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${item.consumed_hours.toFixed(1)}h`;
+    const pctLabel = rawPct != null ? `${rawPct.toFixed(1)}% (${absLabel})` : '—';
     const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
-      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${item.pct_consumed != null ? item.pct_consumed.toFixed(1) + '%' : '—'}</span>`;
+      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${pctLabel}</span>`;
 
     let cyclesCell = '—';
     if (item.risk === 'overrun') {
@@ -1330,14 +1376,18 @@ function _drawRunwayRows(data) {
     tr.innerHTML = `
       <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
       <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
-      <td style="text-align:right">${item.consumed_hours.toFixed(1)}</td>
+      <td style="text-align:right">${_evmMode
+        ? (item.budget_cost != null ? `R$ ${item.budget_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
+        : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
       <td style="white-space:nowrap">${bar}</td>
-      <td style="text-align:right">${item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${_evmMode
+        ? `R$ ${item.avg_cost_per_cycle.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+        : item.avg_hours_per_cycle.toFixed(1)}</td>
+      <td style="text-align:right">${cpiCell}</td>
       <td style="text-align:right">${cyclesCell}</td>
       <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
       <td style="text-align:right">${spiCell}</td>
       <td>${statusCell}</td>
-      <td style="text-align:right">${cpiCell}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1352,6 +1402,10 @@ function _renderConcentrationPanel(concentration) {
   const grid  = document.getElementById('concentrationGrid');
   grid.innerHTML = '';
 
+  // Update subtitle to reflect current mode
+  const noteEl = document.getElementById('concentrationNote');
+  if (noteEl) noteEl.textContent = _evmMode ? _t('conc.note_cost') : _t('conc.note');
+
   if (!concentration || !concentration.length) {
     panel.hidden = false;
     empty.hidden = false;
@@ -1361,20 +1415,31 @@ function _renderConcentrationPanel(concentration) {
   panel.hidden = false;
 
   concentration.forEach(item => {
-    const top1 = item.top_contributors.length > 0 ? item.top_contributors[0].pct : 0;
-    const riskKey = item.risk === 'high' ? 'critical' : item.risk === 'medium' ? 'warning' : 'ok';
+    // In cost mode re-sort contributors by cost share so bars reflect correct order
+    const contribs = _evmMode
+      ? [...item.top_contributors].sort((a, b) => b.pct_cost - a.pct_cost)
+      : item.top_contributors;
+
+    const top1val  = contribs.length > 0 ? (_evmMode ? contribs[0].pct_cost : contribs[0].pct) : 0;
+    const riskSrc  = _evmMode ? item.risk_cost : item.risk;
+    const riskKey  = riskSrc === 'high' ? 'critical' : riskSrc === 'medium' ? 'warning' : 'ok';
     const dotColor = _riskColor(riskKey);
 
-    const barsHtml = item.top_contributors.map(c => {
-      const barWidth = top1 > 0 ? Math.round(c.pct / top1 * 100) : 0;
+    const barsHtml = contribs.map(c => {
+      const pct      = _evmMode ? c.pct_cost : c.pct;
+      const barWidth = top1val > 0 ? Math.round(pct / top1val * 100) : 0;
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
         `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
-        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${c.pct.toFixed(0)}%</span>` +
+        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${pct.toFixed(0)}%</span>` +
         `</div>`;
     }).join('');
+
+    const totalDisplay = _evmMode
+      ? `R$ ${item.total_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      : `${item.total_hours.toFixed(0)}h`;
 
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
@@ -1385,7 +1450,7 @@ function _renderConcentrationPanel(concentration) {
         <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
-      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${item.total_hours.toFixed(0)}h</div>
+      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${totalDisplay}</div>
     `;
     grid.appendChild(row);
   });
@@ -1464,23 +1529,17 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = true;
     }
 
-    // Scatter — same params as the other charts
-    const scatterItems = await apiFetch(`/api/dashboard/pep-radar?${p}`).catch(() => []);
-    if (scatterItems.length >= 2) {
+    // EVM Quadrant (CPI × SPI) — uses runway data already fetched above
+    const quadrantItems = runway.filter(r => r.cpi != null && r.spi != null);
+    if (quadrantItems.length >= 1) {
       _showEmpty('scatterEmpty', false);
       document.getElementById('scatterPanel').hidden = false;
-      document.getElementById('scatterChart').style.height = '690px';
+      document.getElementById('scatterChart').style.height = '380px';
       const sc = _getOrCreateChart('scatterChart');
-      sc.setOption(_buildScatterOption(scatterItems), true);
+      sc.setOption(_buildEvmQuadrantOption(quadrantItems), true);
       sc.resize();
-      const stotalH = scatterItems.reduce((s, d) => s + d.total_hours, 0);
-      const stotalC = scatterItems.reduce((s, d) => s + d.actual_cost * _currencyFactor, 0);
-      const savgRate = stotalH > 0 ? stotalC / stotalH : 0;
-      const smaxH = Math.max(...scatterItems.map(d => d.total_hours)) * 1.15;
-      const smaxC = Math.max(...scatterItems.map(d => d.actual_cost * _currencyFactor)) * 1.15;
-      _drawScatterRefLine(sc, savgRate, smaxH, smaxC);
     } else {
-      _showEmpty('scatterEmpty', scatterItems.length === 0);
+      _showEmpty('scatterEmpty', quadrantItems.length === 0);
       document.getElementById('scatterPanel').hidden = true;
       if (_charts['scatterChart'] && !_charts['scatterChart'].isDisposed()) {
         _charts['scatterChart'].dispose();
@@ -1640,10 +1699,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       document.getElementById('pepCpiPanel').hidden = true;
       return;
     }
-    // When no specific cycles are selected, use all non-quarantine cycles
+    // When no specific cycles are selected, use all active (non-quarantine) cycles
     const effectiveCycleIds = cycleIds.length > 0
       ? cycleIds
-      : (_allCycles || []).map(c => c.id);
+      : (_allCycles || []).filter(c => c.is_active).map(c => c.id);
 
     if (!effectiveCycleIds.length) {
       _showEmpty('pepCpiEmpty', true);
@@ -1651,34 +1710,61 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       return;
     }
     try {
-      const cycleNameMap = {};
-      (_allCycles || []).forEach(c => { cycleNameMap[c.id] = c.name; });
+      const cycleStartMap = {};
+      const cycleNameMap  = {};
+      (_allCycles || []).forEach(c => { cycleStartMap[c.id] = c.start_date; cycleNameMap[c.id] = c.name; });
+
+      // Sort cycles chronologically so cumulative accumulation is correct
+      const sortedCycleIds = [...effectiveCycleIds].sort((a, b) => {
+        const aD = cycleStartMap[a] ?? '';
+        const bD = cycleStartMap[b] ?? '';
+        return aD < bD ? -1 : aD > bD ? 1 : 0;
+      });
+
+      // Build shared filter params (cycle_id added per-request)
+      const hParams = new URLSearchParams();
+      pepCodes.forEach(c   => hParams.append('pep_wbs', c));
+      pepDescs.forEach(d   => hParams.append('pep_description', d));
+      collabIds.forEach(id => hParams.append('collaborator_id', id));
+      if (dateFrom) hParams.set('date_from', dateFrom);
+      if (dateTo)   hParams.set('date_to',   dateTo);
 
       const healthByCycle = await Promise.all(
-        effectiveCycleIds.map(id =>
-          apiFetch(`/api/portfolio-health?cycle_id=${id}`)
+        sortedCycleIds.map(id =>
+          apiFetch(`/api/portfolio-health?cycle_id=${id}&${hParams}`)
             .then(items => ({ cycleId: id, items }))
             .catch(() => ({ cycleId: id, items: [] }))
         )
       );
 
+      // Cumulative CPI: accumulate consumed_hours and actual_cost per PEP across cycles
+      const cumConsumed = {};
+      const cumAc = {};
       const pepMap = {};
+
       healthByCycle.forEach(({ cycleId, items: hItems }) => {
         const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
         hItems.forEach(d => {
-          if (d.budget_cost == null || d.budget_cost === 0 || d.actual_cost === 0) return;
+          if (d.budget_cost == null || d.budget_cost === 0) return;
           if (d.budget_hours == null || d.budget_hours === 0) return;
+
+          cumConsumed[d.pep_wbs] = (cumConsumed[d.pep_wbs] || 0) + (d.consumed_hours || 0);
+          cumAc[d.pep_wbs]       = (cumAc[d.pep_wbs]       || 0) + (d.actual_cost    || 0);
+
+          if (cumAc[d.pep_wbs] === 0) return;
+
+          const ev     = Math.min(cumConsumed[d.pep_wbs] / d.budget_hours, 1.0) * d.budget_cost;
+          const cpiVal = +(ev / cumAc[d.pep_wbs]).toFixed(3);
+
           if (!pepMap[d.pep_wbs]) {
             pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
           }
-          const ev = (d.consumed_hours / d.budget_hours) * d.budget_cost;
-          const cpiVal = +(ev / d.actual_cost).toFixed(3);
           pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
         });
       });
 
       const peps = Object.entries(pepMap);
-      const allCycleNames = effectiveCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
+      const allCycleNames = sortedCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
 
       if (!peps.length) {
         _showEmpty('pepCpiEmpty', true);
@@ -1703,13 +1789,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
 // Alocação — Matriz Colaborador × Projeto
 // ---------------------------------------------------------------------------
 
-let _allocEvmMode = false;
-
-document.getElementById('allocToggleBtn').addEventListener('click', () => {
-  _allocEvmMode = !_allocEvmMode;
-  document.getElementById('allocToggleBtn').textContent = _allocEvmMode ? _t('allocation.btn_r') : _t('allocation.btn_h');
-  if (_activeATab === 'portfolio') _renderAllocationTab();
-});
 
 let _lastAllocData  = null;
 let _allocSortCol   = '__total__';
@@ -1765,7 +1844,7 @@ function _drawAllocMatrix() {
 
   data.forEach(d => {
     const pep = d.pep_wbs || '__none__';
-    const val = _allocEvmMode ? d.actual_cost : d.total_hours;
+    const val = _evmMode ? d.actual_cost : d.total_hours;
     if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
     matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
     collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
@@ -1785,7 +1864,7 @@ function _drawAllocMatrix() {
     return d * (va - vb);
   });
 
-  const fmt = v => _allocEvmMode
+  const fmt = v => _evmMode
     ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
     : `${v.toFixed(1)}h`;
 
@@ -1804,9 +1883,12 @@ function _drawAllocMatrix() {
   let html = '<table class="alloc-matrix data-table"><thead><tr>';
   html += `<th class="${thCls('__name__')}" data-sort-key="__name__">${_t('allocation.collaborator')}</th>`;
   sortedPeps.forEach(pep => {
-    const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
-    const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
-    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(label)}">${escHtml(short)}</th>`;
+    const desc  = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+    const shortDesc = desc.length > 13 ? desc.slice(0, 12) + '…' : desc;
+    const headerContent = pep === '__none__'
+      ? escHtml(shortDesc)
+      : `${escHtml(pep)}<br><span class="alloc-th-desc">${escHtml(shortDesc)}</span>`;
+    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(pep + ' · ' + desc)}">${headerContent}</th>`;
   });
   html += `<th class="${thCls('__total__')}" data-sort-key="__total__">${_t('allocation.total')}</th></tr></thead><tbody>`;
 
@@ -1922,6 +2004,7 @@ function _buildForecastOption(fc) {
 
   // Realized series: historical values, null for projected slots
   const realizedData = [...historyVals, ...Array(projCount).fill(null)];
+  const lastHistoryCat = historyCats.at(-1) ?? null;
 
   // Projection series: null up to last historical, then projected values (bridged from last historical)
   const projectionData = [
@@ -1951,6 +2034,15 @@ function _buildForecastOption(fc) {
       itemStyle: { color: _fC0 },
       areaStyle: { color: _fC0 + '1a' },
       connectNulls: false,
+      ...(lastHistoryCat ? {
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: _cssVar('--border'), type: 'solid', width: 1 },
+          data: [{ xAxis: lastHistoryCat,
+            label: { show: true, formatter: _t('forecast.now_marker'),
+              color: _cssVar('--text-3'), fontSize: 9, position: 'insideEndTop' } }],
+        },
+      } : {}),
     },
     {
       name: _t('forecast.projection'),
@@ -2375,8 +2467,7 @@ function _buildHoursBarOption({
 
   // ── 5. Séries de barras ─────────────────────────────────────────────
   // [C1] showBackground preservado: presente em G1 (horizontal), ausente em G2/G3 (vertical)
-  // const bgStyle = isHoriz
-  const bgStyle = true
+  const bgStyle = isHoriz
     ? { showBackground: true, backgroundStyle: { color: 'rgba(180, 180, 180, 0.01)' } }
     : {};
 
@@ -2503,108 +2594,110 @@ function _buildEffortSeriesOnly(stacked) {
   };
 }
 
-function _buildScatterOption(items) {
-  const totalH  = items.reduce((s, d) => s + d.total_hours, 0);
-  const totalC  = items.reduce((s, d) => s + d.actual_cost, 0);
-  const avgRate = totalH > 0 ? totalC / totalH : 0;
-  const maxH    = Math.max(...items.map(d => d.total_hours)) * 1.15 || 1;
-  const maxC    = Math.max(...items.map(d => d.actual_cost * _currencyFactor)) * 1.15 || 1;
-  const minH    = Math.min(...items.map(d => d.total_hours));
+function _buildEvmQuadrantOption(items) {
+  const red   = _cssVar('--red')    || '#ef4444';
+  const amber = _cssVar('--amber')  || '#f59e0b';
+  const green = _cssVar('--green')  || '#22c55e';
+  const blue  = _cssVar('--primary') || '#4f8ef7';
 
   const colorOf = d => {
-    const rph = d.total_hours > 0 ? d.actual_cost / d.total_hours : 0;
-    if (rph === 0 || avgRate === 0) return _cssVar('--text-3');
-    if (rph <= avgRate)             return _cssVar('--primary');
-    if (rph <= avgRate * 1.1)       return _cssVar('--amber');
-    return _cssVar('--red');
+    const spiOk = d.spi >= 1.0;
+    if (d.cpi >= 1.0 && spiOk)  return green;
+    if (d.cpi >= 1.0 && !spiOk) return amber;
+    if (d.cpi < 1.0  && spiOk)  return blue;
+    return red;
   };
 
-  const sizeOf = d => {
-    const range = (maxH / 1.15) - minH || 1;
-    return 18 + ((d.total_hours - minH) / range) * 38;
-  };
+  const spis = items.map(d => d.spi);
+  const cpis = items.map(d => d.cpi);
+  const xMin = +Math.max(0, Math.min(...spis, 0.8) - 0.1).toFixed(2);
+  const xMax = +Math.max(...spis, 1.2).toFixed(2) + 0.1;
+  const yMin = +Math.max(0, Math.min(...cpis, 0.8) - 0.1).toFixed(2);
+  const yMax = +Math.max(...cpis, 1.2).toFixed(2) + 0.1;
 
   return {
     backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Scatter'),
+    toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
     tooltip: {
       trigger: 'item',
       backgroundColor: _cssVar('--card'),
       borderColor: _cssVar('--border'),
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
       formatter: p => {
-        const d   = p.data._raw;
-        const rph = d.total_hours > 0 ? (d.actual_cost / d.total_hours).toFixed(2) : '—';
-        const vs  = avgRate > 0
-          ? ((d.actual_cost / d.total_hours - avgRate) / avgRate * 100).toFixed(1)
-          : '—';
-        const sign = parseFloat(vs) >= 0 ? '+' : '';
+        const d = p.data._raw;
+        const cC = d.cpi >= 1 ? green : d.cpi >= 0.9 ? amber : red;
+        const sC = d.spi >= 1.0 ? green : d.spi >= 0.9 ? amber : red;
         return [
-          `<b>${escHtml(d.pep_description)}</b>`,
-          `Horas: <b>${d.total_hours.toFixed(0)}h</b>`,
-          `Custo real: <b>${_fmtCost(d.actual_cost)}</b>`,
-          `R$/hora: <b>${_fmtCost(parseFloat(rph))}</b> (${sign}${vs}% vs avg)`,
-        ].join('<br/>');
+          `<b>${escHtml(d.pep_wbs)}</b>`,
+          d.name ? `<span style="color:${_cssVar('--text-3')}">${escHtml(d.name)}</span>` : null,
+          `CPI: <b style="color:${cC}">${d.cpi.toFixed(2)}</b>`,
+          `SPI: <b style="color:${sC}">${d.spi.toFixed(2)}</b>`,
+        ].filter(Boolean).join('<br/>');
       },
     },
-    legend: { show: false },
-    grid: { top: 56, bottom: 48, left: 72, right: 24, containLabel: false },
+    grid: { top: 40, bottom: 52, left: 60, right: 24, containLabel: false },
     xAxis: {
-      name: 'Horas Consumidas',
-      nameLocation: 'middle', nameGap: 32,
+      name: 'SPI — Desempenho de Prazo',
+      nameLocation: 'middle', nameGap: 34,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), formatter: v => v + 'h' },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-      min: 0, max: maxH,
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
+      axisLine: { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { show: false },
+      min: xMin, max: xMax,
     },
     yAxis: {
-      name: 'Custo Real',
-      nameLocation: 'middle', nameGap: 56,
+      name: 'CPI — Desempenho de Custo',
+      nameLocation: 'middle', nameGap: 52,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: {
-        color: _cssVar('--text-3'),
-        formatter: v => v >= 1000
-          ? `${_currencySymbol} ${(v / 1000).toFixed(0)}k`
-          : `${_currencySymbol} ${v.toFixed(0)}`,
-      },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-      min: 0, max: maxC,
+      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
+      axisLine: { lineStyle: { color: _cssVar('--border') } },
+      splitLine: { show: false },
+      min: yMin, max: yMax,
     },
     series: [{
       type: 'scatter',
-      symbolSize: (val, params) => sizeOf(params.data._raw),
+      symbolSize: 16,
       data: items.map(d => ({
-        value: [d.total_hours, d.actual_cost * _currencyFactor],
-        itemStyle: {
-          color: colorOf(d),
-          opacity: 0.82,
-          borderColor: _cssVar('--bg'),
-          borderWidth: 2,
-        },
+        value: [d.spi, d.cpi],
+        itemStyle: { color: colorOf(d), opacity: 0.9, borderColor: _cssVar('--bg'), borderWidth: 2 },
         label: {
-          show: true,
-          formatter: d.pep_description.length > 20
-            ? d.pep_description.slice(0, 19) + '…'
-            : d.pep_description,
-          color: _cssVar('--text'),
-          fontSize: 10,
-          fontWeight: 600,
-          position: 'top',
-          distance: 6,
+          show: true, formatter: d.pep_wbs,
+          position: 'top', distance: 6,
+          color: _cssVar('--text'), fontSize: 10, fontWeight: 600,
         },
         _raw: d,
       })),
-      emphasis: {
-        scale: 1.15,
-        itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') },
+      emphasis: { scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
+        data: [
+          { xAxis: 1.0, label: { formatter: 'SPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
+          { yAxis: 1.0, label: { formatter: 'CPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
+        ],
+      },
+      markArea: {
+        silent: true,
+        data: [
+          [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
+             label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
+           { coord: [1.0, 1.0] }],
+          [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
+             label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
+           { coord: [xMax + 1, 1.0] }],
+          [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
+             label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
+           { coord: [1.0, yMax + 1] }],
+          [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
+             label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
+           { coord: [xMax + 1, yMax + 1] }],
+        ],
       },
     }],
   };
 }
 
-function _drawScatterRefLine(chart, avgRate, maxH, maxC) {
+function _drawScatterRefLine_unused(chart, avgRate, maxH, maxC) {
   const p0 = chart.convertToPixel({ gridIndex: 0 }, [0, 0]);
   const p1 = chart.convertToPixel({ gridIndex: 0 }, [maxH, Math.min(maxH * avgRate, maxC)]);
   if (!p0 || !p1) return;
@@ -2915,14 +3008,17 @@ async function _renderCollabCalendar(name, year, month) {
   // include quarantine-only days so tooltip can show ⚠ even when hours=0
   const calPoints = data.filter(d => d.hours > 0 || d.has_quarantine);
 
+  const dayHeaderEl = document.getElementById('calDayHeader');
   if (!calPoints.length) {
     emptyEl.hidden = false;
     chartEl.style.visibility = 'hidden';
+    if (dayHeaderEl) dayHeaderEl.style.display = 'none';
     statsEl.innerHTML = '';
     return;
   }
   emptyEl.hidden = true;
   chartEl.style.visibility = '';
+  if (dayHeaderEl) dayHeaderEl.style.display = 'flex';
 
   // data: [date, total, normal, extra, standby]
   // All days in the month — inactive days use value=-1 so visualMap.outOfRange
@@ -2941,7 +3037,7 @@ async function _renderCollabCalendar(name, year, month) {
 
   const rangeStart = `${year}-${String(month).padStart(2,'0')}-01`;
   const rangeEnd   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  const maxHours   = Math.max(...workPoints.map(d => d.hours), 8);
+  // maxHours removed — visualMap now uses discrete pieces, no continuous scale needed
 
   // Read theme CSS variables so the chart adapts to Admin > Aparência settings
   const primaryColor  = _cssVar('--primary')    || '#4f8ef7';
@@ -2961,10 +3057,20 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.maxWidth = '100%';
   chartEl.style.margin = '0 auto';
 
-  // Dynamic height: header row + weeks
+  // Day-of-week header row rendered in HTML (ECharts vertical orient puts dayLabel on left)
+  const dayHeader = document.getElementById('calDayHeader');
+  if (dayHeader) {
+    const dayNames = _t('cal.day_names');
+    dayHeader.style.cssText = `display:flex;width:${calWidth + 8}px;max-width:100%;margin:0 auto 2px`;
+    dayHeader.innerHTML = dayNames.map(n =>
+      `<div style="flex:0 0 ${cellW}px;text-align:center;font-size:10px;font-weight:600;color:${textMuted}">${n}</div>`
+    ).join('');
+  }
+
+  // Dynamic height: weeks
   const firstDow  = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
-  chartEl.style.height = `${numWeeks * cellW + 36}px`;
+  chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
   _charts['collabCalendarChart'] = cc;
@@ -2984,25 +3090,26 @@ async function _renderCollabCalendar(name, year, month) {
     },
     visualMap: {
       show: false,
-      min: 0, max: maxHours,
-      // Active days: 5-stop gradient — dark-but-visible navy → vivid accent
-      // Steps map the 0–24h range to clearly distinct visual levels
-      inRange:    { color: ['#163560', '#1a5496', '#2879d4', primaryColor, accentColor] },
-      // Inactive days (value=-1): card background — they recede visually
+      type: 'piecewise',
+      // 6 discrete bands matching the blue scale in the reference legend.
+      // Values 0 and -1 (inactive / zero-hour days) fall through to outOfRange.
+      pieces: [
+        { gte:  1, lte:  3, color: '#d4e3f5' },
+        { gte:  4, lte:  6, color: '#96bcdf' },
+        { gte:  7, lte:  9, color: '#5490c8' },
+        { gte: 10, lte: 12, color: '#2662ae' },
+        { gte: 13, lte: 15, color: '#103c8c' },
+        { gt:  15,           color: '#071e60' },
+      ],
       outOfRange: { color: [cardColor] },
     },
     calendar: {
       orient: 'vertical',
-      top: 30, left: 4, right: 4, bottom: 4,
+      top: 4, left: 4, right: 4, bottom: 4,
       width: calWidth,
       range: [rangeStart, rangeEnd],
       cellSize: [cellW, cellW],
-      dayLabel: {
-        firstDay: 0,
-        nameMap: _t('cal.day_names'),
-        color: textMuted, fontSize: 10, fontWeight: 600,
-        position: 'start',
-      },
+      dayLabel: { show: false },
       monthLabel: { show: false },
       yearLabel:  { show: false },
       itemStyle:  { color: cardColor, borderColor: borderColor, borderWidth: 2 },
@@ -3017,7 +3124,6 @@ async function _renderCollabCalendar(name, year, month) {
         formatter(params) {
           const [d_date, total, n, e, s] = params.data;
           const day = parseInt(d_date.split('-')[2], 10);
-          // Inactive day — show only muted day number
           if (total < 0) return `{inactive|${day}}`;
           const isQ = quarantineDates.has(d_date);
           const dayStr = isQ ? `{qday|${day}⚠}` : `{day|${day}}`;
@@ -3030,7 +3136,7 @@ async function _renderCollabCalendar(name, year, month) {
         rich: {
           inactive: { fontSize: 9, color: inactiveText,  lineHeight: 14, align: 'center' },
           day:      { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
-          qday: { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
+          qday:     { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
           n:    { fontSize: 9, color: pal[0] || '#4f8ef7', lineHeight: 13, align: 'center' },
           e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
           s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
@@ -3202,7 +3308,22 @@ function _buildPepCpiOption(peps, allCycleNames) {
         data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
-    series,
+    series: series.map((s, i) => i > 0 ? s : {
+      ...s,
+      markArea: {
+        silent: true,
+        data: [
+          [{ yAxis: 0,   itemStyle: { color: (_cssVar('--red')   || '#ef4444') + '18' },
+             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_critical'),
+               color: _cssVar('--red')   || '#ef4444', fontSize: 9 } },
+           { yAxis: 0.9 }],
+          [{ yAxis: 0.9, itemStyle: { color: (_cssVar('--amber') || '#f59e0b') + '14' },
+             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_warning'),
+               color: _cssVar('--amber') || '#f59e0b', fontSize: 9 } },
+           { yAxis: 1.0 }],
+        ],
+      },
+    }),
   };
 }
 
@@ -3249,17 +3370,12 @@ function _buildPortfolioStatsRow(health, trends) {
     .reduce((s, d) => s + d.budget_cost, 0);
   const pepsActive  = health.filter(d => d.consumed_hours > 0).length;
 
-  let normalH = 0, extraH = 0, standbyH = 0;
+  let costNormal = 0, costExtra = 0, costStandby = 0;
   (trends || []).forEach(r => {
-    normalH  += r.normal_hours  || 0;
-    extraH   += r.extra_hours   || 0;
-    standbyH += r.standby_hours || 0;
+    costNormal  += r.normal_cost  || 0;
+    costExtra   += r.extra_cost   || 0;
+    costStandby += r.standby_cost || 0;
   });
-  const totalH = normalH + extraH + standbyH;
-
-  const costNormal  = totalH > 0 ? totalCost * (normalH  / totalH) : 0;
-  const costExtra   = totalH > 0 ? totalCost * (extraH   / totalH) : 0;
-  const costStandby = totalH > 0 ? totalCost * (standbyH / totalH) : 0;
 
   const pct  = totalBudget > 0 ? (totalCost / totalBudget * 100).toFixed(1) : '—';
   const over = totalBudget > 0 && totalCost > totalBudget;
@@ -4655,7 +4771,7 @@ async function loadMyQr() {
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
   try {
-    _myQrCache = await apiFetch(`/api/quarantine?${params}`);
+    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
     _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
@@ -5360,7 +5476,7 @@ _makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
-_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'consumed_hours',type:'num'}, null, {key:'avg_hours_per_cycle',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}, {key:'cpi',type:'num'}], () => (_lastRunwayData||[]).filter(r => r.budget_hours != null), _drawRunwayRows);
+_makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
@@ -5371,6 +5487,7 @@ function _bootApp() {
   _updateHeaderUser();
   loadDashboardCycles();
   loadSemaphore();
+  loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
 }

@@ -37,7 +37,7 @@ def get_portfolio_health(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -126,10 +126,11 @@ def get_trends(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
+            Cycle.id.label("cycle_id"),
             Cycle.name.label("cycle_name"),
             Cycle.start_date.label("cycle_start"),
             func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
@@ -154,6 +155,7 @@ def get_trends(
             ).label("standby_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
+        .filter(Cycle.is_active == True)
     )
     if pep_wbs:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs))
@@ -180,6 +182,7 @@ def get_trends(
     budgeted_projects = {p.pep_wbs: p for p in budgeted_projects.all()}
 
     # Per-cycle consumed hours for budgeted PEPs
+    from collections import defaultdict
     if budgeted_projects:
         cpi_q = (
             db.query(
@@ -201,6 +204,7 @@ def get_trends(
             .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
             .filter(
                 TimesheetRecord.pep_wbs.in_(list(budgeted_projects.keys())),
+                Cycle.is_active == True,
             )
         )
         if pep_description:
@@ -214,35 +218,34 @@ def get_trends(
             cpi_q = cpi_q.filter(TimesheetRecord.record_date <= date_to)
         cpi_rows = cpi_q.group_by(Cycle.id, TimesheetRecord.pep_wbs).all()
 
-        # Build cumulative consumed_hours per (cycle_id, pep_wbs) for EV calculation
-        from collections import defaultdict
+        # Build per-cycle consumed_hours per (cycle_id, pep_wbs)
         cycle_pep_consumed: dict[tuple, float] = defaultdict(float)
         cycle_pep_ac: dict[tuple, float] = defaultdict(float)
         for cr in cpi_rows:
             cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.consumed_hours or 0.0
             cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)] += cr.actual_cost or 0.0
-
-        # Map cycle name → cycle id
-        cycle_id_map = {r.cycle_name: None for r in rows}
-        for c in db.query(Cycle).filter(Cycle.name.in_(list(cycle_id_map.keys()))).all():
-            cycle_id_map[c.name] = c.id
     else:
-        cycle_id_map = {}
         cycle_pep_consumed = {}
         cycle_pep_ac = {}
+
+    # Cumulative CPI: accumulate consumed hours and AC per PEP across cycles ordered by start_date
+    cumulative_per_pep: dict[str, float] = defaultdict(float)
+    cumulative_ac_per_pep: dict[str, float] = defaultdict(float)
 
     result = []
     for r in rows:
         cpi = None
-        if budgeted_projects and cycle_id_map.get(r.cycle_name):
-            cid = cycle_id_map[r.cycle_name]
+        if budgeted_projects:
+            for pep_code in budgeted_projects:
+                cumulative_per_pep[pep_code] += cycle_pep_consumed.get((r.cycle_id, pep_code), 0.0)
+                cumulative_ac_per_pep[pep_code] += cycle_pep_ac.get((r.cycle_id, pep_code), 0.0)
             total_ev = 0.0
             total_ac = 0.0
             for pep_code, proj in budgeted_projects.items():
-                consumed = cycle_pep_consumed.get((cid, pep_code), 0.0)
-                ac = cycle_pep_ac.get((cid, pep_code), 0.0)
-                if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost:
-                    ev = (consumed / proj.budget_hours) * proj.budget_cost
+                consumed = cumulative_per_pep[pep_code]
+                ac = cumulative_ac_per_pep[pep_code]
+                if proj.budget_hours and proj.budget_hours > 0 and proj.budget_cost and ac > 0:
+                    ev = min(consumed / proj.budget_hours, 1.0) * proj.budget_cost
                     total_ev += ev
                     total_ac += ac
             if total_ac > 0:
@@ -273,7 +276,7 @@ def get_allocation(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -334,7 +337,7 @@ def get_forecast(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
@@ -388,17 +391,36 @@ def get_forecast(
         )
         plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
 
+    budget_hours = project.budget_hours if project else None
+    budget_cost = project.budget_cost if project else None
+
+    # Sort plan entries by start_date so cumulative PV is computed correctly
+    # even when plan cycles have no actual data (BUG-B fix)
+    sorted_plans = sorted(plan_by_cycle_start.items()) if plan_by_cycle_start else []
+    has_plan = bool(sorted_plans)
+
     history = []
     cum_h = 0.0
     cum_c = 0.0
-    cum_ph = 0.0
-    has_plan = bool(plan_by_cycle_start)
+    prev_cum_ph = 0.0
+    last_plan_ev: Optional[float] = None
+    last_plan_pv: Optional[float] = None
+
     for r in rows:
         cum_h += r.period_hours or 0.0
         cum_c += r.period_cost or 0.0
-        ph = plan_by_cycle_start.get(r.cycle_start)
-        if ph is not None:
-            cum_ph += ph
+
+        # Cumulative planned hours through all plan cycles up to this cycle's start_date
+        cum_ph = sum(h for s, h in sorted_plans if s <= r.cycle_start) if sorted_plans else 0.0
+
+        # Capture EV/PV at the last cycle where the plan advanced (BUG-A fix):
+        # avoids SPI converging to 1.0 when project overruns past the plan end date
+        if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
+            last_plan_ev = min(cum_h / budget_hours, 1.0) * budget_cost
+            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+            prev_cum_ph = cum_ph
+
+        ph_period = plan_by_cycle_start.get(r.cycle_start)
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -406,7 +428,7 @@ def get_forecast(
             "period_cost": round(r.period_cost or 0.0, 2),
             "cumulative_hours": round(cum_h, 2),
             "cumulative_cost": round(cum_c, 2),
-            "planned_hours": round(ph, 2) if ph is not None else None,
+            "planned_hours": round(ph_period, 2) if ph_period is not None else None,
             "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
         })
 
@@ -416,25 +438,24 @@ def get_forecast(
     recent = rows[-3:]
     avg_hours = sum(r.period_hours or 0.0 for r in recent) / len(recent) if recent else 0.0
 
-    budget_hours = project.budget_hours if project else None
-    budget_cost = project.budget_cost if project else None
-
     cpi = None
     eac = None
     spi = None
     sv = None
 
     if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = (consumed_hours / budget_hours) * budget_cost
+        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
-        if has_plan and cum_ph > 0:
-            pv_val = (cum_ph / budget_hours) * budget_cost
-            spi = round(ev_val / pv_val, 3) if pv_val > 0 else None
-            sv = round(ev_val - pv_val, 2)
+        # BUG-A fix: use EV/PV frozen at the last planned cycle, not final totals;
+        # prevents SPI from converging to 1.0 after the project overruns its schedule
+        if has_plan and last_plan_pv and last_plan_pv > 0:
+            spi = round(last_plan_ev / last_plan_pv, 3)
+            sv = round(last_plan_ev - last_plan_pv, 2)
 
-    remaining_hours = round(budget_hours - consumed_hours, 2) if budget_hours is not None else None
+    # BUG-C fix: floor remaining_hours at 0 so overrun projects don't return negative values
+    remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours is not None else None
 
     est_cycles = None
     est_completion = None
@@ -485,7 +506,7 @@ def get_portfolio_runway(
 ):
     cfg = db.get(GlobalConfig, 1)
     em = cfg.extra_hours_multiplier if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 1.0
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
     warning_threshold = cfg.budget_warning_threshold if cfg else 0.9
     critical_threshold = cfg.budget_critical_threshold if cfg else 1.0
 
@@ -551,9 +572,10 @@ def get_portfolio_runway(
     if not rows:
         return []
 
-    # Aggregate per PEP
+    # Aggregate per PEP — also keep per-cycle hours for SPI computation
     from collections import defaultdict
     pep_data: dict[str, dict] = {}
+    pep_cycle_hours: dict[str, dict[int, float]] = {}  # pep_wbs → {cycle_id: hours}
     for r in rows:
         key = r.pep_wbs
         if key not in pep_data:
@@ -564,9 +586,12 @@ def get_portfolio_runway(
                 "actual_cost": 0.0,
                 "cycle_ids": set(),
             }
+            pep_cycle_hours[key] = {}
         pep_data[key]["consumed_hours"] += r.period_hours or 0.0
         pep_data[key]["actual_cost"]    += r.period_cost  or 0.0
         pep_data[key]["cycle_ids"].add(r.cycle_id)
+        cid = r.cycle_id
+        pep_cycle_hours[key][cid] = pep_cycle_hours[key].get(cid, 0.0) + (r.period_hours or 0.0)
 
     # Fetch projects for budget info
     projects = {
@@ -613,6 +638,7 @@ def get_portfolio_runway(
         num_cycles     = len(data["cycle_ids"])
 
         avg_hours_per_cycle = consumed_hours / num_cycles if num_cycles > 0 else 0.0
+        avg_cost_per_cycle  = actual_cost    / num_cycles if num_cycles > 0 else 0.0
 
         pct_consumed       = None
         remaining_hours    = None
@@ -623,9 +649,9 @@ def get_portfolio_runway(
 
         if budget_hours is not None and budget_hours > 0:
             pct_consumed    = consumed_hours / budget_hours * 100
-            remaining_hours = budget_hours - consumed_hours
+            remaining_hours = max(budget_hours - consumed_hours, 0.0)
 
-            if pct_consumed >= 100:
+            if pct_consumed > 100:
                 risk = "overrun"
             elif pct_consumed >= critical_threshold * 100:
                 risk = "critical"
@@ -651,26 +677,39 @@ def get_portfolio_runway(
                             estimated_completion_cycle = all_cycles[target_idx].name
 
         if budget_hours and budget_hours > 0 and budget_cost and actual_cost > 0:
-            ev = (consumed_hours / budget_hours) * budget_cost
+            ev = min(consumed_hours / budget_hours, 1.0) * budget_cost
             cpi = round(ev / actual_cost, 3)
 
-        # SPI — Schedule Performance Index based on planned vs actual hours
+        # SPI — same algorithm as get_forecast: freeze EV/PV at the last plan cycle
+        # boundary to avoid convergence to 1.0 when project overruns its budget.
+        # Requires per-cycle actual data (pep_cycle_hours) collected above.
         spi = None
         schedule_status = "no_baseline"
-        if proj:
-            # Find the max cycle start_date used by this PEP (to cap cumulative planned)
-            pep_cycle_ids = data["cycle_ids"]
-            max_cycle_start = max(
-                (cycle_start_by_id[cid] for cid in pep_cycle_ids if cid in cycle_start_by_id),
-                default=None,
-            )
-            if max_cycle_start is not None:
-                proj_plans = plans_by_project.get(proj.id, [])
-                cumulative_planned = sum(
-                    ph for c_start, ph in proj_plans if c_start <= max_cycle_start
+        if proj and budget_hours and budget_cost:
+            proj_plans_sorted = sorted(plans_by_project.get(proj.id, []), key=lambda x: x[0])
+            if proj_plans_sorted:
+                plan_by_cstart = {s: h for s, h in proj_plans_sorted}
+                pep_cids_sorted = sorted(
+                    data["cycle_ids"],
+                    key=lambda cid: cycle_start_by_id.get(cid, __import__('datetime').date.min),
                 )
-                if cumulative_planned > 0:
-                    spi = round(consumed_hours / cumulative_planned, 3)
+                running_h = 0.0
+                prev_cum_ph = 0.0
+                last_plan_ev: Optional[float] = None
+                last_plan_pv: Optional[float] = None
+                for cid in pep_cids_sorted:
+                    c_start = cycle_start_by_id.get(cid)
+                    if c_start is None:
+                        continue
+                    running_h += pep_cycle_hours.get(key, {}).get(cid, 0.0)
+                    cum_ph = sum(h for s, h in proj_plans_sorted if s <= c_start)
+                    if cum_ph > prev_cum_ph:
+                        last_plan_ev = min(running_h / budget_hours, 1.0) * budget_cost
+                        last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+                        prev_cum_ph = cum_ph
+
+                if last_plan_pv and last_plan_pv > 0:
+                    spi = round(last_plan_ev / last_plan_pv, 3)
                     if spi >= 1.0:
                         schedule_status = "on_track"
                     elif spi >= 0.9:
@@ -678,16 +717,25 @@ def get_portfolio_runway(
                     else:
                         schedule_status = "behind"
 
+        pct_consumed_cost = (
+            round(actual_cost / budget_cost * 100, 1)
+            if (budget_cost is not None and budget_cost > 0)
+            else None
+        )
+
         result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
             "name": name,
             "budget_hours": budget_hours,
+            "budget_cost": round(budget_cost, 2) if budget_cost is not None else None,
             "consumed_hours": round(consumed_hours, 2),
             "actual_cost": round(actual_cost, 2),
             "pct_consumed": round(pct_consumed, 1) if pct_consumed is not None else None,
+            "pct_consumed_cost": pct_consumed_cost,
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
-            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None else None,
+            "avg_cost_per_cycle":  round(avg_cost_per_cycle,  2),
+            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None,
             "estimated_completion_cycle": estimated_completion_cycle,
             "spi": spi,
             "schedule_status": schedule_status,
@@ -735,6 +783,13 @@ def get_portfolio_concentration(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
+            func.sum(
+                (
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                ) * TimesheetRecord.cost_per_hour
+            ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
@@ -774,10 +829,15 @@ def get_portfolio_concentration(
                 "pep_wbs": r.pep_wbs,
                 "pep_description": r.pep_description,
                 "contributors": {},
+                "contributors_cost": {},
             }
         hours = r.total_hours or 0.0
+        cost  = r.total_cost  or 0.0
         pep_contribs[key]["contributors"][r.collaborator_name] = (
             pep_contribs[key]["contributors"].get(r.collaborator_name, 0.0) + hours
+        )
+        pep_contribs[key]["contributors_cost"][r.collaborator_name] = (
+            pep_contribs[key]["contributors_cost"].get(r.collaborator_name, 0.0) + cost
         )
 
     # Fetch project names
@@ -790,44 +850,51 @@ def get_portfolio_concentration(
 
     result = []
     for key, data in pep_contribs.items():
-        contributors = data["contributors"]
+        contributors      = data["contributors"]
+        contributors_cost = data["contributors_cost"]
         total_hours = sum(contributors.values())
+        total_cost  = sum(contributors_cost.values())
         if total_hours == 0:
             continue
 
-        # Sort contributors descending
+        # Sort contributors by hours descending (primary ordering)
         sorted_contribs = sorted(contributors.items(), key=lambda x: x[1], reverse=True)
+
+        def _make_contributor(name: str, hours: float) -> ConcentrationContributor:
+            cost_val = contributors_cost.get(name, 0.0)
+            return ConcentrationContributor(
+                name=name,
+                hours=round(hours, 2),
+                cost=round(cost_val, 2),
+                pct=round(hours / total_hours * 100, 1),
+                pct_cost=round(cost_val / total_cost * 100, 1) if total_cost > 0 else 0.0,
+            )
 
         top_contributors = []
         if len(sorted_contribs) <= 3:
             for name, hours in sorted_contribs:
-                top_contributors.append(ConcentrationContributor(
-                    name=name,
-                    hours=round(hours, 2),
-                    pct=round(hours / total_hours * 100, 1),
-                ))
+                top_contributors.append(_make_contributor(name, hours))
         else:
             for name, hours in sorted_contribs[:3]:
-                top_contributors.append(ConcentrationContributor(
-                    name=name,
-                    hours=round(hours, 2),
-                    pct=round(hours / total_hours * 100, 1),
-                ))
+                top_contributors.append(_make_contributor(name, hours))
             others_hours = sum(h for _, h in sorted_contribs[3:])
+            others_cost  = sum(contributors_cost.get(n, 0.0) for n, _ in sorted_contribs[3:])
             others_count = len(sorted_contribs) - 3
             top_contributors.append(ConcentrationContributor(
                 name=f"Outros ({others_count})",
                 hours=round(others_hours, 2),
+                cost=round(others_cost, 2),
                 pct=round(others_hours / total_hours * 100, 1),
+                pct_cost=round(others_cost / total_cost * 100, 1) if total_cost > 0 else 0.0,
             ))
 
         top1_pct = round(sorted_contribs[0][1] / total_hours * 100, 1)
-        if top1_pct >= 60:
-            risk = "high"
-        elif top1_pct >= 40:
-            risk = "medium"
-        else:
-            risk = "low"
+        risk = "high" if top1_pct >= 60 else "medium" if top1_pct >= 40 else "low"
+
+        # Cost-based top-1 — find contributor with highest cost share
+        top1_cost_name = max(contributors_cost, key=lambda n: contributors_cost[n]) if contributors_cost else None
+        top1_pct_cost  = round(contributors_cost[top1_cost_name] / total_cost * 100, 1) if (top1_cost_name and total_cost > 0) else 0.0
+        risk_cost = "high" if top1_pct_cost >= 60 else "medium" if top1_pct_cost >= 40 else "low"
 
         proj = projects.get(key)
         result.append({
@@ -835,9 +902,12 @@ def get_portfolio_concentration(
             "pep_description": data["pep_description"],
             "name": proj.name if proj else None,
             "total_hours": round(total_hours, 2),
+            "total_cost": round(total_cost, 2),
             "top_contributors": [c.model_dump() for c in top_contributors],
             "top1_pct": top1_pct,
+            "top1_pct_cost": top1_pct_cost,
             "risk": risk,
+            "risk_cost": risk_cost,
         })
 
     result.sort(key=lambda x: x["total_hours"], reverse=True)
