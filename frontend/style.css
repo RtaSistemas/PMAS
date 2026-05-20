@@ -603,6 +603,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   z-index: 1;
 }
 .alloc-matrix thead th:first-child { text-align: left; }
+.alloc-th-desc {
+  display: block;
+  font-size: .71rem;
+  font-weight: 400;
+  color: var(--text-3);
+  margin-top: .1rem;
+}
 .alloc-matrix tbody td {
   padding: .4rem .7rem;
   text-align: right;

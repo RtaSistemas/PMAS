@@ -1846,9 +1846,12 @@ function _drawAllocMatrix() {
   let html = '<table class="alloc-matrix data-table"><thead><tr>';
   html += `<th class="${thCls('__name__')}" data-sort-key="__name__">${_t('allocation.collaborator')}</th>`;
   sortedPeps.forEach(pep => {
-    const label = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
-    const short = label.length > 18 ? label.slice(0, 16) + '…' : label;
-    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(label)}">${escHtml(short)}</th>`;
+    const desc  = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+    const shortDesc = desc.length > 13 ? desc.slice(0, 12) + '…' : desc;
+    const headerContent = pep === '__none__'
+      ? escHtml(shortDesc)
+      : `${escHtml(pep)}<br><span class="alloc-th-desc">${escHtml(shortDesc)}</span>`;
+    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(pep + ' · ' + desc)}">${headerContent}</th>`;
   });
   html += `<th class="${thCls('__total__')}" data-sort-key="__total__">${_t('allocation.total')}</th></tr></thead><tbody>`;
 
