@@ -609,6 +609,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   font-weight: 400;
   color: var(--text-3);
   margin-top: .1rem;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .alloc-matrix tbody td {
   padding: .4rem .7rem;

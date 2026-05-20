@@ -717,13 +717,6 @@ def get_portfolio_runway(
                     else:
                         schedule_status = "behind"
 
-                    # Convergence guard: consumed >= budget at the last plan boundary
-                    # causes EV = PV = BAC → SPI = 1.0, hiding the hours overrun.
-                    # When the project is flagged as overrun (hours), treat schedule
-                    # as behind — it consumed more than planned within the same window.
-                    if schedule_status == "on_track" and budget_hours and consumed_hours >= budget_hours:
-                        schedule_status = "behind"
-
         pct_consumed_cost = (
             round(actual_cost / budget_cost * 100, 1)
             if (budget_cost is not None and budget_cost > 0)
