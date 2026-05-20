@@ -644,7 +644,7 @@ def get_portfolio_runway(
 
         if budget_hours is not None and budget_hours > 0:
             pct_consumed    = consumed_hours / budget_hours * 100
-            remaining_hours = budget_hours - consumed_hours
+            remaining_hours = max(budget_hours - consumed_hours, 0.0)
 
             if pct_consumed > 100:
                 risk = "overrun"
@@ -679,7 +679,6 @@ def get_portfolio_runway(
         spi = None
         schedule_status = "no_baseline"
         if proj:
-            # Find the max cycle start_date used by this PEP (to cap cumulative planned)
             pep_cycle_ids = data["cycle_ids"]
             max_cycle_start = max(
                 (cycle_start_by_id[cid] for cid in pep_cycle_ids if cid in cycle_start_by_id),
@@ -687,11 +686,11 @@ def get_portfolio_runway(
             )
             if max_cycle_start is not None:
                 proj_plans = plans_by_project.get(proj.id, [])
+                # Sort plans by date so last_plan_date detection is reliable
+                proj_plans_sorted = sorted(proj_plans, key=lambda x: x[0])
                 cumulative_planned = sum(
-                    ph for c_start, ph in proj_plans if c_start <= max_cycle_start
+                    ph for c_start, ph in proj_plans_sorted if c_start <= max_cycle_start
                 )
-                # EV in hours is capped at budget_hours so SPI never inflates above
-                # its theoretical max when consumed > budget (EVM rule: EV ≤ BAC)
                 ev_hours = min(consumed_hours, budget_hours) if budget_hours else consumed_hours
                 if cumulative_planned > 0:
                     spi = round(ev_hours / cumulative_planned, 3)
@@ -701,6 +700,17 @@ def get_portfolio_runway(
                         schedule_status = "at_risk"
                     else:
                         schedule_status = "behind"
+
+                    # Detect SPI convergence: when consumed >= budget AND plan is fully
+                    # executed, ev_hours == cumulative_planned == budget_hours → SPI=1.0,
+                    # masking that the project ran past its scheduled end date.
+                    if (schedule_status == "on_track"
+                            and proj_plans_sorted
+                            and budget_hours
+                            and consumed_hours >= budget_hours):
+                        last_plan_date = proj_plans_sorted[-1][0]
+                        if max_cycle_start > last_plan_date:
+                            schedule_status = "behind"
 
         result.append({
             "pep_wbs": key,
