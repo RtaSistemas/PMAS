@@ -2468,7 +2468,7 @@ function _buildHoursBarOption({
   // ── 5. Séries de barras ─────────────────────────────────────────────
   // [C1] showBackground preservado: presente em G1 (horizontal), ausente em G2/G3 (vertical)
   const bgStyle = isHoriz
-    ? { showBackground: true, backgroundStyle: { color: 'rgba(180, 180, 180, 0.01)' } }
+    ? { showBackground: true, backgroundStyle: { color: 'rgba(255, 255, 255, 0.06)' } }
     : {};
 
   const barMaxWidth = isHoriz ? 32 : 48;
