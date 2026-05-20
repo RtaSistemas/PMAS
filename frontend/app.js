@@ -1007,7 +1007,7 @@ async function refreshPeps() {
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (_) {}
+  } catch (e) { console.warn('refreshPeps:', e); notify(`Erro ao atualizar filtro de PEPs: ${e.message}`, 'warning'); }
 }
 
 function refreshPepDescriptions() {
@@ -1027,7 +1027,7 @@ async function refreshCollaborators() {
   try {
     const collabs = await apiFetch(`/api/collaborators?${p}`);
     collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (_) {}
+  } catch (e) { console.warn('refreshCollaborators:', e); notify(`Erro ao atualizar filtro de colaboradores: ${e.message}`, 'warning'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1651,10 +1651,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       document.getElementById('pepCpiPanel').hidden = true;
       return;
     }
-    // When no specific cycles are selected, use all non-quarantine cycles
+    // When no specific cycles are selected, use all active (non-quarantine) cycles
     const effectiveCycleIds = cycleIds.length > 0
       ? cycleIds
-      : (_allCycles || []).map(c => c.id);
+      : (_allCycles || []).filter(c => c.is_active).map(c => c.id);
 
     if (!effectiveCycleIds.length) {
       _showEmpty('pepCpiEmpty', true);
@@ -1662,34 +1662,61 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       return;
     }
     try {
-      const cycleNameMap = {};
-      (_allCycles || []).forEach(c => { cycleNameMap[c.id] = c.name; });
+      const cycleStartMap = {};
+      const cycleNameMap  = {};
+      (_allCycles || []).forEach(c => { cycleStartMap[c.id] = c.start_date; cycleNameMap[c.id] = c.name; });
+
+      // Sort cycles chronologically so cumulative accumulation is correct
+      const sortedCycleIds = [...effectiveCycleIds].sort((a, b) => {
+        const aD = cycleStartMap[a] ?? '';
+        const bD = cycleStartMap[b] ?? '';
+        return aD < bD ? -1 : aD > bD ? 1 : 0;
+      });
+
+      // Build shared filter params (cycle_id added per-request)
+      const hParams = new URLSearchParams();
+      pepCodes.forEach(c   => hParams.append('pep_wbs', c));
+      pepDescs.forEach(d   => hParams.append('pep_description', d));
+      collabIds.forEach(id => hParams.append('collaborator_id', id));
+      if (dateFrom) hParams.set('date_from', dateFrom);
+      if (dateTo)   hParams.set('date_to',   dateTo);
 
       const healthByCycle = await Promise.all(
-        effectiveCycleIds.map(id =>
-          apiFetch(`/api/portfolio-health?cycle_id=${id}`)
+        sortedCycleIds.map(id =>
+          apiFetch(`/api/portfolio-health?cycle_id=${id}&${hParams}`)
             .then(items => ({ cycleId: id, items }))
             .catch(() => ({ cycleId: id, items: [] }))
         )
       );
 
+      // Cumulative CPI: accumulate consumed_hours and actual_cost per PEP across cycles
+      const cumConsumed = {};
+      const cumAc = {};
       const pepMap = {};
+
       healthByCycle.forEach(({ cycleId, items: hItems }) => {
         const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
         hItems.forEach(d => {
-          if (d.budget_cost == null || d.budget_cost === 0 || d.actual_cost === 0) return;
+          if (d.budget_cost == null || d.budget_cost === 0) return;
           if (d.budget_hours == null || d.budget_hours === 0) return;
+
+          cumConsumed[d.pep_wbs] = (cumConsumed[d.pep_wbs] || 0) + (d.consumed_hours || 0);
+          cumAc[d.pep_wbs]       = (cumAc[d.pep_wbs]       || 0) + (d.actual_cost    || 0);
+
+          if (cumAc[d.pep_wbs] === 0) return;
+
+          const ev     = Math.min(cumConsumed[d.pep_wbs] / d.budget_hours, 1.0) * d.budget_cost;
+          const cpiVal = +(ev / cumAc[d.pep_wbs]).toFixed(3);
+
           if (!pepMap[d.pep_wbs]) {
             pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
           }
-          const ev = Math.min(d.consumed_hours / d.budget_hours, 1.0) * d.budget_cost;
-          const cpiVal = +(ev / d.actual_cost).toFixed(3);
           pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
         });
       });
 
       const peps = Object.entries(pepMap);
-      const allCycleNames = effectiveCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
+      const allCycleNames = sortedCycleIds.map(id => cycleNameMap[id] ?? `Cycle ${id}`);
 
       if (!peps.length) {
         _showEmpty('pepCpiEmpty', true);
