@@ -4569,11 +4569,18 @@ function _initMyArea() {
 
 // Chart layout drag-drop
 let _sortableLayout = null;
+const _panelSortables = {};
 function _initChartLayout() {
   const list = document.getElementById('chartLayoutList');
   if (!list || typeof Sortable === 'undefined') return;
   if (_sortableLayout) _sortableLayout.destroy();
-  _sortableLayout = Sortable.create(list, { animation: 150, handle: '.sortable-handle' });
+  _sortableLayout = Sortable.create(list, { animation: 150, handle: '.tab-handle' });
+  ['effort', 'portfolio', 'forecast'].forEach(tabId => {
+    const pList = document.getElementById(`panelList-${tabId}`);
+    if (!pList) return;
+    if (_panelSortables[tabId]) _panelSortables[tabId].destroy();
+    _panelSortables[tabId] = Sortable.create(pList, { animation: 120, handle: '.panel-handle' });
+  });
 }
 
 async function _loadMyPreferences() {
@@ -4584,13 +4591,23 @@ async function _loadMyPreferences() {
     if (Array.isArray(order)) {
       const list = document.getElementById('chartLayoutList');
       if (list) {
-        const items = [...list.querySelectorAll('.sortable-item')];
+        const items = [...list.querySelectorAll(':scope > .sortable-item')];
         order.forEach(chartId => {
           const item = items.find(i => i.dataset.chart === chartId);
           if (item) list.appendChild(item);
         });
       }
     }
+    const panelOrder = _userPrefs?.dashboard?.panel_order || {};
+    Object.entries(panelOrder).forEach(([tabId, panelIds]) => {
+      const pList = document.getElementById(`panelList-${tabId}`);
+      if (!pList) return;
+      const items = [...pList.querySelectorAll(':scope > .sortable-item')];
+      panelIds.forEach(pid => {
+        const item = items.find(i => i.dataset.panel === pid);
+        if (item) pList.appendChild(item);
+      });
+    });
   } catch (_) {}
 }
 
@@ -4611,6 +4628,17 @@ function _applyLayoutPreferences() {
       if (section && parent) parent.appendChild(section);
     });
   }
+
+  // Panel order within each dashboard tab
+  const panelOrder = prefs.panel_order || {};
+  Object.entries(panelOrder).forEach(([tabId, panelIds]) => {
+    const section = document.getElementById(`atab-${tabId}`);
+    if (!section) return;
+    panelIds.forEach(panelId => {
+      const panel = section.querySelector(`[data-panel-id="${panelId}"]`);
+      if (panel) section.appendChild(panel);
+    });
+  });
 
   // Grid columns — apply to each visible atab-section
   if (prefs.grid_cols && prefs.grid_cols > 1) {
@@ -4639,9 +4667,14 @@ function _applyLayoutPreferences() {
 document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => {
   const list = document.getElementById('chartLayoutList');
   if (!list) return;
-  const order = [...list.querySelectorAll('.sortable-item')].map(i => i.dataset.chart);
+  const order = [...list.querySelectorAll(':scope > .sortable-item')].map(i => i.dataset.chart);
+  const panelOrder = {};
+  ['effort', 'portfolio', 'forecast'].forEach(tabId => {
+    const pList = document.getElementById(`panelList-${tabId}`);
+    if (pList) panelOrder[tabId] = [...pList.querySelectorAll(':scope > .sortable-item')].map(i => i.dataset.panel);
+  });
   try {
-    _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order } });
+    _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order, panel_order: panelOrder } });
     _applyLayoutPreferences();
     notify('Layout salvo.', 'success');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
