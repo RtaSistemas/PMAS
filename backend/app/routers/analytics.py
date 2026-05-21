@@ -771,6 +771,10 @@ def get_portfolio_concentration(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier  if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
+
     # ACL filtering
     if current_user.role != "admin":
         allowed = (
@@ -797,11 +801,11 @@ def get_portfolio_concentration(
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
             func.sum(
-                (
+                TimesheetRecord.cost_per_hour * (
                     TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours
-                    + TimesheetRecord.standby_hours
-                ) * TimesheetRecord.cost_per_hour
+                    + TimesheetRecord.extra_hours  * em
+                    + TimesheetRecord.standby_hours * sm
+                )
             ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
