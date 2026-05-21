@@ -572,10 +572,11 @@ def get_portfolio_runway(
     if not rows:
         return []
 
-    # Aggregate per PEP — also keep per-cycle hours for SPI computation
+    # Aggregate per PEP — also keep per-cycle hours and costs for SPI + velocity window
     from collections import defaultdict
     pep_data: dict[str, dict] = {}
     pep_cycle_hours: dict[str, dict[int, float]] = {}  # pep_wbs → {cycle_id: hours}
+    pep_cycle_costs: dict[str, dict[int, float]] = {}  # pep_wbs → {cycle_id: cost}
     for r in rows:
         key = r.pep_wbs
         if key not in pep_data:
@@ -587,11 +588,13 @@ def get_portfolio_runway(
                 "cycle_ids": set(),
             }
             pep_cycle_hours[key] = {}
+            pep_cycle_costs[key] = {}
         pep_data[key]["consumed_hours"] += r.period_hours or 0.0
         pep_data[key]["actual_cost"]    += r.period_cost  or 0.0
         pep_data[key]["cycle_ids"].add(r.cycle_id)
         cid = r.cycle_id
         pep_cycle_hours[key][cid] = pep_cycle_hours[key].get(cid, 0.0) + (r.period_hours or 0.0)
+        pep_cycle_costs[key][cid] = pep_cycle_costs[key].get(cid, 0.0) + (r.period_cost  or 0.0)
 
     # Fetch projects for budget info
     projects = {
@@ -637,8 +640,18 @@ def get_portfolio_runway(
         actual_cost    = data["actual_cost"]
         num_cycles     = len(data["cycle_ids"])
 
-        avg_hours_per_cycle = consumed_hours / num_cycles if num_cycles > 0 else 0.0
-        avg_cost_per_cycle  = actual_cost    / num_cycles if num_cycles > 0 else 0.0
+        # Use the last-3-cycles velocity window, matching get_forecast's avg_hours calculation.
+        # This ensures "Ciclos restantes" is consistent between Runway table and Previsão tab.
+        sorted_cids = sorted(
+            data["cycle_ids"],
+            key=lambda cid: cycle_start_by_id.get(cid, __import__('datetime').date.min),
+        )
+        recent_cids = sorted_cids[-3:]
+        recent_hours = [pep_cycle_hours.get(key, {}).get(cid, 0.0) for cid in recent_cids]
+        recent_costs = [pep_cycle_costs.get(key, {}).get(cid, 0.0) for cid in recent_cids]
+
+        avg_hours_per_cycle = sum(recent_hours) / len(recent_hours) if recent_hours else 0.0
+        avg_cost_per_cycle  = sum(recent_costs) / len(recent_costs) if recent_costs else 0.0
 
         pct_consumed       = None
         remaining_hours    = None
