@@ -478,6 +478,7 @@ class RunwayItem(BaseModel):
     schedule_status: str = "no_baseline"  # on_track | at_risk | behind | no_baseline
     cpi: Optional[float] = None
     risk: str  # ok | warning | critical | overrun | no_budget
+    cost_risk: str  # ok | warning | critical | overrun | no_budget
 
 
 # ── Portfolio Concentration ───────────────────────────────────────────────────

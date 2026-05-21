@@ -1323,13 +1323,7 @@ function _drawRunwayRows(data) {
     const rawPct = _evmMode ? item.pct_consumed_cost : item.pct_consumed;
     const pct    = rawPct != null ? Math.min(rawPct, 100) : 0;
 
-    // Bar color: hours mode uses backend risk classification; cost mode derives inline
-    const costRisk = item.pct_consumed_cost == null ? 'no_budget'
-      : item.pct_consumed_cost > 100 ? 'overrun'
-      : item.pct_consumed_cost >= 90  ? 'critical'
-      : item.pct_consumed_cost >= 80  ? 'warning'
-      : 'ok';
-    const color = _riskColor(_evmMode ? costRisk : item.risk);
+    const color = _riskColor(_evmMode ? item.cost_risk : item.risk);
 
     const absLabel = _evmMode
       ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`

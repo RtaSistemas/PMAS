@@ -736,6 +736,17 @@ def get_portfolio_runway(
             else None
         )
 
+        if pct_consumed_cost is None:
+            cost_risk = "no_budget"
+        elif pct_consumed_cost > 100:
+            cost_risk = "overrun"
+        elif pct_consumed_cost >= critical_threshold * 100:
+            cost_risk = "critical"
+        elif pct_consumed_cost >= warning_threshold * 100:
+            cost_risk = "warning"
+        else:
+            cost_risk = "ok"
+
         result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
@@ -754,6 +765,7 @@ def get_portfolio_runway(
             "schedule_status": schedule_status,
             "cpi": cpi,
             "risk": risk,
+            "cost_risk": cost_risk,
         })
 
     result.sort(key=lambda x: x["consumed_hours"], reverse=True)
