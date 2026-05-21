@@ -77,10 +77,10 @@
   <div class="header-actions">
     <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .75rem;min-width:11rem">
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
       <span style="color:#475569;font-size:.85rem">×</span>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
     <button type="button" id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button type="button" id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
@@ -204,7 +204,7 @@
       <div id="effortStats"></div>
       <div class="card chart-panel" id="effortPanel" data-chart-id="effortChart" data-panel-id="effort-chart">
         <div class="panel-header">
-          <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
+          <span class="panel-title" id="effortTitle" data-i18n="chart.effortChart">Esforço por Colaborador</span>
           <div style="display:flex;gap:0.5rem">
             <button type="button" id="stackToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.stacked">Vista: Empilhada</button>
             <button type="button" id="exportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
@@ -218,7 +218,7 @@
       <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem .5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
           <span id="collabDetailName" style="font-size:.95rem;font-weight:600;color:var(--text)"></span>
-          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" aria-label="Fechar">✕</button>
+          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
         </div>
         <!-- Section 1: horas por ciclo -->
         <div style="padding:1rem 1.25rem .5rem">

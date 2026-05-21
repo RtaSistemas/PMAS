@@ -300,6 +300,17 @@ const _LANG = {
     'msg.qr_approved':'Registro aprovado e inserido.','msg.qr_rejected':'Registro rejeitado.',
     'confirm.lock_cycle':'Bloquear este ciclo?','confirm.unlock_cycle':'Desbloquear este ciclo?',
     'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
+    'page.prev':'‹ Anterior','page.next':'Próximo ›',
+    'qr.filter.all':'Todos os registros','qr.filter.pending_opt':'⏳ Pendentes','qr.filter.approved_opt':'✅ Aprovados','qr.filter.rejected_opt':'❌ Rejeitados',
+    'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.tab.forecast':'Previsão (EVM)',
+    'scatter.axis_spi':'SPI — Desempenho de Prazo','scatter.axis_cpi':'CPI — Desempenho de Custo',
+    'risk.warning':'Atenção','risk.critical':'Crítico',
+    'lbl.plus_cycles':'+{n} ciclo(s)',
+    'sem.portfolio':'Portfólio','sem.ok_label':'OK — abaixo de {pct}% do budget','sem.warning_label':'Atenção — ≥ {pct}% do budget','sem.overrun_label':'Estourado — ≥ {pct}% do budget','sem.no_budget':'Sem budget definido',
+    'msg.err_load_timeline':'Erro ao carregar timeline.','msg.err_load_daily':'Erro ao carregar dados diários.','msg.err_export_quarantine':'Erro ao exportar quarentena.',
+    'msg.baseline_imported':'Baseline importado: {n} criados, {m} atualizados',
+    'runway.csv.header':'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco',
+    'currency.symbol_title':'Símbolo da moeda','currency.factor_title':'Fator de conversão',
   },
   en: {
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
@@ -597,6 +608,17 @@ const _LANG = {
     'msg.qr_approved':'Record approved and inserted.','msg.qr_rejected':'Record rejected.',
     'confirm.lock_cycle':'Lock this cycle?','confirm.unlock_cycle':'Unlock this cycle?',
     'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
+    'page.prev':'‹ Previous','page.next':'Next ›',
+    'qr.filter.all':'All records','qr.filter.pending_opt':'⏳ Pending','qr.filter.approved_opt':'✅ Approved','qr.filter.rejected_opt':'❌ Rejected',
+    'layout.panel.pepcpi':'CPI by PEP','layout.panel.cost_comp':'Cost Composition','layout.panel.bullet':'Budget vs. Actual','layout.panel.quadrant':'EVM Quadrant','layout.panel.concentration':'Concentration Risk','layout.panel.plan':'Planning Baseline','layout.tab.forecast':'Forecast (EVM)',
+    'scatter.axis_spi':'SPI — Schedule Performance','scatter.axis_cpi':'CPI — Cost Performance',
+    'risk.warning':'Warning','risk.critical':'Critical',
+    'lbl.plus_cycles':'+{n} cycle(s)',
+    'sem.portfolio':'Portfolio','sem.ok_label':'OK — below {pct}% of budget','sem.warning_label':'Warning — ≥ {pct}% of budget','sem.overrun_label':'Overrun — ≥ {pct}% of budget','sem.no_budget':'No budget defined',
+    'msg.err_load_timeline':'Error loading timeline.','msg.err_load_daily':'Error loading daily data.','msg.err_export_quarantine':'Error exporting quarantine.',
+    'msg.baseline_imported':'Baseline imported: {n} created, {m} updated',
+    'runway.csv.header':'PEP,Project,Planned (h),Consumed (h),% Consumed,Avg/cycle,Cycles remaining,Est. completion,CPI,Risk',
+    'currency.symbol_title':'Currency symbol','currency.factor_title':'Conversion factor',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -604,6 +626,8 @@ function _t(key) { return (_LANG[_locale] || _LANG.pt)[key] || key; }
 function _applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = _t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = _t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = _t(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', _t(el.dataset.i18nAria)); });
 }
 
 // ---------------------------------------------------------------------------
@@ -932,9 +956,9 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 
 document.getElementById('runwayExportBtn').addEventListener('click', () => {
   if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const header = _t('runway.csv.header');
   const rows = _lastRunwayData.map(d => {
-    const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
+    const risk = { ok: 'OK', warning: _t('risk.warning'), critical: _t('risk.critical'), overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
     return [
       `"${d.pep_wbs}"`, `"${d.name || ''}"`,
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
@@ -2311,8 +2335,8 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Baseline importado: ${data.created} criados, ${data.updated} atualizados` +
-      (data.errors.length ? ` — ${data.errors.length} erro(s)` : '');
+    const msg = _t('msg.baseline_imported').replace('{n}', data.created).replace('{m}', data.updated) +
+      (data.errors.length ? ` — ${data.errors.length} ${_t('msg.errors_n')}` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
@@ -2327,7 +2351,7 @@ function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120
 
 function _buildEffortTitle(payload, cycleCount) {
   const { cycle, filters } = payload;
-  let t = cycleCount > 1 ? `${cycle.name} (+${cycleCount - 1} ciclo(s))` : cycle.name;
+  let t = cycleCount > 1 ? `${cycle.name} (${_t('lbl.plus_cycles').replace('{n}', cycleCount - 1)})` : cycle.name;
   if (filters.pep_codes?.length) t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
   return t;
 }
@@ -2631,7 +2655,7 @@ function _buildEvmQuadrantOption(items) {
     },
     grid: { top: 40, bottom: 52, left: 60, right: 24, containLabel: false },
     xAxis: {
-      name: 'SPI — Desempenho de Prazo',
+      name: _t('scatter.axis_spi'),
       nameLocation: 'middle', nameGap: 34,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
@@ -2640,7 +2664,7 @@ function _buildEvmQuadrantOption(items) {
       min: xMin, max: xMax,
     },
     yAxis: {
-      name: 'CPI — Desempenho de Custo',
+      name: _t('scatter.axis_cpi'),
       nameLocation: 'middle', nameGap: 52,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
@@ -2942,7 +2966,7 @@ async function _renderCollabTimeline(name) {
 
   let rows = [];
   try { rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`); }
-  catch (e) { notify('Erro ao carregar timeline.', 'error'); return; }
+  catch (e) { notify(_t('msg.err_load_timeline'), 'error'); return; }
 
   // dispose old chart
   const existing = echarts.getInstanceByDom(chartEl);
@@ -2993,7 +3017,7 @@ async function _renderCollabCalendar(name, year, month) {
   let data = [];
   try {
     data = await apiFetch(`/api/dashboard/collaborator-daily?collaborator_name=${encodeURIComponent(name)}&year=${year}&month=${month}`);
-  } catch(e) { notify('Erro ao carregar dados diários.', 'error'); return; }
+  } catch(e) { notify(_t('msg.err_load_daily'), 'error'); return; }
 
   // dispose old
   const existing = echarts.getInstanceByDom(chartEl);
@@ -4860,7 +4884,7 @@ document.getElementById('myQrNextBtn')?.addEventListener('click', () => {
 document.getElementById('myQrExportBtn')?.addEventListener('click', async () => {
   try {
     const resp = await fetch('/api/my/quarantine/export', { headers: _authHeaders() });
-    if (!resp.ok) { notify('Erro ao exportar quarentena.', 'error'); return; }
+    if (!resp.ok) { notify(_t('msg.err_export_quarantine'), 'error'); return; }
     const blob = await resp.blob();
     const cd   = resp.headers.get('Content-Disposition') || '';
     const name = cd.match(/filename="([^"]+)"/)?.[1] || 'quarantine_export.csv';
@@ -5398,11 +5422,11 @@ async function loadSemaphore() {
       : '';
 
     const summaryHtml =
-      `<span class="sem-title">Portfólio</span>
-      ${dot('green',  `OK — abaixo de ${wPct}% do budget`)}
-      ${dot('yellow', `Atenção — ≥ ${wPct}% do budget`)}
-      ${dot('red',    `Estourado — ≥ ${cPct}% do budget`)}
-      ${dot('grey',   'Sem budget definido')}`;
+      `<span class="sem-title">${_t('sem.portfolio')}</span>
+      ${dot('green',  _t('sem.ok_label').replace('{pct}', wPct))}
+      ${dot('yellow', _t('sem.warning_label').replace('{pct}', wPct))}
+      ${dot('red',    _t('sem.overrun_label').replace('{pct}', cPct))}
+      ${dot('grey',   _t('sem.no_budget'))}`;
 
     bar.innerHTML =
       `<div class="sem-summary">${summaryHtml}</div>
