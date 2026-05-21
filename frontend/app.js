@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 const _LANG = {
   pt: {
+    'app.title':'PMAS — Dashboard de Gestão de Projetos',
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
     'tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
@@ -313,6 +314,7 @@ const _LANG = {
     'currency.symbol_title':'Símbolo da moeda','currency.factor_title':'Fator de conversão',
   },
   en: {
+    'app.title':'PMAS — Project Management Dashboard',
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
     'tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
@@ -1109,6 +1111,10 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   localStorage.setItem('pmas_lang', _locale);
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
+  cycleMs.setPlaceholder(_t('ms.cycle_ph'));
+  pepMs.setPlaceholder(_t('ms.pep_ph'));
+  pepDescMs.setPlaceholder(_t('ms.pep_desc_ph'));
+  collaboratorMs.setPlaceholder(_t('ms.collab_ph'));
   // Re-render dynamic content for active tab
   const tab = document.querySelector('.tab-btn.active')?.dataset.tab;
   if (tab === 'cycles')   _renderCyclesTable(_allCycles);
@@ -4187,9 +4193,20 @@ async function apiFetchJSON(url, method, body) {
 
 function notify(msg, type = 'info') {
   const el = document.getElementById('notification');
-  el.textContent = msg; el.className = type; el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 6000);
+  const textEl = document.getElementById('notificationText');
+  clearTimeout(el._timer);
+  textEl.textContent = msg;
+  el.className = type;
+  el.hidden = false;
+  if (type !== 'error') {
+    el._timer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
 }
+document.getElementById('notificationClose').addEventListener('click', () => {
+  const el = document.getElementById('notification');
+  clearTimeout(el._timer);
+  el.hidden = true;
+});
 
 function fmt(h) {
   return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {

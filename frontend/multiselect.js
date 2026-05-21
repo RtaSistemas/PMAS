@@ -78,6 +78,13 @@ class MultiSelect {
 
   clear() { this.selected.clear(); this._renderPanel(); this._updateBtn(); }
 
+  setPlaceholder(text) {
+    this.placeholder = text;
+    if (this.selected.size === 0) {
+      this.btn.querySelector('.ms-label').textContent = text;
+    }
+  }
+
   _updateBtn() {
     const lbl = this.btn.querySelector('.ms-label');
     if (this.selected.size === 0) {

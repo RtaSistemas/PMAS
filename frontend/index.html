@@ -58,6 +58,7 @@
 <!-- App shell                                                          -->
 <!-- ================================================================ -->
 <div id="appShell" hidden>
+<h1 class="sr-only" data-i18n="app.title">PMAS — Dashboard de Gestão de Projetos</h1>
 
 <header>
   <div class="header-brand">
@@ -87,7 +88,10 @@
   </div>
 </header>
 
-<div id="notification"></div>
+<div id="notification" role="alert" aria-live="assertive" aria-atomic="true" hidden>
+  <span id="notificationText"></span>
+  <button type="button" class="notif-close" id="notificationClose" aria-label="Fechar notificação">✕</button>
+</div>
 
 <!-- Ingest result panel — shown after every upload -->
 <div id="ingestResultPanel" hidden style="margin:0 1.5rem .5rem;border-radius:.5rem;font-size:.85rem;overflow:hidden">
