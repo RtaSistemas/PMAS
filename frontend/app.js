@@ -203,12 +203,12 @@ const _LANG = {
     'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
     'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
     'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
-    'chart.cpiChart':'CPI por Ciclo','chart.pepCpiChart':'CPI por PEP',
+    'chart.cpiChart':'CPI por Ciclo (cumulativo)','chart.pepCpiChart':'IDC por PEP (cumulativo)',
     'chart.costCompositionChart':'Composição de Custo por Tipo de Hora',
     'chart.collabInlineTimelineChart':'Horas por Ciclo — Colaborador',
     'chart.collabCalendarChart':'Atividade Diária — Colaborador',
     'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Orçado vs Realizado',
-    'chart.scatterChart':'Dispersão Custo × Horas','chart.forecastChart':'Previsão de Conclusão',
+    'chart.scatterChart':'Quadrante EVM (CPI × SPI)','chart.forecastChart':'Previsão de Conclusão',
     'nav.main_label':'Navegação principal','nav.analytics_label':'Sub-navegação de análise',
     'nav.myarea_label':'Navegação Minha Área',
     'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
@@ -530,12 +530,12 @@ const _LANG = {
     'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
     'size.small':'Small','size.medium':'Medium','size.large':'Large','size.full':'Full width',
     'chart.effortChart':'Effort by Collaborator','chart.trendsChart':'Trends by Cycle',
-    'chart.cpiChart':'CPI by Cycle','chart.pepCpiChart':'CPI by PEP',
+    'chart.cpiChart':'CPI by Cycle (cumulative)','chart.pepCpiChart':'CPI by PEP (cumulative)',
     'chart.costCompositionChart':'Cost Composition by Hour Type',
     'chart.collabInlineTimelineChart':'Hours per Cycle — Collaborator',
     'chart.collabCalendarChart':'Daily Activity — Collaborator',
     'chart.treemapChart':'Portfolio Treemap','chart.bulletChart':'Budget vs Actual',
-    'chart.scatterChart':'Cost × Hours Scatter','chart.forecastChart':'Completion Forecast',
+    'chart.scatterChart':'EVM Quadrant (CPI × SPI)','chart.forecastChart':'Completion Forecast',
     'nav.main_label':'Main navigation','nav.analytics_label':'Analytics sub-navigation',
     'nav.myarea_label':'My Area navigation',
     'appearance.title':'System Appearance','appearance.app_name':'System name',
@@ -698,14 +698,14 @@ const _EVM_TERMS = {
   },
   EAC: {
     pt: {
-      name: 'EAC — Estimativa para Conclusão',
-      desc: 'Projeção do custo total do projeto com base no desempenho de custo atual.',
-      formula: 'EAC = OAC ÷ IDC\n  OAC = Orçamento ao Término (BAC)',
+      name: 'EPT — Estimativa no Término',
+      desc: 'Projeção do custo total do projeto ao término, com base no desempenho de custo atual.',
+      formula: 'EPT = OAT ÷ IDC\n  OAT = Orçamento ao Término (BAC)\n  IDC = Índice de Desempenho de Custo',
     },
     en: {
       name: 'EAC — Estimate at Completion',
-      desc: 'Projected total cost of the project at the current cost performance rate.',
-      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion',
+      desc: 'Projected total cost of the project at completion, based on current cost performance.',
+      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
     },
   },
   SV: {
@@ -723,25 +723,73 @@ const _EVM_TERMS = {
   PV: {
     pt: {
       name: 'VP — Valor Planejado',
-      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline).',
-      formula: 'VP = Σ (horas planejadas por ciclo)\naté o ciclo de referência',
+      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline). Expresso em R$.',
+      formula: 'VP = min(Σ horas planejadas / horas orçadas, 1,0) × OAT\n  OAT = Orçamento ao Término (BAC)\n  Nota: o gráfico de curva S plota horas; VP e VS são calculados em R$',
     },
     en: {
       name: 'PV — Planned Value',
-      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline).',
-      formula: 'PV = Σ (planned hours per cycle)\nup to the reference cycle',
+      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline). Expressed in R$.',
+      formula: 'PV = min(Σ planned_h / budget_h, 1.0) × BAC\n  BAC = Budget at Completion\n  Note: the S-curve chart plots hours; PV and SV are computed in R$',
+    },
+  },
+  CV: {
+    pt: {
+      name: 'VC — Variação de Custo',
+      desc: 'Diferença entre o valor agregado e o custo real. Positivo = abaixo do orçamento; negativo = acima.',
+      formula: 'VC = VA − CR\n  VA = Valor Agregado (EV)\n  CR = Custo Real (AC)',
+    },
+    en: {
+      name: 'CV — Cost Variance',
+      desc: 'Difference between earned value and actual cost. Positive = under budget; negative = over budget.',
+      formula: 'CV = EV − AC\n  EV = Earned Value\n  AC = Actual Cost',
+    },
+  },
+  TCPI: {
+    pt: {
+      name: 'IDC-PC — Índice de Desempenho para Conclusão',
+      desc: 'Eficiência de custo necessária para terminar o projeto dentro do orçamento original. > 1,0 exige melhora de eficiência.',
+      formula: 'IDC-PC = (OAT − VA) ÷ (OAT − CR)\n  OAT = Orçamento ao Término (BAC)',
+    },
+    en: {
+      name: 'TCPI — To-Complete Performance Index',
+      desc: 'Required cost efficiency to finish within the original budget. > 1.0 means tighter performance needed.',
+      formula: 'TCPI = (BAC − EV) ÷ (BAC − AC)\n  BAC = Budget at Completion',
+    },
+  },
+  VAC: {
+    pt: {
+      name: 'VNT — Variação no Término',
+      desc: 'Diferença projetada entre o orçamento e o custo final estimado. Positivo = economia; negativo = estouro.',
+      formula: 'VNT = OAT − EPT\n  OAT = Orçamento ao Término (BAC)\n  EPT = Estimativa no Término (EAC)',
+    },
+    en: {
+      name: 'VAC — Variance at Completion',
+      desc: 'Projected difference between budget and estimated final cost. Positive = savings; negative = overrun.',
+      formula: 'VAC = BAC − EAC\n  BAC = Budget at Completion\n  EAC = Estimate at Completion',
+    },
+  },
+  ETC: {
+    pt: {
+      name: 'EPC — Estimativa para Conclusão',
+      desc: 'Custo restante projetado para concluir o trabalho, com base no desempenho atual.',
+      formula: 'EPC = EPT − CR\n  EPT = Estimativa no Término (EAC)\n  CR = Custo Real acumulado (AC)',
+    },
+    en: {
+      name: 'ETC — Estimate to Complete',
+      desc: 'Projected remaining cost to complete the work, based on current performance.',
+      formula: 'ETC = EAC − AC\n  EAC = Estimate at Completion\n  AC = Actual Cost',
     },
   },
   EVM: {
     pt: {
       name: 'EVM — Gestão de Valor Agregado',
       desc: 'Metodologia que integra escopo, prazo e custo para medir o desempenho real do projeto e projetar tendências.',
-      formula: 'Indicadores: IDC (CPI), IDP (SPI),\n  EAC, VS (SV), VP (PV)',
+      formula: 'Indicadores: IDC, IDP, EPT, VC, VNT, EPC, IDC-PC, VS, VP',
     },
     en: {
       name: 'EVM — Earned Value Management',
       desc: 'Methodology integrating scope, schedule and cost to measure actual project performance and forecast trends.',
-      formula: 'Metrics: CPI, SPI, EAC, SV, PV',
+      formula: 'Metrics: CPI, SPI, EAC, CV, VAC, ETC, TCPI, SV, PV',
     },
   },
 };
@@ -3495,7 +3543,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
       splitLine: { show: false },
     },
     yAxis: {
-      name: 'CPI',
+      name: 'IDC (cumulativo)',
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
       axisLine:  { lineStyle: { color: _cssVar('--border') } },
@@ -3506,7 +3554,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
         silent: true,
         symbol: 'none',
         lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: _cssVar('--text-3'), fontSize: 10 } }],
+        data: [{ yAxis: 1.0, label: { formatter: 'IDC = 1,0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
     series: series.map((s, i) => i > 0 ? s : {
