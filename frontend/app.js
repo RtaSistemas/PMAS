@@ -199,8 +199,13 @@ const _LANG = {
     'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
     'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
     'chart.cpiChart':'CPI por Ciclo','chart.pepCpiChart':'CPI por PEP',
+    'chart.costCompositionChart':'Composição de Custo por Tipo de Hora',
+    'chart.collabInlineTimelineChart':'Horas por Ciclo — Colaborador',
+    'chart.collabCalendarChart':'Atividade Diária — Colaborador',
     'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Orçado vs Realizado',
     'chart.scatterChart':'Dispersão Custo × Horas','chart.forecastChart':'Previsão de Conclusão',
+    'nav.main_label':'Navegação principal','nav.analytics_label':'Sub-navegação de análise',
+    'nav.myarea_label':'Navegação Minha Área',
     'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
     'appearance.logo':'Logo','appearance.logo_upload':'⬆ Enviar novo logo',
     'appearance.logo_remove':'🗑 Remover logo','appearance.density':'Densidade',
@@ -516,8 +521,13 @@ const _LANG = {
     'size.small':'Small','size.medium':'Medium','size.large':'Large','size.full':'Full width',
     'chart.effortChart':'Effort by Collaborator','chart.trendsChart':'Trends by Cycle',
     'chart.cpiChart':'CPI by Cycle','chart.pepCpiChart':'CPI by PEP',
+    'chart.costCompositionChart':'Cost Composition by Hour Type',
+    'chart.collabInlineTimelineChart':'Hours per Cycle — Collaborator',
+    'chart.collabCalendarChart':'Daily Activity — Collaborator',
     'chart.treemapChart':'Portfolio Treemap','chart.bulletChart':'Budget vs Actual',
     'chart.scatterChart':'Cost × Hours Scatter','chart.forecastChart':'Completion Forecast',
+    'nav.main_label':'Main navigation','nav.analytics_label':'Analytics sub-navigation',
+    'nav.myarea_label':'My Area navigation',
     'appearance.title':'System Appearance','appearance.app_name':'System name',
     'appearance.logo':'Logo','appearance.logo_upload':'⬆ Upload new logo',
     'appearance.logo_remove':'🗑 Remove logo','appearance.density':'Density',
@@ -911,9 +921,10 @@ const tabSections = document.querySelectorAll('.tab-section');
 
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
-    tabBtns.forEach(b => b.classList.remove('active'));
+    tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
     tabSections.forEach(s => s.hidden = true);
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
     if (btn.dataset.tab === 'dashboard') _renderActiveTab();
@@ -950,6 +961,7 @@ function _disposeTabCharts(tabId) {
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
     _charts[id] = echarts.init(document.getElementById(id), 'dark', { renderer: 'svg' });
+    _charts[id].setOption({ aria: { enabled: true } });
   }
   return _charts[id];
 }
@@ -983,9 +995,10 @@ const atabSections = document.querySelectorAll('.atab-section');
 atabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     _disposeTabCharts(_activeATab);
-    atabBtns.forEach(b => b.classList.remove('active'));
+    atabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
     atabSections.forEach(s => s.hidden = true);
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     _activeATab = btn.dataset.atab;
     document.getElementById(`atab-${_activeATab}`).hidden = false;
     if (_activeATab === 'forecast') _populateForecastPepSelect();
@@ -3060,6 +3073,7 @@ async function _renderCollabTimeline(name) {
   chartEl.style.visibility = '';
 
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  tc.setOption({ aria: { enabled: true } });
   _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
@@ -3172,6 +3186,7 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  cc.setOption({ aria: { enabled: true } });
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
     backgroundColor: 'transparent',
@@ -4661,7 +4676,9 @@ let _currentUserInfo = null;
 
 function _switchMyTab(tabId) {
   document.querySelectorAll('.my-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.myTab === tabId);
+    const active = btn.dataset.myTab === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
   });
   document.querySelectorAll('.my-tab-section').forEach(el => {
     el.hidden = el.id !== `my-tab-${tabId}`;

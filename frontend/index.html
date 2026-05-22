@@ -131,25 +131,30 @@
   </div>
 </div>
 
-<nav class="app-tabs">
-  <button type="button" class="tab-btn active" data-tab="dashboard">
+<nav class="app-tabs" role="tablist" data-i18n-aria="nav.main_label">
+  <button type="button" class="tab-btn active" data-tab="dashboard"
+          role="tab" aria-selected="true" aria-controls="tab-dashboard" id="tab-btn-dashboard">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
     <span>Dashboard</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="projects">
+  <button type="button" class="tab-btn" data-tab="projects"
+          role="tab" aria-selected="false" aria-controls="tab-projects" id="tab-btn-projects">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
     <span data-i18n="tab.projects">Projetos</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="team">
+  <button type="button" class="tab-btn" data-tab="team"
+          role="tab" aria-selected="false" aria-controls="tab-team" id="tab-btn-team">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span data-i18n="tab.team">Equipe</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="my">
+  <button type="button" class="tab-btn" data-tab="my"
+          role="tab" aria-selected="false" aria-controls="tab-my" id="tab-btn-my">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     <span data-i18n="tab.my">Minha Área</span>
     <span class="tab-badge" id="myTabBadge" hidden></span>
   </button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden
+          role="tab" aria-selected="false" aria-controls="tab-admin">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
     <span>Admin</span>
     <span class="tab-badge" id="adminTabBadge" hidden></span>
@@ -161,7 +166,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Dashboard                                                       -->
   <!-- ================================================================== -->
-  <section id="tab-dashboard" class="tab-section">
+  <section id="tab-dashboard" class="tab-section" role="tabpanel" aria-labelledby="tab-btn-dashboard" tabindex="0">
 
     <div class="card">
       <h2 data-i18n="filters.title">Filtros</h2>
@@ -186,16 +191,19 @@
     <div id="semaphoreBar" class="card semaphore-bar" style="display:none"></div>
 
     <!-- Analytics sub-tab navigation -->
-    <nav class="analytics-tabs" id="analyticsTabsNav">
-      <button type="button" class="atab-btn active" data-atab="effort">
+    <nav class="analytics-tabs" id="analyticsTabsNav" role="tablist" data-i18n-aria="nav.analytics_label">
+      <button type="button" class="atab-btn active" data-atab="effort"
+              role="tab" aria-selected="true" aria-controls="atab-effort" id="atab-btn-effort">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <span data-i18n="atab.effort">Esforço da Equipe</span>
       </button>
-      <button type="button" class="atab-btn" data-atab="portfolio">
+      <button type="button" class="atab-btn" data-atab="portfolio"
+              role="tab" aria-selected="false" aria-controls="atab-portfolio" id="atab-btn-portfolio">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         <span data-i18n="atab.portfolio">Saúde do Portfólio</span>
       </button>
-      <button type="button" class="atab-btn" data-atab="forecast">
+      <button type="button" class="atab-btn" data-atab="forecast"
+              role="tab" aria-selected="false" aria-controls="atab-forecast" id="atab-btn-forecast">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         <span data-i18n="atab.forecast">Previsão</span>
       </button>
@@ -204,7 +212,7 @@
     <!-- ============================================================ -->
     <!-- Sub-tab: Esforço da Equipe                                   -->
     <!-- ============================================================ -->
-    <div id="atab-effort" class="atab-section">
+    <div id="atab-effort" class="atab-section" role="tabpanel" aria-labelledby="atab-btn-effort" tabindex="0">
       <div id="effortStats"></div>
       <div class="card chart-panel" id="effortPanel" data-chart-id="effortChart" data-panel-id="effort-chart">
         <div class="panel-header">
@@ -217,7 +225,7 @@
         <div id="effortEmpty" class="chart-empty" hidden data-i18n="effort.empty">
           Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
         </div>
-        <div id="effortChart" style="width:100%;height:500px"></div>
+        <div id="effortChart" style="width:100%;height:500px" role="img" data-i18n-aria="chart.effortChart"></div>
       </div>
       <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem .5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
@@ -228,7 +236,7 @@
         <div style="padding:1rem 1.25rem .5rem">
           <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem" data-i18n="collab.section_cycles">Horas por Ciclo</div>
           <div id="collabInlineTimelineEmpty" class="chart-empty" hidden data-i18n="collab.timeline_empty">Nenhum dado encontrado para este colaborador.</div>
-          <div id="collabInlineTimelineChart" style="width:100%;height:320px"></div>
+          <div id="collabInlineTimelineChart" style="width:100%;height:320px" role="img" data-i18n-aria="chart.collabInlineTimelineChart"></div>
         </div>
         <!-- Section 2: heatmap calendário -->
         <div style="padding:.5rem 1.25rem 1.25rem;border-top:1px solid var(--border)">
@@ -243,7 +251,7 @@
           </div>
           <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>
           <div id="calDayHeader" style="display:none;margin:0 auto 2px"></div>
-          <div id="collabCalendarChart" style="width:100%;height:185px"></div>
+          <div id="collabCalendarChart" style="width:100%;height:185px" role="img" data-i18n-aria="chart.collabCalendarChart"></div>
           <div id="collabCalendarStats" style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap"></div>
         </div>
       </div>
@@ -255,7 +263,7 @@
         <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
         </div>
-        <div id="trendsChart" style="width:100%;height:440px"></div>
+        <div id="trendsChart" style="width:100%;height:440px" role="img" data-i18n-aria="chart.trendsChart"></div>
       </div>
       <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" data-panel-id="effort-pepcpi" hidden style="margin-top:0">
         <div class="panel-header">
@@ -265,7 +273,7 @@
         <div id="pepCpiEmpty" class="chart-empty" hidden data-i18n="pepcpi.empty">
           Sem dados de budget. Defina budget_cost nos projetos para habilitar o rastreamento de CPI.
         </div>
-        <div id="pepCpiChart" style="width:100%;height:360px"></div>
+        <div id="pepCpiChart" style="width:100%;height:360px" role="img" data-i18n-aria="chart.pepCpiChart"></div>
       </div>
 <div class="card chart-panel" id="costCompositionPanel" data-panel-id="effort-cost" hidden>
         <div class="panel-header">
@@ -273,14 +281,14 @@
           <span class="panel-note" data-i18n="costcomp.note">Custo regular · extra · sobreaviso por ciclo</span>
         </div>
         <div id="costCompositionEmpty" class="chart-empty" hidden data-i18n="costcomp.empty">Nenhum dado encontrado.</div>
-        <div id="costCompositionChart" style="width:100%;height:360px"></div>
+        <div id="costCompositionChart" style="width:100%;height:360px" role="img" data-i18n-aria="chart.costCompositionChart"></div>
       </div>
     </div>
 
     <!-- ============================================================ -->
     <!-- Sub-tab: Saúde do Portfólio                                  -->
     <!-- ============================================================ -->
-    <div id="atab-portfolio" class="atab-section" hidden>
+    <div id="atab-portfolio" class="atab-section" hidden role="tabpanel" aria-labelledby="atab-btn-portfolio" tabindex="0">
       <div id="portfolioStats"></div>
       <div class="card chart-panel" data-chart-id="treemapChart" data-panel-id="portfolio-treemap">
         <div class="panel-header">
@@ -293,7 +301,7 @@
         <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
           Nenhum dado de horas encontrado para os filtros selecionados.
         </div>
-        <div id="treemapChart" style="width:100%;height:440px"></div>
+        <div id="treemapChart" style="width:100%;height:440px" role="img" data-i18n-aria="chart.treemapChart"></div>
       </div>
       <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" data-panel-id="portfolio-bullet" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
@@ -302,7 +310,7 @@
           <span class="threshold-dot amber"></span> <span id="bulletWarnLabel"></span>&nbsp;
           <span class="threshold-dot red"></span> <span id="bulletCritLabel"></span>
         </div>
-        <div id="bulletChart" style="width:100%;height:300px"></div>
+        <div id="bulletChart" style="width:100%;height:300px" role="img" data-i18n-aria="chart.bulletChart"></div>
       </div>
       <div class="card chart-panel" id="scatterPanel" data-chart-id="scatterChart" data-panel-id="portfolio-quadrant" hidden>
         <div class="panel-header">
@@ -312,7 +320,7 @@
         <div id="scatterEmpty" class="chart-empty" hidden data-i18n="scatter.empty">
           Nenhum dado de PEP disponível para os filtros selecionados.
         </div>
-        <div id="scatterChart" style="width:100%;height:690px"></div>
+        <div id="scatterChart" style="width:100%;height:690px" role="img" data-i18n-aria="chart.scatterChart"></div>
       </div>
       <div class="card" id="concentrationPanel" data-panel-id="portfolio-concentration" hidden>
         <div class="panel-header">
@@ -361,7 +369,7 @@
     <!-- ============================================================ -->
     <!-- Sub-tab: Previsão de Conclusão (EVM)                         -->
     <!-- ============================================================ -->
-    <div id="atab-forecast" class="atab-section" hidden>
+    <div id="atab-forecast" class="atab-section" hidden role="tabpanel" aria-labelledby="atab-btn-forecast" tabindex="0">
       <div class="card chart-panel" data-chart-id="forecastChart" data-panel-id="forecast-chart">
         <div class="panel-header">
           <span class="panel-title" data-i18n="forecast.title" data-evm="EVM">Previsão de Conclusão</span>
@@ -376,7 +384,7 @@
           Selecione um PEP para visualizar a previsão de conclusão.
         </div>
         <div id="forecastKpis" class="stats-row" style="margin:.75rem 0" hidden></div>
-        <div id="forecastChart" style="width:100%;height:420px"></div>
+        <div id="forecastChart" style="width:100%;height:420px" role="img" data-i18n-aria="chart.forecastChart"></div>
       </div>
 
       <div class="card" id="planCard" data-panel-id="forecast-plan" hidden>
@@ -408,7 +416,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Projetos (inclui Ciclos)                                        -->
   <!-- ================================================================== -->
-  <section id="tab-projects" class="tab-section" hidden>
+  <section id="tab-projects" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-projects" tabindex="0">
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
@@ -475,7 +483,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Equipe                                                         -->
   <!-- ================================================================== -->
-  <section id="tab-team" class="tab-section" hidden>
+  <section id="tab-team" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-team" tabindex="0">
 
     <div class="card">
       <div class="section-header">
@@ -582,15 +590,17 @@
   <!-- ================================================================== -->
   <!-- TAB: Minha Área                                                     -->
   <!-- ================================================================== -->
-  <section id="tab-my" class="tab-section" hidden>
+  <section id="tab-my" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-my" tabindex="0">
 
-    <nav class="my-area-nav">
-      <button type="button" class="my-tab-btn active" data-my-tab="profile" data-i18n="myarea.profile">Perfil</button>
-      <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
+    <nav class="my-area-nav" role="tablist" data-i18n-aria="nav.myarea_label">
+      <button type="button" class="my-tab-btn active" data-my-tab="profile" data-i18n="myarea.profile"
+              role="tab" aria-selected="true" aria-controls="my-tab-profile" id="my-tab-btn-profile">Perfil</button>
+      <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload"
+              role="tab" aria-selected="false" aria-controls="my-tab-upload" id="my-tab-btn-upload">Upload</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
-    <div id="my-tab-profile" class="my-tab-section">
+    <div id="my-tab-profile" class="my-tab-section" role="tabpanel" aria-labelledby="my-tab-btn-profile" tabindex="0">
       <div class="my-area-grid">
 
         <!-- Profile card -->
@@ -687,7 +697,7 @@
     </div>
 
     <!-- Sub-tab: Upload (includes History and Quarantine inline) -->
-    <div id="my-tab-upload" class="my-tab-section" hidden>
+    <div id="my-tab-upload" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-upload" tabindex="0">
       <div class="card" style="max-width:520px">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
         <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
@@ -762,7 +772,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Admin                                                           -->
   <!-- ================================================================== -->
-  <section id="tab-admin" class="tab-section" hidden>
+  <section id="tab-admin" class="tab-section" hidden role="tabpanel" aria-labelledby="adminTabBtn" tabindex="0">
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="admin.title">Gestão de Usuários</h2>
