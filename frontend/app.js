@@ -1627,7 +1627,9 @@ async function _renderPortfolioTab() {
     document.getElementById('portfolioTreemapTitle').textContent =
       _evmMode ? _t('portfolio.treemap_r') : _t('portfolio.treemap_h');
 
-    // Treemap
+    // Treemap — dynamic height: 220px for ≤4 PEPs, +55px per extra PEP, cap 440px
+    document.getElementById('treemapChart').style.height =
+      (health.length <= 4 ? 220 : Math.min(440, 220 + (health.length - 4) * 55)) + 'px';
     const tm = _getOrCreateChart('treemapChart');
     tm.setOption(_buildTreemapOption(health, _evmMode), true);
     tm.resize();
