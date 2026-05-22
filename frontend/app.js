@@ -3035,9 +3035,32 @@ function _buildBulletOption(withBudget, evmMode = false) {
         data: actuals,
         label: {
           show: true,
+          position: 'right',
+          fontSize: 10,
+          color: _cssVar('--text'),
+          formatter: params => {
+            const b = budgets[params.dataIndex];
+            return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
+          },
+        },
+      },
+      {
+        // Transparent overlay — inside label only, sem barra visual
+        type: 'bar',
+        barMaxWidth: 28,
+        barGap: '-100%',
+        z: 3,
+        silent: true,
+        legendHoverLink: false,
+        data: actuals.map(a => ({
+          value: a.value,
+          itemStyle: { color: 'transparent' },
+        })),
+        label: {
+          show: true,
           position: 'inside',
           fontSize: 10,
-          color: '#fff',
+          color: _cssVar('--text'),
           overflow: 'truncate',
           formatter: params => {
             if (!params.value) return '';
