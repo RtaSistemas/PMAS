@@ -34,6 +34,22 @@ class MultiSelect {
       e.stopPropagation();
       this.panel.hidden ? this._open() : this._close();
     });
+    this.btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.panel.hidden ? this._open() : this._focusFirst();
+      }
+      if (e.key === 'Escape') { e.preventDefault(); this._close(); }
+    });
+    this.panel.addEventListener('keydown', e => {
+      const items = [...this.panel.querySelectorAll('label.ms-option')];
+      const idx = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(idx + 1, items.length - 1)]?.focus(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); idx <= 0 ? this.btn.focus() : items[Math.max(idx - 1, 0)]?.focus(); }
+      if (e.key === 'Escape')    { e.preventDefault(); this._close(); this.btn.focus(); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[idx]?.querySelector('input')?.click(); }
+      if (e.key === 'Tab')       { this._close(); }
+    });
     document.addEventListener('click', this._docClickHandler);
     this._updateBtn();
   }
@@ -41,6 +57,12 @@ class MultiSelect {
   _open() {
     this.panel.hidden = false;
     this.btn.setAttribute('aria-expanded', 'true');
+    this._focusFirst();
+  }
+
+  _focusFirst() {
+    const first = this.panel.querySelector('label.ms-option');
+    if (first) first.focus();
   }
 
   _close() {
@@ -132,6 +154,7 @@ class MultiSelect {
     lbl.className = 'ms-option' + (isAll ? ' ms-all' : '');
     lbl.setAttribute('role', 'option');
     lbl.setAttribute('aria-selected', 'false');
+    lbl.setAttribute('tabindex', '0');
     lbl.addEventListener('click', e => e.stopPropagation());
     const chk = document.createElement('input'); chk.type = 'checkbox'; chk.value = value;
     const span = document.createElement('span'); span.textContent = label;
