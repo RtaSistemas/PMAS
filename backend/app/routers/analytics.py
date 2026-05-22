@@ -48,6 +48,12 @@ def get_portfolio_health(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("consumed_hours"),
+            # Weighted hours for EV calculation (consistent with AC cost multipliers)
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours * em
+                + TimesheetRecord.standby_hours * sm
+            ).label("ev_hours"),
             func.sum(
                 TimesheetRecord.cost_per_hour
                 * (
@@ -83,9 +89,11 @@ def get_portfolio_health(
                 "pep_wbs": r.pep_wbs,
                 "pep_description": r.pep_description,
                 "consumed_hours": 0.0,
+                "ev_hours": 0.0,
                 "actual_cost": 0.0,
             }
         pep_map[r.pep_wbs]["consumed_hours"] += r.consumed_hours or 0.0
+        pep_map[r.pep_wbs]["ev_hours"]       += r.ev_hours       or 0.0
         pep_map[r.pep_wbs]["actual_cost"]    += r.actual_cost    or 0.0
 
     if not pep_map:
@@ -101,13 +109,14 @@ def get_portfolio_health(
     result = []
     for key, data in pep_map.items():
         proj = projects.get(key)
-        consumed = data["consumed_hours"]
+        consumed  = data["consumed_hours"]
+        ev_h      = data["ev_hours"]
         ac = data["actual_cost"]
         bh = proj.budget_hours if proj else None
         bc = proj.budget_cost if proj else None
         cpi_val = None
-        if bh and bc and consumed > 0 and ac > 0:
-            ev = min(consumed / bh, 1.0) * bc
+        if bh and bc and ev_h > 0 and ac > 0:
+            ev = min(ev_h / bh, 1.0) * bc
             cpi_val = round(ev / ac, 3)
         result.append({
             "pep_wbs": key,
@@ -199,9 +208,9 @@ def get_trends(
                 TimesheetRecord.pep_wbs,
                 func.sum(
                     TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours
-                    + TimesheetRecord.standby_hours
-                ).label("consumed_hours"),
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
+                ).label("ev_hours"),
                 func.sum(
                     TimesheetRecord.cost_per_hour * (
                         TimesheetRecord.normal_hours
@@ -227,12 +236,12 @@ def get_trends(
             cpi_q = cpi_q.filter(TimesheetRecord.record_date <= date_to)
         cpi_rows = cpi_q.group_by(Cycle.id, TimesheetRecord.pep_wbs).all()
 
-        # Build per-cycle consumed_hours per (cycle_id, pep_wbs)
+        # Build per-cycle ev_hours per (cycle_id, pep_wbs)
         cycle_pep_consumed: dict[tuple, float] = defaultdict(float)
         cycle_pep_ac: dict[tuple, float] = defaultdict(float)
         for cr in cpi_rows:
-            cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.consumed_hours or 0.0
-            cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)] += cr.actual_cost or 0.0
+            cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.ev_hours    or 0.0
+            cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)]       += cr.actual_cost or 0.0
     else:
         cycle_pep_consumed = {}
         cycle_pep_ac = {}
@@ -366,6 +375,12 @@ def get_forecast(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("period_hours"),
+            # Weighted hours (same multipliers as AC): aligns EV numerator with cost basis
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours * em
+                + TimesheetRecord.standby_hours * sm
+            ).label("period_weighted_hours"),
             func.sum(
                 TimesheetRecord.cost_per_hour * (
                     TimesheetRecord.normal_hours
@@ -409,31 +424,34 @@ def get_forecast(
     has_plan = bool(sorted_plans)
 
     history = []
-    cum_h = 0.0
-    cum_c = 0.0
+    cum_h  = 0.0   # physical hours (for display)
+    cum_wh = 0.0   # weighted hours (for EV numerator, aligns with AC cost basis)
+    cum_c  = 0.0
     prev_cum_ph = 0.0
     last_plan_ev: Optional[float] = None
     last_plan_pv: Optional[float] = None
 
     for r in rows:
-        cum_h += r.period_hours or 0.0
-        cum_c += r.period_cost or 0.0
+        cum_h  += r.period_hours          or 0.0
+        cum_wh += r.period_weighted_hours or 0.0
+        cum_c  += r.period_cost           or 0.0
 
         # Cumulative planned hours through all plan cycles up to this cycle's start_date
         cum_ph = sum(h for s, h in sorted_plans if s <= r.cycle_start) if sorted_plans else 0.0
 
         # Capture EV/PV at the last cycle where the plan advanced (BUG-A fix):
         # avoids SPI converging to 1.0 when project overruns past the plan end date
+        # EV uses weighted hours so it stays consistent with AC multipliers
         if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
-            last_plan_ev = min(cum_h / budget_hours, 1.0) * budget_cost
-            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+            last_plan_ev = min(cum_wh / budget_hours, 1.0) * budget_cost
+            last_plan_pv = min(cum_ph  / budget_hours, 1.0) * budget_cost
             prev_cum_ph = cum_ph
 
         ph_period = plan_by_cycle_start.get(r.cycle_start)
         # SPI at this cycle point (EV_cum / PV_cum in R$, both capped at 1.0 × budget_cost)
         spi_cum = None
         if has_plan and budget_hours and budget_cost and cum_ph > 0:
-            ev_cum  = min(cum_h  / budget_hours, 1.0) * budget_cost
+            ev_cum  = min(cum_wh / budget_hours, 1.0) * budget_cost
             pv_cum  = min(cum_ph / budget_hours, 1.0) * budget_cost
             if pv_cum > 0:
                 spi_cum = round(ev_cum / pv_cum, 3)
@@ -449,8 +467,9 @@ def get_forecast(
             "spi_cumulative": spi_cum,
         })
 
-    consumed_hours = cum_h
-    actual_cost = cum_c
+    consumed_hours = cum_h    # physical hours for display
+    ev_hours       = cum_wh   # weighted hours for EV
+    actual_cost    = cum_c
 
     recent = rows[-3:]
     avg_hours = sum(r.period_hours or 0.0 for r in recent) / len(recent) if recent else 0.0
@@ -463,8 +482,9 @@ def get_forecast(
     spi = None
     sv = None
 
-    if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
+    if budget_hours and budget_cost and ev_hours > 0:
+        # EV uses cost-weighted hours so it stays dimensionally consistent with AC
+        ev_val = min(ev_hours / budget_hours, 1.0) * budget_cost
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
@@ -482,6 +502,7 @@ def get_forecast(
             sv = round(last_plan_ev - last_plan_pv, 2)
 
     # BUG-C fix: floor remaining_hours at 0 so overrun projects don't return negative values
+    # remaining_hours is based on physical hours (for display); ETC cost uses EAC
     remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours is not None else None
     remaining_cost = round(eac - actual_cost, 2) if eac is not None and actual_cost is not None else None
 
