@@ -480,7 +480,9 @@ def get_forecast(
     est_cycles = None
     est_completion = None
     if remaining_hours is not None and remaining_hours > 0 and avg_hours > 0:
-        est_cycles = round(remaining_hours / avg_hours, 1)
+        # Adjust velocity by SPI so lagging projects get a more realistic forecast
+        effective_velocity = avg_hours * spi if (spi and spi > 0) else avg_hours
+        est_cycles = round(remaining_hours / effective_velocity, 1)
         n = math.ceil(est_cycles)
         future = (
             db.query(Cycle)
