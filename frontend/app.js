@@ -27,6 +27,11 @@ const _LANG = {
     'forecast.pv_line':'VP (Valor Planejado)',
     'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
+    'forecast.info.project':'Projeto','forecast.info.manager':'Gerente',
+    'forecast.info.budget':'Orçamento','forecast.info.status':'Status',
+    'forecast.info.no_manager':'—','forecast.info.no_name':'Sem nome cadastrado',
+    'forecast.info.no_budget':'Sem orçamento',
+    'sem.green':'Verde','sem.yellow':'Atenção','sem.red':'Crítico','sem.grey':'Sem orçamento',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
@@ -349,6 +354,11 @@ const _LANG = {
     'forecast.pv_line':'PV (Planned Value)',
     'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
     'forecast.no_budget':'No budget registered for this PEP.',
+    'forecast.info.project':'Project','forecast.info.manager':'Manager',
+    'forecast.info.budget':'Budget','forecast.info.status':'Status',
+    'forecast.info.no_manager':'—','forecast.info.no_name':'No name registered',
+    'forecast.info.no_budget':'No budget',
+    'sem.green':'Green','sem.yellow':'Warning','sem.red':'Critical','sem.grey':'No budget',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
@@ -2232,6 +2242,43 @@ function _buildForecastOption(fc) {
   };
 }
 
+function _forecastInfoStat(lbl, val) {
+  return `<div style="display:flex;flex-direction:column;gap:.15rem">
+    <span style="font-size:.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">${escHtml(lbl)}</span>
+    <span style="font-size:.88rem;font-weight:600;color:var(--text)">${val}</span>
+  </div>`;
+}
+
+function _renderForecastProjectInfo(fc, proj) {
+  const el = document.getElementById('forecastProjectInfo');
+  if (!el) return;
+
+  const hrRatio   = fc.budget_hours ? fc.consumed_hours / fc.budget_hours : null;
+  const costRatio = fc.budget_cost  ? fc.actual_cost    / fc.budget_cost  : null;
+  const ratios    = [hrRatio, costRatio].filter(r => r != null);
+  const semColor  = !ratios.length ? 'grey'
+                  : Math.max(...ratios) >= 1.0 ? 'red'
+                  : Math.max(...ratios) >= 0.9 ? 'yellow'
+                  : 'green';
+  const semLabel  = _t(`sem.${semColor}`);
+
+  const budgetParts = [];
+  if (fc.budget_hours != null) budgetParts.push(`${fc.budget_hours.toFixed(1)}h`);
+  if (fc.budget_cost  != null) budgetParts.push(_fmtCost(fc.budget_cost));
+  const budgetStr = budgetParts.length ? budgetParts.join(' / ') : _t('forecast.info.no_budget');
+
+  const dotHtml = `<span class="sem-dot ${semColor}" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span>`;
+
+  el.innerHTML =
+    _forecastInfoStat(_t('forecast.info.project'),
+      escHtml(proj?.name || _t('forecast.info.no_name'))) +
+    _forecastInfoStat(_t('forecast.info.manager'),
+      escHtml(proj?.manager || _t('forecast.info.no_manager'))) +
+    _forecastInfoStat(_t('forecast.info.budget'), budgetStr) +
+    _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`);
+  el.hidden = false;
+}
+
 async function _renderForecastTab() {
   await _populateForecastPepSelect();
   const pep      = document.getElementById('forecastPepSelect').value;
@@ -2241,9 +2288,12 @@ async function _renderForecastTab() {
   const kpisEl  = document.getElementById('forecastKpis');
   const emptyEl = document.getElementById('forecastEmpty');
 
+  const infoEl = document.getElementById('forecastProjectInfo');
+
   if (!pep) {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
+    if (infoEl) infoEl.hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -2253,19 +2303,28 @@ async function _renderForecastTab() {
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    const fc = await apiFetch(`/api/forecast?${p}`);
+    const [fc, projects] = await Promise.all([
+      apiFetch(`/api/forecast?${p}`),
+      apiFetch('/api/projects'),
+    ]);
+    const proj = projects.find(pr => pr.pep_wbs === pep) || null;
     _showEmpty('forecastEmpty', false);
     kpisEl.hidden = false;
     kpisEl.innerHTML = _buildForecastKpis(fc);
-    const chart = _getOrCreateChart('forecastChart');
-    chart.setOption(_buildForecastOption(fc), true);
-    chart.resize();
+    _renderForecastProjectInfo(fc, proj);
     _currentForecastPep = pep;
+    _planProjectId = proj ? proj.id : null;
+    try {
+      const chart = _getOrCreateChart('forecastChart');
+      chart.setOption(_buildForecastOption(fc), true);
+      chart.resize();
+    } catch (_) { /* chart lib may not be loaded in offline envs */ }
     await _renderPlanTable(pep);
     document.getElementById('planCard').hidden = false;
   } catch (err) {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
+    if (infoEl) infoEl.hidden = true;
     document.getElementById('planCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
