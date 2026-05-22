@@ -263,6 +263,7 @@ class BurnHistoryPoint(BaseModel):
     cumulative_cost: float
     planned_hours: float | None = None
     cumulative_planned_hours: float | None = None
+    spi_cumulative: float | None = None
 
 
 class ForecastOut(BaseModel):

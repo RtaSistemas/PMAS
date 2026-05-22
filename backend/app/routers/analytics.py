@@ -430,6 +430,13 @@ def get_forecast(
             prev_cum_ph = cum_ph
 
         ph_period = plan_by_cycle_start.get(r.cycle_start)
+        # SPI at this cycle point (EV_cum / PV_cum in R$, both capped at 1.0 × budget_cost)
+        spi_cum = None
+        if has_plan and budget_hours and budget_cost and cum_ph > 0:
+            ev_cum  = min(cum_h  / budget_hours, 1.0) * budget_cost
+            pv_cum  = min(cum_ph / budget_hours, 1.0) * budget_cost
+            if pv_cum > 0:
+                spi_cum = round(ev_cum / pv_cum, 3)
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -439,6 +446,7 @@ def get_forecast(
             "cumulative_cost": round(cum_c, 2),
             "planned_hours": round(ph_period, 2) if ph_period is not None else None,
             "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
+            "spi_cumulative": spi_cum,
         })
 
     consumed_hours = cum_h

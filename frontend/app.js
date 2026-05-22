@@ -1946,10 +1946,28 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         }
         return;
       }
+
+      // Fetch SPI history per PEP in parallel (from forecast endpoint)
+      const spiMapByPep = {};
+      try {
+        const fcResults = await Promise.all(
+          peps.map(([wbs]) => apiFetch(`/api/forecast?pep_wbs=${encodeURIComponent(wbs)}`).catch(() => null))
+        );
+        fcResults.forEach((fc, i) => {
+          if (!fc?.history) return;
+          const wbs = peps[i][0];
+          spiMapByPep[wbs] = Object.fromEntries(
+            fc.history
+              .filter(h => h.spi_cumulative != null)
+              .map(h => [h.cycle_name, h.spi_cumulative])
+          );
+        });
+      } catch (_) { /* SPI overlay is best-effort */ }
+
       _showEmpty('pepCpiEmpty', false);
       document.getElementById('pepCpiPanel').hidden = false;
       const pcc = _getOrCreateChart('pepCpiChart');
-      pcc.setOption(_buildPepCpiOption(peps, allCycleNames), true);
+      pcc.setOption(_buildPepCpiOption(peps, allCycleNames, spiMapByPep), true);
       pcc.resize();
     } catch (err) {
       notify(`CPI por PEP — erro: ${err.message}`, 'error');
@@ -3507,14 +3525,14 @@ function _buildCpiOption_unused(trends) {
   };
 }
 
-function _buildPepCpiOption(peps, allCycleNames) {
-  const series = peps.map(([wbs, { desc, points }], i) => {
+function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
+  const pal = _getPalette();
+  const cpiSeries = peps.map(([wbs, { desc, points }], i) => {
     const dataMap = Object.fromEntries(points.map(p => [p.cycleName, p.cpi]));
     const data    = allCycleNames.map(n => dataMap[n] ?? null);
-    const pal     = _getPalette();
     const color   = pal[i % pal.length];
     return {
-      name: `${wbs} — ${desc}`,
+      name: `${wbs} — ${desc} (IDC)`,
       type: 'line',
       data,
       connectNulls: false,
@@ -3525,6 +3543,29 @@ function _buildPepCpiOption(peps, allCycleNames) {
       emphasis: { focus: 'series' },
     };
   });
+
+  // SPI (IDP) series — dashed lines, same color as their CPI counterpart
+  const spiSeries = peps
+    .map(([wbs, { desc }], i) => {
+      const spiMap = spiMapByPep[wbs];
+      if (!spiMap || !Object.keys(spiMap).length) return null;
+      const data  = allCycleNames.map(n => spiMap[n] ?? null);
+      const color = pal[i % pal.length];
+      return {
+        name: `${wbs} — ${desc} (IDP)`,
+        type: 'line',
+        data,
+        connectNulls: false,
+        smooth: false,
+        symbol: 'diamond', symbolSize: 6,
+        lineStyle: { color, width: 1.8, type: 'dashed' },
+        itemStyle: { color },
+        emphasis: { focus: 'series' },
+      };
+    })
+    .filter(Boolean);
+
+  const series = [...cpiSeries, ...spiSeries];
 
   return {
     backgroundColor: 'transparent',
@@ -3544,10 +3585,13 @@ function _buildPepCpiOption(peps, allCycleNames) {
         const lines  = params
           .filter(p => p.value != null)
           .map(p => {
-            const cpiVal = p.value;
-            const color  = cpiVal >= 1.0 ? _cssVar('--primary') : cpiVal >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-            const dot    = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
-            return `${dot}${escHtml(p.seriesName)}: <b style="color:${color}">${cpiVal.toFixed(2)}</b>`;
+            const val   = p.value;
+            const isSpi = p.seriesName.endsWith('(IDP)');
+            const color = val >= 1.0 ? _cssVar('--primary') : val >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+            const shape = isSpi
+              ? `<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);margin-right:4px"></span>`
+              : `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
+            return `${shape}${escHtml(p.seriesName)}: <b style="color:${color}">${val.toFixed(2)}</b>`;
           })
           .join('<br/>');
         return header + lines;
@@ -3567,7 +3611,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
       splitLine: { show: false },
     },
     yAxis: {
-      name: 'IDC (cumulativo)',
+      name: 'IDC / IDP (cumulativo)',
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
       axisLine:  { lineStyle: { color: _cssVar('--border') } },
@@ -3578,7 +3622,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
         silent: true,
         symbol: 'none',
         lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: 'IDC = 1,0', color: _cssVar('--text-3'), fontSize: 10 } }],
+        data: [{ yAxis: 1.0, label: { formatter: '= 1,0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
     series: series.map((s, i) => i > 0 ? s : {
