@@ -4068,7 +4068,7 @@ async function _openBaselineModal(projectId) {
   const title = proj ? `${_t('baseline.title')} — ${proj.pep_wbs}${proj.name ? ' · ' + proj.name : ''}` : _t('baseline.title');
   document.getElementById('baselineModalTitle').textContent = title;
   document.getElementById('baselineModalBody').innerHTML = '<p style="color:#64748b">Carregando…</p>';
-  document.getElementById('baselineModal').hidden = false;
+  openModal('baselineModal');
   await _refreshBaselineModal(projectId);
 }
 
@@ -4167,9 +4167,7 @@ async function _deleteBaseline(projectId, baselineId) {
   });
 }
 
-document.getElementById('baselineModalClose').addEventListener('click', () => {
-  document.getElementById('baselineModal').hidden = true;
-});
+document.getElementById('baselineModalClose').addEventListener('click', () => closeModal('baselineModal'));
 
 // ---------------------------------------------------------------------------
 // ACL de projetos — controle de acesso por PEP (item 3)
