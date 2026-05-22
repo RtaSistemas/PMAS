@@ -3035,12 +3035,15 @@ function _buildBulletOption(withBudget, evmMode = false) {
         data: actuals,
         label: {
           show: true,
-          position: 'right',
+          position: 'inside',
           fontSize: 10,
-          color: _cssVar('--text'),
+          color: '#fff',
+          overflow: 'truncate',
           formatter: params => {
-            const b = budgets[params.dataIndex];
-            return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
+            if (!params.value) return '';
+            return evmMode
+              ? _fmtCost(params.value / _currencyFactor)
+              : `${(+params.value).toFixed(1)}h`;
           },
         },
       },
