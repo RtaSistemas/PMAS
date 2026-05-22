@@ -139,6 +139,23 @@ class ProjectCyclePlanOut(BaseModel):
     planned_hours: float
 
 
+class ProjectBaselineIn(BaseModel):
+    label: Optional[str] = None
+
+
+class ProjectBaselineOut(BaseModel):
+    id: int
+    project_id: int
+    locked_at: datetime
+    locked_by: Optional[str] = None
+    budget_hours: Optional[float] = None
+    budget_cost: Optional[float] = None
+    label: Optional[str] = None
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SeniorityLevelOut(BaseModel):
     id: int
     name: str
@@ -286,6 +303,9 @@ class ForecastOut(BaseModel):
     estimated_cycles_to_complete: float | None
     estimated_completion_cycle: str | None
     history: list[BurnHistoryPoint]
+    using_baseline: bool = False
+    baseline_locked_at: datetime | None = None
+    baseline_label: str | None = None
 
 
 class UploadOut(BaseModel):

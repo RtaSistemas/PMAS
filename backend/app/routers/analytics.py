@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord, UserProjectAccess
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectBaseline, ProjectCyclePlan, TimesheetRecord, UserProjectAccess
 from backend.app.schemas import (
     AllocationItem,
     BurnHistoryPoint,
@@ -106,14 +106,25 @@ def get_portfolio_health(
         .all()
     }
 
+    # Load active baselines for all projects in batch
+    project_id_map = {p.pep_wbs: p.id for p in projects.values()}
+    baseline_map: dict[int, ProjectBaseline] = {}
+    if project_id_map:
+        for bl in db.query(ProjectBaseline).filter(
+            ProjectBaseline.project_id.in_(list(project_id_map.values())),
+            ProjectBaseline.is_active == True,
+        ).all():
+            baseline_map[bl.project_id] = bl
+
     result = []
     for key, data in pep_map.items():
         proj = projects.get(key)
         consumed  = data["consumed_hours"]
         ev_h      = data["ev_hours"]
         ac = data["actual_cost"]
-        bh = proj.budget_hours if proj else None
-        bc = proj.budget_cost if proj else None
+        bl = baseline_map.get(proj.id) if proj else None
+        bh = bl.budget_hours if bl else (proj.budget_hours if proj else None)
+        bc = bl.budget_cost  if bl else (proj.budget_cost  if proj else None)
         cpi_val = None
         if bh and bc and ev_h > 0 and ac > 0:
             ev = min(ev_h / bh, 1.0) * bc
@@ -415,8 +426,12 @@ def get_forecast(
         )
         plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
 
-    budget_hours = project.budget_hours if project else None
-    budget_cost = project.budget_cost if project else None
+    active_baseline = (
+        db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
+        if project else None
+    )
+    budget_hours = active_baseline.budget_hours if active_baseline else (project.budget_hours if project else None)
+    budget_cost  = active_baseline.budget_cost  if active_baseline else (project.budget_cost  if project else None)
 
     # Sort plan entries by start_date so cumulative PV is computed correctly
     # even when plan cycles have no actual data (BUG-B fix)
@@ -545,6 +560,9 @@ def get_forecast(
         "estimated_cycles_to_complete": est_cycles,
         "estimated_completion_cycle": est_completion,
         "history": history,
+        "using_baseline": active_baseline is not None,
+        "baseline_locked_at": active_baseline.locked_at if active_baseline else None,
+        "baseline_label": active_baseline.label if active_baseline else None,
     }
 
 

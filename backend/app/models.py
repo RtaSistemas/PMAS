@@ -109,6 +109,22 @@ class Project(Base):
     plans = relationship("ProjectCyclePlan", back_populates="project", cascade="all, delete-orphan")
     user_access = relationship("UserProjectAccess", back_populates="project", cascade="all, delete-orphan")
     manager_user = relationship("User", foreign_keys=[manager_id], back_populates="managed_projects")
+    baselines = relationship("ProjectBaseline", back_populates="project", cascade="all, delete-orphan", order_by="ProjectBaseline.locked_at.desc()")
+
+
+class ProjectBaseline(Base):
+    __tablename__ = "project_baseline"
+
+    id         = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
+    locked_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
+    locked_by  = Column(String, nullable=True)
+    budget_hours = Column(Float, nullable=True)
+    budget_cost  = Column(Float, nullable=True)
+    label      = Column(String, nullable=True)
+    is_active  = Column(Boolean, default=True, nullable=False)
+
+    project = relationship("Project", back_populates="baselines")
 
 
 class ProjectCyclePlan(Base):
