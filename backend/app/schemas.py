@@ -230,6 +230,7 @@ class PortfolioHealthItem(BaseModel):
     budget_cost: Optional[float] = None
     consumed_hours: float
     actual_cost: float
+    cpi: Optional[float] = None
     is_registered: bool
 
 

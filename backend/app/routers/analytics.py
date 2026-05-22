@@ -98,19 +98,28 @@ def get_portfolio_health(
         .all()
     }
 
-    result = [
-        {
+    result = []
+    for key, data in pep_map.items():
+        proj = projects.get(key)
+        consumed = data["consumed_hours"]
+        ac = data["actual_cost"]
+        bh = proj.budget_hours if proj else None
+        bc = proj.budget_cost if proj else None
+        cpi_val = None
+        if bh and bc and consumed > 0 and ac > 0:
+            ev = min(consumed / bh, 1.0) * bc
+            cpi_val = round(ev / ac, 3)
+        result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
-            "name": projects[key].name if key in projects else None,
-            "budget_hours": projects[key].budget_hours if key in projects else None,
-            "budget_cost": projects[key].budget_cost if key in projects else None,
-            "consumed_hours": data["consumed_hours"],
-            "actual_cost": data["actual_cost"],
+            "name": proj.name if proj else None,
+            "budget_hours": bh,
+            "budget_cost": bc,
+            "consumed_hours": consumed,
+            "actual_cost": ac,
+            "cpi": cpi_val,
             "is_registered": key in projects,
-        }
-        for key, data in pep_map.items()
-    ]
+        })
     result.sort(key=lambda x: x["consumed_hours"], reverse=True)
     return result
 

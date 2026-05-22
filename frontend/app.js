@@ -3056,13 +3056,19 @@ function _buildBulletOption(withBudget, evmMode = false) {
       trigger: 'axis', axisPointer: { type: 'none' },
       backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
       formatter: params => {
-        const b = budgets[params[0].dataIndex];
-        const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
+        const idx = params[0].dataIndex;
+        const b   = budgets[idx];
+        const a   = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
         const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
+        const cpiItem = withBudget[idx]?.cpi;
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
+        if (cpiItem != null) {
+          const cpiColor = cpiItem >= 1.0 ? _cssVar('--green') : cpiItem >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+          html += `<br>IDC (CPI): <b style="color:${cpiColor}">${cpiItem.toFixed(2)}</b>`;
+        }
         if (b > 0 && a > b) html += `<br><span style="color:${_cssVar('--red')}">⚠ ${_t('tt.over_budget')}</span>`;
         return html;
       },
