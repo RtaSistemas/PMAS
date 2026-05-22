@@ -562,6 +562,25 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .badge-budget.critical { background: rgba(240,64,64,0.12); color: var(--red); border: 1px solid rgba(240,64,64,0.25); }
 .badge-budget.warning  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
 
+.badge-baseline {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px;
+  font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; margin-left: 0.4rem;
+}
+.badge-baseline.active { background: rgba(79,142,247,.15); color: #7eb3ff; border: 1px solid rgba(79,142,247,.3); }
+
+.baseline-banner {
+  padding: .45rem .8rem; border-radius: 6px; font-size: .8rem;
+  margin-bottom: .6rem;
+}
+.baseline-banner.active  { background: rgba(79,142,247,.1);  color: #7eb3ff; border: 1px solid rgba(79,142,247,.2); }
+.baseline-banner.warning { background: rgba(245,158,11,.08); color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+
+.baseline-info-box {
+  padding: .6rem .9rem; border-radius: 6px; font-size: .82rem; margin-bottom: .75rem; line-height: 1.6;
+}
+.baseline-info-box.active  { background: rgba(79,142,247,.1);  border: 1px solid rgba(79,142,247,.25); }
+.baseline-info-box.warning { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); color: #fbbf24; }
+
 /* ── Bullet chart threshold legend ──────────────────────────── */
 .threshold-dot {
   display: inline-block; width: 8px; height: 8px;

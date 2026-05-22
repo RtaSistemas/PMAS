@@ -81,6 +81,15 @@ const _LANG = {
     'admin.title':'Gestão de Usuários','btn.new_user':'+ Novo usuário',
     'user.th.user':'Usuário','user.th.role':'Perfil',
     'btn.cancel':'Cancelar','btn.save':'Salvar','btn.edit':'Editar','btn.delete':'Excluir',
+    'baseline.title':'Baseline do Projeto','baseline.active':'Baseline ativo',
+    'baseline.none':'Sem baseline ativo','baseline.locked_at':'Congelado em',
+    'baseline.locked_by':'por','baseline.label_ph':'Rótulo opcional (ex: Baseline v1)',
+    'baseline.create':'Criar Baseline','baseline.history':'Histórico de Baselines',
+    'baseline.budget_h':'Horas Orçadas','baseline.budget_cost':'Custo Orçado',
+    'baseline.activate':'Ativar','baseline.no_history':'Nenhum baseline criado.',
+    'baseline.badge':'✓ Baseline','baseline.warning':'Sem baseline — BAC pode mudar retroativamente',
+    'baseline.created':'Baseline criado com sucesso.',
+    'baseline.deleted':'Baseline removido.',
     'btn.export_csv2':'⬇ Exportar CSV','btn.import_csv':'⬆ Importar CSV',
     'cm.title_new':'Novo Ciclo','cm.title_edit':'Editar Ciclo',
     'cm.name_lbl':'Nome *','cm.name_ph':'Ex: Janeiro/2026',
@@ -410,6 +419,15 @@ const _LANG = {
     'admin.title':'User Management','btn.new_user':'+ New user',
     'user.th.user':'Username','user.th.role':'Role',
     'btn.cancel':'Cancel','btn.save':'Save','btn.edit':'Edit','btn.delete':'Delete',
+    'baseline.title':'Project Baseline','baseline.active':'Active Baseline',
+    'baseline.none':'No active baseline','baseline.locked_at':'Locked on',
+    'baseline.locked_by':'by','baseline.label_ph':'Optional label (e.g. Baseline v1)',
+    'baseline.create':'Create Baseline','baseline.history':'Baseline History',
+    'baseline.budget_h':'Budget Hours','baseline.budget_cost':'Budget Cost',
+    'baseline.activate':'Activate','baseline.no_history':'No baselines created.',
+    'baseline.badge':'✓ Baseline','baseline.warning':'No baseline — BAC may change retroactively',
+    'baseline.created':'Baseline created successfully.',
+    'baseline.deleted':'Baseline removed.',
     'btn.export_csv2':'⬇ Export CSV','btn.import_csv':'⬆ Import CSV',
     'cm.title_new':'New Cycle','cm.title_edit':'Edit Cycle',
     'cm.name_lbl':'Name *','cm.name_ph':'E.g.: January/2026',
@@ -2137,6 +2155,15 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 
 function _buildForecastKpis(fc) {
   const fmtH = h => `${(+h).toFixed(1)}h`;
+  // Baseline status banner
+  let baselineBanner = '';
+  if (fc.using_baseline && fc.baseline_locked_at) {
+    const dt = _fmtDateShort(fc.baseline_locked_at);
+    const lbl = fc.baseline_label ? ` — ${escHtml(fc.baseline_label)}` : '';
+    baselineBanner = `<div class="baseline-banner active">📍 ${_t('baseline.active')}${lbl} · ${_t('baseline.locked_at')} ${dt}</div>`;
+  } else if (!fc.using_baseline && fc.budget_cost != null) {
+    baselineBanner = `<div class="baseline-banner warning">⚠️ ${_t('baseline.warning')}</div>`;
+  }
   const fmtR = v => _fmtCost(v);
 
   const pct = fc.budget_hours
@@ -2180,12 +2207,13 @@ function _buildForecastKpis(fc) {
     { val: svFmt,                                             lbl: _t('forecast.sv'),              cls: svCls,    evm: 'SV'  },
     { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),      cls: 'violet'              },
   ];
-  return cards.map(({ val, lbl, cls, evm }) => {
+  const cardsHtml = cards.map(({ val, lbl, cls, evm }) => {
     const lblHtml = evm
       ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
       : escHtml(lbl);
     return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
   }).join('');
+  return baselineBanner + cardsHtml;
 }
 
 function _buildForecastOption(fc) {
@@ -3882,6 +3910,8 @@ let _projectEditId  = null;
 let _allProjects    = [];
 let _consumedByPep  = {};
 
+let _baselineByProject = {};   // project_id → active ProjectBaselineOut | null
+
 async function loadProjectsTable() {
   try {
     const [projects, health] = await Promise.all([
@@ -3890,6 +3920,19 @@ async function loadProjectsTable() {
     ]);
     _allProjects   = projects;
     _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.consumed_hours]));
+
+    // Fetch active baselines for all projects in parallel (best-effort)
+    const blResults = await Promise.allSettled(
+      projects.map(p => apiFetch(`/api/projects/${p.id}/baselines`))
+    );
+    _baselineByProject = {};
+    blResults.forEach((r, i) => {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        const active = r.value.find(b => b.is_active);
+        _baselineByProject[projects[i].id] = active || null;
+      }
+    });
+
     _renderProjectsTable(_applySort('projectsTable', projects));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3912,20 +3955,27 @@ function _renderProjectsTable(projects) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
     return;
   }
-  tbody.innerHTML = projects.map(p => `
+  tbody.innerHTML = projects.map(p => {
+    const bl = _baselineByProject[p.id];
+    const blBadge = bl
+      ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
+      : '';
+    return `
     <tr>
       <td><code>${escHtml(p.pep_wbs)}</code></td>
       <td>${escHtml(p.name || '—')}</td>
       <td>${escHtml(p.client || '—')}</td>
       <td>${escHtml(p.manager || '—')}</td>
-      <td style="text-align:right">${_buildBudgetCell(p)}</td>
+      <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function openProjectModal(id = null) {
@@ -4000,6 +4050,126 @@ function deleteProject(id, pep) {
     catch (e) { notify(`Erro: ${e.message}`, 'error'); }
   });
 }
+
+// ── Baseline Modal ─────────────────────────────────────────────────────────
+
+function _fmtDateShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+let _baselineModalProjectId = null;
+
+async function _openBaselineModal(projectId) {
+  _baselineModalProjectId = projectId;
+  const proj = _allProjects.find(p => p.id === projectId);
+  const title = proj ? `${_t('baseline.title')} — ${proj.pep_wbs}${proj.name ? ' · ' + proj.name : ''}` : _t('baseline.title');
+  document.getElementById('baselineModalTitle').textContent = title;
+  document.getElementById('baselineModalBody').innerHTML = '<p style="color:#64748b">Carregando…</p>';
+  document.getElementById('baselineModal').hidden = false;
+  await _refreshBaselineModal(projectId);
+}
+
+async function _refreshBaselineModal(projectId) {
+  try {
+    const baselines = await apiFetch(`/api/projects/${projectId}/baselines`);
+    const active = baselines.find(b => b.is_active);
+    const proj = _allProjects.find(p => p.id === projectId);
+    const hasbudget = proj && proj.budget_cost != null;
+
+    let html = '';
+
+    // Active baseline info
+    if (active) {
+      html += `<div class="baseline-info-box active">
+        <strong>📍 ${_t('baseline.active')}</strong>${active.label ? ` — <em>${escHtml(active.label)}</em>` : ''}
+        <br><span class="text-dim">${_t('baseline.locked_at')} ${_fmtDateShort(active.locked_at)} ${_t('baseline.locked_by')} ${escHtml(active.locked_by || '?')}</span>
+        <br><span class="text-dim">${_t('baseline.budget_h')}: <b>${active.budget_hours != null ? active.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</b>
+        &nbsp;·&nbsp; ${_t('baseline.budget_cost')}: <b>${active.budget_cost != null ? _fmtCost(active.budget_cost) : '—'}</b></span>
+      </div>`;
+    } else {
+      html += `<div class="baseline-info-box warning">⚠️ ${_t('baseline.none')}</div>`;
+    }
+
+    // Create new baseline form
+    html += `<div style="margin:1rem 0;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <input type="text" id="baselineLabelInput" class="form-control" style="flex:1;min-width:180px"
+             placeholder="${_t('baseline.label_ph')}" />
+      <button class="btn btn-primary btn-sm" onclick="_createBaseline(${projectId})"
+              ${hasbudget ? '' : 'disabled title="Defina budget_cost no projeto primeiro"'}>
+        📍 ${_t('baseline.create')}
+      </button>
+    </div>`;
+    if (!hasbudget) {
+      html += `<p class="hint" style="color:var(--amber);margin-top:-.5rem">Defina o orçamento (budget_cost) do projeto para habilitar baseline.</p>`;
+    }
+
+    // History table
+    html += `<h4 style="margin:.75rem 0 .4rem;font-size:.875rem">${_t('baseline.history')}</h4>`;
+    if (!baselines.length) {
+      html += `<p class="text-dim" style="font-size:.85rem">${_t('baseline.no_history')}</p>`;
+    } else {
+      html += `<table class="data-table" style="font-size:.82rem"><thead><tr>
+        <th>${_t('baseline.locked_at')}</th><th>${_t('baseline.locked_by')}</th>
+        <th>${_t('baseline.budget_h')}</th><th>${_t('baseline.budget_cost')}</th>
+        <th>Rótulo</th><th></th>
+      </tr></thead><tbody>`;
+      baselines.forEach(b => {
+        html += `<tr style="${b.is_active ? 'background:rgba(79,142,247,.08)' : ''}">
+          <td>${_fmtDateShort(b.locked_at)}</td>
+          <td>${escHtml(b.locked_by || '—')}</td>
+          <td>${b.budget_hours != null ? b.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</td>
+          <td>${b.budget_cost != null ? _fmtCost(b.budget_cost) : '—'}</td>
+          <td>${escHtml(b.label || '—')}</td>
+          <td><div class="actions" style="gap:.25rem">
+            ${!b.is_active ? `<button class="btn btn-secondary btn-sm" onclick="_activateBaseline(${projectId},${b.id})">${_t('baseline.activate')}</button>` : '<span class="badge-baseline active" style="font-size:.75rem">ativo</span>'}
+            ${_isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="_deleteBaseline(${projectId},${b.id})">✕</button>` : ''}
+          </div></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    }
+
+    document.getElementById('baselineModalBody').innerHTML = html;
+  } catch(e) {
+    document.getElementById('baselineModalBody').innerHTML = `<p style="color:var(--red)">Erro: ${e.message}</p>`;
+  }
+}
+
+async function _createBaseline(projectId) {
+  const label = document.getElementById('baselineLabelInput')?.value.trim() || null;
+  try {
+    await apiFetchJSON(`/api/projects/${projectId}/baseline`, 'POST', { label });
+    notify(_t('baseline.created'), 'success');
+    await _refreshBaselineModal(projectId);
+    loadProjectsTable();
+  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _activateBaseline(projectId, baselineId) {
+  try {
+    await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}/activate`, 'POST', {});
+    await _refreshBaselineModal(projectId);
+    loadProjectsTable();
+  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _deleteBaseline(projectId, baselineId) {
+  confirmDialog(_t('confirm.remove_baseline') || 'Remover este baseline?', async () => {
+    try {
+      await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}`, 'DELETE');
+      notify(_t('baseline.deleted'), 'success');
+      await _refreshBaselineModal(projectId);
+      loadProjectsTable();
+    } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
+}
+
+document.getElementById('baselineModalClose').addEventListener('click', () => {
+  document.getElementById('baselineModal').hidden = true;
+});
 
 // ---------------------------------------------------------------------------
 // ACL de projetos — controle de acesso por PEP (item 3)
