@@ -104,10 +104,10 @@
 
 <!-- Session detail modal -->
 <div id="sessionDetailModal" class="modal-backdrop" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:600px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sessionDetailTitle" style="max-width:600px">
     <div class="modal-header">
       <h3 id="sessionDetailTitle" data-i18n="session.title">Detalhes da Importação</h3>
-      <button type="button" class="modal-close" onclick="document.getElementById('sessionDetailModal').hidden=true">✕</button>
+      <button type="button" class="modal-close" onclick="closeModal('sessionDetailModal')">✕</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:1rem">
       <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
@@ -126,7 +126,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true" data-i18n="btn.close">Fechar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('sessionDetailModal')" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -869,7 +869,7 @@
 <!-- Modal: Ciclo                                                         -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="cycleModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cycleModalTitle">
     <div class="modal-header">
       <h3 id="cycleModalTitle" data-i18n="cm.title_new">Novo Ciclo</h3>
       <button type="button" class="modal-close" id="cycleModalClose">×</button>
@@ -902,7 +902,7 @@
 <!-- Modal: Projeto                                                       -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="projectModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
     <div class="modal-header">
       <h3 id="projectModalTitle" data-i18n="pm.title_new">Novo Projeto</h3>
       <button type="button" class="modal-close" id="projectModalClose">×</button>
@@ -953,7 +953,7 @@
 <!-- Modal: Nível de Senioridade                                          -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="seniorityModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="seniorityModalTitle">
     <div class="modal-header">
       <h3 id="seniorityModalTitle" data-i18n="sm.title_new">Novo Nível de Senioridade</h3>
       <button type="button" class="modal-close" id="seniorityModalClose">×</button>
@@ -976,7 +976,7 @@
 <!-- Modal: Rate Card                                                     -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="rateCardModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rateCardModalTitle">
     <div class="modal-header">
       <h3 id="rateCardModalTitle" data-i18n="rm.title_new">Nova Taxa</h3>
       <button type="button" class="modal-close" id="rateCardModalClose">×</button>
@@ -1011,7 +1011,7 @@
 <!-- Modal: Atribuir Senioridade                                          -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="assignSeniorityModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="assignSeniorityTitle">
     <div class="modal-header">
       <h3 id="assignSeniorityTitle" data-i18n="as.title">Atribuir Senioridade</h3>
       <button type="button" class="modal-close" id="assignSeniorityClose">×</button>
@@ -1038,9 +1038,9 @@
 <!-- Modal: Novo Usuário                                                  -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="userModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="um.title">Novo Usuário</h3>
+      <h3 id="userModalTitle" data-i18n="um.title">Novo Usuário</h3>
       <button type="button" class="modal-close" id="userModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1072,9 +1072,9 @@
 <!-- Modal: Alterar Senha                                                 -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="pwdModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pwdModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
+      <h3 id="pwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="pwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1096,7 +1096,7 @@
 <!-- Modal: Regra de Validação                                            -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="ruleModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ruleModalTitle">
     <div class="modal-header">
       <h3 id="ruleModalTitle">Nova Regra de Validação</h3>
       <button type="button" class="modal-close" id="ruleModalClose">×</button>
@@ -1172,9 +1172,9 @@
 <!-- Modal: Alterar Senha (Minha Área)                                   -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="myPwdModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="myPwdModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
+      <h3 id="myPwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="myPwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1197,7 +1197,7 @@
 
 <!-- Modal: Detalhe de Quarentena -->
 <div class="modal-backdrop" id="qrDetailModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:680px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle" style="max-width:680px">
     <div class="modal-header">
       <h3 id="qrModalTitle">Registro em Quarentena</h3>
       <button type="button" class="modal-close" id="qrModalClose">×</button>
@@ -1234,7 +1234,7 @@
 <!-- Modal: ACL de Projeto                                               -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="aclModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:520px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="aclModalTitle" style="max-width:520px">
     <div class="modal-header">
       <h3 id="aclModalTitle" data-i18n="acl.title">Controle de Acesso</h3>
       <button type="button" class="modal-close" id="aclModalClose">×</button>
@@ -1270,9 +1270,9 @@
 </div>
 
 <div class="modal-backdrop" id="addPlanModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:480px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="addPlanModalTitle" style="max-width:480px">
     <div class="modal-header">
-      <h3 data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
+      <h3 id="addPlanModalTitle" data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
       <button type="button" class="modal-close" id="addPlanModalClose">×</button>
     </div>
     <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem">
@@ -1284,6 +1284,25 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Confirmação                                                   -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="confirmModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="confirmModalTitle" data-i18n="confirm.modal_title">Confirmar ação</h3>
+      <button type="button" class="modal-close" id="confirmModalClose">×</button>
+    </div>
+    <div class="modal-body" style="padding:1.5rem 1.25rem">
+      <p id="confirmModalMsg"></p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="confirmModalCancel" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="confirmModalOk" data-i18n="btn.confirm">Confirmar</button>
     </div>
   </div>
 </div>
