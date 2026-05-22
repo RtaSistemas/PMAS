@@ -3594,7 +3594,7 @@ function openCycleModal(id = null) {
     document.getElementById('cycleStartInput').value = '';
     document.getElementById('cycleEndInput').value   = '';
   }
-  openModal('cycleModal', e?.currentTarget ?? document.activeElement);
+  openModal('cycleModal', document.activeElement);
 }
 
 function closeCycleModal() { closeModal('cycleModal'); }
