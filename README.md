@@ -1,93 +1,127 @@
-# PMAS — Project Management Assistant System
-
+<h1 align="center">PMAS — Project Management Assistant System</h1>
 <p align="center">
-  <img src="docs/banner.png" alt="PMAS — Dashboard Analítico de Gestão de Projetos" width="520">
+  <em>Dashboard analítico de timesheets para gestores que precisam de visibilidade real sobre horas, custos e saúde do portfólio.</em>
 </p>
-
-<p align="center">
-  <strong>Dashboard analítico de timesheet para gestão de horas e custos por projeto, colaborador e ciclo.</strong><br>
-  Importação CSV/XLSX · Análise EVM · Rate Card · Exportável como executável standalone
-</p>
-
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue?style=flat-square&logo=python" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi" alt="FastAPI"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite" alt="SQLite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square" alt="ECharts 5"/>
-  <img src="https://img.shields.io/badge/testes-170%20passing-22c55e?style=flat-square" alt="170 testes"/>
+  <img src="https://img.shields.io/badge/testes-446%20passing-22c55e?style=flat-square" alt="446 testes"/>
 </p>
 
 ---
 
-## Visão geral
+## Visão Geral
 
-O PMAS transforma planilhas de horas em dashboards interativos. Gerentes de projeto importam exports de timesheet (CSV ou XLSX), definem ciclos de apuração e projetos com budget, e visualizam em tempo real:
+O PMAS transforma exports de timesheet (CSV ou XLSX) em dashboards interativos de gestão de projetos. Gerentes importam planilhas de horas, definem ciclos de apuração e projetos com orçamento, e visualizam em tempo real o consumo por colaborador, por PEP e por ciclo — com custo real calculado via Rate Card congelado no momento da ingestão.
 
-- **Quem** está trabalhando em quê — esforço por colaborador e por PEP
-- **Quanto** já foi consumido vs. o orçado — análise EVM com custo por hora congelado no momento da importação
-- **Como** a equipe evolui ao longo dos ciclos — gráfico de tendências filtrado por PEP
+A abordagem técnica central é o **EVM freeze pattern**: o `cost_per_hour` de cada registro é resolvido na hora da importação pelo histórico de Rate Card (senioridade do colaborador × data do registro) e jamais é recalculado retroativamente. Isso garante que relatórios de períodos passados permaneçam estáveis mesmo após reajustes de taxa. O pipeline de ingestão passa por seis fases — do parse do arquivo até a auditoria — com um motor de regras de validação configurável que decide por linha entre quarentena, alerta ou rejeição.
 
-<img width="1918" height="908" alt="image" src="https://github.com/user-attachments/assets/a858b592-858b-4c47-9418-917804b6d277" />
+O projeto está em uso operacional, com banco SQLite embutido (sem dependência externa), frontend em HTML/JS puro e build standalone via PyInstaller para Linux x64 e Windows x64. A suite de testes cobre 446 casos em 17 arquivos, todos em SQLite em memória.
 
+<p align="center">
+  <img src="docs/banner.png" alt="PMAS Dashboard" width="680">
+</p>
 
 ---
 
 ## Funcionalidades
 
-### Dashboard analítico (3 visões)
+### Importação e Validação
+- **Pipeline de ingestão de 6 fases** — parse CSV/XLSX com pandas, verificações estruturais por linha, motor de regras configurável, deduplicação, agregação por dia/semana, bulk insert + auditoria
+- **Motor de regras de validação** — regras ordenadas e ativáveis; campos: `horas_individuais`, `hora_extra`, `hora_sobreaviso`, `pep_wbs`, `dia_semana`, `soma_diaria`, `soma_semanal`; ações: `quarantine`, `warn`, `reject`
+- **Quarentena automática** — datas sem ciclo cadastrado criam um ciclo de quarentena; nenhum dado é descartado silenciosamente
+- **Ciclo de revisão de quarentena** — registros em `pending` podem ser aprovados (re-ingestados) ou rejeitados pelo admin; usuários veem seus próprios registros em "Minha Área"
+- **UploadSession transparente** — cada importação cria um registro com filename, usuário, timestamp e contagens por outcome (inserido / ignorado / quarentena / warning / info)
 
-| Visão | O que mostra | Controles |
-|---|---|---|
-| **Esforço da Equipe** | Barras horizontais: horas normais, extras e sobreaviso por colaborador. Cards de KPI. Radar de horas/custo por PEP. Gráfico orçado vs. realizado. | Empilhado/Agrupado · Exportar CSV |
-| **Saúde do Portfólio** | Treemap com tamanho proporcional ao consumo (cinza = sem cadastro, laranja ≥75%, vermelho ≥100%). Bullet Chart com % de utilização. | Toggle Horas/R$ |
-| **Tendências** | Linhas de horas normais, extras e custo real por ciclo (cronológico, quarentena excluída). | Filtro local por PEP |
+### Dashboard Analítico (3 sub-abas)
+- **Esforço da Equipe** — barras horizontais (horas normais, extras, sobreaviso por colaborador), KPIs de total, radar de horas/custo por PEP, gráfico orçado vs. realizado, timeline de colaborador ao clicar na barra
+- **Saúde do Portfólio** — treemap proporcional ao consumo + bullet chart de utilização; toggle Horas/R$ alterna entre `consumed_hours`/`budget_hours` e `actual_cost`/`budget_cost`
+- **Previsão (EVM)** — curva-S por projeto: planejado vs. realizado por ciclo, projeção de conclusão com CPI/SPI, EAC, variância de prazo
 
-### Importação de dados
-- Suporta **CSV** e **XLSX/XLS** (planilhas Excel)
-- Deduplicação automática por colaborador + data + PEP + tipo de hora + horário de início
-- Datas fora de qualquer ciclo cadastrado criam automaticamente um **ciclo de quarentena** — nenhum dado é descartado
-- Botão de import diretamente na barra de cabeçalho
+### Saúde e Risco do Portfólio
+- **Semáforo macro** — barra de tráfego no topo da página: verde/amarelo/vermelho/cinza por projeto com contadores; atualizado a cada carga
+- **Portfolio Runway** — por PEP: `pct_consumed`, `cycles_to_complete`, `estimated_completion_cycle`, `spi`, `cpi`, `risk` e `cost_risk` (calculado no backend via limiares de GlobalConfig)
+- **Concentração de esforço** — top contribuidores por PEP com percentual de horas e custo; risco `high`/`medium`/`low`
 
-### Cadastros (CRUD completo)
-- **Ciclos** — períodos de apuração com datas início/fim, bloqueio após fechamento, busca em tempo real, import/export CSV
-- **Projetos / PEPs** — código WBS, nome, cliente, gerente, budget de horas e budget em R$, status (Ativo / Suspenso / Encerrado), alertas de budget (⚠ ≥90%, 🔴 ≥100%)
-- **Equipe e Rate Card** — níveis de senioridade, taxas por hora com vigência, atribuição por colaborador, atribuição em lote
+### Módulo EVM
+- **Freeze de custo** — `cost_per_hour` resolvido em `_lookup_rate()` no momento da ingestão; imutável após commit
+- **Multiplicadores globais** — hora extra e sobreaviso configuráveis; fórmula: `custo = normal_h × rate + extra_h × rate × mult_extra + standby_h × rate × mult_standby`
+- **Baseline S-curve** — `ProjectCyclePlan` registra horas planejadas por ciclo; curva-S compara planejado vs. realizado acumulado
 
-### Módulo EVM (Earned Value Management)
-- Taxa por hora congelada no momento da importação (`cost_per_hour` imutável após ingestão)
-- Multiplicadores globais configuráveis para horas extras e sobreaviso
-- Custo real calculado como: `custo = normal_h × rate + extra_h × rate × mult_extra + standby_h × rate × mult_standby`
+### Cadastros e Governança
+- **Ciclos** — CRUD com busca em tempo real, toggle de bloqueio, import/export CSV
+- **Projetos / PEPs** — código WBS, budget de horas e R$, alertas visuais (⚠ ≥90%, 🔴 ≥100%), import/export CSV, ACL por usuário
+- **Equipe e Rate Card** — níveis de senioridade, taxas horárias com vigência (`valid_from`/`valid_to`), atribuição individual e em lote, import/export CSV
+- **Audit Log** — toda ação com usuário, entidade, IDs e snapshot JSON old/new; visível ao admin
+- **ACL por PEP** — whitelist de PEPs por usuário; whitelist vazia = acesso a tudo
 
-### Outras capacidades
-- **Filtros em cascata** — ciclo → PEP (código) → PEP (descrição) → colaborador, com atualização dinâmica entre filtros
-- **Filtro por período** — date_from / date_to aplicado em todos os três sub-tabs analíticos
-- **Internacionalização** — toggle PT/EN com persistência em localStorage; todos os textos dinâmicos traduzidos
-- **Exportação CSV** — esforço da equipe, ciclos e projetos exportáveis com um clique
-- **Timeline por colaborador** — gráfico de evolução de horas por ciclo ao clicar em uma barra
-- **Gestão de usuários** — múltiplos usuários com perfis admin/usuário, autenticação JWT
-- **Schema migration** — `ALTER TABLE` automático no startup para bancos existentes (sem perda de dados)
-- **Executável standalone** — build PyInstaller para Linux x64 e Windows x64 (com ícone)
-
-
-<img width="1917" height="911" alt="image" src="https://github.com/user-attachments/assets/8e49971c-eb7d-4e31-ac63-6145f618b54e" />
---
-<img width="1917" height="907" alt="image" src="https://github.com/user-attachments/assets/6f2093fd-65e2-4a1f-88be-2ea7be12c87c" />
---
-<img width="1916" height="902" alt="image" src="https://github.com/user-attachments/assets/083e6051-22a5-4711-9aa4-c553f663484d" />
---
-<img width="1915" height="905" alt="image" src="https://github.com/user-attachments/assets/ebe58695-6c89-4862-b457-5b951d819414" />
-
+### UX e Infraestrutura
+- **i18n PT-BR / EN** — 531 chaves por idioma; toggle com persistência em `localStorage`; `_applyI18n()` cobre atributos `textContent`, `placeholder`, `title` e `aria-label`
+- **Layout personalizável** — drag-to-reorder dos painéis do dashboard; preferências persistidas no banco por usuário
+- **Tema configurável** — cores, densidade, paleta de gráficos e logo via API `/api/theme`; aplicado no frontend sem reload
+- **Schema migration** — `_migrate_columns()` em `database.py` aplica `ALTER TABLE` no startup para bancos existentes (sem perda de dados)
+- **Executável standalone** — PyInstaller Linux x64 e Windows x64 publicados via GitHub Actions ao criar uma tag de versão
 
 ---
 
-## Requisitos
+## Arquitetura
+
+```mermaid
+graph TD
+    Browser["Browser\n(HTML · CSS · JS)"]
+
+    subgraph Frontend
+        AppJS["app.js\n(CRUD · ECharts · i18n · auth)"]
+        MultiSelect["multiselect.js\n(cascading dropdowns)"]
+    end
+
+    subgraph FastAPI["FastAPI (main.py — 16 routers)"]
+        Auth["auth.py\n/api/token"]
+        Upload["upload.py\n/api/upload-timesheet"]
+        Dashboard["dashboard.py\n/api/dashboard"]
+        Analytics["analytics.py\n/api/portfolio-health\n/api/trends\n/api/forecast\n/api/runway\n/api/allocation\n/api/concentration"]
+        Cycles["cycles.py\n/api/cycles"]
+        Projects["projects.py\n/api/projects"]
+        Plans["plans.py\n/api/projects/{id}/plans"]
+        Ratecard["ratecard.py\n/api/team\n/api/rate-cards\n/api/seniority-levels"]
+        Quarantine["quarantine.py\n/api/quarantine"]
+        Rules["validation_rules.py\n/api/validation-rules"]
+        Users["users.py\n/api/users"]
+        Auditlog["auditlog.py\n/api/audit-log"]
+        Theme["theme.py\n/api/theme"]
+        My["my.py\n/api/my/*"]
+        ACL["acl.py\n/api/projects/{id}/access"]
+        Reference["reference.py\n/api/collaborators\n/api/peps"]
+    end
+
+    subgraph Services
+        Ingestion["ingestion.py\ningest_file()\n_lookup_rate()"]
+    end
+
+    subgraph DB["SQLite (pmas.db)"]
+        Models["15 ORM Models\n(SQLAlchemy 2.0)"]
+    end
+
+    Browser --> AppJS
+    AppJS --> MultiSelect
+    AppJS -->|JWT Bearer| FastAPI
+    Upload --> Ingestion
+    Ingestion --> Models
+    FastAPI --> Models
+```
+
+---
+
+## Instalação
+
+### Pré-requisitos
 
 - Python **3.11** ou **3.12**
-- Dependências listadas em `requirements.txt`
+- pip
 
----
-
-## Instalação e execução
+### Execução direta
 
 ```bash
 # 1. Clone o repositório
@@ -103,94 +137,125 @@ python -m uvicorn backend.app.main:app --reload
 
 Acesse em **http://127.0.0.1:8000** — login padrão: `admin` / `admin`.
 
-> O banco `pmas.db` (SQLite) é criado automaticamente na primeira execução.  
-> Novas colunas de versões posteriores são aplicadas via `ALTER TABLE` no startup, sem perda de dados.
+O banco `pmas.db` (SQLite) é criado automaticamente na primeira execução. Novas colunas são aplicadas via `ALTER TABLE` no startup.
 
----
-
-## Executável standalone (sem Python)
+### Executável standalone (sem Python)
 
 ```bash
-# Gera pmas-linux-x64 ou pmas-windows-x64.exe via GitHub Actions
+# Dispara o build via GitHub Actions (publica na aba Releases)
 git tag v1.0.0
 git push origin v1.0.0
 ```
-
-O workflow `release.yml` compila o executável com PyInstaller e publica na aba **Releases** do GitHub.  
-O executável Windows inclui ícone personalizado (`assets/icon.ico`).
 
 Para build local:
 
 ```bash
 pip install pyinstaller
+
 # Linux
-pyinstaller --onefile --name pmas --add-data "frontend:frontend" run.py
+pyinstaller --onefile --name pmas-linux-x64 --add-data "frontend:frontend" run.py
+
 # Windows
-pyinstaller --onefile --name pmas --icon assets\icon.ico --add-data "frontend;frontend" run.py
+pyinstaller --onefile --name pmas-windows-x64 --icon assets\icon.ico --add-data "frontend;frontend" run.py
 ```
 
 ---
 
-## Testes
+## Uso Rápido
 
 ```bash
-pip install pytest httpx
-pytest tests/ -v
+# 1. Inicie o servidor
+python -m uvicorn backend.app.main:app --reload
+
+# 2. Acesse http://127.0.0.1:8000 e faça login (admin / admin)
+
+# 3. Crie um ciclo em Ciclos → Novo Ciclo (ex: Jan/2026, 01/01/2026–31/01/2026)
+
+# 4. Importe um timesheet CSV via o botão de upload no cabeçalho
+#    (use samples/timesheet_jan2026.csv como ponto de partida)
+
+# 5. Visualize em Dashboard → Esforço da Equipe
 ```
 
-**170 testes** em 7 arquivos, todos usando SQLite em memória (StaticPool) — nenhum arquivo `pmas.db` é tocado.
+Resultado esperado: barras horizontais com horas por colaborador, KPIs de total na lateral e radar de horas por PEP. Se houver datas fora do ciclo cadastrado, os registros aparecem na quarentena com status `pending`.
 
-| Arquivo | Testes | Cobertura |
-|---|---:|---|
-| `test_cycles.py` | 16 | CRUD de ciclos, bloqueio, import CSV |
-| `test_projects.py` | 15 | CRUD de projetos, import CSV, budget |
-| `test_dashboard.py` | 9 | Agregação por colaborador, filtros |
-| `test_ingestion.py` | 21 | CSV/XLSX, dedup, quarentena, start_time |
-| `test_reference.py` | 12 | `/collaborators`, `/peps`, cascata |
-| `test_analytics.py` | 22 | portfolio-health, trends, pep-radar |
-| `test_ratecard.py` | 26 | Seniority, rate cards, EVM freeze, config |
-| `test_users.py` | 20 | Autenticação JWT, CRUD usuários |
+Gere dados de portfólio completo (29 ciclos, 10 PEPs, rate cards) com:
 
-CI executa a suite em **Python 3.11 e 3.12** a cada push (GitHub Actions).
+```bash
+python amostras/generate_portfolio.py
+# Importar os CSVs gerados em amostras/ via a interface
+```
 
 ---
 
-## Formato do arquivo de timesheet
+## Fluxo de Ingestão
+
+```mermaid
+flowchart TD
+    A([POST /api/upload-timesheet]) --> B[Fase 0\nLoad CSV/XLSX com pandas\nValidar colunas obrigatórias]
+    B --> C[Fase 0b\nPré-scan de datas\nAuto-criar ciclo quarentena se necessário]
+    C --> D[Fase 1\nPor linha: parse data · nome colaborador\nLookup de ciclo ativo]
+    D --> E{Erro estrutural?}
+    E -- Q1/Q2/Q8 --> Q[(QuarantineRecord\nstatus=pending)]
+    E -- ok --> F[Fase 2\nMotor de ValidationRules\nordenado por regra]
+    F --> G{Ação da regra?}
+    G -- quarantine --> Q
+    G -- warn/info --> H[Acumula mensagens]
+    G -- ok --> H
+    H --> I[Fase N1\nResolver/criar Collaborators]
+    I --> J[Fase 3\nRegras de agregação\nsoma_diaria · soma_semanal]
+    J --> K[Fase 4\nDELETE por pep_wbs+cycle_id\nINSERT TimesheetRecord\n_lookup_rate → cost_per_hour]
+    K --> L[Fase 5\nPersistir QuarantineRecords\nCriar UploadSession\nCommit]
+    L --> M[Fase 6\nEscrever AuditLog]
+    M --> N([UploadOut: inserted · skipped · quarantine · warnings])
+```
+
+---
+
+## Configuração
+
+### GlobalConfig (via interface → Equipe → Fatores Globais)
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `extra_hours_multiplier` | float > 0 | `1.5` | Multiplicador de custo para horas extras |
+| `standby_hours_multiplier` | float > 0 | `1.0` | Multiplicador de custo para horas sobreaviso |
+| `budget_warning_threshold` | float 0–1 | `0.9` | Limite para alerta ⚠ (ex: 0.9 = 90%) |
+| `budget_critical_threshold` | float 0–2 | `1.0` | Limite para alerta 🔴 (ex: 1.0 = 100%) |
+| `timezone` | string | `America/Sao_Paulo` | Fuso horário da aplicação |
+
+### Servidor
+
+| Parâmetro | Como configurar | Padrão |
+|---|---|---|
+| Porta | `--port 8080` na linha de comando | `8000` |
+| Host | `--host 0.0.0.0` (expose na rede) | `127.0.0.1` |
+| Banco | Variável de ambiente `DATABASE_URL` (opcional) | `./pmas.db` |
+
+### Formato CSV de timesheet
 
 | Coluna | Obrigatório | Tipo | Descrição |
 |---|:---:|---|---|
-| `Colaborador` | ✅ | Texto | Nome completo do colaborador |
+| `Colaborador` | ✅ | Texto | Nome completo |
 | `Data` | ✅ | DD/MM/AAAA | Data do registro |
 | `Horas totais (decimal)` | ✅ | Decimal | Total de horas (ex: `8.5`) |
-| `Hora extra` | — | `Sim`/`Não` | Indica horas extras |
-| `Hora sobreaviso` | — | `Sim`/`Não` | Indica horas de sobreaviso |
-| `Código PEP` | — | Texto | Código WBS do projeto (ex: `60OP-03333`) |
-| `PEP` | — | Texto | Descrição do PEP (ex: `COPEL-D | OMS`) |
-| `Hora Inicial [H]` | — | HH:MM | Diferencia lançamentos do mesmo dia no mesmo PEP |
-
-> Arquivos de exemplo disponíveis em `samples/`.
-
-<img width="1917" height="912" alt="image" src="https://github.com/user-attachments/assets/2eb44e66-560a-4576-aa2c-bad75390a537" />
-
----
-
-## Stack tecnológico
-
-| Camada | Tecnologia |
-|---|---|
-| Backend | Python 3.11+ · FastAPI · SQLAlchemy 2.0 |
-| Banco de dados | SQLite (`pmas.db`) |
-| Autenticação | JWT (python-jose) · bcrypt |
-| Frontend | HTML5 · CSS3 · JavaScript Vanilla |
-| Gráficos | Apache ECharts 5 |
-| Parsing | pandas · openpyxl |
-| Testes | pytest · httpx · FastAPI TestClient |
-| Build | PyInstaller (Linux + Windows) |
-| CI | GitHub Actions (Python 3.11 / 3.12) |
+| `Hora extra` | — | `Sim`/`Não` | Indicador de hora extra |
+| `Hora sobreaviso` | — | `Sim`/`Não` | Indicador de sobreaviso |
+| `Código PEP` | — | Texto | Código WBS (ex: `60IT-001-01`) |
+| `PEP` | — | Texto | Descrição do PEP |
+| `Hora Inicial [H]` | — | HH:MM | Diferencia lançamentos do mesmo dia/PEP |
 
 ---
 
 ## API REST
+
+### Upload e ingestão
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/upload-timesheet` | Ingestão CSV/XLSX (pipeline 6 fases) |
+| `GET` | `/api/upload-history` | Histórico de uploads (admin) |
+| `GET` | `/api/upload-history/{id}` | Detalhes de um upload (admin) |
 
 ### Dashboard
 
@@ -198,8 +263,8 @@ CI executa a suite em **Python 3.11 e 3.12** a cada push (GitHub Actions).
 |---|---|---|
 | `GET` | `/api/dashboard` | Horas por colaborador — toda a base |
 | `GET` | `/api/dashboard/{cycle_id}` | Horas por colaborador no ciclo |
-| `GET` | `/api/dashboard/pep-radar` | Horas e custo por PEP (descrição) — radar chart |
-| `GET` | `/api/dashboard/collaborator-timeline` | Evolução de horas por colaborador ao longo dos ciclos |
+| `GET` | `/api/dashboard/pep-radar` | Horas e custo por PEP (radar chart) |
+| `GET` | `/api/dashboard/collaborator-timeline` | Evolução de horas por colaborador |
 
 Todos suportam `?pep_code=&pep_description=&collaborator_id=&date_from=&date_to=`.
 
@@ -207,8 +272,12 @@ Todos suportam `?pep_code=&pep_description=&collaborator_id=&date_from=&date_to=
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/portfolio-health` | Consumo e budget por PEP (horas + custo real) |
-| `GET` | `/api/trends` | Queima de horas e custo por ciclo (cronológico) |
+| `GET` | `/api/portfolio-health` | Consumo e budget por PEP (horas + custo) |
+| `GET` | `/api/trends` | Queima de horas/custo por ciclo (cronológico) |
+| `GET` | `/api/projects/{id}/forecast` | Forecast EVM por projeto (S-curve + CPI/SPI/EAC) |
+| `GET` | `/api/portfolio-runway` | Runway e risco por PEP (pct_consumed, cycles_to_complete, cost_risk) |
+| `GET` | `/api/portfolio-allocation` | Alocação: horas e custo por colaborador+PEP |
+| `GET` | `/api/portfolio-concentration` | Concentração: top contribuidores por PEP |
 
 ### Ciclos
 
@@ -217,129 +286,192 @@ Todos suportam `?pep_code=&pep_description=&collaborator_id=&date_from=&date_to=
 | `GET` | `/api/cycles` | Lista com contagem de registros |
 | `POST` | `/api/cycles` | Criar ciclo |
 | `PUT` | `/api/cycles/{id}` | Atualizar ciclo |
-| `DELETE` | `/api/cycles/{id}` | Excluir ciclo (apenas sem registros) |
+| `DELETE` | `/api/cycles/{id}` | Excluir (apenas sem registros) |
 | `PATCH` | `/api/cycles/{id}/toggle-status` | Bloquear / desbloquear |
-| `POST` | `/api/cycles/import` | Importar ciclos via CSV |
+| `POST` | `/api/cycles/import` | Importar via CSV |
+| `GET` | `/api/cycles/export` | Exportar CSV |
 
-### Projetos
+### Projetos e Planos
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/projects` | Lista projetos |
-| `POST` | `/api/projects` | Criar projeto |
-| `PUT` | `/api/projects/{id}` | Atualizar projeto |
-| `DELETE` | `/api/projects/{id}` | Excluir projeto |
-| `POST` | `/api/projects/import` | Importar projetos via CSV (upsert por PEP) |
+| `GET/POST` | `/api/projects` | Listar / criar |
+| `PUT/DELETE` | `/api/projects/{id}` | Atualizar / excluir |
+| `POST` | `/api/projects/import` | Importar via CSV (upsert por PEP) |
+| `GET` | `/api/projects/export` | Exportar CSV |
+| `GET/POST` | `/api/projects/{id}/plans` | Listar / criar planos de ciclo (baseline) |
+| `PUT/DELETE` | `/api/projects/{id}/plans/{plan_id}` | Atualizar / excluir plano |
+| `GET` | `/api/plans/export` | Exportar todos os planos CSV |
+| `POST` | `/api/plans/import` | Importar planos CSV (upsert) |
+| `GET/POST/DELETE` | `/api/projects/{id}/access` | Gerenciar ACL por usuário (admin) |
 
 ### Equipe e Rate Card
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET/POST/PUT/DELETE` | `/api/seniority-levels[/{id}]` | CRUD de níveis de senioridade |
-| `GET/POST/PUT/DELETE` | `/api/rate-cards[/{id}]` | CRUD de taxas horárias |
+| `GET/POST/PUT/DELETE` | `/api/seniority-levels[/{id}]` | CRUD de níveis |
+| `GET/POST/PUT/DELETE` | `/api/rate-cards[/{id}]` | CRUD de taxas com vigência |
 | `GET` | `/api/team` | Colaboradores com senioridade e taxa atual |
-| `PUT` | `/api/team/{id}/seniority` | Atribuir senioridade a um colaborador |
-| `PUT` | `/api/team/bulk-seniority` | Atribuir senioridade a todos |
+| `PUT` | `/api/team/{id}/seniority` | Atribuir senioridade individual |
+| `PUT` | `/api/team/bulk-seniority` | Atribuir senioridade em lote |
+| `GET/PUT` | `/api/config` | Multiplicadores globais EVM |
 
-### Referência e configuração
+### Quarentena e Regras
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/collaborators` | Lista colaboradores com registros |
-| `GET` | `/api/peps` | Lista PEPs com agrupamento de descrições |
-| `POST` | `/api/upload-timesheet` | Ingestão de CSV/XLSX |
-| `GET/PUT` | `/api/config` | Multiplicadores globais (hora extra, sobreaviso) |
+| `GET` | `/api/quarantine` | Listar registros (admin) |
+| `POST` | `/api/quarantine/{id}/approve` | Aprovar (re-ingestar) |
+| `POST` | `/api/quarantine/{id}/reject` | Rejeitar |
+| `DELETE` | `/api/quarantine/{id}` | Excluir registro |
+| `GET/POST` | `/api/validation-rules` | Listar / criar regras |
+| `PUT/DELETE` | `/api/validation-rules/{id}` | Atualizar / excluir |
+| `PATCH` | `/api/validation-rules/{id}/toggle` | Ativar / desativar |
+| `POST` | `/api/validation-rules/reorder` | Reordenar |
 
-### Autenticação e usuários
+### Usuários, Audit e Tema
 
 | Método | Rota | Descrição |
 |---|---|---|
 | `POST` | `/api/token` | Login — retorna JWT |
-| `GET/POST` | `/api/users[/{id}]` | Listar / criar usuários (admin) |
+| `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | CRUD de usuários (admin) |
 | `PUT` | `/api/users/{id}/password` | Alterar senha |
-| `DELETE` | `/api/users/{id}` | Excluir usuário |
+| `GET` | `/api/audit-log` | Log de auditoria (admin) |
+| `GET/PUT` | `/api/theme` | Ler / atualizar tema global |
+| `POST/DELETE` | `/api/theme/logo` | Upload / remoção de logo |
+| `GET/PUT` | `/api/my/preferences` | Preferências do usuário logado |
+| `GET` | `/api/my/upload-history` | Histórico de uploads do usuário |
+| `GET` | `/api/my/quarantine` | Quarentena do usuário |
+| `GET` | `/api/my/budget-alerts` | Alertas de budget acessíveis ao usuário |
+
+### Referência
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/collaborators` | Lista colaboradores com registros |
+| `GET` | `/api/peps` | Lista PEPs com descrições agrupadas |
 
 ---
 
-## Estrutura do projeto
+## Ciclo de Vida da Quarentena
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending : Linha falha validação\n(regra ou data sem ciclo)
+
+    pending --> approved : Admin aprova\n(re-ingestão executada)
+    pending --> rejected : Admin rejeita
+
+    approved --> [*]
+    rejected --> [*]
+
+    pending --> deleted : Admin exclui
+    deleted --> [*]
+```
+
+---
+
+## Desenvolvimento
+
+### Pré-requisitos
+
+- Python 3.11 ou 3.12
+- pip
+
+### Setup
+
+```bash
+git clone https://github.com/RtaSistemas/PMAS.git
+cd PMAS
+pip install -r requirements.txt
+pip install pytest httpx
+```
+
+### Executar testes
+
+```bash
+pytest tests/ -v
+```
+
+446 testes em 17 arquivos, todos usando SQLite em memória (StaticPool) — nenhum `pmas.db` é tocado.
+
+| Arquivo | Testes | Cobertura |
+|---|---:|---|
+| `test_full_sample.py` | 108 | Pipeline end-to-end completo |
+| `test_ingestion.py` | 65 | Parse CSV/XLSX, quarentena, motor de regras |
+| `test_analytics.py` | 36 | portfolio-health, trends, EVM cost |
+| `test_ratecard.py` | 35 | SeniorityLevel, RateCard, EVM freeze |
+| `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, avaliação |
+| `test_runway_concentration.py` | 23 | Runway, concentração, cost_risk |
+| `test_quarantine.py` | 23 | Workflow approve/reject/delete |
+| `test_users.py` | 22 | CRUD usuários, JWT, papéis |
+| `test_evm_integrity.py` | 17 | Integridade do freeze de custo |
+| `test_cycles.py` | 20 | CRUD ciclos |
+| `test_projects.py` | 16 | CRUD projetos |
+| `test_reference.py` | 13 | Endpoints de filtro cascata |
+| `test_dashboard.py` | 11 | Agregação, ACL |
+| `test_validation_rules.py` | 10 | API de regras |
+| `test_auth.py` | 5 | Login, token |
+| `test_my.py` | 5 | Endpoints `/api/my/*` |
+| `test_theme.py` | 5 | CRUD tema |
+
+### Dados de amostra
+
+```bash
+python amostras/generate_portfolio.py
+# Gera em amostras/: ciclos.csv, projetos.csv, senioridade_rate_card.csv
+#                    e timesheets mensais de Jan/2024 a Mai/2026
+```
+
+### Estrutura do projeto
 
 ```
 PMAS/
-├── assets/
-│   ├── icon.ico             # Ícone Windows (6 tamanhos: 16–256px)
-│   └── icon.png             # Ícone PNG 256px (referência)
 ├── backend/app/
-│   ├── main.py              # FastAPI: CORS, routers, static files, upload, startup
-│   ├── models.py            # ORM: Collaborator, Cycle, Project, TimesheetRecord,
-│   │                        #       SeniorityLevel, RateCard, GlobalConfig, User
-│   ├── schemas.py           # Pydantic: inputs, outputs, EVM types
-│   ├── database.py          # Engine SQLite, get_db(), init_db(), _migrate_columns()
-│   ├── deps.py              # Dependências JWT: get_current_user, require_admin
-│   ├── routers/
-│   │   ├── cycles.py        # CRUD + import CSV + toggle-status
-│   │   ├── projects.py      # CRUD + import CSV (upsert)
-│   │   ├── dashboard.py     # Horas por colaborador, pep-radar, collaborator-timeline
-│   │   ├── analytics.py     # portfolio-health, trends (com actual_cost)
-│   │   ├── reference.py     # /collaborators, /peps (cascata)
-│   │   ├── ratecard.py      # seniority-levels, rate-cards, team, config
-│   │   └── users.py         # Autenticação JWT, gestão de usuários
+│   ├── main.py              # FastAPI: CORS, 16 routers, static files, init_db
+│   ├── models.py            # 15 modelos ORM (SQLAlchemy 2.0)
+│   ├── schemas.py           # Pydantic I/O (inputs, outputs, EVM types)
+│   ├── database.py          # Engine SQLite, get_db(), _migrate_columns()
+│   ├── deps.py              # JWT: get_current_user, require_admin
+│   ├── routers/             # 16 módulos de router
 │   └── services/
-│       └── ingestion.py     # Parser pandas: dedup por start_time, _lookup_rate() EVM freeze
+│       └── ingestion.py     # Pipeline 6 fases + _lookup_rate() EVM freeze
 ├── frontend/
-│   ├── index.html           # 5 abas + 3 sub-abas analíticas + modais
-│   ├── style.css            # Design system: Navy + Sky Blue + tokens CSS
-│   ├── multiselect.js       # Componente MultiSelect (cascata)
-│   └── app.js               # i18n PT/EN, ECharts, CRUD, filtros, export/import
-├── docs/
-│   └── banner.png           # Banner do README
-├── samples/                 # Arquivos CSV de exemplo
-├── tests/
-│   ├── conftest.py          # Fixtures: SQLite in-memory, StaticPool, usuário admin
-│   ├── test_cycles.py
-│   ├── test_projects.py
-│   ├── test_dashboard.py
-│   ├── test_ingestion.py
-│   ├── test_reference.py
-│   ├── test_analytics.py
-│   ├── test_ratecard.py
-│   └── test_users.py
+│   ├── index.html           # 6 abas + 3 sub-abas analíticas + modais
+│   ├── style.css            # Design system: Dark Navy + Sky Blue
+│   ├── multiselect.js       # Componente MultiSelect cascata
+│   └── app.js               # i18n (531 keys), ECharts, CRUD, auth, export
+├── tests/                   # 17 arquivos, 446 testes
+├── amostras/                # Gerador de portfólio + CSVs prontos
+├── samples/                 # CSVs de exemplo para import manual
+├── assets/                  # Ícones para executável Windows
 ├── .github/workflows/
 │   ├── tests.yml            # CI: pytest Python 3.11 e 3.12
-│   └── release.yml          # Build PyInstaller Linux + Windows (com ícone)
-├── CLAUDE.md                # Guia para Claude Code
-├── MANUAL.md                # Manual do usuário (pt-BR)
+│   └── release.yml          # Build PyInstaller Linux + Windows
+├── CLAUDE.md
+├── MANUAL.md
 ├── requirements.txt
-├── run.py                   # Entrypoint para PyInstaller
-└── pmas.db                  # Banco SQLite (criado automaticamente, não versionado)
+└── run.py                   # Entrypoint PyInstaller
 ```
 
 ---
 
-## Configuração e variáveis
+## Stack
 
-Todas as configurações são feitas via interface web — não há arquivo `.env` obrigatório.
-
-| Configuração | Onde | Default |
-|---|---|---|
-| Multiplicador hora extra | Equipe → Fatores Globais | `1.5` |
-| Multiplicador sobreaviso | Equipe → Fatores Globais | `1.0` |
-| Porta do servidor | `run.py` / linha de comando | `8000` |
-| Usuário inicial | Criado no primeiro startup | `admin` / `admin` |
-
----
-
-## Conceitos-chave
-
-**Ciclo de apuração** — período contínuo (ex: Janeiro/2026) que agrupa registros de timesheet. Ao importar horas cujas datas não se encaixam em nenhum ciclo cadastrado, o sistema cria automaticamente um ciclo de *quarentena* — os dados ficam disponíveis para análise mas sinalizados.
-
-**PEP / WBS** — código de projeto (ex: `60OP-03333`) e sua descrição (ex: `COPEL-D | OMS`). Cada registro de timesheet carrega ambos; os filtros operam sobre código e descrição independentemente.
-
-**EVM freeze pattern** — o custo por hora (`cost_per_hour`) é resolvido no momento da importação via lookup no Rate Card (nível de senioridade do colaborador × data do registro). Mudanças futuras de taxa não afetam retroativamente os custos já registrados.
-
-**Quarentena** — ciclos automáticos criados para datas sem ciclo correspondente. São incluídos nas visões de Portfólio e Esforço, mas excluídos do gráfico de Tendências (que pressupõe evolução cronológica entre ciclos regulares).
+| Camada | Tecnologia |
+|---|---|
+| Backend | Python 3.11+ · FastAPI 0.111 · SQLAlchemy 2.0 |
+| Banco de dados | SQLite embutido (`pmas.db`) |
+| Autenticação | JWT (python-jose) · bcrypt |
+| Frontend | HTML5 · CSS3 · JavaScript Vanilla |
+| Gráficos | Apache ECharts 5 |
+| Parsing | pandas · openpyxl |
+| Testes | pytest · httpx · FastAPI TestClient |
+| Build | PyInstaller (Linux x64 + Windows x64) |
+| CI | GitHub Actions (Python 3.11 / 3.12) |
 
 ---
 
 ## Licença
 
-Distribuído sob licença MIT. Consulte `LICENSE` para detalhes.
+Distribuído sob licença MIT. Consulte [`LICENSE`](LICENSE) para detalhes.

@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 const _LANG = {
   pt: {
+    'app.title':'PMAS — Dashboard de Gestão de Projetos',
     'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
     'tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
@@ -300,8 +301,28 @@ const _LANG = {
     'msg.qr_approved':'Registro aprovado e inserido.','msg.qr_rejected':'Registro rejeitado.',
     'confirm.lock_cycle':'Bloquear este ciclo?','confirm.unlock_cycle':'Desbloquear este ciclo?',
     'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
+    'page.prev':'‹ Anterior','page.next':'Próximo ›',
+    'qr.filter.all':'Todos os registros','qr.filter.pending_opt':'⏳ Pendentes','qr.filter.approved_opt':'✅ Aprovados','qr.filter.rejected_opt':'❌ Rejeitados',
+    'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.tab.forecast':'Previsão (EVM)',
+    'scatter.axis_spi':'SPI — Desempenho de Prazo','scatter.axis_cpi':'CPI — Desempenho de Custo',
+    'risk.warning':'Atenção','risk.critical':'Crítico',
+    'lbl.plus_cycles':'+{n} ciclo(s)',
+    'sem.portfolio':'Portfólio','sem.ok_label':'OK — abaixo de {pct}% do budget','sem.warning_label':'Atenção — ≥ {pct}% do budget','sem.overrun_label':'Estourado — ≥ {pct}% do budget','sem.no_budget':'Sem budget definido',
+    'msg.err_load_timeline':'Erro ao carregar timeline.','msg.err_load_daily':'Erro ao carregar dados diários.','msg.err_export_quarantine':'Erro ao exportar quarentena.',
+    'msg.baseline_imported':'Baseline importado: {n} criados, {m} atualizados',
+    'runway.csv.header':'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco',
+    'currency.symbol_title':'Símbolo da moeda','currency.factor_title':'Fator de conversão',
+    'confirm.delete_rate':'Excluir esta taxa?','confirm.delete_rule':'Excluir esta regra?',
+    'confirm.delete_logo':'Remover logo personalizado?','confirm.modal_title':'Confirmar ação',
+    'btn.confirm':'Confirmar',
+    'onboard.title':'Bem-vindo ao PMAS!',
+    'onboard.step1':'Crie ao menos um Ciclo em Projetos → Ciclos',
+    'onboard.step2':'Cadastre seus Projetos com código PEP e orçamento',
+    'onboard.step3':'Importe um timesheet em Minha Área → Upload',
+    'onboard.cta':'Ir para Ciclos',
   },
   en: {
+    'app.title':'PMAS — Project Management Dashboard',
     'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
     'tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
@@ -597,6 +618,25 @@ const _LANG = {
     'msg.qr_approved':'Record approved and inserted.','msg.qr_rejected':'Record rejected.',
     'confirm.lock_cycle':'Lock this cycle?','confirm.unlock_cycle':'Unlock this cycle?',
     'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
+    'page.prev':'‹ Previous','page.next':'Next ›',
+    'qr.filter.all':'All records','qr.filter.pending_opt':'⏳ Pending','qr.filter.approved_opt':'✅ Approved','qr.filter.rejected_opt':'❌ Rejected',
+    'layout.panel.pepcpi':'CPI by PEP','layout.panel.cost_comp':'Cost Composition','layout.panel.bullet':'Budget vs. Actual','layout.panel.quadrant':'EVM Quadrant','layout.panel.concentration':'Concentration Risk','layout.panel.plan':'Planning Baseline','layout.tab.forecast':'Forecast (EVM)',
+    'scatter.axis_spi':'SPI — Schedule Performance','scatter.axis_cpi':'CPI — Cost Performance',
+    'risk.warning':'Warning','risk.critical':'Critical',
+    'lbl.plus_cycles':'+{n} cycle(s)',
+    'sem.portfolio':'Portfolio','sem.ok_label':'OK — below {pct}% of budget','sem.warning_label':'Warning — ≥ {pct}% of budget','sem.overrun_label':'Overrun — ≥ {pct}% of budget','sem.no_budget':'No budget defined',
+    'msg.err_load_timeline':'Error loading timeline.','msg.err_load_daily':'Error loading daily data.','msg.err_export_quarantine':'Error exporting quarantine.',
+    'msg.baseline_imported':'Baseline imported: {n} created, {m} updated',
+    'runway.csv.header':'PEP,Project,Planned (h),Consumed (h),% Consumed,Avg/cycle,Cycles remaining,Est. completion,CPI,Risk',
+    'currency.symbol_title':'Currency symbol','currency.factor_title':'Conversion factor',
+    'confirm.delete_rate':'Delete this rate?','confirm.delete_rule':'Delete this rule?',
+    'confirm.delete_logo':'Remove custom logo?','confirm.modal_title':'Confirm action',
+    'btn.confirm':'Confirm',
+    'onboard.title':'Welcome to PMAS!',
+    'onboard.step1':'Create at least one Cycle under Projects → Cycles',
+    'onboard.step2':'Register your Projects with PEP code and budget',
+    'onboard.step3':'Import a timesheet in My Area → Upload',
+    'onboard.cta':'Go to Cycles',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -604,6 +644,8 @@ function _t(key) { return (_LANG[_locale] || _LANG.pt)[key] || key; }
 function _applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = _t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = _t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = _t(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', _t(el.dataset.i18nAria)); });
 }
 
 // ---------------------------------------------------------------------------
@@ -756,6 +798,55 @@ function _onCurrencyChange() {
 
 document.getElementById('currencyFactor').addEventListener('change', _onCurrencyChange);
 document.getElementById('currencySymbol').addEventListener('change', _onCurrencyChange);
+
+// ---------------------------------------------------------------------------
+// Modal utilities — focus trap + Escape + aria
+// ---------------------------------------------------------------------------
+function openModal(modalId, triggerEl, firstFocusSelector) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal._triggerEl = triggerEl || document.activeElement;
+  modal.hidden = false;
+  const firstFocusable = firstFocusSelector
+    ? modal.querySelector(firstFocusSelector)
+    : modal.querySelector('input:not([disabled]), select:not([disabled]), button:not([disabled])');
+  requestAnimationFrame(() => firstFocusable?.focus());
+  modal._trapHandler = e => {
+    if (e.key !== 'Tab') return;
+    const focusable = [...modal.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )];
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+    else            { if (document.activeElement === last)  { e.preventDefault(); first.focus(); } }
+  };
+  modal._escHandler = e => { if (e.key === 'Escape') closeModal(modalId); };
+  modal.addEventListener('keydown', modal._trapHandler);
+  document.addEventListener('keydown', modal._escHandler);
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.hidden = true;
+  if (modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
+  if (modal._escHandler)  document.removeEventListener('keydown', modal._escHandler);
+  modal._triggerEl?.focus();
+}
+
+function confirmDialog(message, onConfirm, danger = true) {
+  document.getElementById('confirmModalMsg').textContent = message;
+  const btn = document.getElementById('confirmModalOk');
+  btn.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+  const handler = () => {
+    closeModal('confirmModal');
+    onConfirm();
+    btn.removeEventListener('click', handler);
+  };
+  btn.addEventListener('click', handler);
+  openModal('confirmModal', document.activeElement, '#confirmModalOk');
+}
 
 // ---------------------------------------------------------------------------
 // Table sort
@@ -932,9 +1023,9 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 
 document.getElementById('runwayExportBtn').addEventListener('click', () => {
   if (!_lastRunwayData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco';
+  const header = _t('runway.csv.header');
   const rows = _lastRunwayData.map(d => {
-    const risk = { ok: 'OK', warning: 'Atenção', critical: 'Crítico', overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
+    const risk = { ok: 'OK', warning: _t('risk.warning'), critical: _t('risk.critical'), overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
     return [
       `"${d.pep_wbs}"`, `"${d.name || ''}"`,
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
@@ -1085,6 +1176,10 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   localStorage.setItem('pmas_lang', _locale);
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
+  cycleMs.setPlaceholder(_t('ms.cycle_ph'));
+  pepMs.setPlaceholder(_t('ms.pep_ph'));
+  pepDescMs.setPlaceholder(_t('ms.pep_desc_ph'));
+  collaboratorMs.setPlaceholder(_t('ms.collab_ph'));
   // Re-render dynamic content for active tab
   const tab = document.querySelector('.tab-btn.active')?.dataset.tab;
   if (tab === 'cycles')   _renderCyclesTable(_allCycles);
@@ -1172,9 +1267,15 @@ clearBtn.addEventListener('click', () => {
 // Analytics — render dispatcher
 // ---------------------------------------------------------------------------
 async function _renderActiveTab() {
-  if (_activeATab === 'effort')    await _renderEffortTab();
-  if (_activeATab === 'portfolio') await _renderPortfolioTab();
-  if (_activeATab === 'forecast')  await _renderForecastTab();
+  const btn = document.getElementById('loadBtn');
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+  try {
+    if (_activeATab === 'effort')    await _renderEffortTab();
+    if (_activeATab === 'portfolio') await _renderPortfolioTab();
+    if (_activeATab === 'forecast')  await _renderForecastTab();
+  } finally {
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+  }
 }
 
 function _showEmpty(id, show) {
@@ -1323,13 +1424,7 @@ function _drawRunwayRows(data) {
     const rawPct = _evmMode ? item.pct_consumed_cost : item.pct_consumed;
     const pct    = rawPct != null ? Math.min(rawPct, 100) : 0;
 
-    // Bar color: hours mode uses backend risk classification; cost mode derives inline
-    const costRisk = item.pct_consumed_cost == null ? 'no_budget'
-      : item.pct_consumed_cost > 100 ? 'overrun'
-      : item.pct_consumed_cost >= 90  ? 'critical'
-      : item.pct_consumed_cost >= 80  ? 'warning'
-      : 'ok';
-    const color = _riskColor(_evmMode ? costRisk : item.risk);
+    const color = _riskColor(_evmMode ? item.cost_risk : item.risk);
 
     const absLabel = _evmMode
       ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
@@ -1795,22 +1890,24 @@ let _allocSortCol   = '__total__';
 let _allocSortDir   = -1;
 
 async function _renderAllocationTab() {
-  const cycleIds  = cycleMs.getValues();
-  const collabIds = collaboratorMs.getValues();
-  const pepCodes  = pepMs.getValues();
-  const pepDescs  = pepDescMs.getValues();
-  const dateFrom  = document.getElementById('dateFromInput').value;
-  const dateTo    = document.getElementById('dateToInput').value;
-
-  const p = new URLSearchParams();
-  cycleIds.forEach(id  => p.append('cycle_id', id));
-  collabIds.forEach(id => p.append('collaborator_id', id));
-  pepCodes.forEach(c   => p.append('pep_wbs', c));
-  pepDescs.forEach(d   => p.append('pep_description', d));
-  if (dateFrom) p.set('date_from', dateFrom);
-  if (dateTo)   p.set('date_to', dateTo);
-
+  const btn = document.getElementById('loadBtn');
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
   try {
+    const cycleIds  = cycleMs.getValues();
+    const collabIds = collaboratorMs.getValues();
+    const pepCodes  = pepMs.getValues();
+    const pepDescs  = pepDescMs.getValues();
+    const dateFrom  = document.getElementById('dateFromInput').value;
+    const dateTo    = document.getElementById('dateToInput').value;
+
+    const p = new URLSearchParams();
+    cycleIds.forEach(id  => p.append('cycle_id', id));
+    collabIds.forEach(id => p.append('collaborator_id', id));
+    pepCodes.forEach(c   => p.append('pep_wbs', c));
+    pepDescs.forEach(d   => p.append('pep_description', d));
+    if (dateFrom) p.set('date_from', dateFrom);
+    if (dateTo)   p.set('date_to', dateTo);
+
     const data = await apiFetch(`/api/allocation?${p}`);
     _lastAllocData = data;
     _allocSortCol  = '__total__';
@@ -1818,6 +1915,8 @@ async function _renderAllocationTab() {
     _drawAllocMatrix();
   } catch (err) {
     notify(`Erro: ${err.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   }
 }
 
@@ -2194,14 +2293,15 @@ async function _renderPlanTable(pep_wbs) {
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
-async function deletePlan(cycle_id) {
+function deletePlan(cycle_id) {
   if (!_planProjectId) return;
-  if (!confirm(_t('confirm.remove_baseline'))) return;
-  try {
-    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  confirmDialog(_t('confirm.remove_baseline'), async () => {
+    try {
+      await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
+      await _renderPlanTable(_currentForecastPep);
+      _renderForecastTab();
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 let _addPlanAvailableCycles = [];
@@ -2243,7 +2343,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     document.getElementById('addPlanRows').innerHTML = '';
     document.getElementById('addPlanError').textContent = '';
     _addPlanRow(_addPlanAvailableCycles);
-    document.getElementById('addPlanModal').hidden = false;
+    openModal('addPlanModal');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 });
 
@@ -2252,7 +2352,7 @@ document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
 });
 
 function _closeAddPlanModal() {
-  document.getElementById('addPlanModal').hidden = true;
+  closeModal('addPlanModal');
 }
 document.getElementById('addPlanModalClose').addEventListener('click', _closeAddPlanModal);
 document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
@@ -2317,8 +2417,8 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || res.statusText);
-    const msg = `Baseline importado: ${data.created} criados, ${data.updated} atualizados` +
-      (data.errors.length ? ` — ${data.errors.length} erro(s)` : '');
+    const msg = _t('msg.baseline_imported').replace('{n}', data.created).replace('{m}', data.updated) +
+      (data.errors.length ? ` — ${data.errors.length} ${_t('msg.errors_n')}` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
@@ -2333,7 +2433,7 @@ function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120
 
 function _buildEffortTitle(payload, cycleCount) {
   const { cycle, filters } = payload;
-  let t = cycleCount > 1 ? `${cycle.name} (+${cycleCount - 1} ciclo(s))` : cycle.name;
+  let t = cycleCount > 1 ? `${cycle.name} (${_t('lbl.plus_cycles').replace('{n}', cycleCount - 1)})` : cycle.name;
   if (filters.pep_codes?.length) t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
   return t;
 }
@@ -2466,10 +2566,7 @@ function _buildHoursBarOption({
   };
 
   // ── 5. Séries de barras ─────────────────────────────────────────────
-  // [C1] showBackground preservado: presente em G1 (horizontal), ausente em G2/G3 (vertical)
-  const bgStyle = isHoriz
-    ? { showBackground: true, backgroundStyle: { color: 'rgba(180, 180, 180, 0.01)' } }
-    : {};
+  const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.05)' } };
 
   const barMaxWidth = isHoriz ? 32 : 48;
 
@@ -2542,7 +2639,7 @@ function _buildHoursBarOption({
 
   // ── 9. Montagem final ───────────────────────────────────────────────
   return {
-    backgroundColor: 'transparent',
+    backgroundColor: _cssVar('--card'),
 
     title: truncated ? {
       subtext:      `Exibindo os primeiros ${maxItems} itens`,
@@ -2637,7 +2734,7 @@ function _buildEvmQuadrantOption(items) {
     },
     grid: { top: 40, bottom: 52, left: 60, right: 24, containLabel: false },
     xAxis: {
-      name: 'SPI — Desempenho de Prazo',
+      name: _t('scatter.axis_spi'),
       nameLocation: 'middle', nameGap: 34,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
@@ -2646,7 +2743,7 @@ function _buildEvmQuadrantOption(items) {
       min: xMin, max: xMax,
     },
     yAxis: {
-      name: 'CPI — Desempenho de Custo',
+      name: _t('scatter.axis_cpi'),
       nameLocation: 'middle', nameGap: 52,
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
@@ -2948,7 +3045,7 @@ async function _renderCollabTimeline(name) {
 
   let rows = [];
   try { rows = await apiFetch(`/api/dashboard/collaborator-timeline?${p}`); }
-  catch (e) { notify('Erro ao carregar timeline.', 'error'); return; }
+  catch (e) { notify(_t('msg.err_load_timeline'), 'error'); return; }
 
   // dispose old chart
   const existing = echarts.getInstanceByDom(chartEl);
@@ -2999,7 +3096,7 @@ async function _renderCollabCalendar(name, year, month) {
   let data = [];
   try {
     data = await apiFetch(`/api/dashboard/collaborator-daily?collaborator_name=${encodeURIComponent(name)}&year=${year}&month=${month}`);
-  } catch(e) { notify('Erro ao carregar dados diários.', 'error'); return; }
+  } catch(e) { notify(_t('msg.err_load_daily'), 'error'); return; }
 
   // dispose old
   const existing = echarts.getInstanceByDom(chartEl);
@@ -3445,21 +3542,23 @@ function _renderCyclesTable(cycles) {
     </tr>`).join('');
 }
 
-async function toggleCycleLock(id, isClosed) {
-  if (!confirm(_t(isClosed ? 'confirm.unlock_cycle' : 'confirm.lock_cycle'))) return;
-  try {
-    await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
-    loadCyclesTable();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function toggleCycleLock(id, isClosed) {
+  confirmDialog(_t(isClosed ? 'confirm.unlock_cycle' : 'confirm.lock_cycle'), async () => {
+    try {
+      await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
+      loadCyclesTable();
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
-async function toggleCycleArchive(id, isActive) {
-  if (!confirm(_t(isActive ? 'confirm.archive_cycle' : 'confirm.restore_cycle'))) return;
-  try {
-    await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
-    loadCyclesTable();
-    loadDashboardCycles();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function toggleCycleArchive(id, isActive) {
+  confirmDialog(_t(isActive ? 'confirm.archive_cycle' : 'confirm.restore_cycle'), async () => {
+    try {
+      await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
+      loadCyclesTable();
+      loadDashboardCycles();
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 document.getElementById('showArchivedCycles').addEventListener('change', loadCyclesTable);
@@ -3480,10 +3579,10 @@ function openCycleModal(id = null) {
     document.getElementById('cycleStartInput').value = '';
     document.getElementById('cycleEndInput').value   = '';
   }
-  document.getElementById('cycleModal').hidden = false;
+  openModal('cycleModal', e?.currentTarget ?? document.activeElement);
 }
 
-function closeCycleModal() { document.getElementById('cycleModal').hidden = true; }
+function closeCycleModal() { closeModal('cycleModal'); }
 
 document.getElementById('cycleSaveBtn').addEventListener('click', async () => {
   const body = {
@@ -3519,11 +3618,12 @@ document.getElementById('cycleSearch').addEventListener('input', e => {
   _renderCyclesTable(_applySort('cyclesTable', filtered));
 });
 
-async function deleteCycle(id, name, count) {
+function deleteCycle(id, name, count) {
   if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
-  if (!confirm(_t('confirm.delete_cycle'))) return;
-  try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
-  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  confirmDialog(_t('confirm.delete_cycle'), async () => {
+    try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
+    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 document.getElementById('exportCyclesBtn').addEventListener('click', () => {
@@ -3630,10 +3730,10 @@ function openProjectModal(id = null) {
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
-  document.getElementById('projectModal').hidden = false;
+  openModal('projectModal');
 }
 
-function closeProjectModal() { document.getElementById('projectModal').hidden = true; }
+function closeProjectModal() { closeModal('projectModal'); }
 
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
@@ -3676,10 +3776,11 @@ document.getElementById('projectSearch').addEventListener('input', e => {
   _renderProjectsTable(_applySort('projectsTable', filtered));
 });
 
-async function deleteProject(id, pep) {
-  if (!confirm(_t('confirm.delete_project'))) return;
-  try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
-  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function deleteProject(id, pep) {
+  confirmDialog(_t('confirm.delete_project'), async () => {
+    try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
+    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -3691,7 +3792,7 @@ async function _openAclModal(projectId, pepWbs) {
   _aclProjectId = projectId;
   document.getElementById('aclModalTitle').textContent = _t('msg.acl_title') + pepWbs;
   document.getElementById('aclError').textContent = '';
-  document.getElementById('aclModal').hidden = false;
+  openModal('aclModal');
   await Promise.all([_loadAclEntries(), _populateAclUserSelect()]);
 }
 
@@ -3738,16 +3839,17 @@ document.getElementById('aclGrantBtn')?.addEventListener('click', async () => {
   } catch (e) { errEl.textContent = e.message; }
 });
 
-async function _revokeAccess(userId) {
-  if (!confirm(_t('confirm.revoke_access'))) return;
-  try {
-    await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
-    await _loadAclEntries();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function _revokeAccess(userId) {
+  confirmDialog(_t('confirm.revoke_access'), async () => {
+    try {
+      await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
+      await _loadAclEntries();
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
-document.getElementById('aclModalClose')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
-document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { document.getElementById('aclModal').hidden = true; });
+document.getElementById('aclModalClose')?.addEventListener('click', () => { closeModal('aclModal'); });
+document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { closeModal('aclModal'); });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
@@ -3877,9 +3979,9 @@ function openSeniorityModal(id = null) {
   document.getElementById('seniorityError').textContent = '';
   const l = id ? _allSeniorityLevels.find(x => x.id === id) : null;
   document.getElementById('seniorityNameInput').value = l ? l.name : '';
-  document.getElementById('seniorityModal').hidden = false;
+  openModal('seniorityModal');
 }
-function closeSeniorityModal() { document.getElementById('seniorityModal').hidden = true; }
+function closeSeniorityModal() { closeModal('seniorityModal'); }
 
 document.getElementById('senioritySaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('seniorityNameInput').value.trim();
@@ -3924,10 +4026,11 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
   e.target.value = '';
 });
 
-async function deleteSeniorityLevel(id, name) {
-  if (!confirm(_t('confirm.delete_level'))) return;
-  try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
-  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function deleteSeniorityLevel(id, name) {
+  confirmDialog(_t('confirm.delete_level'), async () => {
+    try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
+    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // Rate card modal
@@ -3947,9 +4050,9 @@ function openRateCardModal(id = null) {
   document.getElementById('rateCardRateInput').value = c ? c.hourly_rate : '';
   document.getElementById('rateCardFromInput').value = c ? c.valid_from : '';
   document.getElementById('rateCardToInput').value   = c ? (c.valid_to ?? '') : '';
-  document.getElementById('rateCardModal').hidden = false;
+  openModal('rateCardModal');
 }
-function closeRateCardModal() { document.getElementById('rateCardModal').hidden = true; }
+function closeRateCardModal() { closeModal('rateCardModal'); }
 
 document.getElementById('rateCardSaveBtn').addEventListener('click', async () => {
   const rate = document.getElementById('rateCardRateInput').value;
@@ -4006,10 +4109,11 @@ document.getElementById('importRateCardInput').addEventListener('change', async 
   e.target.value = '';
 });
 
-async function deleteRateCard(id) {
-  if (!confirm('Excluir esta taxa?')) return;
-  try { await apiFetchJSON(`/api/rate-cards/${id}`, 'DELETE'); await loadRateCards(); await loadTeamTable(); }
-  catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function deleteRateCard(id) {
+  confirmDialog(_t('confirm.delete_rate'), async () => {
+    try { await apiFetchJSON(`/api/rate-cards/${id}`, 'DELETE'); await loadRateCards(); await loadTeamTable(); }
+    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // Assign seniority modal
@@ -4022,9 +4126,9 @@ function openAssignSeniority(collabId, name, currentLevelId) {
     _allSeniorityLevels.map(l =>
       `<option value="${l.id}" ${l.id === currentLevelId ? 'selected' : ''}>${escHtml(l.name)}</option>`
     ).join('');
-  document.getElementById('assignSeniorityModal').hidden = false;
+  openModal('assignSeniorityModal');
 }
-function closeAssignSeniority() { document.getElementById('assignSeniorityModal').hidden = true; }
+function closeAssignSeniority() { closeModal('assignSeniorityModal'); }
 
 document.getElementById('assignSenioritySaveBtn').addEventListener('click', async () => {
   const val = document.getElementById('assignSenioritySelect').value;
@@ -4039,18 +4143,19 @@ document.getElementById('assignSeniorityCancelBtn').addEventListener('click', cl
 document.getElementById('assignSeniorityClose').addEventListener('click', closeAssignSeniority);
 
 // Bulk assign seniority
-document.getElementById('bulkSeniorityBtn').addEventListener('click', async () => {
+document.getElementById('bulkSeniorityBtn').addEventListener('click', () => {
   const val = document.getElementById('bulkSenioritySelect').value;
   const label = val
     ? _allSeniorityLevels.find(l => l.id === parseInt(val))?.name
     : _t('as.none_opt');
-  if (!confirm(_t('confirm.assign_all'))) return;
-  try {
-    const body = { seniority_level_id: val ? parseInt(val) : null };
-    await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
-    await loadTeamTable();
-    notify(`Senioridade "${label}" atribuída a todos.`, 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  confirmDialog(_t('confirm.assign_all'), async () => {
+    try {
+      const body = { seniority_level_id: val ? parseInt(val) : null };
+      await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
+      await loadTeamTable();
+      notify(`Senioridade "${label}" atribuída a todos.`, 'success');
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 });
 
 // Global config (multipliers)
@@ -4169,9 +4274,20 @@ async function apiFetchJSON(url, method, body) {
 
 function notify(msg, type = 'info') {
   const el = document.getElementById('notification');
-  el.textContent = msg; el.className = type; el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 6000);
+  const textEl = document.getElementById('notificationText');
+  clearTimeout(el._timer);
+  textEl.textContent = msg;
+  el.className = type;
+  el.hidden = false;
+  if (type !== 'error') {
+    el._timer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
 }
+document.getElementById('notificationClose').addEventListener('click', () => {
+  const el = document.getElementById('notification');
+  clearTimeout(el._timer);
+  el.hidden = true;
+});
 
 function fmt(h) {
   return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {
@@ -4282,11 +4398,11 @@ document.getElementById('newUserBtn').addEventListener('click', () => {
   document.getElementById('userPasswordInput').value = '';
   document.getElementById('userRoleSelect').value    = 'user';
   document.getElementById('userError').textContent   = '';
-  document.getElementById('userModal').hidden = false;
+  openModal('userModal');
 });
 
-document.getElementById('userModalClose').addEventListener('click',  () => { document.getElementById('userModal').hidden = true; });
-document.getElementById('userCancelBtn').addEventListener('click',   () => { document.getElementById('userModal').hidden = true; });
+document.getElementById('userModalClose').addEventListener('click',  () => { closeModal('userModal'); });
+document.getElementById('userCancelBtn').addEventListener('click',   () => { closeModal('userModal'); });
 
 document.getElementById('userSaveBtn').addEventListener('click', async () => {
   const username = document.getElementById('userUsernameInput').value.trim();
@@ -4297,7 +4413,7 @@ document.getElementById('userSaveBtn').addEventListener('click', async () => {
   if (!username || !password) { errEl.textContent = _t('msg.fields_required'); return; }
   try {
     await apiFetchJSON('/api/users', 'POST', { username, password, role });
-    document.getElementById('userModal').hidden = true;
+    closeModal('userModal');
     loadUsersTable();
     notify(_t('msg.user_created'), 'success');
   } catch (e) { errEl.textContent = e.message; }
@@ -4307,11 +4423,11 @@ function openPwdModal(userId) {
   document.getElementById('pwdTargetId').value  = userId;
   document.getElementById('pwdNewInput').value  = '';
   document.getElementById('pwdError').textContent = '';
-  document.getElementById('pwdModal').hidden = false;
+  openModal('pwdModal');
 }
 
-document.getElementById('pwdModalClose').addEventListener('click', () => { document.getElementById('pwdModal').hidden = true; });
-document.getElementById('pwdCancelBtn').addEventListener('click',  () => { document.getElementById('pwdModal').hidden = true; });
+document.getElementById('pwdModalClose').addEventListener('click', () => { closeModal('pwdModal'); });
+document.getElementById('pwdCancelBtn').addEventListener('click',  () => { closeModal('pwdModal'); });
 
 document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   const userId      = document.getElementById('pwdTargetId').value;
@@ -4321,17 +4437,18 @@ document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   if (!new_password) { errEl.textContent = _t('msg.pwd_field_required'); return; }
   try {
     await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
-    document.getElementById('pwdModal').hidden = true;
+    closeModal('pwdModal');
     notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
-async function deleteUser(id, username) {
-  if (!confirm(_t('confirm.delete_user'))) return;
-  try {
-    await apiFetchJSON(`/api/users/${id}`, 'DELETE');
-    loadUsersTable();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function deleteUser(id, username) {
+  confirmDialog(_t('confirm.delete_user'), async () => {
+    try {
+      await apiFetchJSON(`/api/users/${id}`, 'DELETE');
+      loadUsersTable();
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -4687,13 +4804,13 @@ document.getElementById('myChangePwdBtn')?.addEventListener('click', () => {
   document.getElementById('myCurrentPwdInput').value = '';
   document.getElementById('myNewPwdInput').value = '';
   document.getElementById('myPwdError').textContent = '';
-  document.getElementById('myPwdModal').removeAttribute('hidden');
+  openModal('myPwdModal');
 });
 document.getElementById('myPwdModalClose')?.addEventListener('click', () => {
-  document.getElementById('myPwdModal').setAttribute('hidden', '');
+  closeModal('myPwdModal');
 });
 document.getElementById('myPwdCancelBtn')?.addEventListener('click', () => {
-  document.getElementById('myPwdModal').setAttribute('hidden', '');
+  closeModal('myPwdModal');
 });
 document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   const currentPwd = document.getElementById('myCurrentPwdInput').value.trim();
@@ -4711,7 +4828,7 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
       new_password: newPwd,
       current_password: currentPwd,
     });
-    document.getElementById('myPwdModal').setAttribute('hidden', '');
+    closeModal('myPwdModal');
     notify(_t('msg.pwd_changed'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
@@ -4866,7 +4983,7 @@ document.getElementById('myQrNextBtn')?.addEventListener('click', () => {
 document.getElementById('myQrExportBtn')?.addEventListener('click', async () => {
   try {
     const resp = await fetch('/api/my/quarantine/export', { headers: _authHeaders() });
-    if (!resp.ok) { notify('Erro ao exportar quarentena.', 'error'); return; }
+    if (!resp.ok) { notify(_t('msg.err_export_quarantine'), 'error'); return; }
     const blob = await resp.blob();
     const cd   = resp.headers.get('Content-Disposition') || '';
     const name = cd.match(/filename="([^"]+)"/)?.[1] || 'quarantine_export.csv';
@@ -4972,7 +5089,7 @@ function _openRuleModal(rule = null) {
   document.getElementById('ruleDescInput').value     = rule?.description || '';
   document.getElementById('ruleError').textContent   = '';
   _updateRuleActionOptions();
-  document.getElementById('ruleModal').removeAttribute('hidden');
+  openModal('ruleModal');
 }
 
 function openEditRule(id) {
@@ -4982,8 +5099,8 @@ function openEditRule(id) {
 
 document.getElementById('ruleFieldInput')?.addEventListener('change', _updateRuleActionOptions);
 document.getElementById('newRuleBtn')?.addEventListener('click', () => _openRuleModal());
-document.getElementById('ruleModalClose')?.addEventListener('click',  () => document.getElementById('ruleModal').setAttribute('hidden', ''));
-document.getElementById('ruleCancelBtn')?.addEventListener('click',   () => document.getElementById('ruleModal').setAttribute('hidden', ''));
+document.getElementById('ruleModalClose')?.addEventListener('click',  () => closeModal('ruleModal'));
+document.getElementById('ruleCancelBtn')?.addEventListener('click',   () => closeModal('ruleModal'));
 
 document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
   const errEl = document.getElementById('ruleError');
@@ -5003,7 +5120,7 @@ document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
     } else {
       await apiFetchJSON('/api/validation-rules', 'POST', payload);
     }
-    document.getElementById('ruleModal').setAttribute('hidden', '');
+    closeModal('ruleModal');
     loadRulesList();
     notify(_t('vr.saved'), 'success');
   } catch (e) { errEl.textContent = e.message; }
@@ -5016,13 +5133,14 @@ async function toggleRule(id) {
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
-async function deleteRule(id) {
-  if (!confirm('Excluir esta regra?')) return;
-  try {
-    await apiFetchJSON(`/api/validation-rules/${id}`, 'DELETE');
-    loadRulesList();
-    notify('Regra excluída.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+function deleteRule(id) {
+  confirmDialog(_t('confirm.delete_rule'), async () => {
+    try {
+      await apiFetchJSON(`/api/validation-rules/${id}`, 'DELETE');
+      loadRulesList();
+      notify('Regra excluída.', 'success');
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -5063,21 +5181,21 @@ function _openQRDetail(id) {
   document.getElementById('qrApproveBtn').onclick = () => _doQRAction(id, 'approve');
   document.getElementById('qrRejectBtn').onclick  = () => _doQRAction(id, 'reject');
 
-  document.getElementById('qrDetailModal').removeAttribute('hidden');
+  openModal('qrDetailModal');
 }
 
 async function _doQRAction(id, action) {
   try {
     await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
-    document.getElementById('qrDetailModal').setAttribute('hidden', '');
+    closeModal('qrDetailModal');
     notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
     _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
-document.getElementById('qrModalClose')?.addEventListener('click',    () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
-document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => document.getElementById('qrDetailModal').setAttribute('hidden', ''));
+document.getElementById('qrModalClose')?.addEventListener('click',    () => closeModal('qrDetailModal'));
+document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => closeModal('qrDetailModal'));
 
 
 // ---------------------------------------------------------------------------
@@ -5152,7 +5270,7 @@ async function _openSessionDetail(sessionId) {
       iDiv.hidden = true;
     }
 
-    modal.hidden = false;
+    openModal('sessionDetailModal');
   } catch (e) { notify(`Erro ao carregar detalhes: ${e.message}`, 'error'); }
 }
 
@@ -5347,13 +5465,14 @@ document.getElementById('logoUploadInput')?.addEventListener('change', async (e)
   e.target.value = '';
 });
 
-document.getElementById('deleteLogoBtn')?.addEventListener('click', async () => {
-  if (!confirm('Remover logo personalizado?')) return;
-  try {
-    _currentTheme = await apiFetchJSON('/api/theme/logo', 'DELETE');
-    _loadTheme();
-    notify('Logo removido.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+document.getElementById('deleteLogoBtn')?.addEventListener('click', () => {
+  confirmDialog(_t('confirm.delete_logo'), async () => {
+    try {
+      _currentTheme = await apiFetchJSON('/api/theme/logo', 'DELETE');
+      _loadTheme();
+      notify('Logo removido.', 'success');
+    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -5404,11 +5523,11 @@ async function loadSemaphore() {
       : '';
 
     const summaryHtml =
-      `<span class="sem-title">Portfólio</span>
-      ${dot('green',  `OK — abaixo de ${wPct}% do budget`)}
-      ${dot('yellow', `Atenção — ≥ ${wPct}% do budget`)}
-      ${dot('red',    `Estourado — ≥ ${cPct}% do budget`)}
-      ${dot('grey',   'Sem budget definido')}`;
+      `<span class="sem-title">${_t('sem.portfolio')}</span>
+      ${dot('green',  _t('sem.ok_label').replace('{pct}', wPct))}
+      ${dot('yellow', _t('sem.warning_label').replace('{pct}', wPct))}
+      ${dot('red',    _t('sem.overrun_label').replace('{pct}', cPct))}
+      ${dot('grey',   _t('sem.no_budget'))}`;
 
     bar.innerHTML =
       `<div class="sem-summary">${summaryHtml}</div>
@@ -5520,12 +5639,40 @@ function _bootApp() {
   _loadTheme();
   _loadPreferences().then(() => _applyLayoutPreferences());
   _updateHeaderUser();
-  loadDashboardCycles();
+  loadDashboardCycles().then(() => {
+    if (!_allCycles.length && _isAdmin()) _showOnboardingBanner();
+  });
   loadSemaphore();
   loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
 }
+
+function _showOnboardingBanner() {
+  if (document.getElementById('onboardingBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'onboardingBanner';
+  banner.className = 'card';
+  banner.style.cssText = 'margin:1.5rem;padding:1.5rem;border:1px solid var(--primary);background:rgba(14,165,233,0.05)';
+  banner.innerHTML = `
+    <h2 style="margin:0 0 1rem;font-size:1.1rem;color:var(--primary)">${_t('onboard.title')}</h2>
+    <ol style="margin:0 0 1.25rem;padding-left:1.4rem;display:flex;flex-direction:column;gap:.4rem;color:var(--text-2)">
+      <li>${_t('onboard.step1')}</li>
+      <li>${_t('onboard.step2')}</li>
+      <li>${_t('onboard.step3')}</li>
+    </ol>
+    <button class="btn btn-primary btn-sm" id="onboardingCta">${_t('onboard.cta')}</button>
+  `;
+  const dashPanel = document.getElementById('tab-dashboard');
+  if (dashPanel) dashPanel.prepend(banner);
+  document.getElementById('onboardingCta')?.addEventListener('click', () => {
+    banner.remove();
+    document.querySelector('[data-tab="projects"]')?.click();
+  });
+}
+
+document.getElementById('confirmModalClose')?.addEventListener('click', () => closeModal('confirmModal'));
+document.getElementById('confirmModalCancel')?.addEventListener('click', () => closeModal('confirmModal'));
 
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');

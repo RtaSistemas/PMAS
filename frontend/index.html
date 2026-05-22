@@ -58,6 +58,7 @@
 <!-- App shell                                                          -->
 <!-- ================================================================ -->
 <div id="appShell" hidden>
+<h1 class="sr-only" data-i18n="app.title">PMAS — Dashboard de Gestão de Projetos</h1>
 
 <header>
   <div class="header-brand">
@@ -77,17 +78,20 @@
   <div class="header-actions">
     <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .75rem;min-width:11rem">
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Símbolo da moeda" />
+        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
       <span style="color:#475569;font-size:.85rem">×</span>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" title="Fator de conversão" />
+        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
     <button type="button" id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button type="button" id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
   </div>
 </header>
 
-<div id="notification"></div>
+<div id="notification" role="alert" aria-live="assertive" aria-atomic="true" hidden>
+  <span id="notificationText"></span>
+  <button type="button" class="notif-close" id="notificationClose" aria-label="Fechar notificação">✕</button>
+</div>
 
 <!-- Ingest result panel — shown after every upload -->
 <div id="ingestResultPanel" hidden style="margin:0 1.5rem .5rem;border-radius:.5rem;font-size:.85rem;overflow:hidden">
@@ -100,10 +104,10 @@
 
 <!-- Session detail modal -->
 <div id="sessionDetailModal" class="modal-backdrop" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:600px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sessionDetailTitle" style="max-width:600px">
     <div class="modal-header">
       <h3 id="sessionDetailTitle" data-i18n="session.title">Detalhes da Importação</h3>
-      <button type="button" class="modal-close" onclick="document.getElementById('sessionDetailModal').hidden=true">✕</button>
+      <button type="button" class="modal-close" onclick="closeModal('sessionDetailModal')">✕</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:1rem">
       <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
@@ -122,7 +126,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('sessionDetailModal').hidden=true" data-i18n="btn.close">Fechar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('sessionDetailModal')" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -204,7 +208,7 @@
       <div id="effortStats"></div>
       <div class="card chart-panel" id="effortPanel" data-chart-id="effortChart" data-panel-id="effort-chart">
         <div class="panel-header">
-          <span class="panel-title" id="effortTitle">Esforço por Colaborador</span>
+          <span class="panel-title" id="effortTitle" data-i18n="chart.effortChart">Esforço por Colaborador</span>
           <div style="display:flex;gap:0.5rem">
             <button type="button" id="stackToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.stacked">Vista: Empilhada</button>
             <button type="button" id="exportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
@@ -218,7 +222,7 @@
       <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem .5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
           <span id="collabDetailName" style="font-size:.95rem;font-weight:600;color:var(--text)"></span>
-          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" aria-label="Fechar">✕</button>
+          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
         </div>
         <!-- Section 1: horas por ciclo -->
         <div style="padding:1rem 1.25rem .5rem">
@@ -607,72 +611,72 @@
             <li class="sortable-item layout-tab-item" data-chart="effort">
               <div class="sortable-item-row">
                 <span class="sortable-handle tab-handle">⠿</span>
-                <span class="sortable-item-label">Esforço da Equipe</span>
+                <span class="sortable-item-label" data-i18n="atab.effort">Esforço da Equipe</span>
               </div>
               <ul class="sortable-list panel-order-list" id="panelList-effort">
                 <li class="sortable-item sortable-item-sm" data-panel="effort-chart">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Esforço por Colaborador</span>
+                  <span class="sortable-item-label" data-i18n="chart.effortChart">Esforço por Colaborador</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="effort-trends">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Queima de Horas por Ciclo</span>
+                  <span class="sortable-item-label" data-i18n="trends.title">Queima de Horas por Ciclo</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="effort-pepcpi">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">CPI por PEP</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.pepcpi">CPI por PEP</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="effort-cost">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Composição de Custo</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.cost_comp">Composição de Custo</span>
                 </li>
               </ul>
             </li>
             <li class="sortable-item layout-tab-item" data-chart="portfolio">
               <div class="sortable-item-row">
                 <span class="sortable-handle tab-handle">⠿</span>
-                <span class="sortable-item-label">Saúde do Portfólio</span>
+                <span class="sortable-item-label" data-i18n="atab.portfolio">Saúde do Portfólio</span>
               </div>
               <ul class="sortable-list panel-order-list" id="panelList-portfolio">
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-treemap">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Distribuição por PEP (Treemap)</span>
+                  <span class="sortable-item-label" data-i18n="portfolio.treemap_h">Distribuição de Horas por PEP (Treemap)</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-bullet">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Orçado vs. Realizado</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.bullet">Orçado vs. Realizado</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-quadrant">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Quadrante EVM</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.quadrant">Quadrante EVM</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-concentration">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Concentração de Risco</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.concentration">Concentração de Risco</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-allocation">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Alocação</span>
+                  <span class="sortable-item-label" data-i18n="atab.allocation">Alocação</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-runway">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Runway do Portfólio</span>
+                  <span class="sortable-item-label" data-i18n="runway.title">Runway do Portfólio</span>
                 </li>
               </ul>
             </li>
             <li class="sortable-item layout-tab-item" data-chart="forecast">
               <div class="sortable-item-row">
                 <span class="sortable-handle tab-handle">⠿</span>
-                <span class="sortable-item-label">Previsão (EVM)</span>
+                <span class="sortable-item-label" data-i18n="layout.tab.forecast">Previsão (EVM)</span>
               </div>
               <ul class="sortable-list panel-order-list" id="panelList-forecast">
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-chart">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Previsão de Conclusão</span>
+                  <span class="sortable-item-label" data-i18n="chart.forecastChart">Previsão de Conclusão</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-plan">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label">Baseline de Planejamento</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.plan">Baseline de Planejamento</span>
                 </li>
               </ul>
             </li>
@@ -698,7 +702,7 @@
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
-          <button type="button" class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn">↺ Atualizar</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
         <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">
@@ -723,13 +727,13 @@
           <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
           <div style="display:flex;gap:.5rem;align-items:center">
             <select id="myQrFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
-              <option value="">Todos os registros</option>
-              <option value="pending">⏳ Pendentes</option>
-              <option value="approved">✅ Aprovados</option>
-              <option value="rejected">❌ Rejeitados</option>
+              <option value="" data-i18n="qr.filter.all">Todos os registros</option>
+              <option value="pending" data-i18n="qr.filter.pending_opt">⏳ Pendentes</option>
+              <option value="approved" data-i18n="qr.filter.approved_opt">✅ Aprovados</option>
+              <option value="rejected" data-i18n="qr.filter.rejected_opt">❌ Rejeitados</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="myQrRefreshBtn">↺ Atualizar</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="myQrExportBtn">⬇ Exportar CSV</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="myQrRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="myQrExportBtn" data-i18n="qr.btn.export">⬇ Exportar CSV</button>
           </div>
         </div>
         <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
@@ -746,9 +750,9 @@
           <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-          <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm">‹ Anterior</button>
+          <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myQrPageLabel" style="font-size:.8rem;color:#94a3b8"></span>
-          <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm">Próximo ›</button>
+          <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
         </div>
       </div>
     </div>
@@ -865,7 +869,7 @@
 <!-- Modal: Ciclo                                                         -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="cycleModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cycleModalTitle">
     <div class="modal-header">
       <h3 id="cycleModalTitle" data-i18n="cm.title_new">Novo Ciclo</h3>
       <button type="button" class="modal-close" id="cycleModalClose">×</button>
@@ -898,7 +902,7 @@
 <!-- Modal: Projeto                                                       -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="projectModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
     <div class="modal-header">
       <h3 id="projectModalTitle" data-i18n="pm.title_new">Novo Projeto</h3>
       <button type="button" class="modal-close" id="projectModalClose">×</button>
@@ -949,7 +953,7 @@
 <!-- Modal: Nível de Senioridade                                          -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="seniorityModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="seniorityModalTitle">
     <div class="modal-header">
       <h3 id="seniorityModalTitle" data-i18n="sm.title_new">Novo Nível de Senioridade</h3>
       <button type="button" class="modal-close" id="seniorityModalClose">×</button>
@@ -972,7 +976,7 @@
 <!-- Modal: Rate Card                                                     -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="rateCardModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rateCardModalTitle">
     <div class="modal-header">
       <h3 id="rateCardModalTitle" data-i18n="rm.title_new">Nova Taxa</h3>
       <button type="button" class="modal-close" id="rateCardModalClose">×</button>
@@ -1007,7 +1011,7 @@
 <!-- Modal: Atribuir Senioridade                                          -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="assignSeniorityModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="assignSeniorityTitle">
     <div class="modal-header">
       <h3 id="assignSeniorityTitle" data-i18n="as.title">Atribuir Senioridade</h3>
       <button type="button" class="modal-close" id="assignSeniorityClose">×</button>
@@ -1034,9 +1038,9 @@
 <!-- Modal: Novo Usuário                                                  -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="userModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="um.title">Novo Usuário</h3>
+      <h3 id="userModalTitle" data-i18n="um.title">Novo Usuário</h3>
       <button type="button" class="modal-close" id="userModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1068,9 +1072,9 @@
 <!-- Modal: Alterar Senha                                                 -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="pwdModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pwdModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
+      <h3 id="pwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="pwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1092,7 +1096,7 @@
 <!-- Modal: Regra de Validação                                            -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="ruleModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ruleModalTitle">
     <div class="modal-header">
       <h3 id="ruleModalTitle">Nova Regra de Validação</h3>
       <button type="button" class="modal-close" id="ruleModalClose">×</button>
@@ -1168,9 +1172,9 @@
 <!-- Modal: Alterar Senha (Minha Área)                                   -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="myPwdModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="myPwdModalTitle">
     <div class="modal-header">
-      <h3 data-i18n="pwdm.title">Alterar Senha</h3>
+      <h3 id="myPwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
       <button type="button" class="modal-close" id="myPwdModalClose">×</button>
     </div>
     <div class="form-grid cols-1">
@@ -1193,7 +1197,7 @@
 
 <!-- Modal: Detalhe de Quarentena -->
 <div class="modal-backdrop" id="qrDetailModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:680px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle" style="max-width:680px">
     <div class="modal-header">
       <h3 id="qrModalTitle">Registro em Quarentena</h3>
       <button type="button" class="modal-close" id="qrModalClose">×</button>
@@ -1230,7 +1234,7 @@
 <!-- Modal: ACL de Projeto                                               -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="aclModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:520px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="aclModalTitle" style="max-width:520px">
     <div class="modal-header">
       <h3 id="aclModalTitle" data-i18n="acl.title">Controle de Acesso</h3>
       <button type="button" class="modal-close" id="aclModalClose">×</button>
@@ -1242,8 +1246,8 @@
       <div>
         <p style="font-size:.78rem;font-weight:600;color:#cbd5e1;margin:0 0 .5rem" data-i18n="acl.granted">Acessos concedidos</p>
         <table class="data-table" id="aclEntriesTable" style="font-size:.8rem">
-          <thead><tr><th>Usuário</th><th></th></tr></thead>
-          <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1rem">Carregando…</td></tr></tbody>
+          <thead><tr><th data-i18n="user.th.user">Usuário</th><th></th></tr></thead>
+          <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
 
@@ -1252,7 +1256,7 @@
         <div style="flex:1">
           <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem" data-i18n="acl.add_user">Adicionar usuário</label>
           <select id="aclUserSelect" class="form-select" style="height:2rem;font-size:.82rem;width:100%">
-            <option value="">— selecione —</option>
+            <option value="" data-i18n="ms.select_ph">— selecione —</option>
           </select>
         </div>
         <button type="button" class="btn btn-primary btn-sm" id="aclGrantBtn" data-i18n="btn.grant">Conceder</button>
@@ -1266,9 +1270,9 @@
 </div>
 
 <div class="modal-backdrop" id="addPlanModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:480px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="addPlanModalTitle" style="max-width:480px">
     <div class="modal-header">
-      <h3 data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
+      <h3 id="addPlanModalTitle" data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
       <button type="button" class="modal-close" id="addPlanModalClose">×</button>
     </div>
     <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem">
@@ -1280,6 +1284,25 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Confirmação                                                   -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="confirmModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="confirmModalTitle" data-i18n="confirm.modal_title">Confirmar ação</h3>
+      <button type="button" class="modal-close" id="confirmModalClose">×</button>
+    </div>
+    <div class="modal-body" style="padding:1.5rem 1.25rem">
+      <p id="confirmModalMsg"></p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="confirmModalCancel" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="confirmModalOk" data-i18n="btn.confirm">Confirmar</button>
     </div>
   </div>
 </div>
