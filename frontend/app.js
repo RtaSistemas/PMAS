@@ -21,11 +21,13 @@ const _LANG = {
     'forecast.select_pep':'— selecione um PEP —',
     'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
-    'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
+    'forecast.remaining_cost':'Custo Restante (EPC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
     'forecast.now_marker':'Atual',
     'forecast.pv_line':'VP (Valor Planejado)',
-    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
+    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (VS)',
+    'forecast.cv':'Variação de Custo (VC)','forecast.tcpi':'IDC para Conclusão (IDC-PC)',
+    'forecast.vac':'Variação no Término (VNT)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
     'forecast.info.project':'Projeto','forecast.info.manager':'Gerente',
     'forecast.info.budget':'Orçamento','forecast.info.status':'Status',
@@ -348,11 +350,13 @@ const _LANG = {
     'forecast.select_pep':'— select a PEP —',
     'forecast.empty':'Select a PEP to view the completion forecast.',
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
-    'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
+    'forecast.remaining_cost':'Remaining Cost (ETC)','forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
     'forecast.now_marker':'Now',
     'forecast.pv_line':'PV (Planned Value)',
     'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
+    'forecast.cv':'Cost Variance (CV)','forecast.tcpi':'TCPI',
+    'forecast.vac':'Variance at Completion (VAC)',
     'forecast.no_budget':'No budget registered for this PEP.',
     'forecast.info.project':'Project','forecast.info.manager':'Manager',
     'forecast.info.budget':'Budget','forecast.info.status':'Status',
@@ -2130,19 +2134,33 @@ function _buildForecastKpis(fc) {
   const svFmt  = fc.sv != null ? (fc.sv >= 0 ? '+' : '') + fmtR(fc.sv) : '—';
   const svCls  = fc.sv == null ? 'neutral' : fc.sv >= 0 ? 'green' : 'red';
 
+  const cvFmt  = fc.cv != null ? (fc.cv >= 0 ? '+' : '') + fmtR(fc.cv) : '—';
+  const cvCls  = fc.cv == null ? 'neutral' : fc.cv >= 0 ? 'green' : 'red';
+
+  const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
+  const tcpiCls = fc.tcpi == null ? 'neutral' : fc.tcpi <= 1.0 ? 'green' : fc.tcpi <= 1.1 ? 'amber' : 'red';
+
+  const vacFmt  = fc.vac != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
+  const vacCls  = fc.vac == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red';
+
   const completionVal = fc.estimated_completion_cycle
     || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
 
   const cards = [
-    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),     cls: 'blue'              },
+    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),        cls: 'blue'              },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
-                                                              lbl: _t('forecast.remaining'),    cls: over ? 'red' : 'neutral' },
-    { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
-    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls,   evm: 'CPI' },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral', evm: 'EAC' },
-    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls,   evm: 'SPI' },
-    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls,    evm: 'SV'  },
-    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'              },
+                                                              lbl: _t('forecast.remaining'),       cls: over ? 'red' : 'neutral' },
+    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',
+                                                              lbl: _t('forecast.remaining_cost'),  cls: 'neutral', evm: 'ETC' },
+    { val: pct,                                               lbl: _t('forecast.utilization'),     cls: over ? 'red' : 'green'   },
+    { val: cpiVal,                                            lbl: 'CPI',                          cls: cpiCls,   evm: 'CPI' },
+    { val: cvFmt,                                             lbl: _t('forecast.cv'),              cls: cvCls,    evm: 'CV'  },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                          cls: 'neutral', evm: 'EAC' },
+    { val: vacFmt,                                            lbl: _t('forecast.vac'),             cls: vacCls,   evm: 'VAC' },
+    { val: tcpiVal,                                           lbl: _t('forecast.tcpi'),            cls: tcpiCls,  evm: 'TCPI'},
+    { val: spiVal,                                            lbl: _t('forecast.spi'),             cls: spiCls,   evm: 'SPI' },
+    { val: svFmt,                                             lbl: _t('forecast.sv'),              cls: svCls,    evm: 'SV'  },
+    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),      cls: 'violet'              },
   ];
   return cards.map(({ val, lbl, cls, evm }) => {
     const lblHtml = evm

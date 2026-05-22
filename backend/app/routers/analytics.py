@@ -440,6 +440,9 @@ def get_forecast(
 
     cpi = None
     eac = None
+    cv = None
+    tcpi = None
+    vac = None
     spi = None
     sv = None
 
@@ -448,6 +451,13 @@ def get_forecast(
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
+            cv  = round(ev_val - actual_cost, 2)
+            # TCPI: efficiency required to finish within original budget
+            bac_minus_ac = budget_cost - actual_cost
+            if bac_minus_ac > 0:
+                tcpi = round((budget_cost - ev_val) / bac_minus_ac, 3)
+        if eac is not None:
+            vac = round(budget_cost - eac, 2)
         # BUG-A fix: use EV/PV frozen at the last planned cycle, not final totals;
         # prevents SPI from converging to 1.0 after the project overruns its schedule
         if has_plan and last_plan_pv and last_plan_pv > 0:
@@ -456,6 +466,7 @@ def get_forecast(
 
     # BUG-C fix: floor remaining_hours at 0 so overrun projects don't return negative values
     remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours is not None else None
+    remaining_cost = round(eac - actual_cost, 2) if eac is not None and actual_cost is not None else None
 
     est_cycles = None
     est_completion = None
@@ -482,8 +493,12 @@ def get_forecast(
         "consumed_hours": round(consumed_hours, 2),
         "actual_cost": round(actual_cost, 2),
         "remaining_hours": remaining_hours,
+        "remaining_cost": remaining_cost,
         "cpi": cpi,
         "eac": eac,
+        "cv": cv,
+        "tcpi": tcpi,
+        "vac": vac,
         "spi": spi,
         "sv": sv,
         "avg_hours_per_cycle": round(avg_hours, 2),
