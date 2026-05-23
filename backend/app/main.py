@@ -16,6 +16,7 @@ from backend.app.routers import (
     my, plans, projects, quarantine, ratecard, reference,
     theme, upload, users, validation_rules,
 )
+from backend.app.routers.v2 import effort, filters, forecast, portfolio, trends as trends_v2
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +65,12 @@ app.include_router(quarantine.router)
 app.include_router(validation_rules.router)
 app.include_router(my.router)
 app.include_router(theme.router)
+# v2 endpoints — consolidated, render-ready, ACL-enforced
+app.include_router(filters.router)
+app.include_router(portfolio.router)
+app.include_router(effort.router)
+app.include_router(trends_v2.router)
+app.include_router(forecast.router)
 
 
 def _frontend_dir() -> str:

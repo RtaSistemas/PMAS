@@ -543,15 +543,6 @@ class TestDashboard:
     def test_dashboard_cycle_not_found(self, client):
         assert client.get("/api/dashboard/99999").status_code == 404
 
-    def test_pep_radar(self, client, db_session):
-        # Router prefix is /api/dashboard → full path is /api/dashboard/pep-radar
-        cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        co = _mk_collab(db_session, "radar_collab")
-        _mk_record(db_session, cy, co, "RAD-001", desc="Radar PEP", normal=16.0)
-        r = client.get("/api/dashboard/pep-radar")
-        assert r.status_code == 200
-        assert any(x["pep_description"] == "Radar PEP" for x in r.json())
-
     def test_collaborator_timeline(self, client, db_session):
         """Timeline endpoint lives under /api/dashboard/collaborator-timeline."""
         cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
@@ -679,20 +670,6 @@ class TestAnalytics:
         result = client.get("/api/trends").json()
         total_cost = sum(x["actual_cost"] for x in result)
         assert total_cost == pytest.approx(7000.0)
-
-    # -- allocation
-    def test_allocation_empty(self, client):
-        assert client.get("/api/allocation").json() == []
-
-    def test_allocation_matrix(self, client, db_session):
-        # AllocationItem is a flat row: collaborator, pep_wbs, total_hours, actual_cost
-        cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        co = _mk_collab(db_session, "alloc_collab")
-        _mk_record(db_session, cy, co, "ALLOC-001", normal=32.0, cost_per_hour=100.0)
-        r = client.get("/api/allocation").json()
-        item = next(x for x in r if x["collaborator"] == "alloc_collab" and x["pep_wbs"] == "ALLOC-001")
-        assert item["total_hours"] == 32.0
-        assert item["actual_cost"] == pytest.approx(3200.0)
 
     # -- forecast
     def test_forecast_requires_pep_wbs(self, client):

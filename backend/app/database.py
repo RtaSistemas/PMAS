@@ -62,6 +62,20 @@ def init_db() -> None:
     _seed_admin()
     _seed_config()
     _seed_validation_rules()
+    _backfill_summaries()
+
+
+def _backfill_summaries() -> None:
+    """Populate pre-computed summary tables from existing data on first migration."""
+    try:
+        from backend.app.services.summaries import backfill_summaries
+        db = SessionLocal()
+        try:
+            backfill_summaries(db)
+        finally:
+            db.close()
+    except Exception:
+        log.debug("_backfill_summaries: erro", exc_info=True)
 
 
 def _seed_config() -> None:
@@ -174,6 +188,13 @@ def _migrate_columns() -> None:
                     "ALTER TABLE quarantine_record"
                     " ADD COLUMN review_status VARCHAR NOT NULL DEFAULT 'pending'"
                 ))
+            # Fase 1 — frozen cost columns on TimesheetRecord
+            if "normal_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN normal_cost FLOAT"))
+            if "extra_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN extra_cost FLOAT"))
+            if "standby_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 

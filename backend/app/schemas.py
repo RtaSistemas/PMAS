@@ -265,14 +265,6 @@ class TrendItem(BaseModel):
     standby_cost: float = 0.0
 
 
-class AllocationItem(BaseModel):
-    collaborator: str
-    pep_wbs: str | None
-    pep_description: str | None
-    total_hours: float
-    actual_cost: float
-
-
 class BurnHistoryPoint(BaseModel):
     cycle_name: str
     cycle_start: date
@@ -323,12 +315,6 @@ class UploadOut(BaseModel):
     warnings: List[str] = []
     infos: List[str] = []
     upload_session_id: Optional[int] = None
-
-
-class PepRadarItem(BaseModel):
-    pep_description: str
-    total_hours: float
-    actual_cost: float
 
 
 # Auth

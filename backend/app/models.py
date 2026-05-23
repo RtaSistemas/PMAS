@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -80,6 +81,11 @@ class TimesheetRecord(Base):
     extra_hours = Column(Float, default=0.0, nullable=False)
     standby_hours = Column(Float, default=0.0, nullable=False)
     cost_per_hour = Column(Float, default=0.0, nullable=False)
+    # Costs frozen at ingestion time using the GlobalConfig multipliers active
+    # at that moment — immune to future multiplier changes (EVM freeze pattern).
+    normal_cost  = Column(Float, nullable=True)
+    extra_cost   = Column(Float, nullable=True)
+    standby_cost = Column(Float, nullable=True)
 
     collaborator = relationship("Collaborator", back_populates="records")
     cycle = relationship("Cycle", back_populates="records")
@@ -279,3 +285,55 @@ class UserPreference(Base):
     updated_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="preference")
+
+
+# ── Pre-computed summary tables (written at ingestion, read by v2 endpoints) ──
+
+class PepCycleSummary(Base):
+    """Grain: (pep_wbs, cycle_id).  Populated/refreshed during ingest_file()."""
+    __tablename__ = "pep_cycle_summary"
+
+    id              = Column(Integer, primary_key=True)
+    pep_wbs         = Column(String,  nullable=False, index=True)
+    pep_description = Column(String,  nullable=True)
+    cycle_id        = Column(Integer, ForeignKey("cycle.id", ondelete="CASCADE"), nullable=False, index=True)
+    total_hours     = Column(Float, default=0.0)
+    normal_hours    = Column(Float, default=0.0)
+    extra_hours     = Column(Float, default=0.0)
+    standby_hours   = Column(Float, default=0.0)
+    total_cost      = Column(Float, default=0.0)
+    normal_cost     = Column(Float, default=0.0)
+    extra_cost      = Column(Float, default=0.0)
+    standby_cost    = Column(Float, default=0.0)
+    refreshed_at    = Column(DateTime, nullable=True)
+
+    cycle = relationship("Cycle")
+
+    __table_args__ = (
+        UniqueConstraint("pep_wbs", "cycle_id", name="uq_pep_cycle_summary"),
+    )
+
+
+class CollaboratorCycleSummary(Base):
+    """Grain: (collaborator_id, cycle_id).  Populated/refreshed during ingest_file()."""
+    __tablename__ = "collaborator_cycle_summary"
+
+    id              = Column(Integer, primary_key=True)
+    collaborator_id = Column(Integer, ForeignKey("collaborator.id", ondelete="CASCADE"), nullable=False, index=True)
+    cycle_id        = Column(Integer, ForeignKey("cycle.id",        ondelete="CASCADE"), nullable=False, index=True)
+    normal_hours    = Column(Float, default=0.0)
+    extra_hours     = Column(Float, default=0.0)
+    standby_hours   = Column(Float, default=0.0)
+    total_hours     = Column(Float, default=0.0)
+    total_cost      = Column(Float, default=0.0)
+    normal_cost     = Column(Float, default=0.0)
+    extra_cost      = Column(Float, default=0.0)
+    standby_cost    = Column(Float, default=0.0)
+    refreshed_at    = Column(DateTime, nullable=True)
+
+    collaborator = relationship("Collaborator")
+    cycle        = relationship("Cycle")
+
+    __table_args__ = (
+        UniqueConstraint("collaborator_id", "cycle_id", name="uq_collab_cycle_summary"),
+    )
