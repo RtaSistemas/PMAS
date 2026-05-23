@@ -417,6 +417,7 @@ def get_forecast(
 
     # Load planned hours per cycle for this project (keyed by cycle start_date for alignment)
     plan_by_cycle_start: dict = {}
+    plan_cost_by_cycle_start: dict = {}
     if project:
         plan_rows = (
             db.query(ProjectCyclePlan, Cycle.start_date)
@@ -424,7 +425,8 @@ def get_forecast(
             .filter(ProjectCyclePlan.project_id == project.id)
             .all()
         )
-        plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
+        plan_by_cycle_start       = {start: plan.planned_hours for plan, start in plan_rows}
+        plan_cost_by_cycle_start  = {start: plan.planned_cost  for plan, start in plan_rows}
 
     active_baseline = (
         db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
@@ -438,10 +440,14 @@ def get_forecast(
     sorted_plans = sorted(plan_by_cycle_start.items()) if plan_by_cycle_start else []
     has_plan = bool(sorted_plans)
 
+    has_any_planned_cost = has_plan and any(v is not None for v in plan_cost_by_cycle_start.values())
+    blended_rate = (budget_cost / budget_hours) if (budget_hours and budget_cost and budget_hours > 0) else None
+
     history = []
     cum_h  = 0.0   # physical hours (for display)
     cum_wh = 0.0   # weighted hours (for EV numerator, aligns with AC cost basis)
     cum_c  = 0.0
+    cum_pc = 0.0   # cumulative planned cost
     prev_cum_ph = 0.0
     last_plan_ev: Optional[float] = None
     last_plan_pv: Optional[float] = None
@@ -453,6 +459,11 @@ def get_forecast(
 
         # Cumulative planned hours through all plan cycles up to this cycle's start_date
         cum_ph = sum(h for s, h in sorted_plans if s <= r.cycle_start) if sorted_plans else 0.0
+
+        # Cumulative planned cost (only cycles with non-null planned_cost contribute)
+        pc_period = plan_cost_by_cycle_start.get(r.cycle_start) if has_plan else None
+        if pc_period is not None:
+            cum_pc += pc_period
 
         # Capture EV/PV at the last cycle where the plan advanced (BUG-A fix):
         # avoids SPI converging to 1.0 when project overruns past the plan end date
@@ -470,6 +481,7 @@ def get_forecast(
             pv_cum  = min(cum_ph / budget_hours, 1.0) * budget_cost
             if pv_cum > 0:
                 spi_cum = round(ev_cum / pv_cum, 3)
+        ev_cost_cum = round(cum_h * blended_rate, 2) if blended_rate is not None else None
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -478,7 +490,10 @@ def get_forecast(
             "cumulative_hours": round(cum_h, 2),
             "cumulative_cost": round(cum_c, 2),
             "planned_hours": round(ph_period, 2) if ph_period is not None else None,
+            "planned_cost": round(pc_period, 2) if pc_period is not None else None,
             "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
+            "cumulative_planned_cost": round(cum_pc, 2) if has_any_planned_cost else None,
+            "cumulative_ev_cost": ev_cost_cum,
             "spi_cumulative": spi_cum,
         })
 

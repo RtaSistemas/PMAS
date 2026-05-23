@@ -162,14 +162,18 @@ const _LANG = {
     'toolbox.data_view_lang':['Dados do Gráfico','Fechar','Atualizar'],
     'toolbox.zoom':'Zoom','toolbox.zoom_back':'Desfazer Zoom',
     'toolbox.stack':'Empilhado','toolbox.tiled':'Lado a Lado',
-    'plan.title':'Baseline de Planejamento (Horas/Ciclo)',
+    'plan.title':'Baseline de Planejamento (Horas e Custo/Ciclo)',
     'plan.btn_add':'+ Adicionar ciclo','plan.btn_export':'↓ Exportar CSV','plan.btn_import':'↑ Importar CSV',
-    'plan.hint':'Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.',
-    'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas',
+    'plan.hint':'Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.',
+    'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas','plan.th.cost':'Custo Planejado (R$)',
     'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
     'plan.modal_title':'Adicionar ciclos ao baseline',
-    'plan.modal_hint':'Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.',
+    'plan.modal_hint':'Selecione os ciclos e defina as horas e custo planejados. Ciclos já com baseline não são listados.',
     'plan.modal_add_row':'+ Mais um ciclo',
+    'plan.edit_title':'Editar baseline do ciclo',
+    'burnup.title':'Burn-Up de Custo (R$)',
+    'burnup.pv':'Planejado (PV)','burnup.ev':'Valor Agregado (EV)','burnup.ac':'Custo Real (AC)',
+    'burnup.empty':'Defina o custo planejado por ciclo no baseline para visualizar este gráfico.',
     'myarea.upload':'Importação de Arquivo','myarea.history':'Histórico de Importações',
     'myarea.quarantine':'Quarentena',
     'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
@@ -500,14 +504,18 @@ const _LANG = {
     'toolbox.data_view_lang':['Chart Data','Close','Refresh'],
     'toolbox.zoom':'Zoom','toolbox.zoom_back':'Undo Zoom',
     'toolbox.stack':'Stacked','toolbox.tiled':'Side by Side',
-    'plan.title':'Planning Baseline (Hours/Cycle)',
+    'plan.title':'Planning Baseline (Hours & Cost/Cycle)',
     'plan.btn_add':'+ Add cycle','plan.btn_export':'↓ Export CSV','plan.btn_import':'↑ Import CSV',
-    'plan.hint':'Set planned hours per cycle to compute PV, SPI and Schedule Variance.',
-    'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours',
+    'plan.hint':'Set planned hours and cost per cycle to compute PV, SPI, Schedule Variance and the Cost Burn-Up chart.',
+    'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours','plan.th.cost':'Planned Cost (R$)',
     'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
     'plan.modal_title':'Add cycles to baseline',
-    'plan.modal_hint':'Select cycles and set planned hours. Cycles already in the baseline are not listed.',
+    'plan.modal_hint':'Select cycles and set planned hours and cost. Cycles already in the baseline are not listed.',
     'plan.modal_add_row':'+ One more cycle',
+    'plan.edit_title':'Edit baseline cycle',
+    'burnup.title':'Cost Burn-Up (R$)',
+    'burnup.pv':'Planned (PV)','burnup.ev':'Earned Value (EV)','burnup.ac':'Actual Cost (AC)',
+    'burnup.empty':'Set planned cost per cycle in the baseline to display this chart.',
     'myarea.upload':'Upload','myarea.history':'Import History',
     'myarea.quarantine':'Quarantine',
     'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
@@ -1026,7 +1034,7 @@ const _charts = {};
 const CHARTS_PER_TAB = {
   effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
-  forecast:   ['forecastChart'],
+  forecast:   ['forecastChart', 'burnUpChart'],
 };
 
 function _disposeTabCharts(tabId) {
@@ -2393,6 +2401,81 @@ function _renderForecastProjectInfo(fc, proj) {
   el.hidden = false;
 }
 
+function _buildBurnUpOption(fc) {
+  const history = fc.history || [];
+  const cats = history.map(h => h.cycle_name);
+  const pvData = history.map(h => h.cumulative_planned_cost ?? null);
+  const evData = history.map(h => h.cumulative_ev_cost      ?? null);
+  const acData = history.map(h => h.cumulative_cost         ?? null);
+
+  const _fmtR = v => v == null ? '' : `R$ ${(+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+  return {
+    backgroundColor: 'transparent',
+    legend: {
+      data: [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')],
+      top: 8, left: 'center',
+      textStyle: { color: _cssVar('--text'), fontSize: 12 },
+      itemGap: 24, itemWidth: 18, itemHeight: 10,
+    },
+    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
+      textStyle: { color: _cssVar('--text') },
+      formatter: params => {
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
+        params.forEach(p => {
+          if (p.value == null) return;
+          html += `${p.marker} ${p.seriesName}: <b>${_fmtR(p.value)}</b><br>`;
+        });
+        return html;
+      },
+    },
+    toolbox: _toolbox({
+      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
+    }, 'PMAS-BurnUp'),
+    xAxis: {
+      type: 'category', data: cats,
+      axisLabel: { color: _cssVar('--text-3'), rotate: cats.length > 8 ? 30 : 0, fontSize: 11 },
+      axisTick: { alignWithLabel: true },
+    },
+    yAxis: {
+      type: 'value', name: 'R$',
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      axisLabel: {
+        color: _cssVar('--text-3'), fontSize: 11,
+        formatter: v => `R$${(v/1000).toFixed(0)}k`,
+      },
+      splitLine: { lineStyle: { color: _cssVar('--border') } },
+    },
+    series: [
+      {
+        name: _t('burnup.pv'),
+        type: 'line', data: pvData,
+        symbol: 'none', connectNulls: true,
+        lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
+        itemStyle: { color: '#94a3b8' },
+      },
+      {
+        name: _t('burnup.ev'),
+        type: 'line', data: evData,
+        symbol: 'circle', symbolSize: 5, connectNulls: false,
+        lineStyle: { color: '#22c55e', width: 2.5 },
+        itemStyle: { color: '#22c55e' },
+        areaStyle: { color: '#22c55e18' },
+      },
+      {
+        name: _t('burnup.ac'),
+        type: 'line', data: acData,
+        symbol: 'circle', symbolSize: 5, connectNulls: false,
+        lineStyle: { color: '#ef4444', width: 2.5 },
+        itemStyle: { color: '#ef4444' },
+      },
+    ],
+  };
+}
+
 async function _renderForecastTab() {
   await _populateForecastPepSelect();
   const pep      = document.getElementById('forecastPepSelect').value;
@@ -2433,6 +2516,7 @@ async function _renderForecastTab() {
       chart.setOption(_buildForecastOption(fc), true);
       chart.resize();
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
+    _renderBurnUpChart(fc);
     await _renderPlanTable(pep);
     document.getElementById('planCard').hidden = false;
   } catch (err) {
@@ -2440,9 +2524,31 @@ async function _renderForecastTab() {
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
     document.getElementById('planCard').hidden = true;
+    document.getElementById('burnUpCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
   }
+}
+
+function _renderBurnUpChart(fc) {
+  const card = document.getElementById('burnUpCard');
+  const history = fc.history || [];
+  const hasPV = history.some(h => h.cumulative_planned_cost != null);
+  const hasEV = history.some(h => h.cumulative_ev_cost != null);
+  if (!hasPV || !hasEV) {
+    card.hidden = true;
+    if (_charts['burnUpChart'] && !_charts['burnUpChart'].isDisposed()) {
+      _charts['burnUpChart'].dispose();
+      delete _charts['burnUpChart'];
+    }
+    return;
+  }
+  card.hidden = false;
+  try {
+    const chart = _getOrCreateChart('burnUpChart');
+    chart.setOption(_buildBurnUpOption(fc), true);
+    chart.resize();
+  } catch (_) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -2467,15 +2573,23 @@ async function _renderPlanTable(pep_wbs) {
   try {
     const plans = await apiFetch(`/api/projects/${_planProjectId}/plans`);
     if (!plans.length) {
-      tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')}</td></tr>`;
       return;
     }
-    tbody.innerHTML = plans.map(pl => `
-      <tr>
+    tbody.innerHTML = plans.map(pl => {
+      const costStr = pl.planned_cost != null
+        ? pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+        : '<span style="color:var(--text-3)">—</span>';
+      return `<tr>
         <td>${escHtml(pl.cycle_name)}</td>
         <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button></td>
-      </tr>`).join('');
+        <td style="text-align:right">${costStr}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${JSON.stringify(escHtml(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>
+        </td>
+      </tr>`;
+    }).join('');
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
 
@@ -2490,30 +2604,72 @@ function deletePlan(cycle_id) {
   });
 }
 
+let _editPlanCycleId = null;
+
+function editPlan(cycle_id, cycle_name, planned_hours, planned_cost) {
+  _editPlanCycleId = cycle_id;
+  document.getElementById('editPlanCycleName').textContent = cycle_name;
+  document.getElementById('editPlanHours').value = planned_hours;
+  document.getElementById('editPlanCost').value  = planned_cost != null ? planned_cost : '';
+  document.getElementById('editPlanError').textContent = '';
+  openModal('editPlanModal');
+}
+
+document.getElementById('editPlanModalClose').addEventListener('click', () => closeModal('editPlanModal'));
+document.getElementById('editPlanCancelBtn').addEventListener('click', () => closeModal('editPlanModal'));
+
+document.getElementById('editPlanSaveBtn').addEventListener('click', async () => {
+  if (!_planProjectId || !_editPlanCycleId) return;
+  const errEl = document.getElementById('editPlanError');
+  const hours = parseFloat(document.getElementById('editPlanHours').value);
+  const rawCost = document.getElementById('editPlanCost').value.trim();
+  const cost = rawCost === '' ? null : parseFloat(rawCost);
+  if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
+  if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = 'Custo inválido.'; return; }
+  try {
+    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${_editPlanCycleId}`, 'PUT',
+      { cycle_id: _editPlanCycleId, planned_hours: hours, planned_cost: cost });
+    closeModal('editPlanModal');
+    await _renderPlanTable(_currentForecastPep);
+    _renderForecastTab();
+  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
+});
+
 let _addPlanAvailableCycles = [];
 
 function _addPlanRow(available) {
   const container = document.getElementById('addPlanRows');
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:.5rem;align-items:center';
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'display:flex;flex-direction:column;gap:.3rem;padding:.5rem;border:1px solid var(--border);border-radius:.4rem';
+
+  const topRow = document.createElement('div');
+  topRow.style.cssText = 'display:flex;gap:.5rem;align-items:center';
   const sel = document.createElement('select');
   sel.className = 'form-select';
-  sel.style.cssText = 'flex:2;height:2rem;font-size:.82rem';
+  sel.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
   sel.innerHTML = `<option value="">— ${_t('plan.select_cycle')} —</option>` +
     available.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  const inp = document.createElement('input');
-  inp.type = 'number';
-  inp.min = '0';
-  inp.step = '0.5';
-  inp.placeholder = _t('plan.th.hours');
-  inp.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
   const rm = document.createElement('button');
   rm.type = 'button';
   rm.className = 'btn btn-secondary btn-sm';
   rm.textContent = '✕';
-  rm.onclick = () => row.remove();
-  row.append(sel, inp, rm);
-  container.appendChild(row);
+  rm.onclick = () => wrapper.remove();
+  topRow.append(sel, rm);
+
+  const bottomRow = document.createElement('div');
+  bottomRow.style.cssText = 'display:flex;gap:.5rem';
+  const inpH = document.createElement('input');
+  inpH.type = 'number'; inpH.min = '0'; inpH.step = '0.5';
+  inpH.placeholder = _t('plan.th.hours');
+  inpH.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
+  const inpC = document.createElement('input');
+  inpC.type = 'number'; inpC.min = '0'; inpC.step = '0.01';
+  inpC.placeholder = _t('plan.th.cost') + ' (opcional)';
+  inpC.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
+  bottomRow.append(inpH, inpC);
+
+  wrapper.append(topRow, bottomRow);
+  container.appendChild(wrapper);
 }
 
 document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
@@ -2544,27 +2700,31 @@ document.getElementById('addPlanModalClose').addEventListener('click', _closeAdd
 document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
 
 document.getElementById('addPlanSaveBtn').addEventListener('click', async () => {
-  const rows = document.getElementById('addPlanRows').querySelectorAll('div');
+  const wrappers = document.getElementById('addPlanRows').querySelectorAll(':scope > div');
   const errEl = document.getElementById('addPlanError');
   errEl.textContent = '';
   const entries = [];
   const seenIds = new Set();
-  for (const row of rows) {
-    const sel = row.querySelector('select');
-    const inp = row.querySelector('input');
+  for (const wrapper of wrappers) {
+    const sel   = wrapper.querySelector('select');
+    const inpH  = wrapper.querySelectorAll('input')[0];
+    const inpC  = wrapper.querySelectorAll('input')[1];
     const cycleId = parseInt(sel.value);
-    const hours = parseFloat(inp.value);
+    const hours   = parseFloat(inpH.value);
+    const rawC    = inpC.value.trim();
+    const cost    = rawC === '' ? null : parseFloat(rawC);
     if (!cycleId) { errEl.textContent = _t('msg.select_cycle_all'); return; }
     if (seenIds.has(cycleId)) { errEl.textContent = _t('msg.duplicate_cycle'); return; }
     if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
+    if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = 'Custo inválido.'; return; }
     seenIds.add(cycleId);
-    entries.push({ cycle_id: cycleId, planned_hours: hours });
+    entries.push({ cycle_id: cycleId, planned_hours: hours, planned_cost: cost });
   }
   if (!entries.length) { _closeAddPlanModal(); return; }
   try {
     await Promise.all(entries.map(e =>
       apiFetchJSON(`/api/projects/${_planProjectId}/plans/${e.cycle_id}`, 'PUT',
-        { cycle_id: e.cycle_id, planned_hours: e.planned_hours })
+        { cycle_id: e.cycle_id, planned_hours: e.planned_hours, planned_cost: e.planned_cost })
     ));
     _closeAddPlanModal();
     await _renderPlanTable(_currentForecastPep);

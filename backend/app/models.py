@@ -134,6 +134,7 @@ class ProjectCyclePlan(Base):
     project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False)
     cycle_id = Column(Integer, ForeignKey("cycle.id", ondelete="CASCADE"), nullable=False)
     planned_hours = Column(Float, nullable=False)
+    planned_cost  = Column(Float, nullable=True)
 
     project = relationship("Project", back_populates="plans")
     cycle = relationship("Cycle", back_populates="project_plans")

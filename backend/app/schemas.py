@@ -129,6 +129,7 @@ class PepOut(BaseModel):
 class ProjectCyclePlanIn(BaseModel):
     cycle_id: int
     planned_hours: float = Field(ge=0)
+    planned_cost: float | None = Field(default=None, ge=0)
 
 
 class ProjectCyclePlanOut(BaseModel):
@@ -137,6 +138,7 @@ class ProjectCyclePlanOut(BaseModel):
     cycle_id: int
     cycle_name: str
     planned_hours: float
+    planned_cost: float | None = None
 
 
 class ProjectBaselineIn(BaseModel):
@@ -279,7 +281,10 @@ class BurnHistoryPoint(BaseModel):
     cumulative_hours: float
     cumulative_cost: float
     planned_hours: float | None = None
+    planned_cost: float | None = None
     cumulative_planned_hours: float | None = None
+    cumulative_planned_cost: float | None = None
+    cumulative_ev_cost: float | None = None
     spi_cumulative: float | None = None
 
 
