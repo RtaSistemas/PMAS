@@ -6,7 +6,7 @@
   <title>PMAS — Dashboard de Gestão de Projetos</title>
   <link rel="icon" type="image/png" href="/static/assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="/frontend/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js"></script>
 </head>
 <body>
@@ -76,12 +76,12 @@
   <span class="header-sub" id="headerUserInfo">—</span>
   <div id="headerSemaphore" class="header-semaphore" style="display:none"></div>
   <div class="header-actions">
-    <div style="display:flex;align-items:center;gap:.3rem;background:#1e293b;border:1px solid #334155;border-radius:.4rem;padding:.15rem .75rem;min-width:11rem">
+    <div class="header-widget">
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        style="width:3.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
-      <span style="color:#475569;font-size:.85rem">×</span>
+        class="currency-input" style="width:3.5rem" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
+      <span class="currency-sep">×</span>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        style="width:6.5rem;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;text-align:center;outline:none" data-i18n-title="currency.factor_title" title="Fator de conversão" />
+        class="currency-input" style="width:6.5rem" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
     <button type="button" id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button type="button" id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
@@ -94,12 +94,12 @@
 </div>
 
 <!-- Ingest result panel — shown after every upload -->
-<div id="ingestResultPanel" hidden style="margin:0 1.5rem .5rem;border-radius:.5rem;font-size:.85rem;overflow:hidden">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;background:#1e293b;border:1px solid #334155;border-bottom:none;border-radius:.5rem .5rem 0 0">
-    <div id="ingestResultSummary" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center"></div>
-    <button type="button" onclick="document.getElementById('ingestResultPanel').hidden=true" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem;line-height:1">✕</button>
+<div id="ingestResultPanel" hidden>
+  <div class="ingest-header">
+    <div id="ingestResultSummary" class="flex-center gap-md flex-wrap"></div>
+    <button type="button" onclick="document.getElementById('ingestResultPanel').hidden=true" class="close-icon-btn-sm">✕</button>
   </div>
-  <div id="ingestResultDetails" style="border:1px solid #334155;border-radius:0 0 .5rem .5rem;background:#0f172a"></div>
+  <div id="ingestResultDetails" class="ingest-details"></div>
 </div>
 
 <!-- Session detail modal -->
@@ -109,20 +109,20 @@
       <h3 id="sessionDetailTitle" data-i18n="session.title">Detalhes da Importação</h3>
       <button type="button" class="modal-close" onclick="closeModal('sessionDetailModal')">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:1rem">
+    <div class="flex-col gap-lg">
       <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
-      <div id="sessionDetailCounts" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
+      <div id="sessionDetailCounts" class="flex-center gap-sm flex-wrap"></div>
       <div id="sessionDetailWarnings" hidden>
-        <div id="sessionDetailWarningsHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-          <p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0" data-i18n="session.warnings">⚠ Avisos</p>
+        <div id="sessionDetailWarningsHeader" class="flex-center gap-sm" style="margin-bottom:.35rem">
+          <p class="font-xs font-600" style="color:var(--amber);margin:0" data-i18n="session.warnings">⚠ Avisos</p>
         </div>
-        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#fcd34d;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
+        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:var(--warn-text);display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
       <div id="sessionDetailInfos" hidden>
-        <div id="sessionDetailInfosHeader" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-          <p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0" data-i18n="session.infos">ℹ Informações</p>
+        <div id="sessionDetailInfosHeader" class="flex-center gap-sm" style="margin-bottom:.35rem">
+          <p class="font-xs font-600" style="color:var(--primary);margin:0" data-i18n="session.infos">ℹ Informações</p>
         </div>
-        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:#93c5fd;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
+        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:var(--info-text);display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
       </div>
     </div>
     <div class="modal-footer">
@@ -131,25 +131,30 @@
   </div>
 </div>
 
-<nav class="app-tabs">
-  <button type="button" class="tab-btn active" data-tab="dashboard">
+<nav class="app-tabs" role="tablist" data-i18n-aria="nav.main_label">
+  <button type="button" class="tab-btn active" data-tab="dashboard"
+          role="tab" aria-selected="true" aria-controls="tab-dashboard" id="tab-btn-dashboard">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
     <span>Dashboard</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="projects">
+  <button type="button" class="tab-btn" data-tab="projects"
+          role="tab" aria-selected="false" aria-controls="tab-projects" id="tab-btn-projects">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
     <span data-i18n="tab.projects">Projetos</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="team">
+  <button type="button" class="tab-btn" data-tab="team"
+          role="tab" aria-selected="false" aria-controls="tab-team" id="tab-btn-team">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span data-i18n="tab.team">Equipe</span>
   </button>
-  <button type="button" class="tab-btn" data-tab="my">
+  <button type="button" class="tab-btn" data-tab="my"
+          role="tab" aria-selected="false" aria-controls="tab-my" id="tab-btn-my">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     <span data-i18n="tab.my">Minha Área</span>
     <span class="tab-badge" id="myTabBadge" hidden></span>
   </button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden>
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden
+          role="tab" aria-selected="false" aria-controls="tab-admin">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
     <span>Admin</span>
     <span class="tab-badge" id="adminTabBadge" hidden></span>
@@ -161,7 +166,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Dashboard                                                       -->
   <!-- ================================================================== -->
-  <section id="tab-dashboard" class="tab-section">
+  <section id="tab-dashboard" class="tab-section" role="tabpanel" aria-labelledby="tab-btn-dashboard" tabindex="0">
 
     <div class="card">
       <h2 data-i18n="filters.title">Filtros</h2>
@@ -186,16 +191,19 @@
     <div id="semaphoreBar" class="card semaphore-bar" style="display:none"></div>
 
     <!-- Analytics sub-tab navigation -->
-    <nav class="analytics-tabs" id="analyticsTabsNav">
-      <button type="button" class="atab-btn active" data-atab="effort">
+    <nav class="analytics-tabs" id="analyticsTabsNav" role="tablist" data-i18n-aria="nav.analytics_label">
+      <button type="button" class="atab-btn active" data-atab="effort"
+              role="tab" aria-selected="true" aria-controls="atab-effort" id="atab-btn-effort">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <span data-i18n="atab.effort">Esforço da Equipe</span>
       </button>
-      <button type="button" class="atab-btn" data-atab="portfolio">
+      <button type="button" class="atab-btn" data-atab="portfolio"
+              role="tab" aria-selected="false" aria-controls="atab-portfolio" id="atab-btn-portfolio">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         <span data-i18n="atab.portfolio">Saúde do Portfólio</span>
       </button>
-      <button type="button" class="atab-btn" data-atab="forecast">
+      <button type="button" class="atab-btn" data-atab="forecast"
+              role="tab" aria-selected="false" aria-controls="atab-forecast" id="atab-btn-forecast">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         <span data-i18n="atab.forecast">Previsão</span>
       </button>
@@ -204,12 +212,12 @@
     <!-- ============================================================ -->
     <!-- Sub-tab: Esforço da Equipe                                   -->
     <!-- ============================================================ -->
-    <div id="atab-effort" class="atab-section">
+    <div id="atab-effort" class="atab-section" role="tabpanel" aria-labelledby="atab-btn-effort" tabindex="0">
       <div id="effortStats"></div>
       <div class="card chart-panel" id="effortPanel" data-chart-id="effortChart" data-panel-id="effort-chart">
         <div class="panel-header">
           <span class="panel-title" id="effortTitle" data-i18n="chart.effortChart">Esforço por Colaborador</span>
-          <div style="display:flex;gap:0.5rem">
+          <div class="flex-center gap-sm">
             <button type="button" id="stackToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.stacked">Vista: Empilhada</button>
             <button type="button" id="exportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
           </div>
@@ -217,34 +225,34 @@
         <div id="effortEmpty" class="chart-empty" hidden data-i18n="effort.empty">
           Selecione um ciclo ou PEP nos filtros e clique em <strong>Carregar</strong>.
         </div>
-        <div id="effortChart" style="width:100%;height:500px"></div>
+        <div id="effortChart" role="img" data-i18n-aria="chart.effortChart"></div>
       </div>
       <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
-        <div style="padding:1rem 1.25rem .5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
-          <span id="collabDetailName" style="font-size:.95rem;font-weight:600;color:var(--text)"></span>
-          <button id="collabDetailClose" style="background:none;border:none;color:var(--text-3);font-size:1.3rem;cursor:pointer;line-height:1" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
+        <div class="detail-panel-header">
+          <span id="collabDetailName" class="font-600" style="font-size:.95rem;color:var(--text)"></span>
+          <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
         </div>
         <!-- Section 1: horas por ciclo -->
         <div style="padding:1rem 1.25rem .5rem">
-          <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem" data-i18n="collab.section_cycles">Horas por Ciclo</div>
+          <div class="section-label" style="margin-bottom:.5rem" data-i18n="collab.section_cycles">Horas por Ciclo</div>
           <div id="collabInlineTimelineEmpty" class="chart-empty" hidden data-i18n="collab.timeline_empty">Nenhum dado encontrado para este colaborador.</div>
-          <div id="collabInlineTimelineChart" style="width:100%;height:320px"></div>
+          <div id="collabInlineTimelineChart" role="img" data-i18n-aria="chart.collabInlineTimelineChart"></div>
         </div>
         <!-- Section 2: heatmap calendário -->
         <div style="padding:.5rem 1.25rem 1.25rem;border-top:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
-            <div style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;flex:1">
+          <div class="flex-center gap-md" style="margin-bottom:.75rem">
+            <div class="section-label flex-1">
               <span data-i18n="collab.section_calendar">Atividade Diária</span>
               <span style="font-size:.7rem;font-weight:400;color:var(--text-3);margin-left:.35rem;text-transform:none;letter-spacing:0" data-i18n="cal.week_range">(Domingo - Sábado)</span>
             </div>
-            <button id="calPrevMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8249;</button>
+            <button id="calPrevMonth" class="cal-nav-btn">&#8249;</button>
             <input type="month" id="calMonthInput" style="font-size:.92rem;font-weight:600;text-align:center;width:13rem;flex-shrink:0;cursor:pointer;color-scheme:dark" />
-            <button id="calNextMonth" style="background:none;border:1px solid var(--border);color:var(--text-2);border-radius:.35rem;padding:.2rem .55rem;cursor:pointer;font-size:.9rem">&#8250;</button>
+            <button id="calNextMonth" class="cal-nav-btn">&#8250;</button>
           </div>
           <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>
           <div id="calDayHeader" style="display:none;margin:0 auto 2px"></div>
-          <div id="collabCalendarChart" style="width:100%;height:185px"></div>
-          <div id="collabCalendarStats" style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap"></div>
+          <div id="collabCalendarChart" role="img" data-i18n-aria="chart.collabCalendarChart"></div>
+          <div id="collabCalendarStats" class="flex-center gap-xl flex-wrap" style="margin-top:.75rem"></div>
         </div>
       </div>
       <div class="card chart-panel" data-chart-id="trendsChart" data-panel-id="effort-trends">
@@ -255,7 +263,7 @@
         <div id="trendsEmpty" class="chart-empty" hidden data-i18n="trends.empty">
           Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.
         </div>
-        <div id="trendsChart" style="width:100%;height:440px"></div>
+        <div id="trendsChart" role="img" data-i18n-aria="chart.trendsChart"></div>
       </div>
       <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" data-panel-id="effort-pepcpi" hidden style="margin-top:0">
         <div class="panel-header">
@@ -265,7 +273,7 @@
         <div id="pepCpiEmpty" class="chart-empty" hidden data-i18n="pepcpi.empty">
           Sem dados de budget. Defina budget_cost nos projetos para habilitar o rastreamento de CPI.
         </div>
-        <div id="pepCpiChart" style="width:100%;height:360px"></div>
+        <div id="pepCpiChart" role="img" data-i18n-aria="chart.pepCpiChart"></div>
       </div>
 <div class="card chart-panel" id="costCompositionPanel" data-panel-id="effort-cost" hidden>
         <div class="panel-header">
@@ -273,19 +281,19 @@
           <span class="panel-note" data-i18n="costcomp.note">Custo regular · extra · sobreaviso por ciclo</span>
         </div>
         <div id="costCompositionEmpty" class="chart-empty" hidden data-i18n="costcomp.empty">Nenhum dado encontrado.</div>
-        <div id="costCompositionChart" style="width:100%;height:360px"></div>
+        <div id="costCompositionChart" role="img" data-i18n-aria="chart.costCompositionChart"></div>
       </div>
     </div>
 
     <!-- ============================================================ -->
     <!-- Sub-tab: Saúde do Portfólio                                  -->
     <!-- ============================================================ -->
-    <div id="atab-portfolio" class="atab-section" hidden>
+    <div id="atab-portfolio" class="atab-section" hidden role="tabpanel" aria-labelledby="atab-btn-portfolio" tabindex="0">
       <div id="portfolioStats"></div>
       <div class="card chart-panel" data-chart-id="treemapChart" data-panel-id="portfolio-treemap">
         <div class="panel-header">
           <span class="panel-title" id="portfolioTreemapTitle" data-i18n="portfolio.treemap_h">Distribuição de Horas por PEP (Treemap)</span>
-          <div style="display:flex;gap:0.5rem;align-items:center">
+          <div class="flex-center gap-sm">
             <span class="panel-note" data-i18n="portfolio.note">Blocos cinzas = PEP sem projeto cadastrado</span>
             <button type="button" id="evmToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_hours">Vista: Horas</button>
           </div>
@@ -293,16 +301,16 @@
         <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
           Nenhum dado de horas encontrado para os filtros selecionados.
         </div>
-        <div id="treemapChart" style="width:100%;height:440px"></div>
+        <div id="treemapChart" role="img" data-i18n-aria="chart.treemapChart"></div>
       </div>
       <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" data-panel-id="portfolio-bullet" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
-        <div class="panel-note" style="margin-bottom:0.75rem">
+        <div class="panel-note" style="margin-bottom:.75rem">
           <span class="threshold-dot blue"></span> <span id="bulletOkLabel"></span>&nbsp;
           <span class="threshold-dot amber"></span> <span id="bulletWarnLabel"></span>&nbsp;
           <span class="threshold-dot red"></span> <span id="bulletCritLabel"></span>
         </div>
-        <div id="bulletChart" style="width:100%;height:300px"></div>
+        <div id="bulletChart" role="img" data-i18n-aria="chart.bulletChart"></div>
       </div>
       <div class="card chart-panel" id="scatterPanel" data-chart-id="scatterChart" data-panel-id="portfolio-quadrant" hidden>
         <div class="panel-header">
@@ -312,7 +320,7 @@
         <div id="scatterEmpty" class="chart-empty" hidden data-i18n="scatter.empty">
           Nenhum dado de PEP disponível para os filtros selecionados.
         </div>
-        <div id="scatterChart" style="width:100%;height:690px"></div>
+        <div id="scatterChart" role="img" data-i18n-aria="chart.scatterChart"></div>
       </div>
       <div class="card" id="concentrationPanel" data-panel-id="portfolio-concentration" hidden>
         <div class="panel-header">
@@ -320,7 +328,7 @@
           <span id="concentrationNote" class="panel-note" data-i18n="conc.note">% de horas por colaborador · ⚠ risco quando um único colaborador detém &gt;60%</span>
         </div>
         <div id="concentrationEmpty" class="chart-empty" hidden data-i18n="conc.empty">Nenhum dado de horas encontrado.</div>
-        <div id="concentrationGrid" style="display:flex;flex-direction:column;gap:.5rem"></div>
+        <div id="concentrationGrid" class="flex-col gap-sm"></div>
       </div>
       <div class="card chart-panel" id="allocationPanel" data-panel-id="portfolio-allocation">
         <div class="panel-header">
@@ -329,7 +337,7 @@
         <div id="allocationEmpty" class="chart-empty" hidden data-i18n="allocation.empty">
           Nenhum dado encontrado.
         </div>
-        <div id="allocationMatrix" style="overflow-x:auto;padding:.5rem 0"></div>
+        <div id="allocationMatrix" class="overflow-x" style="padding:.5rem 0"></div>
       </div>
       <div class="card" id="runwayPanel" data-panel-id="portfolio-runway">
         <div class="panel-header">
@@ -361,12 +369,12 @@
     <!-- ============================================================ -->
     <!-- Sub-tab: Previsão de Conclusão (EVM)                         -->
     <!-- ============================================================ -->
-    <div id="atab-forecast" class="atab-section" hidden>
+    <div id="atab-forecast" class="atab-section" hidden role="tabpanel" aria-labelledby="atab-btn-forecast" tabindex="0">
       <div class="card chart-panel" data-chart-id="forecastChart" data-panel-id="forecast-chart">
         <div class="panel-header">
           <span class="panel-title" data-i18n="forecast.title" data-evm="EVM">Previsão de Conclusão</span>
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <label for="forecastPepSelect" style="font-size:.8rem;color:#94a3b8;white-space:nowrap" data-i18n="trends.pep_lbl">PEP:</label>
+          <div class="flex-center gap-sm">
+            <label for="forecastPepSelect" class="hint nowrap" data-i18n="trends.pep_lbl">PEP:</label>
             <select id="forecastPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:200px">
               <option value="" data-i18n="forecast.select_pep">— selecione um PEP —</option>
             </select>
@@ -376,26 +384,27 @@
           Selecione um PEP para visualizar a previsão de conclusão.
         </div>
         <div id="forecastKpis" class="stats-row" style="margin:.75rem 0" hidden></div>
-        <div id="forecastChart" style="width:100%;height:420px"></div>
+        <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
+        <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
       </div>
 
       <div class="card" id="planCard" data-panel-id="forecast-plan" hidden>
         <div class="section-header">
           <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas/Ciclo)</h2>
-          <div style="display:flex;gap:.5rem;align-items:center">
+          <div class="flex-center gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
-            <label class="btn btn-secondary btn-sm" id="importPlanLabel" style="cursor:pointer;margin:0">
+            <label class="btn btn-secondary btn-sm cursor-pointer" id="importPlanLabel" style="margin:0">
               <span data-i18n="plan.btn_import">↑ Importar CSV</span>
               <input type="file" id="importPlanFile" accept=".csv" hidden />
             </label>
             <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
           </div>
         </div>
-        <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem" data-i18n="plan.hint">Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.</p>
+        <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas planejadas por ciclo para calcular VP, IDP e Variação de Prazo.</p>
         <table class="data-table" id="planTable">
           <thead><tr>
             <th data-i18n="plan.th.cycle">Ciclo</th>
-            <th style="text-align:right" data-i18n="plan.th.hours">Horas Planejadas</th>
+            <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
             <th></th>
           </tr></thead>
           <tbody id="planBody"></tbody>
@@ -408,13 +417,13 @@
   <!-- ================================================================== -->
   <!-- TAB: Projetos (inclui Ciclos)                                        -->
   <!-- ================================================================== -->
-  <section id="tab-projects" class="tab-section" hidden>
+  <section id="tab-projects" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-projects" tabindex="0">
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importProjectsInput" accept=".csv" hidden />
           </label>
@@ -429,12 +438,12 @@
             <th data-i18n="projects.th.name">Nome do Projeto</th>
             <th data-i18n="projects.th.client">Cliente</th>
             <th data-i18n="projects.th.mgr">Gerente</th>
-            <th style="text-align:right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th class="text-right" data-i18n="projects.th.budget">Budget (h)</th>
             <th data-i18n="projects.th.status">Status</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="projectsBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="projectsBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
     <div class="card">
@@ -442,16 +451,16 @@
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportCyclesBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importCyclesInput" accept=".csv" hidden />
           </label>
           <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem">
-        <input type="text" id="cycleSearch" class="table-search-input" style="flex:1;margin-bottom:0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#94a3b8;white-space:nowrap;cursor:pointer">
+      <div class="flex-center gap-lg" style="margin-bottom:.5rem">
+        <input type="text" id="cycleSearch" class="table-search-input flex-1" style="margin-bottom:0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+        <label class="flex-center hint font-body nowrap cursor-pointer" style="gap:.4rem">
           <input type="checkbox" id="showArchivedCycles" />
           <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
         </label>
@@ -463,11 +472,11 @@
             <th data-i18n="cycles.th.start">Início</th>
             <th data-i18n="cycles.th.end">Fim</th>
             <th data-i18n="cycles.th.type">Tipo</th>
-            <th style="text-align:right" data-i18n="cycles.th.recs">Registros</th>
+            <th class="text-right" data-i18n="cycles.th.recs">Registros</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="cyclesBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -475,14 +484,14 @@
   <!-- ================================================================== -->
   <!-- TAB: Equipe                                                         -->
   <!-- ================================================================== -->
-  <section id="tab-team" class="tab-section" hidden>
+  <section id="tab-team" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-team" tabindex="0">
 
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+          <label class="btn btn-secondary btn-sm cursor-pointer" style="margin:0">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importSeniorityInput" accept=".csv" hidden />
           </label>
@@ -491,16 +500,16 @@
       </div>
       <table class="data-table" id="seniorityTable">
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
-        <tbody id="seniorityBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="seniorityBody"><tr><td colspan="2" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+          <label class="btn btn-secondary btn-sm cursor-pointer" style="margin:0">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importRateCardInput" accept=".csv" hidden />
           </label>
@@ -511,19 +520,19 @@
         <thead>
           <tr>
             <th data-i18n="ratecard.th.level">Nível</th>
-            <th style="text-align:right" data-i18n="ratecard.th.rate">Valor/hora (R$)</th>
+            <th class="text-right" data-i18n="ratecard.th.rate">Valor/hora (R$)</th>
             <th data-i18n="ratecard.th.from">Vigência início</th>
             <th data-i18n="ratecard.th.to">Vigência fim</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="rateCardBody"><tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="rateCardBody"><tr><td colspan="5" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
     <div class="card">
       <h2 class="card-title" data-i18n="config.title">Fatores Globais de Custo</h2>
-      <div class="form-grid" style="align-items:flex-end">
+      <div class="form-grid flex-bottom">
         <div class="form-group">
           <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
           <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
@@ -553,7 +562,7 @@
           <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
         </div>
       </div>
-      <p id="configMsg" style="margin-top:.5rem;font-size:.8rem;color:#94a3b8"></p>
+      <p id="configMsg" class="hint" style="margin-top:.5rem"></p>
     </div>
 
     <div class="card">
@@ -569,11 +578,11 @@
           <tr>
             <th data-i18n="team.th.name">Nome</th>
             <th data-i18n="team.th.seniority">Senioridade</th>
-            <th style="text-align:right" data-i18n="team.th.rate">Taxa atual (R$/h)</th>
+            <th class="text-right" data-i18n="team.th.rate">Taxa atual (R$/h)</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="teamBody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="teamBody"><tr><td colspan="4" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
@@ -582,21 +591,23 @@
   <!-- ================================================================== -->
   <!-- TAB: Minha Área                                                     -->
   <!-- ================================================================== -->
-  <section id="tab-my" class="tab-section" hidden>
+  <section id="tab-my" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-my" tabindex="0">
 
-    <nav class="my-area-nav">
-      <button type="button" class="my-tab-btn active" data-my-tab="profile" data-i18n="myarea.profile">Perfil</button>
-      <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload">Upload</button>
+    <nav class="my-area-nav" role="tablist" data-i18n-aria="nav.myarea_label">
+      <button type="button" class="my-tab-btn active" data-my-tab="profile" data-i18n="myarea.profile"
+              role="tab" aria-selected="true" aria-controls="my-tab-profile" id="my-tab-btn-profile">Perfil</button>
+      <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload"
+              role="tab" aria-selected="false" aria-controls="my-tab-upload" id="my-tab-btn-upload">Upload</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
-    <div id="my-tab-profile" class="my-tab-section">
+    <div id="my-tab-profile" class="my-tab-section" role="tabpanel" aria-labelledby="my-tab-btn-profile" tabindex="0">
       <div class="my-area-grid">
 
         <!-- Profile card -->
         <div class="card">
           <h2 class="card-title" data-i18n="myarea.profile_title">Meu Perfil</h2>
-          <p id="myProfileUsername" style="font-size:.9rem;margin-bottom:1rem;color:#94a3b8"></p>
+          <p id="myProfileUsername" class="text-hint" style="font-size:.9rem;margin-bottom:1rem"></p>
           <button type="button" class="btn btn-secondary btn-sm" id="myChangePwdBtn" data-i18n="myarea.change_pwd">Alterar senha</button>
         </div>
 
@@ -606,7 +617,7 @@
             <h2 class="card-title" style="margin-bottom:0" data-i18n="myarea.layout_title">Layout do Dashboard</h2>
             <button type="button" class="btn btn-primary btn-sm" id="saveLayoutBtn" data-i18n="myarea.layout_save">Salvar layout</button>
           </div>
-          <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem" data-i18n="myarea.layout_hint">Arraste para reordenar os painéis do dashboard.</p>
+          <p class="hint-sm" style="margin-bottom:.75rem" data-i18n="myarea.layout_hint">Arraste para reordenar os painéis do dashboard.</p>
           <ul class="sortable-list" id="chartLayoutList">
             <li class="sortable-item layout-tab-item" data-chart="effort">
               <div class="sortable-item-row">
@@ -687,15 +698,15 @@
     </div>
 
     <!-- Sub-tab: Upload (includes History and Quarantine inline) -->
-    <div id="my-tab-upload" class="my-tab-section" hidden>
+    <div id="my-tab-upload" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-upload" tabindex="0">
       <div class="card" style="max-width:520px">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
-        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:1rem" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
-        <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem">
+        <p class="font-body text-hint" style="margin-bottom:1rem" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
+        <label class="btn btn-primary cursor-pointer" style="display:inline-flex;align-items:center;gap:.5rem">
           <span data-i18n="btn.import_ts">⬆ Importar</span>
           <input type="file" id="myAreaCsvInput" accept=".csv,.xlsx,.xls" hidden />
         </label>
-        <div id="myAreaUploadResult" style="margin-top:1rem;font-size:.85rem;color:#94a3b8"></div>
+        <div id="myAreaUploadResult" class="font-body text-hint" style="margin-top:1rem"></div>
       </div>
 
       <!-- History -->
@@ -704,20 +715,20 @@
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
           <button type="button" class="btn btn-secondary btn-sm" id="myHistoryRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
-        <p style="font-size:.78rem;color:#64748b;margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
+        <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
             <th data-i18n="history.th.file">Arquivo</th>
             <th data-i18n="history.th.sent_by">Enviado por</th>
-            <th style="text-align:right" data-i18n="history.th.inserted">Inseridos</th>
-            <th style="text-align:right" data-i18n="history.th.skipped">Ignorados</th>
-            <th style="text-align:right" data-i18n="history.th.quarantine">Quarentena</th>
-            <th style="text-align:right" data-i18n="history.th.warnings">Avisos</th>
-            <th style="text-align:right" data-i18n="history.th.infos">Infos</th>
+            <th class="text-right" data-i18n="history.th.inserted">Inseridos</th>
+            <th class="text-right" data-i18n="history.th.skipped">Ignorados</th>
+            <th class="text-right" data-i18n="history.th.quarantine">Quarentena</th>
+            <th class="text-right" data-i18n="history.th.warnings">Avisos</th>
+            <th class="text-right" data-i18n="history.th.infos">Infos</th>
             <th data-i18n="history.th.status">Status</th>
           </tr></thead>
-          <tbody id="myHistoryBody"><tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="myHistoryBody"><tr><td colspan="9" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
 
@@ -725,7 +736,7 @@
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
-          <div style="display:flex;gap:.5rem;align-items:center">
+          <div class="flex-center gap-sm">
             <select id="myQrFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
               <option value="" data-i18n="qr.filter.all">Todos os registros</option>
               <option value="pending" data-i18n="qr.filter.pending_opt">⏳ Pendentes</option>
@@ -736,22 +747,22 @@
             <button type="button" class="btn btn-secondary btn-sm" id="myQrExportBtn" data-i18n="qr.btn.export">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p style="font-size:.78rem;color:#94a3b8;margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
+        <p style="font-size:.78rem;color:var(--text-hint);margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
             <th data-i18n="qr.th.collaborator">Colaborador</th>
             <th data-i18n="qr.th.ingested">Data reg.</th>
-            <th style="text-align:right" data-i18n="qr.th.hours">Horas</th>
+            <th class="text-right" data-i18n="qr.th.hours">Horas</th>
             <th data-i18n="qr.th.pep">PEP</th>
             <th data-i18n="qr.th.reason">Motivo</th>
             <th data-i18n="qr.th.status">Status</th>
           </tr></thead>
-          <tbody id="myQrBody"><tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="myQrBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
-          <span id="myQrPageLabel" style="font-size:.8rem;color:#94a3b8"></span>
+          <span id="myQrPageLabel" class="hint"></span>
           <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
         </div>
       </div>
@@ -762,7 +773,7 @@
   <!-- ================================================================== -->
   <!-- TAB: Admin                                                           -->
   <!-- ================================================================== -->
-  <section id="tab-admin" class="tab-section" hidden>
+  <section id="tab-admin" class="tab-section" hidden role="tabpanel" aria-labelledby="adminTabBtn" tabindex="0">
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="admin.title">Gestão de Usuários</h2>
@@ -776,7 +787,7 @@
             <th></th>
           </tr>
         </thead>
-        <tbody id="usersBody"><tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="usersBody"><tr><td colspan="3" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
 
@@ -786,9 +797,9 @@
         <h2 class="card-title" data-i18n="vr.title">Regras de Validação</h2>
         <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn" data-i18n="vr.btn.new">+ Nova Regra</button>
       </div>
-      <p style="font-size:.75rem;color:#64748b;margin-bottom:.75rem" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
+      <p class="hint-sm" style="margin-bottom:.75rem" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
       <ul class="sortable-list" id="rulesList">
-        <li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem" data-i18n="loading">Carregando…</li>
+        <li style="text-align:center;color:var(--text-faint);padding:1rem;font-size:.85rem" data-i18n="loading">Carregando…</li>
       </ul>
     </div>
 
@@ -796,8 +807,8 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer" title="Enviar logo" data-i18n="appearance.logo_upload">
+        <div class="flex-center gap-sm flex-wrap">
+          <label class="btn btn-secondary btn-sm cursor-pointer" title="Enviar logo" data-i18n="appearance.logo_upload">
             📷 Logo
             <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
           </label>
@@ -815,7 +826,7 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="auditlog.title">Log de Auditoria</h2>
-        <div style="display:flex;gap:.5rem;align-items:center">
+        <div class="flex-center gap-sm">
           <select id="auditEntityFilter" class="filter-select" style="min-width:150px">
             <option value="" data-i18n="auditlog.filter.all_entity">Todas entidades</option>
             <option value="cycle">cycle</option>
@@ -858,7 +869,7 @@
             <th data-i18n="auditlog.th.detail">Detalhe</th>
           </tr>
         </thead>
-        <tbody id="auditBody"><tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="auditBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -1142,7 +1153,7 @@
           <option value="quarentena">quarentena</option>
           <option value="descarte">descarte</option>
         </select>
-        <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:#f59e0b" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
+        <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:var(--amber)" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
       </div>
       <div class="form-group">
         <label data-i18n="vr.th.order">Ordem</label>
@@ -1205,27 +1216,27 @@
     <div class="modal-body">
       <table class="data-table" style="margin-bottom:1rem">
         <tbody>
-          <tr><th style="width:160px;text-align:left" data-i18n="qr.modal.collab">Colaborador</th><td id="qrDCollab">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.date">Data</th><td id="qrDDate">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.hours">Horas</th><td id="qrDHours">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.pep">PEP</th><td id="qrDPep">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.extra">Hora Extra</th><td id="qrDExtra">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.standby">Sobreaviso</th><td id="qrDStandby">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.reason">Motivo</th><td id="qrDReason" style="color:#f59e0b">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.rule">Regra violada</th><td id="qrDRule">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.session">Upload Session</th><td id="qrDSession">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.status">Status</th><td id="qrDStatus">—</td></tr>
-          <tr><th style="text-align:left" data-i18n="qr.modal.reviewed_by">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
+          <tr><th class="text-left" style="width:160px" data-i18n="qr.modal.collab">Colaborador</th><td id="qrDCollab">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.date">Data</th><td id="qrDDate">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.hours">Horas</th><td id="qrDHours">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.pep">PEP</th><td id="qrDPep">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.extra">Hora Extra</th><td id="qrDExtra">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.standby">Sobreaviso</th><td id="qrDStandby">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.reason">Motivo</th><td id="qrDReason" style="color:var(--amber)">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.rule">Regra violada</th><td id="qrDRule">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.session">Upload Session</th><td id="qrDSession">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.status">Status</th><td id="qrDStatus">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.reviewed_by">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
         </tbody>
       </table>
       <details style="margin-bottom:.5rem">
-        <summary style="cursor:pointer;font-size:.8rem;color:#94a3b8" data-i18n="qr.modal.raw">Dados brutos (raw data)</summary>
-        <pre id="qrDRawData" style="font-size:.72rem;background:#0b1829;padding:.75rem;border-radius:.4rem;overflow:auto;max-height:260px;margin-top:.5rem"></pre>
+        <summary class="hint cursor-pointer" data-i18n="qr.modal.raw">Dados brutos (raw data)</summary>
+        <pre id="qrDRawData" class="raw-pre"></pre>
       </details>
     </div>
     <div class="modal-footer">
-      <button type="button" id="qrApproveBtn" class="btn btn-primary" style="background:#10d98a;border-color:#10d98a" data-i18n="qr.btn.approve">✅ Aprovar</button>
-      <button type="button" id="qrRejectBtn"  class="btn btn-primary" style="background:#f04040;border-color:#f04040" data-i18n="qr.btn.reject">❌ Rejeitar</button>
+      <button type="button" id="qrApproveBtn" class="btn btn-primary" style="background:var(--green);border-color:var(--green)" data-i18n="qr.btn.approve">✅ Aprovar</button>
+      <button type="button" id="qrRejectBtn"  class="btn btn-primary" style="background:var(--red);border-color:var(--red)" data-i18n="qr.btn.reject">❌ Rejeitar</button>
       <button type="button" id="qrModalCloseBtn" class="btn btn-secondary" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
@@ -1239,29 +1250,29 @@
       <h3 id="aclModalTitle" data-i18n="acl.title">Controle de Acesso</h3>
       <button type="button" class="modal-close" id="aclModalClose">×</button>
     </div>
-    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem">
-      <p style="font-size:.8rem;color:#94a3b8;margin:0" data-i18n="acl.hint">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
+    <div class="modal-form-body">
+      <p class="hint" style="margin:0" data-i18n="acl.hint">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
 
       <!-- Existing grants -->
       <div>
-        <p style="font-size:.78rem;font-weight:600;color:#cbd5e1;margin:0 0 .5rem" data-i18n="acl.granted">Acessos concedidos</p>
+        <p style="font-size:.78rem;font-weight:600;color:var(--text-pale);margin:0 0 .5rem" data-i18n="acl.granted">Acessos concedidos</p>
         <table class="data-table" id="aclEntriesTable" style="font-size:.8rem">
           <thead><tr><th data-i18n="user.th.user">Usuário</th><th></th></tr></thead>
-          <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:#475569;padding:1rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:var(--text-faint);padding:1rem" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
 
       <!-- Add new grant (admin only) -->
-      <div id="aclAddRow" style="display:flex;gap:.5rem;align-items:flex-end">
-        <div style="flex:1">
-          <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem" data-i18n="acl.add_user">Adicionar usuário</label>
+      <div id="aclAddRow" class="flex-bottom gap-sm">
+        <div class="flex-1">
+          <label class="text-hint" style="font-size:.78rem;display:block;margin-bottom:.25rem" data-i18n="acl.add_user">Adicionar usuário</label>
           <select id="aclUserSelect" class="form-select" style="height:2rem;font-size:.82rem;width:100%">
             <option value="" data-i18n="ms.select_ph">— selecione —</option>
           </select>
         </div>
         <button type="button" class="btn btn-primary btn-sm" id="aclGrantBtn" data-i18n="btn.grant">Conceder</button>
       </div>
-      <div id="aclError" style="color:#f87171;font-size:.8rem;min-height:1rem"></div>
+      <div id="aclError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="aclModalCloseBtn" data-i18n="btn.close">Fechar</button>
@@ -1275,11 +1286,11 @@
       <h3 id="addPlanModalTitle" data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
       <button type="button" class="modal-close" id="addPlanModalClose">×</button>
     </div>
-    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem">
-      <p style="font-size:.8rem;color:#94a3b8;margin:0" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.</p>
-      <div id="addPlanRows" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    <div class="modal-form-body-sm">
+      <p class="hint" style="margin:0" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas planejadas. Ciclos já com baseline não são listados.</p>
+      <div id="addPlanRows" class="flex-col gap-sm"></div>
       <button type="button" class="btn btn-secondary btn-sm" id="addPlanAddRowBtn" style="align-self:flex-start" data-i18n="plan.modal_add_row">+ Mais um ciclo</button>
-      <div id="addPlanError" style="color:#f87171;font-size:.8rem;min-height:1rem"></div>
+      <div id="addPlanError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
@@ -1303,6 +1314,17 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="confirmModalCancel" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-danger" id="confirmModalOk" data-i18n="btn.confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="baselineModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="baselineModalTitle" style="max-width:560px">
+    <div class="modal-header">
+      <h3 id="baselineModalTitle">Baseline do Projeto</h3>
+      <button type="button" class="modal-close" id="baselineModalClose">×</button>
+    </div>
+    <div class="modal-body" style="padding:1.25rem" id="baselineModalBody">
     </div>
   </div>
 </div>

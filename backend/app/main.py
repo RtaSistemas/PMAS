@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.database import init_db
 from backend.app.routers import (
-    acl, analytics, auditlog, auth, cycles, dashboard,
+    acl, analytics, auditlog, auth, baselines, cycles, dashboard,
     my, plans, projects, quarantine, ratecard, reference,
     theme, upload, users, validation_rules,
 )
@@ -53,6 +53,7 @@ app.include_router(auditlog.router)
 app.include_router(cycles.router)
 app.include_router(projects.router)
 app.include_router(plans.router)
+app.include_router(baselines.router)
 app.include_router(dashboard.router)
 app.include_router(reference.router)
 app.include_router(analytics.router)

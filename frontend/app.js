@@ -21,12 +21,19 @@ const _LANG = {
     'forecast.select_pep':'— selecione um PEP —',
     'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
-    'forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
+    'forecast.remaining_cost':'Custo Restante (EPC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
     'forecast.now_marker':'Atual',
     'forecast.pv_line':'VP (Valor Planejado)',
-    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (SV)',
+    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (VS)',
+    'forecast.cv':'Variação de Custo (VC)','forecast.tcpi':'IDC para Conclusão (IDC-PC)',
+    'forecast.vac':'Variação no Término (VNT)',
     'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
+    'forecast.info.project':'Projeto','forecast.info.manager':'Gerente',
+    'forecast.info.budget':'Orçamento','forecast.info.status':'Status',
+    'forecast.info.no_manager':'—','forecast.info.no_name':'Sem nome cadastrado',
+    'forecast.info.no_budget':'Sem orçamento',
+    'sem.green':'Verde','sem.yellow':'Atenção','sem.red':'Crítico','sem.grey':'Sem orçamento',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
     'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
@@ -74,6 +81,15 @@ const _LANG = {
     'admin.title':'Gestão de Usuários','btn.new_user':'+ Novo usuário',
     'user.th.user':'Usuário','user.th.role':'Perfil',
     'btn.cancel':'Cancelar','btn.save':'Salvar','btn.edit':'Editar','btn.delete':'Excluir',
+    'baseline.title':'Baseline do Projeto','baseline.active':'Baseline ativo',
+    'baseline.none':'Sem baseline ativo','baseline.locked_at':'Congelado em',
+    'baseline.locked_by':'por','baseline.label_ph':'Rótulo opcional (ex: Baseline v1)',
+    'baseline.create':'Criar Baseline','baseline.history':'Histórico de Baselines',
+    'baseline.budget_h':'Horas Orçadas','baseline.budget_cost':'Custo Orçado',
+    'baseline.activate':'Ativar','baseline.no_history':'Nenhum baseline criado.',
+    'baseline.badge':'✓ Baseline','baseline.warning':'Sem baseline — BAC pode mudar retroativamente',
+    'baseline.created':'Baseline criado com sucesso.',
+    'baseline.deleted':'Baseline removido.',
     'btn.export_csv2':'⬇ Exportar CSV','btn.import_csv':'⬆ Importar CSV',
     'cm.title_new':'Novo Ciclo','cm.title_edit':'Editar Ciclo',
     'cm.name_lbl':'Nome *','cm.name_ph':'Ex: Janeiro/2026',
@@ -198,9 +214,14 @@ const _LANG = {
     'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
     'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
     'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
-    'chart.cpiChart':'CPI por Ciclo','chart.pepCpiChart':'CPI por PEP',
+    'chart.cpiChart':'CPI por Ciclo (cumulativo)','chart.pepCpiChart':'IDC por PEP (cumulativo)',
+    'chart.costCompositionChart':'Composição de Custo por Tipo de Hora',
+    'chart.collabInlineTimelineChart':'Horas por Ciclo — Colaborador',
+    'chart.collabCalendarChart':'Atividade Diária — Colaborador',
     'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Orçado vs Realizado',
-    'chart.scatterChart':'Dispersão Custo × Horas','chart.forecastChart':'Previsão de Conclusão',
+    'chart.scatterChart':'Quadrante EVM (CPI × SPI)','chart.forecastChart':'Previsão de Conclusão',
+    'nav.main_label':'Navegação principal','nav.analytics_label':'Sub-navegação de análise',
+    'nav.myarea_label':'Navegação Minha Área',
     'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
     'appearance.logo':'Logo','appearance.logo_upload':'⬆ Enviar novo logo',
     'appearance.logo_remove':'🗑 Remover logo','appearance.density':'Densidade',
@@ -338,12 +359,19 @@ const _LANG = {
     'forecast.select_pep':'— select a PEP —',
     'forecast.empty':'Select a PEP to view the completion forecast.',
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
-    'forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
+    'forecast.remaining_cost':'Remaining Cost (ETC)','forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
     'forecast.now_marker':'Now',
     'forecast.pv_line':'PV (Planned Value)',
     'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
+    'forecast.cv':'Cost Variance (CV)','forecast.tcpi':'TCPI',
+    'forecast.vac':'Variance at Completion (VAC)',
     'forecast.no_budget':'No budget registered for this PEP.',
+    'forecast.info.project':'Project','forecast.info.manager':'Manager',
+    'forecast.info.budget':'Budget','forecast.info.status':'Status',
+    'forecast.info.no_manager':'—','forecast.info.no_name':'No name registered',
+    'forecast.info.no_budget':'No budget',
+    'sem.green':'Green','sem.yellow':'Warning','sem.red':'Critical','sem.grey':'No budget',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
     'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
@@ -391,6 +419,15 @@ const _LANG = {
     'admin.title':'User Management','btn.new_user':'+ New user',
     'user.th.user':'Username','user.th.role':'Role',
     'btn.cancel':'Cancel','btn.save':'Save','btn.edit':'Edit','btn.delete':'Delete',
+    'baseline.title':'Project Baseline','baseline.active':'Active Baseline',
+    'baseline.none':'No active baseline','baseline.locked_at':'Locked on',
+    'baseline.locked_by':'by','baseline.label_ph':'Optional label (e.g. Baseline v1)',
+    'baseline.create':'Create Baseline','baseline.history':'Baseline History',
+    'baseline.budget_h':'Budget Hours','baseline.budget_cost':'Budget Cost',
+    'baseline.activate':'Activate','baseline.no_history':'No baselines created.',
+    'baseline.badge':'✓ Baseline','baseline.warning':'No baseline — BAC may change retroactively',
+    'baseline.created':'Baseline created successfully.',
+    'baseline.deleted':'Baseline removed.',
     'btn.export_csv2':'⬇ Export CSV','btn.import_csv':'⬆ Import CSV',
     'cm.title_new':'New Cycle','cm.title_edit':'Edit Cycle',
     'cm.name_lbl':'Name *','cm.name_ph':'E.g.: January/2026',
@@ -515,9 +552,14 @@ const _LANG = {
     'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
     'size.small':'Small','size.medium':'Medium','size.large':'Large','size.full':'Full width',
     'chart.effortChart':'Effort by Collaborator','chart.trendsChart':'Trends by Cycle',
-    'chart.cpiChart':'CPI by Cycle','chart.pepCpiChart':'CPI by PEP',
+    'chart.cpiChart':'CPI by Cycle (cumulative)','chart.pepCpiChart':'CPI by PEP (cumulative)',
+    'chart.costCompositionChart':'Cost Composition by Hour Type',
+    'chart.collabInlineTimelineChart':'Hours per Cycle — Collaborator',
+    'chart.collabCalendarChart':'Daily Activity — Collaborator',
     'chart.treemapChart':'Portfolio Treemap','chart.bulletChart':'Budget vs Actual',
-    'chart.scatterChart':'Cost × Hours Scatter','chart.forecastChart':'Completion Forecast',
+    'chart.scatterChart':'EVM Quadrant (CPI × SPI)','chart.forecastChart':'Completion Forecast',
+    'nav.main_label':'Main navigation','nav.analytics_label':'Analytics sub-navigation',
+    'nav.myarea_label':'My Area navigation',
     'appearance.title':'System Appearance','appearance.app_name':'System name',
     'appearance.logo':'Logo','appearance.logo_upload':'⬆ Upload new logo',
     'appearance.logo_remove':'🗑 Remove logo','appearance.density':'Density',
@@ -678,14 +720,14 @@ const _EVM_TERMS = {
   },
   EAC: {
     pt: {
-      name: 'EAC — Estimativa para Conclusão',
-      desc: 'Projeção do custo total do projeto com base no desempenho de custo atual.',
-      formula: 'EAC = OAC ÷ IDC\n  OAC = Orçamento ao Término (BAC)',
+      name: 'EPT — Estimativa no Término',
+      desc: 'Projeção do custo total do projeto ao término, com base no desempenho de custo atual.',
+      formula: 'EPT = OAT ÷ IDC\n  OAT = Orçamento ao Término (BAC)\n  IDC = Índice de Desempenho de Custo',
     },
     en: {
       name: 'EAC — Estimate at Completion',
-      desc: 'Projected total cost of the project at the current cost performance rate.',
-      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion',
+      desc: 'Projected total cost of the project at completion, based on current cost performance.',
+      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
     },
   },
   SV: {
@@ -703,25 +745,73 @@ const _EVM_TERMS = {
   PV: {
     pt: {
       name: 'VP — Valor Planejado',
-      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline).',
-      formula: 'VP = Σ (horas planejadas por ciclo)\naté o ciclo de referência',
+      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline). Expresso em R$.',
+      formula: 'VP = min(Σ horas planejadas / horas orçadas, 1,0) × OAT\n  OAT = Orçamento ao Término (BAC)\n  Nota: o gráfico de curva S plota horas; VP e VS são calculados em R$',
     },
     en: {
       name: 'PV — Planned Value',
-      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline).',
-      formula: 'PV = Σ (planned hours per cycle)\nup to the reference cycle',
+      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline). Expressed in R$.',
+      formula: 'PV = min(Σ planned_h / budget_h, 1.0) × BAC\n  BAC = Budget at Completion\n  Note: the S-curve chart plots hours; PV and SV are computed in R$',
+    },
+  },
+  CV: {
+    pt: {
+      name: 'VC — Variação de Custo',
+      desc: 'Diferença entre o valor agregado e o custo real. Positivo = abaixo do orçamento; negativo = acima.',
+      formula: 'VC = VA − CR\n  VA = Valor Agregado (EV)\n  CR = Custo Real (AC)',
+    },
+    en: {
+      name: 'CV — Cost Variance',
+      desc: 'Difference between earned value and actual cost. Positive = under budget; negative = over budget.',
+      formula: 'CV = EV − AC\n  EV = Earned Value\n  AC = Actual Cost',
+    },
+  },
+  TCPI: {
+    pt: {
+      name: 'IDC-PC — Índice de Desempenho para Conclusão',
+      desc: 'Eficiência de custo necessária para terminar o projeto dentro do orçamento original. > 1,0 exige melhora de eficiência.',
+      formula: 'IDC-PC = (OAT − VA) ÷ (OAT − CR)\n  OAT = Orçamento ao Término (BAC)',
+    },
+    en: {
+      name: 'TCPI — To-Complete Performance Index',
+      desc: 'Required cost efficiency to finish within the original budget. > 1.0 means tighter performance needed.',
+      formula: 'TCPI = (BAC − EV) ÷ (BAC − AC)\n  BAC = Budget at Completion',
+    },
+  },
+  VAC: {
+    pt: {
+      name: 'VNT — Variação no Término',
+      desc: 'Diferença projetada entre o orçamento e o custo final estimado. Positivo = economia; negativo = estouro.',
+      formula: 'VNT = OAT − EPT\n  OAT = Orçamento ao Término (BAC)\n  EPT = Estimativa no Término (EAC)',
+    },
+    en: {
+      name: 'VAC — Variance at Completion',
+      desc: 'Projected difference between budget and estimated final cost. Positive = savings; negative = overrun.',
+      formula: 'VAC = BAC − EAC\n  BAC = Budget at Completion\n  EAC = Estimate at Completion',
+    },
+  },
+  ETC: {
+    pt: {
+      name: 'EPC — Estimativa para Conclusão',
+      desc: 'Custo restante projetado para concluir o trabalho, com base no desempenho atual.',
+      formula: 'EPC = EPT − CR\n  EPT = Estimativa no Término (EAC)\n  CR = Custo Real acumulado (AC)',
+    },
+    en: {
+      name: 'ETC — Estimate to Complete',
+      desc: 'Projected remaining cost to complete the work, based on current performance.',
+      formula: 'ETC = EAC − AC\n  EAC = Estimate at Completion\n  AC = Actual Cost',
     },
   },
   EVM: {
     pt: {
       name: 'EVM — Gestão de Valor Agregado',
       desc: 'Metodologia que integra escopo, prazo e custo para medir o desempenho real do projeto e projetar tendências.',
-      formula: 'Indicadores: IDC (CPI), IDP (SPI),\n  EAC, VS (SV), VP (PV)',
+      formula: 'Indicadores: IDC, IDP, EPT, VC, VNT, EPC, IDC-PC, VS, VP',
     },
     en: {
       name: 'EVM — Earned Value Management',
       desc: 'Methodology integrating scope, schedule and cost to measure actual project performance and forecast trends.',
-      formula: 'Metrics: CPI, SPI, EAC, SV, PV',
+      formula: 'Metrics: CPI, SPI, EAC, CV, VAC, ETC, TCPI, SV, PV',
     },
   },
 };
@@ -911,9 +1001,10 @@ const tabSections = document.querySelectorAll('.tab-section');
 
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
-    tabBtns.forEach(b => b.classList.remove('active'));
+    tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
     tabSections.forEach(s => s.hidden = true);
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
     if (btn.dataset.tab === 'dashboard') _renderActiveTab();
@@ -950,6 +1041,7 @@ function _disposeTabCharts(tabId) {
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
     _charts[id] = echarts.init(document.getElementById(id), 'dark', { renderer: 'svg' });
+    _charts[id].setOption({ aria: { enabled: true } });
   }
   return _charts[id];
 }
@@ -983,9 +1075,10 @@ const atabSections = document.querySelectorAll('.atab-section');
 atabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     _disposeTabCharts(_activeATab);
-    atabBtns.forEach(b => b.classList.remove('active'));
+    atabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
     atabSections.forEach(s => s.hidden = true);
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     _activeATab = btn.dataset.atab;
     document.getElementById(`atab-${_activeATab}`).hidden = false;
     if (_activeATab === 'forecast') _populateForecastPepSelect();
@@ -1604,7 +1697,9 @@ async function _renderPortfolioTab() {
     document.getElementById('portfolioTreemapTitle').textContent =
       _evmMode ? _t('portfolio.treemap_r') : _t('portfolio.treemap_h');
 
-    // Treemap
+    // Treemap — dynamic height: 220px for ≤4 PEPs, +55px per extra PEP, cap 440px
+    document.getElementById('treemapChart').style.height =
+      (health.length <= 4 ? 220 : Math.min(440, 220 + (health.length - 4) * 55)) + 'px';
     const tm = _getOrCreateChart('treemapChart');
     tm.setOption(_buildTreemapOption(health, _evmMode), true);
     tm.resize();
@@ -1869,10 +1964,28 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         }
         return;
       }
+
+      // Fetch SPI history per PEP in parallel (from forecast endpoint)
+      const spiMapByPep = {};
+      try {
+        const fcResults = await Promise.all(
+          peps.map(([wbs]) => apiFetch(`/api/forecast?pep_wbs=${encodeURIComponent(wbs)}`).catch(() => null))
+        );
+        fcResults.forEach((fc, i) => {
+          if (!fc?.history) return;
+          const wbs = peps[i][0];
+          spiMapByPep[wbs] = Object.fromEntries(
+            fc.history
+              .filter(h => h.spi_cumulative != null)
+              .map(h => [h.cycle_name, h.spi_cumulative])
+          );
+        });
+      } catch (_) { /* SPI overlay is best-effort */ }
+
       _showEmpty('pepCpiEmpty', false);
       document.getElementById('pepCpiPanel').hidden = false;
       const pcc = _getOrCreateChart('pepCpiChart');
-      pcc.setOption(_buildPepCpiOption(peps, allCycleNames), true);
+      pcc.setOption(_buildPepCpiOption(peps, allCycleNames, spiMapByPep), true);
       pcc.resize();
     } catch (err) {
       notify(`CPI por PEP — erro: ${err.message}`, 'error');
@@ -2042,6 +2155,15 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 
 function _buildForecastKpis(fc) {
   const fmtH = h => `${(+h).toFixed(1)}h`;
+  // Baseline status banner
+  let baselineBanner = '';
+  if (fc.using_baseline && fc.baseline_locked_at) {
+    const dt = _fmtDateShort(fc.baseline_locked_at);
+    const lbl = fc.baseline_label ? ` — ${escHtml(fc.baseline_label)}` : '';
+    baselineBanner = `<div class="baseline-banner active">📍 ${_t('baseline.active')}${lbl} · ${_t('baseline.locked_at')} ${dt}</div>`;
+  } else if (!fc.using_baseline && fc.budget_cost != null) {
+    baselineBanner = `<div class="baseline-banner warning">⚠️ ${_t('baseline.warning')}</div>`;
+  }
   const fmtR = v => _fmtCost(v);
 
   const pct = fc.budget_hours
@@ -2057,26 +2179,41 @@ function _buildForecastKpis(fc) {
   const svFmt  = fc.sv != null ? (fc.sv >= 0 ? '+' : '') + fmtR(fc.sv) : '—';
   const svCls  = fc.sv == null ? 'neutral' : fc.sv >= 0 ? 'green' : 'red';
 
+  const cvFmt  = fc.cv != null ? (fc.cv >= 0 ? '+' : '') + fmtR(fc.cv) : '—';
+  const cvCls  = fc.cv == null ? 'neutral' : fc.cv >= 0 ? 'green' : 'red';
+
+  const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
+  const tcpiCls = fc.tcpi == null ? 'neutral' : fc.tcpi <= 1.0 ? 'green' : fc.tcpi <= 1.1 ? 'amber' : 'red';
+
+  const vacFmt  = fc.vac != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
+  const vacCls  = fc.vac == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red';
+
   const completionVal = fc.estimated_completion_cycle
     || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
 
   const cards = [
-    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),     cls: 'blue'              },
+    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),        cls: 'blue'              },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
-                                                              lbl: _t('forecast.remaining'),    cls: over ? 'red' : 'neutral' },
-    { val: pct,                                               lbl: _t('forecast.utilization'),  cls: over ? 'red' : 'green'   },
-    { val: cpiVal,                                            lbl: 'CPI',                       cls: cpiCls,   evm: 'CPI' },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                       cls: 'neutral', evm: 'EAC' },
-    { val: spiVal,                                            lbl: _t('forecast.spi'),          cls: spiCls,   evm: 'SPI' },
-    { val: svFmt,                                             lbl: _t('forecast.sv'),           cls: svCls,    evm: 'SV'  },
-    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),   cls: 'violet'              },
+                                                              lbl: _t('forecast.remaining'),       cls: over ? 'red' : 'neutral' },
+    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',
+                                                              lbl: _t('forecast.remaining_cost'),  cls: 'neutral', evm: 'ETC' },
+    { val: pct,                                               lbl: _t('forecast.utilization'),     cls: over ? 'red' : 'green'   },
+    { val: cpiVal,                                            lbl: 'CPI',                          cls: cpiCls,   evm: 'CPI' },
+    { val: cvFmt,                                             lbl: _t('forecast.cv'),              cls: cvCls,    evm: 'CV'  },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                          cls: 'neutral', evm: 'EAC' },
+    { val: vacFmt,                                            lbl: _t('forecast.vac'),             cls: vacCls,   evm: 'VAC' },
+    { val: tcpiVal,                                           lbl: _t('forecast.tcpi'),            cls: tcpiCls,  evm: 'TCPI'},
+    { val: spiVal,                                            lbl: _t('forecast.spi'),             cls: spiCls,   evm: 'SPI' },
+    { val: svFmt,                                             lbl: _t('forecast.sv'),              cls: svCls,    evm: 'SV'  },
+    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),      cls: 'violet'              },
   ];
-  return cards.map(({ val, lbl, cls, evm }) => {
+  const cardsHtml = cards.map(({ val, lbl, cls, evm }) => {
     const lblHtml = evm
       ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
       : escHtml(lbl);
     return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
   }).join('');
+  return baselineBanner + cardsHtml;
 }
 
 function _buildForecastOption(fc) {
@@ -2219,6 +2356,43 @@ function _buildForecastOption(fc) {
   };
 }
 
+function _forecastInfoStat(lbl, val) {
+  return `<div style="display:flex;flex-direction:column;gap:.15rem">
+    <span style="font-size:.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">${escHtml(lbl)}</span>
+    <span style="font-size:.88rem;font-weight:600;color:var(--text)">${val}</span>
+  </div>`;
+}
+
+function _renderForecastProjectInfo(fc, proj) {
+  const el = document.getElementById('forecastProjectInfo');
+  if (!el) return;
+
+  const hrRatio   = fc.budget_hours ? fc.consumed_hours / fc.budget_hours : null;
+  const costRatio = fc.budget_cost  ? fc.actual_cost    / fc.budget_cost  : null;
+  const ratios    = [hrRatio, costRatio].filter(r => r != null);
+  const semColor  = !ratios.length ? 'grey'
+                  : Math.max(...ratios) >= 1.0 ? 'red'
+                  : Math.max(...ratios) >= 0.9 ? 'yellow'
+                  : 'green';
+  const semLabel  = _t(`sem.${semColor}`);
+
+  const budgetParts = [];
+  if (fc.budget_hours != null) budgetParts.push(`${fc.budget_hours.toFixed(1)}h`);
+  if (fc.budget_cost  != null) budgetParts.push(_fmtCost(fc.budget_cost));
+  const budgetStr = budgetParts.length ? budgetParts.join(' / ') : _t('forecast.info.no_budget');
+
+  const dotHtml = `<span class="sem-dot ${semColor}" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span>`;
+
+  el.innerHTML =
+    _forecastInfoStat(_t('forecast.info.project'),
+      escHtml(proj?.name || _t('forecast.info.no_name'))) +
+    _forecastInfoStat(_t('forecast.info.manager'),
+      escHtml(proj?.manager || _t('forecast.info.no_manager'))) +
+    _forecastInfoStat(_t('forecast.info.budget'), budgetStr) +
+    _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`);
+  el.hidden = false;
+}
+
 async function _renderForecastTab() {
   await _populateForecastPepSelect();
   const pep      = document.getElementById('forecastPepSelect').value;
@@ -2228,9 +2402,12 @@ async function _renderForecastTab() {
   const kpisEl  = document.getElementById('forecastKpis');
   const emptyEl = document.getElementById('forecastEmpty');
 
+  const infoEl = document.getElementById('forecastProjectInfo');
+
   if (!pep) {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
+    if (infoEl) infoEl.hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -2240,19 +2417,28 @@ async function _renderForecastTab() {
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    const fc = await apiFetch(`/api/forecast?${p}`);
+    const [fc, projects] = await Promise.all([
+      apiFetch(`/api/forecast?${p}`),
+      apiFetch('/api/projects'),
+    ]);
+    const proj = projects.find(pr => pr.pep_wbs === pep) || null;
     _showEmpty('forecastEmpty', false);
     kpisEl.hidden = false;
     kpisEl.innerHTML = _buildForecastKpis(fc);
-    const chart = _getOrCreateChart('forecastChart');
-    chart.setOption(_buildForecastOption(fc), true);
-    chart.resize();
+    _renderForecastProjectInfo(fc, proj);
     _currentForecastPep = pep;
+    _planProjectId = proj ? proj.id : null;
+    try {
+      const chart = _getOrCreateChart('forecastChart');
+      chart.setOption(_buildForecastOption(fc), true);
+      chart.resize();
+    } catch (_) { /* chart lib may not be loaded in offline envs */ }
     await _renderPlanTable(pep);
     document.getElementById('planCard').hidden = false;
   } catch (err) {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
+    if (infoEl) infoEl.hidden = true;
     document.getElementById('planCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
@@ -2916,13 +3102,19 @@ function _buildBulletOption(withBudget, evmMode = false) {
       trigger: 'axis', axisPointer: { type: 'none' },
       backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
       formatter: params => {
-        const b = budgets[params[0].dataIndex];
-        const a = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
+        const idx = params[0].dataIndex;
+        const b   = budgets[idx];
+        const a   = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
         const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
+        const cpiItem = withBudget[idx]?.cpi;
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
+        if (cpiItem != null) {
+          const cpiColor = cpiItem >= 1.0 ? _cssVar('--green') : cpiItem >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+          html += `<br>IDC (CPI): <b style="color:${cpiColor}">${cpiItem.toFixed(2)}</b>`;
+        }
         if (b > 0 && a > b) html += `<br><span style="color:${_cssVar('--red')}">⚠ ${_t('tt.over_budget')}</span>`;
         return html;
       },
@@ -2969,6 +3161,32 @@ function _buildBulletOption(withBudget, evmMode = false) {
           formatter: params => {
             const b = budgets[params.dataIndex];
             return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
+          },
+        },
+      },
+      {
+        // Transparent overlay — inside label only, sem barra visual
+        type: 'bar',
+        barMaxWidth: 28,
+        barGap: '-100%',
+        z: 3,
+        silent: true,
+        legendHoverLink: false,
+        data: actuals.map(a => ({
+          value: a.value,
+          itemStyle: { color: 'transparent' },
+        })),
+        label: {
+          show: true,
+          position: 'inside',
+          fontSize: 10,
+          color: _cssVar('--text'),
+          overflow: 'truncate',
+          formatter: params => {
+            if (!params.value) return '';
+            return evmMode
+              ? _fmtCost(params.value / _currencyFactor)
+              : `${(+params.value).toFixed(1)}h`;
           },
         },
       },
@@ -3060,6 +3278,7 @@ async function _renderCollabTimeline(name) {
   chartEl.style.visibility = '';
 
   const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  tc.setOption({ aria: { enabled: true } });
   _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
@@ -3172,6 +3391,7 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  cc.setOption({ aria: { enabled: true } });
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
     backgroundColor: 'transparent',
@@ -3333,14 +3553,14 @@ function _buildCpiOption_unused(trends) {
   };
 }
 
-function _buildPepCpiOption(peps, allCycleNames) {
-  const series = peps.map(([wbs, { desc, points }], i) => {
+function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
+  const pal = _getPalette();
+  const cpiSeries = peps.map(([wbs, { desc, points }], i) => {
     const dataMap = Object.fromEntries(points.map(p => [p.cycleName, p.cpi]));
     const data    = allCycleNames.map(n => dataMap[n] ?? null);
-    const pal     = _getPalette();
     const color   = pal[i % pal.length];
     return {
-      name: `${wbs} — ${desc}`,
+      name: `${wbs} — ${desc} (IDC)`,
       type: 'line',
       data,
       connectNulls: false,
@@ -3351,6 +3571,29 @@ function _buildPepCpiOption(peps, allCycleNames) {
       emphasis: { focus: 'series' },
     };
   });
+
+  // SPI (IDP) series — dashed lines, same color as their CPI counterpart
+  const spiSeries = peps
+    .map(([wbs, { desc }], i) => {
+      const spiMap = spiMapByPep[wbs];
+      if (!spiMap || !Object.keys(spiMap).length) return null;
+      const data  = allCycleNames.map(n => spiMap[n] ?? null);
+      const color = pal[i % pal.length];
+      return {
+        name: `${wbs} — ${desc} (IDP)`,
+        type: 'line',
+        data,
+        connectNulls: false,
+        smooth: false,
+        symbol: 'diamond', symbolSize: 6,
+        lineStyle: { color, width: 1.8, type: 'dashed' },
+        itemStyle: { color },
+        emphasis: { focus: 'series' },
+      };
+    })
+    .filter(Boolean);
+
+  const series = [...cpiSeries, ...spiSeries];
 
   return {
     backgroundColor: 'transparent',
@@ -3370,10 +3613,13 @@ function _buildPepCpiOption(peps, allCycleNames) {
         const lines  = params
           .filter(p => p.value != null)
           .map(p => {
-            const cpiVal = p.value;
-            const color  = cpiVal >= 1.0 ? _cssVar('--primary') : cpiVal >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-            const dot    = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
-            return `${dot}${escHtml(p.seriesName)}: <b style="color:${color}">${cpiVal.toFixed(2)}</b>`;
+            const val   = p.value;
+            const isSpi = p.seriesName.endsWith('(IDP)');
+            const color = val >= 1.0 ? _cssVar('--primary') : val >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+            const shape = isSpi
+              ? `<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);margin-right:4px"></span>`
+              : `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
+            return `${shape}${escHtml(p.seriesName)}: <b style="color:${color}">${val.toFixed(2)}</b>`;
           })
           .join('<br/>');
         return header + lines;
@@ -3393,7 +3639,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
       splitLine: { show: false },
     },
     yAxis: {
-      name: 'CPI',
+      name: 'IDC / IDP (cumulativo)',
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
       axisLine:  { lineStyle: { color: _cssVar('--border') } },
@@ -3404,7 +3650,7 @@ function _buildPepCpiOption(peps, allCycleNames) {
         silent: true,
         symbol: 'none',
         lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: 'CPI = 1.0', color: _cssVar('--text-3'), fontSize: 10 } }],
+        data: [{ yAxis: 1.0, label: { formatter: '= 1,0', color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
     series: series.map((s, i) => i > 0 ? s : {
@@ -3579,7 +3825,7 @@ function openCycleModal(id = null) {
     document.getElementById('cycleStartInput').value = '';
     document.getElementById('cycleEndInput').value   = '';
   }
-  openModal('cycleModal', e?.currentTarget ?? document.activeElement);
+  openModal('cycleModal', document.activeElement);
 }
 
 function closeCycleModal() { closeModal('cycleModal'); }
@@ -3664,6 +3910,8 @@ let _projectEditId  = null;
 let _allProjects    = [];
 let _consumedByPep  = {};
 
+let _baselineByProject = {};   // project_id → active ProjectBaselineOut | null
+
 async function loadProjectsTable() {
   try {
     const [projects, health] = await Promise.all([
@@ -3672,6 +3920,19 @@ async function loadProjectsTable() {
     ]);
     _allProjects   = projects;
     _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.consumed_hours]));
+
+    // Fetch active baselines for all projects in parallel (best-effort)
+    const blResults = await Promise.allSettled(
+      projects.map(p => apiFetch(`/api/projects/${p.id}/baselines`))
+    );
+    _baselineByProject = {};
+    blResults.forEach((r, i) => {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        const active = r.value.find(b => b.is_active);
+        _baselineByProject[projects[i].id] = active || null;
+      }
+    });
+
     _renderProjectsTable(_applySort('projectsTable', projects));
   } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
 }
@@ -3694,20 +3955,27 @@ function _renderProjectsTable(projects) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
     return;
   }
-  tbody.innerHTML = projects.map(p => `
+  tbody.innerHTML = projects.map(p => {
+    const bl = _baselineByProject[p.id];
+    const blBadge = bl
+      ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
+      : '';
+    return `
     <tr>
       <td><code>${escHtml(p.pep_wbs)}</code></td>
       <td>${escHtml(p.name || '—')}</td>
       <td>${escHtml(p.client || '—')}</td>
       <td>${escHtml(p.manager || '—')}</td>
-      <td style="text-align:right">${_buildBudgetCell(p)}</td>
+      <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function openProjectModal(id = null) {
@@ -3782,6 +4050,124 @@ function deleteProject(id, pep) {
     catch (e) { notify(`Erro: ${e.message}`, 'error'); }
   });
 }
+
+// ── Baseline Modal ─────────────────────────────────────────────────────────
+
+function _fmtDateShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+let _baselineModalProjectId = null;
+
+async function _openBaselineModal(projectId) {
+  _baselineModalProjectId = projectId;
+  const proj = _allProjects.find(p => p.id === projectId);
+  const title = proj ? `${_t('baseline.title')} — ${proj.pep_wbs}${proj.name ? ' · ' + proj.name : ''}` : _t('baseline.title');
+  document.getElementById('baselineModalTitle').textContent = title;
+  document.getElementById('baselineModalBody').innerHTML = '<p style="color:#64748b">Carregando…</p>';
+  openModal('baselineModal');
+  await _refreshBaselineModal(projectId);
+}
+
+async function _refreshBaselineModal(projectId) {
+  try {
+    const baselines = await apiFetch(`/api/projects/${projectId}/baselines`);
+    const active = baselines.find(b => b.is_active);
+    const proj = _allProjects.find(p => p.id === projectId);
+    const hasbudget = proj && proj.budget_cost != null;
+
+    let html = '';
+
+    // Active baseline info
+    if (active) {
+      html += `<div class="baseline-info-box active">
+        <strong>📍 ${_t('baseline.active')}</strong>${active.label ? ` — <em>${escHtml(active.label)}</em>` : ''}
+        <br><span class="text-dim">${_t('baseline.locked_at')} ${_fmtDateShort(active.locked_at)} ${_t('baseline.locked_by')} ${escHtml(active.locked_by || '?')}</span>
+        <br><span class="text-dim">${_t('baseline.budget_h')}: <b>${active.budget_hours != null ? active.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</b>
+        &nbsp;·&nbsp; ${_t('baseline.budget_cost')}: <b>${active.budget_cost != null ? _fmtCost(active.budget_cost) : '—'}</b></span>
+      </div>`;
+    } else {
+      html += `<div class="baseline-info-box warning">⚠️ ${_t('baseline.none')}</div>`;
+    }
+
+    // Create new baseline form
+    html += `<div style="margin:1rem 0;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <input type="text" id="baselineLabelInput" class="form-control" style="flex:1;min-width:180px"
+             placeholder="${_t('baseline.label_ph')}" />
+      <button class="btn btn-primary btn-sm" onclick="_createBaseline(${projectId})"
+              ${hasbudget ? '' : 'disabled title="Defina budget_cost no projeto primeiro"'}>
+        📍 ${_t('baseline.create')}
+      </button>
+    </div>`;
+    if (!hasbudget) {
+      html += `<p class="hint" style="color:var(--amber);margin-top:-.5rem">Defina o orçamento (budget_cost) do projeto para habilitar baseline.</p>`;
+    }
+
+    // History table
+    html += `<h4 style="margin:.75rem 0 .4rem;font-size:.875rem">${_t('baseline.history')}</h4>`;
+    if (!baselines.length) {
+      html += `<p class="text-dim" style="font-size:.85rem">${_t('baseline.no_history')}</p>`;
+    } else {
+      html += `<table class="data-table" style="font-size:.82rem"><thead><tr>
+        <th>${_t('baseline.locked_at')}</th><th>${_t('baseline.locked_by')}</th>
+        <th>${_t('baseline.budget_h')}</th><th>${_t('baseline.budget_cost')}</th>
+        <th>Rótulo</th><th></th>
+      </tr></thead><tbody>`;
+      baselines.forEach(b => {
+        html += `<tr style="${b.is_active ? 'background:rgba(79,142,247,.08)' : ''}">
+          <td>${_fmtDateShort(b.locked_at)}</td>
+          <td>${escHtml(b.locked_by || '—')}</td>
+          <td>${b.budget_hours != null ? b.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</td>
+          <td>${b.budget_cost != null ? _fmtCost(b.budget_cost) : '—'}</td>
+          <td>${escHtml(b.label || '—')}</td>
+          <td><div class="actions" style="gap:.25rem">
+            ${!b.is_active ? `<button class="btn btn-secondary btn-sm" onclick="_activateBaseline(${projectId},${b.id})">${_t('baseline.activate')}</button>` : '<span class="badge-baseline active" style="font-size:.75rem">ativo</span>'}
+            ${_isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="_deleteBaseline(${projectId},${b.id})">✕</button>` : ''}
+          </div></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    }
+
+    document.getElementById('baselineModalBody').innerHTML = html;
+  } catch(e) {
+    document.getElementById('baselineModalBody').innerHTML = `<p style="color:var(--red)">Erro: ${e.message}</p>`;
+  }
+}
+
+async function _createBaseline(projectId) {
+  const label = document.getElementById('baselineLabelInput')?.value.trim() || null;
+  try {
+    await apiFetchJSON(`/api/projects/${projectId}/baseline`, 'POST', { label });
+    notify(_t('baseline.created'), 'success');
+    await _refreshBaselineModal(projectId);
+    loadProjectsTable();
+  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _activateBaseline(projectId, baselineId) {
+  try {
+    await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}/activate`, 'POST', {});
+    await _refreshBaselineModal(projectId);
+    loadProjectsTable();
+  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _deleteBaseline(projectId, baselineId) {
+  confirmDialog(_t('confirm.remove_baseline') || 'Remover este baseline?', async () => {
+    try {
+      await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}`, 'DELETE');
+      notify(_t('baseline.deleted'), 'success');
+      await _refreshBaselineModal(projectId);
+      loadProjectsTable();
+    } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
+}
+
+document.getElementById('baselineModalClose').addEventListener('click', () => closeModal('baselineModal'));
 
 // ---------------------------------------------------------------------------
 // ACL de projetos — controle de acesso por PEP (item 3)
@@ -4661,7 +5047,9 @@ let _currentUserInfo = null;
 
 function _switchMyTab(tabId) {
   document.querySelectorAll('.my-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.myTab === tabId);
+    const active = btn.dataset.myTab === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
   });
   document.querySelectorAll('.my-tab-section').forEach(el => {
     el.hidden = el.id !== `my-tab-${tabId}`;

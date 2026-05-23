@@ -51,6 +51,19 @@
 
   --text-1:      #ddeeff;
   --font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Extended palette — for off-token inline styles */
+  --text-hint:    #94a3b8;  /* light gray — hints, placeholders, muted labels */
+  --text-faint:   #475569;  /* empty-state / loading row text */
+  --text-dim:     #64748b;  /* secondary hints, layout descriptions */
+  --card-ingest:  #1e293b;  /* ingest panel + EVM tooltip background */
+  --border-ingest:#334155;  /* ingest panel + EVM tooltip border */
+  --error-text:   #f87171;  /* inline validation error messages */
+  --very-dark:    #0f172a;  /* ingest result details background */
+  --info-text:    #93c5fd;  /* session detail info list text */
+  --warn-text:    #fcd34d;  /* session detail warning list text */
+  --input-overlay:#e2e8f0;  /* currency widget input text */
+  --text-pale:    #cbd5e1;  /* slightly brighter label text (slate-300) */
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -549,6 +562,25 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .badge-budget.critical { background: rgba(240,64,64,0.12); color: var(--red); border: 1px solid rgba(240,64,64,0.25); }
 .badge-budget.warning  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
 
+.badge-baseline {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px;
+  font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; margin-left: 0.4rem;
+}
+.badge-baseline.active { background: rgba(79,142,247,.15); color: #7eb3ff; border: 1px solid rgba(79,142,247,.3); }
+
+.baseline-banner {
+  padding: .45rem .8rem; border-radius: 6px; font-size: .8rem;
+  margin-bottom: .6rem;
+}
+.baseline-banner.active  { background: rgba(79,142,247,.1);  color: #7eb3ff; border: 1px solid rgba(79,142,247,.2); }
+.baseline-banner.warning { background: rgba(245,158,11,.08); color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+
+.baseline-info-box {
+  padding: .6rem .9rem; border-radius: 6px; font-size: .82rem; margin-bottom: .75rem; line-height: 1.6;
+}
+.baseline-info-box.active  { background: rgba(79,142,247,.1);  border: 1px solid rgba(79,142,247,.25); }
+.baseline-info-box.warning { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); color: #fbbf24; }
+
 /* ── Bullet chart threshold legend ──────────────────────────── */
 .threshold-dot {
   display: inline-block; width: 8px; height: 8px;
@@ -948,4 +980,100 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .loading-state { display: flex; align-items: center; gap: .75rem; padding: 2.5rem 1.5rem; color: var(--text-2); }
 .spinner { width: 1.25rem; height: 1.25rem; border: 2px solid var(--border-hi); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-}
+
+/* ── EVM tooltip uses new tokens ─────────────────────────────────────────── */
+.evm-tooltip  { background: var(--card-ingest); border-color: var(--border-ingest); }
+.evm-tip-name { color: var(--input-overlay); }
+.evm-tip-desc { color: var(--text-hint); }
+
+/* ── Chart container heights ─────────────────────────────────────────────── */
+/* Moves hard-coded height from inline style= to CSS; width:100% always */
+#effortChart              { width: 100%; height: 500px; }
+#trendsChart              { width: 100%; height: 440px; }
+#treemapChart             { width: 100%; height: 440px; }
+#bulletChart              { width: 100%; height: 300px; }
+#scatterChart             { width: 100%; height: 690px; }
+#forecastChart            { width: 100%; height: 420px; }
+#pepCpiChart              { width: 100%; height: 360px; }
+#costCompositionChart     { width: 100%; height: 360px; }
+#collabInlineTimelineChart { width: 100%; height: 320px; }
+#collabCalendarChart      { width: 100%; }  /* height is set dynamically by JS */
+
+/* ── Ingest result panel ────────────────────────────────────────────────── */
+#ingestResultPanel { margin: 0 1.5rem .5rem; border-radius: .5rem; font-size: .85rem; overflow: hidden; }
+
+/* ── ID-10 Utility classes ───────────────────────────────────────────────── */
+/* Layout */
+.flex-col     { display: flex; flex-direction: column; }
+.flex-center  { display: flex; align-items: center; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-bottom  { display: flex; align-items: flex-end; }
+.flex-1       { flex: 1; }
+.flex-wrap    { flex-wrap: wrap; }
+.inline-flex  { display: inline-flex; }
+.gap-xs       { gap: .3rem; }
+.gap-sm       { gap: .5rem; }
+.gap-md       { gap: .75rem; }
+.gap-lg       { gap: 1rem; }
+.gap-xl       { gap: 1.5rem; }
+
+/* Typography */
+.text-right   { text-align: right; }
+.text-left    { text-align: left; }
+.font-xs      { font-size: .78rem; }
+.font-sm      { font-size: .8rem; }
+.font-body    { font-size: .85rem; }
+.font-600     { font-weight: 600; }
+.nowrap       { white-space: nowrap; }
+.cursor-pointer { cursor: pointer; }
+.overflow-x   { overflow-x: auto; }
+
+/* Color utilities */
+.text-hint    { color: var(--text-hint); }
+.text-dim     { color: var(--text-dim); }
+.text-faint   { color: var(--text-faint); }
+
+/* Hint shorthand: .8rem + --text-hint (most common hint pattern) */
+.hint         { font-size: .8rem; color: var(--text-hint); }
+/* Smaller hint variants */
+.hint-xs      { font-size: .78rem; color: var(--text-dim); }
+.hint-sm      { font-size: .75rem; color: var(--text-dim); }
+
+/* Empty / loading table cells */
+.td-empty     { text-align: center; color: var(--text-faint); padding: 2rem; }
+.td-empty-sm  { text-align: center; color: var(--text-faint); padding: 1.5rem; }
+
+/* Section label (uppercase, small, muted) */
+.section-label { font-size: .78rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+
+/* Inline error / warning messages */
+.error-msg    { color: var(--error-text); font-size: .8rem; min-height: 1rem; }
+
+/* ── Component-level classes ─────────────────────────────────────────────── */
+/* Currency widget container */
+.header-widget { display: flex; align-items: center; gap: .3rem; background: var(--card-ingest); border: 1px solid var(--border-ingest); border-radius: .4rem; padding: .15rem .75rem; min-width: 11rem; }
+/* Currency inputs (width differs per input — keep inline) */
+.currency-input { background: transparent; border: none; color: var(--input-overlay); font-size: .8rem; text-align: center; outline: none; }
+/* Currency separator × */
+.currency-sep { color: var(--text-faint); font-size: .85rem; }
+
+/* Ingest result panel header/body */
+.ingest-header  { display: flex; justify-content: space-between; align-items: center; padding: .6rem 1rem; background: var(--card-ingest); border: 1px solid var(--border-ingest); border-bottom: none; border-radius: .5rem .5rem 0 0; }
+.ingest-details { border: 1px solid var(--border-ingest); border-radius: 0 0 .5rem .5rem; background: var(--very-dark); }
+
+/* Generic icon-only close buttons */
+.close-icon-btn { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 1.3rem; line-height: 1; }
+.close-icon-btn-sm { background: none; border: none; color: var(--text-hint); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+
+/* Calendar prev/next month nav buttons */
+.cal-nav-btn { background: none; border: 1px solid var(--border); color: var(--text-2); border-radius: .35rem; padding: .2rem .55rem; cursor: pointer; font-size: .9rem; }
+
+/* Modal form body padding — flex column */
+.modal-form-body    { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.modal-form-body-sm { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
+
+/* Raw data pre block (quarantine modal) */
+.raw-pre { font-size: .72rem; background: var(--surface); padding: .75rem; border-radius: .4rem; overflow: auto; max-height: 260px; margin-top: .5rem; }
+
+/* Collab detail panel header */
+.detail-panel-header { padding: 1rem 1.25rem .5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }

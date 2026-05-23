@@ -139,6 +139,23 @@ class ProjectCyclePlanOut(BaseModel):
     planned_hours: float
 
 
+class ProjectBaselineIn(BaseModel):
+    label: Optional[str] = None
+
+
+class ProjectBaselineOut(BaseModel):
+    id: int
+    project_id: int
+    locked_at: datetime
+    locked_by: Optional[str] = None
+    budget_hours: Optional[float] = None
+    budget_cost: Optional[float] = None
+    label: Optional[str] = None
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SeniorityLevelOut(BaseModel):
     id: int
     name: str
@@ -230,6 +247,7 @@ class PortfolioHealthItem(BaseModel):
     budget_cost: Optional[float] = None
     consumed_hours: float
     actual_cost: float
+    cpi: Optional[float] = None
     is_registered: bool
 
 
@@ -262,6 +280,7 @@ class BurnHistoryPoint(BaseModel):
     cumulative_cost: float
     planned_hours: float | None = None
     cumulative_planned_hours: float | None = None
+    spi_cumulative: float | None = None
 
 
 class ForecastOut(BaseModel):
@@ -272,14 +291,21 @@ class ForecastOut(BaseModel):
     consumed_hours: float
     actual_cost: float
     remaining_hours: float | None
+    remaining_cost: float | None = None
     cpi: float | None
     eac: float | None
+    cv: float | None = None
+    tcpi: float | None = None
+    vac: float | None = None
     spi: float | None = None
     sv: float | None = None
     avg_hours_per_cycle: float
     estimated_cycles_to_complete: float | None
     estimated_completion_cycle: str | None
     history: list[BurnHistoryPoint]
+    using_baseline: bool = False
+    baseline_locked_at: datetime | None = None
+    baseline_label: str | None = None
 
 
 class UploadOut(BaseModel):

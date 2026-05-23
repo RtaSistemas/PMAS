@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord, UserProjectAccess
+from backend.app.models import Collaborator, Cycle, GlobalConfig, Project, ProjectBaseline, ProjectCyclePlan, TimesheetRecord, UserProjectAccess
 from backend.app.schemas import (
     AllocationItem,
     BurnHistoryPoint,
@@ -48,6 +48,12 @@ def get_portfolio_health(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("consumed_hours"),
+            # Weighted hours for EV calculation (consistent with AC cost multipliers)
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours * em
+                + TimesheetRecord.standby_hours * sm
+            ).label("ev_hours"),
             func.sum(
                 TimesheetRecord.cost_per_hour
                 * (
@@ -83,9 +89,11 @@ def get_portfolio_health(
                 "pep_wbs": r.pep_wbs,
                 "pep_description": r.pep_description,
                 "consumed_hours": 0.0,
+                "ev_hours": 0.0,
                 "actual_cost": 0.0,
             }
         pep_map[r.pep_wbs]["consumed_hours"] += r.consumed_hours or 0.0
+        pep_map[r.pep_wbs]["ev_hours"]       += r.ev_hours       or 0.0
         pep_map[r.pep_wbs]["actual_cost"]    += r.actual_cost    or 0.0
 
     if not pep_map:
@@ -98,19 +106,40 @@ def get_portfolio_health(
         .all()
     }
 
-    result = [
-        {
+    # Load active baselines for all projects in batch
+    project_id_map = {p.pep_wbs: p.id for p in projects.values()}
+    baseline_map: dict[int, ProjectBaseline] = {}
+    if project_id_map:
+        for bl in db.query(ProjectBaseline).filter(
+            ProjectBaseline.project_id.in_(list(project_id_map.values())),
+            ProjectBaseline.is_active == True,
+        ).all():
+            baseline_map[bl.project_id] = bl
+
+    result = []
+    for key, data in pep_map.items():
+        proj = projects.get(key)
+        consumed  = data["consumed_hours"]
+        ev_h      = data["ev_hours"]
+        ac = data["actual_cost"]
+        bl = baseline_map.get(proj.id) if proj else None
+        bh = bl.budget_hours if bl else (proj.budget_hours if proj else None)
+        bc = bl.budget_cost  if bl else (proj.budget_cost  if proj else None)
+        cpi_val = None
+        if bh and bc and ev_h > 0 and ac > 0:
+            ev = min(ev_h / bh, 1.0) * bc
+            cpi_val = round(ev / ac, 3)
+        result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
-            "name": projects[key].name if key in projects else None,
-            "budget_hours": projects[key].budget_hours if key in projects else None,
-            "budget_cost": projects[key].budget_cost if key in projects else None,
-            "consumed_hours": data["consumed_hours"],
-            "actual_cost": data["actual_cost"],
+            "name": proj.name if proj else None,
+            "budget_hours": bh,
+            "budget_cost": bc,
+            "consumed_hours": consumed,
+            "actual_cost": ac,
+            "cpi": cpi_val,
             "is_registered": key in projects,
-        }
-        for key, data in pep_map.items()
-    ]
+        })
     result.sort(key=lambda x: x["consumed_hours"], reverse=True)
     return result
 
@@ -190,9 +219,9 @@ def get_trends(
                 TimesheetRecord.pep_wbs,
                 func.sum(
                     TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours
-                    + TimesheetRecord.standby_hours
-                ).label("consumed_hours"),
+                    + TimesheetRecord.extra_hours * em
+                    + TimesheetRecord.standby_hours * sm
+                ).label("ev_hours"),
                 func.sum(
                     TimesheetRecord.cost_per_hour * (
                         TimesheetRecord.normal_hours
@@ -218,12 +247,12 @@ def get_trends(
             cpi_q = cpi_q.filter(TimesheetRecord.record_date <= date_to)
         cpi_rows = cpi_q.group_by(Cycle.id, TimesheetRecord.pep_wbs).all()
 
-        # Build per-cycle consumed_hours per (cycle_id, pep_wbs)
+        # Build per-cycle ev_hours per (cycle_id, pep_wbs)
         cycle_pep_consumed: dict[tuple, float] = defaultdict(float)
         cycle_pep_ac: dict[tuple, float] = defaultdict(float)
         for cr in cpi_rows:
-            cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.consumed_hours or 0.0
-            cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)] += cr.actual_cost or 0.0
+            cycle_pep_consumed[(cr.cycle_id, cr.pep_wbs)] += cr.ev_hours    or 0.0
+            cycle_pep_ac[(cr.cycle_id, cr.pep_wbs)]       += cr.actual_cost or 0.0
     else:
         cycle_pep_consumed = {}
         cycle_pep_ac = {}
@@ -357,6 +386,12 @@ def get_forecast(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("period_hours"),
+            # Weighted hours (same multipliers as AC): aligns EV numerator with cost basis
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours * em
+                + TimesheetRecord.standby_hours * sm
+            ).label("period_weighted_hours"),
             func.sum(
                 TimesheetRecord.cost_per_hour * (
                     TimesheetRecord.normal_hours
@@ -391,8 +426,12 @@ def get_forecast(
         )
         plan_by_cycle_start = {start: plan.planned_hours for plan, start in plan_rows}
 
-    budget_hours = project.budget_hours if project else None
-    budget_cost = project.budget_cost if project else None
+    active_baseline = (
+        db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
+        if project else None
+    )
+    budget_hours = active_baseline.budget_hours if active_baseline else (project.budget_hours if project else None)
+    budget_cost  = active_baseline.budget_cost  if active_baseline else (project.budget_cost  if project else None)
 
     # Sort plan entries by start_date so cumulative PV is computed correctly
     # even when plan cycles have no actual data (BUG-B fix)
@@ -400,27 +439,37 @@ def get_forecast(
     has_plan = bool(sorted_plans)
 
     history = []
-    cum_h = 0.0
-    cum_c = 0.0
+    cum_h  = 0.0   # physical hours (for display)
+    cum_wh = 0.0   # weighted hours (for EV numerator, aligns with AC cost basis)
+    cum_c  = 0.0
     prev_cum_ph = 0.0
     last_plan_ev: Optional[float] = None
     last_plan_pv: Optional[float] = None
 
     for r in rows:
-        cum_h += r.period_hours or 0.0
-        cum_c += r.period_cost or 0.0
+        cum_h  += r.period_hours          or 0.0
+        cum_wh += r.period_weighted_hours or 0.0
+        cum_c  += r.period_cost           or 0.0
 
         # Cumulative planned hours through all plan cycles up to this cycle's start_date
         cum_ph = sum(h for s, h in sorted_plans if s <= r.cycle_start) if sorted_plans else 0.0
 
         # Capture EV/PV at the last cycle where the plan advanced (BUG-A fix):
         # avoids SPI converging to 1.0 when project overruns past the plan end date
+        # EV uses weighted hours so it stays consistent with AC multipliers
         if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
-            last_plan_ev = min(cum_h / budget_hours, 1.0) * budget_cost
-            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+            last_plan_ev = min(cum_wh / budget_hours, 1.0) * budget_cost
+            last_plan_pv = min(cum_ph  / budget_hours, 1.0) * budget_cost
             prev_cum_ph = cum_ph
 
         ph_period = plan_by_cycle_start.get(r.cycle_start)
+        # SPI at this cycle point (EV_cum / PV_cum in R$, both capped at 1.0 × budget_cost)
+        spi_cum = None
+        if has_plan and budget_hours and budget_cost and cum_ph > 0:
+            ev_cum  = min(cum_wh / budget_hours, 1.0) * budget_cost
+            pv_cum  = min(cum_ph / budget_hours, 1.0) * budget_cost
+            if pv_cum > 0:
+                spi_cum = round(ev_cum / pv_cum, 3)
         history.append({
             "cycle_name": r.cycle_name,
             "cycle_start": r.cycle_start,
@@ -430,24 +479,37 @@ def get_forecast(
             "cumulative_cost": round(cum_c, 2),
             "planned_hours": round(ph_period, 2) if ph_period is not None else None,
             "cumulative_planned_hours": round(cum_ph, 2) if has_plan else None,
+            "spi_cumulative": spi_cum,
         })
 
-    consumed_hours = cum_h
-    actual_cost = cum_c
+    consumed_hours = cum_h    # physical hours for display
+    ev_hours       = cum_wh   # weighted hours for EV
+    actual_cost    = cum_c
 
     recent = rows[-3:]
     avg_hours = sum(r.period_hours or 0.0 for r in recent) / len(recent) if recent else 0.0
 
     cpi = None
     eac = None
+    cv = None
+    tcpi = None
+    vac = None
     spi = None
     sv = None
 
-    if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
+    if budget_hours and budget_cost and ev_hours > 0:
+        # EV uses cost-weighted hours so it stays dimensionally consistent with AC
+        ev_val = min(ev_hours / budget_hours, 1.0) * budget_cost
         if actual_cost > 0:
             cpi = round(ev_val / actual_cost, 3)
             eac = round(budget_cost / cpi, 2) if cpi > 0 else None
+            cv  = round(ev_val - actual_cost, 2)
+            # TCPI: efficiency required to finish within original budget
+            bac_minus_ac = budget_cost - actual_cost
+            if bac_minus_ac > 0:
+                tcpi = round((budget_cost - ev_val) / bac_minus_ac, 3)
+        if eac is not None:
+            vac = round(budget_cost - eac, 2)
         # BUG-A fix: use EV/PV frozen at the last planned cycle, not final totals;
         # prevents SPI from converging to 1.0 after the project overruns its schedule
         if has_plan and last_plan_pv and last_plan_pv > 0:
@@ -455,12 +517,16 @@ def get_forecast(
             sv = round(last_plan_ev - last_plan_pv, 2)
 
     # BUG-C fix: floor remaining_hours at 0 so overrun projects don't return negative values
+    # remaining_hours is based on physical hours (for display); ETC cost uses EAC
     remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours is not None else None
+    remaining_cost = round(eac - actual_cost, 2) if eac is not None and actual_cost is not None else None
 
     est_cycles = None
     est_completion = None
     if remaining_hours is not None and remaining_hours > 0 and avg_hours > 0:
-        est_cycles = round(remaining_hours / avg_hours, 1)
+        # Adjust velocity by SPI so lagging projects get a more realistic forecast
+        effective_velocity = avg_hours * spi if (spi and spi > 0) else avg_hours
+        est_cycles = round(remaining_hours / effective_velocity, 1)
         n = math.ceil(est_cycles)
         future = (
             db.query(Cycle)
@@ -482,14 +548,21 @@ def get_forecast(
         "consumed_hours": round(consumed_hours, 2),
         "actual_cost": round(actual_cost, 2),
         "remaining_hours": remaining_hours,
+        "remaining_cost": remaining_cost,
         "cpi": cpi,
         "eac": eac,
+        "cv": cv,
+        "tcpi": tcpi,
+        "vac": vac,
         "spi": spi,
         "sv": sv,
         "avg_hours_per_cycle": round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
         "estimated_completion_cycle": est_completion,
         "history": history,
+        "using_baseline": active_baseline is not None,
+        "baseline_locked_at": active_baseline.locked_at if active_baseline else None,
+        "baseline_label": active_baseline.label if active_baseline else None,
     }
 
 
