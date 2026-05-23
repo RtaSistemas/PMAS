@@ -30,36 +30,23 @@ O PMAS nasceu como um importador de CSV com dashboard básico. Ao longo do tempo
 ### 1.1 Mapa de Fluxo Atual
 
 ```mermaid
-flowchart TD
-    subgraph WRITE["ESCRITA (Ingestão)"]
-        UP[Upload CSV/XLSX] --> PARSE[pandas parse]
-        PARSE --> RULES[ValidationRule engine]
-        RULES --> RATE[_lookup_rate · cost_per_hour]
-        RATE --> INSERT[INSERT TimesheetRecord]
-        INSERT --> QR[QuarantineRecord]
-        INSERT --> SESSION[UploadSession]
-    end
+flowchart LR
+    UP[Upload CSV/XLSX] --> PARSE[pandas parse]
+    PARSE --> RULES[ValidationRule engine]
+    RULES --> RATE["_lookup_rate · cost_per_hour"]
+    RATE --> INSERT[INSERT TimesheetRecord]
+    INSERT --> QR[QuarantineRecord]
+    INSERT --> SESSION[UploadSession]
 
-    subgraph READ["LEITURA (Endpoints — hoje)"]
-        direction TB
-        PH[GET /portfolio-health] -->|GROUP BY pep_wbs| TS1[(TimesheetRecord)]
-        TR[GET /trends] -->|GROUP BY cycle| TS2[(TimesheetRecord)]
-        FC[GET /forecast/{id}] -->|loop por ciclo| TS3[(TimesheetRecord)]
-        DB[GET /dashboard] -->|GROUP BY collaborator| TS4[(TimesheetRecord)]
-        PL[GET /plans/{id}] --> PCP[(ProjectCyclePlan)]
-    end
+    INSERT -->|GROUP BY pep_wbs| PH["GET /portfolio-health"]
+    INSERT -->|GROUP BY cycle| TR["GET /trends"]
+    INSERT -->|loop por ciclo| FC["GET /forecast/:id"]
+    INSERT -->|GROUP BY collaborator| DB["GET /dashboard"]
 
-    subgraph JS["FRONTEND (hoje)"]
-        direction TB
-        J1[fetch /portfolio-health] --> J2[calcular CPI no JS]
-        J2 --> J3[renderizar treemap]
-        J4[fetch /forecast/{id}] --> J5[calcular SPI, VAC, EAC no JS]
-        J5 --> J6[renderizar S-curve]
-        J7[fetch /trends ×N ciclos] --> J8[montar série histórica no JS]
-    end
-
-    WRITE --> TS1
-    READ --> JS
+    PH --> J1["calcular CPI no JS · renderizar treemap"]
+    TR --> J2["montar série histórica no JS"]
+    FC --> J3["calcular SPI VAC EAC no JS · renderizar S-curve"]
+    DB --> J4["renderizar gráfico de equipe"]
 ```
 
 ### 1.2 O que cada endpoint faz hoje (resumo honesto)
@@ -153,55 +140,28 @@ Um usuário com acesso restrito a `60IT-001-01` consegue ver os dados de todos o
 
 ```mermaid
 flowchart TD
-    subgraph WRITE["ESCRITA"]
-        UP[Upload CSV/XLSX] --> PARSE[pandas parse]
-        PARSE --> RULES[ValidationRule engine]
-        RULES --> EVM0[services/evm.py\n_freeze_costs]
-        EVM0 --> INSERT[INSERT TimesheetRecord\ncom normal_cost extra_cost standby_cost]
-        INSERT --> SUMM[_refresh_summaries\npep_cycle_summary\ncollaborator_cycle_summary]
-        SUMM --> QR[QuarantineRecord / UploadSession]
-    end
+    UP[Upload CSV/XLSX]
+    UP --> PARSE[pandas parse]
+    PARSE --> RULES[ValidationRule engine]
+    RULES --> FREEZE["services/evm.py · freeze_costs"]
+    FREEZE --> INSERT["INSERT TimesheetRecord\nnormal_cost · extra_cost · standby_cost"]
+    INSERT --> REFRESH["_refresh_summaries"]
+    INSERT --> QR[QuarantineRecord / UploadSession]
 
-    subgraph L0["CAMADA 0 — TimesheetRecord"]
-        TR0[(TimesheetRecord\ncost_per_hour · normal_cost\nextra_cost · standby_cost)]
-    end
+    REFRESH --> PCS[("pep_cycle_summary\nGrain: pep × ciclo\n~360 rows")]
+    REFRESH --> CCS[("collaborator_cycle_summary\nGrain: colaborador × ciclo\n~1.800 rows")]
 
-    subgraph L1["CAMADA 1 — Grain: pep × ciclo"]
-        PCS[(pep_cycle_summary\ntotal_hours · total_cost\nnormal_cost · extra_cost · standby_cost)]
-    end
+    PCS --> EP1["GET /api/v2/portfolio"]
+    PCS --> EP2["GET /api/v2/trends"]
+    PCS --> EP3["GET /api/v2/forecast/:id"]
+    CCS --> EP4["GET /api/v2/effort"]
 
-    subgraph L2["CAMADA 2 — Grain: colaborador × ciclo"]
-        CCS[(collaborator_cycle_summary\ntotal_hours · total_cost\nnormal_hours · extra_hours · standby_hours)]
-    end
+    EVMSVC["services/evm.py\ncompute_cpi · compute_spi · compute_eac\ncompute_sv · compute_cv · compute_vac · compute_tcpi"]
 
-    subgraph READ["LEITURA — Novos Endpoints"]
-        EP1[GET /api/v2/portfolio] --> PCS
-        EP2[GET /api/v2/trends] --> PCS
-        EP3[GET /api/v2/forecast/{id}] --> PCS
-        EP4[GET /api/v2/effort] --> CCS
-    end
-
-    subgraph EVM["services/evm.py — Fonte Única"]
-        EVM1[compute_cpi]
-        EVM2[compute_spi]
-        EVM3[compute_eac]
-        EVM4[compute_tcpi]
-        EVM5[compute_vac]
-        EVM6[compute_ev_cost]
-    end
-
-    subgraph JS["FRONTEND — Apresentação Pura"]
-        J1[recebe dados render-ready]
-        J2[renderiza ECharts]
-        J3[formata números]
-    end
-
-    WRITE --> L0
-    L0 --> L1
-    L0 --> L2
-    READ --> EVM
-    EVM --> READ
-    READ --> JS
+    EP1 --> EVMSVC
+    EP2 --> EVMSVC
+    EP3 --> EVMSVC
+    EVMSVC --> JS["Frontend\nrecebe render-ready · formata · renderiza ECharts"]
 ```
 
 ### 3.2 Princípios da Arquitetura Alvo
@@ -349,9 +309,118 @@ def classify_health(
     if ratio >= warning_threshold:
         return "warning"
     return "ok"
+
+
+# ── Funções de Variação / Delta ───────────────────────────────────────────────
+
+def compute_sv(
+    cumulative_actual_hours: float,
+    cumulative_planned_hours: Optional[float],
+) -> Optional[float]:
+    """Schedule Variance (em horas) = EV_hours − PV_hours.
+    Positivo = adiantado. Negativo = atrasado."""
+    if cumulative_planned_hours is None:
+        return None
+    return round(cumulative_actual_hours - cumulative_planned_hours, 2)
+
+
+def compute_cv(
+    budget_cost: Optional[float], actual_cost: float
+) -> Optional[float]:
+    """Cost Variance = EV − AC. Proxy: EV = budget_cost (BAC).
+    Positivo = abaixo do orçamento. Negativo = acima."""
+    if not budget_cost:
+        return None
+    return round(budget_cost - actual_cost, 2)
+
+
+def compute_period_delta(
+    current: float, previous: Optional[float]
+) -> Optional[float]:
+    """Variação absoluta entre o período atual e o anterior.
+    Usado nas Tendências para mostrar crescimento/queda ciclo a ciclo."""
+    if previous is None:
+        return None
+    return round(current - previous, 2)
+
+
+def compute_period_delta_pct(
+    current: float, previous: Optional[float]
+) -> Optional[float]:
+    """Variação percentual ciclo a ciclo. Retorna None se previous == 0."""
+    if previous is None or previous == 0:
+        return None
+    return round((current - previous) / previous * 100, 2)
 ```
 
-### 4.3 Antes × Depois — CPI
+### 4.3 Antes × Depois — Variações (delta) planejado vs realizado
+
+O sistema hoje **não expõe** Schedule Variance, Cost Variance nem variação ciclo a ciclo para o frontend. O único campo de desvio calculado é `cpi`, e mesmo ele é calculado em múltiplos lugares.
+
+**Antes — sem delta, frontend sem contexto:**
+
+```json
+{
+  "cycle_name": "MAR/2025",
+  "period_hours": 38.0,
+  "cumulative_hours": 320.0,
+  "cumulative_planned_hours": 370.0
+}
+```
+*O frontend recebe os números brutos. Para saber se o projeto está adiantado ou atrasado, o usuário precisa fazer a conta de cabeça.*
+
+**Depois — delta computado pelo backend:**
+
+```json
+{
+  "cycle_name": "MAR/2025",
+  "period_hours": 38.0,
+  "period_hours_delta": -7.0,
+  "period_hours_delta_pct": -15.6,
+  "cumulative_hours": 320.0,
+  "cumulative_planned_hours": 370.0,
+  "sv": -50.0,
+  "sv_label": "Atrasado em 50h",
+  "sv_color": "warning",
+  "cumulative_cost": 16000.0,
+  "cumulative_planned_cost": 18500.0,
+  "cv": 2500.0,
+  "cv_label": "Economia de R$ 2.500",
+  "cv_color": "success",
+  "spi_cumulative": 0.865,
+  "cumulative_ev_cost": 13850.0
+}
+```
+
+Cada ciclo do histórico entrega **6 indicadores de desvio** calculados de uma vez. O frontend só exibe — zero aritmética.
+
+**Como o backend calcula:**
+
+```python
+from backend.app.services.evm import compute_sv, compute_period_delta, compute_period_delta_pct
+
+prev_hours = None
+for point in history:
+    period_delta     = compute_period_delta(point.period_hours, prev_hours)
+    period_delta_pct = compute_period_delta_pct(point.period_hours, prev_hours)
+    sv               = compute_sv(point.cumulative_hours, point.cumulative_planned_hours)
+    cv               = compute_cv(budget_cost, point.cumulative_cost)
+
+    point_out = {
+        ...
+        "period_hours_delta":     period_delta,
+        "period_hours_delta_pct": period_delta_pct,
+        "sv":    sv,
+        "sv_label": _sv_label(sv),        # "Adiantado em Xh" / "Atrasado em Xh" / None
+        "sv_color": _sv_color(sv),        # "success" / "warning" / "danger" / None
+        "cv":    cv,
+        "cv_label": _cv_label(cv),
+        "cv_color": _cv_color(cv),
+    }
+    prev_hours = point.period_hours
+```
+
+### 4.4 Antes × Depois — CPI
 
 **Antes (3 implementações espalhadas):**
 
@@ -852,33 +921,28 @@ for r in rows:
 ### 8.1 Mapa de substituição
 
 ```mermaid
-graph LR
-    subgraph ANTIGOS["Endpoints Antigos (13)"]
-        A1[GET /portfolio-health]
-        A2[GET /trends]
-        A3[GET /forecast/{id}]
-        A4[GET /dashboard]
-        A5[GET /dashboard/{cycle_id}]
-        A6[GET /projects/{id}/plans]
-        A7[GET /projects/{id}/plans/export]
-        A8[POST /projects/plans/import]
-        A9[GET /collaborators]
-        A10[GET /peps]
-        A11[GET /allocation]
-        A12[GET /runway]
-        A13[GET /concentration]
-    end
+flowchart LR
+    A1["GET /portfolio-health"]
+    A2["GET /trends"]
+    A3["GET /forecast/:id"]
+    A4["GET /dashboard"]
+    A5["GET /dashboard/:cycle_id"]
+    A6["GET /projects/:id/plans"]
+    A9["GET /collaborators"]
+    A10["GET /peps"]
+    A11["GET /allocation · radar"]
+    A12["GET /runway"]
+    A13["GET /concentration"]
+    LIXO["❌ DESCONTINUADO\nSem substituto"]
 
-    subgraph NOVOS["Endpoints Novos (8)"]
-        N1[GET /api/v2/portfolio]
-        N2[GET /api/v2/trends]
-        N3[GET /api/v2/forecast/{id}]
-        N4[GET /api/v2/effort]
-        N5[GET /api/v2/filters]
-        N6[GET /api/v2/projects/{id}/plans]
-        N7[GET /api/v2/runway]
-        N8[GET /api/v2/concentration]
-    end
+    N1["GET /api/v2/portfolio"]
+    N2["GET /api/v2/trends"]
+    N3["GET /api/v2/forecast/:id"]
+    N4["GET /api/v2/effort"]
+    N5["GET /api/v2/filters"]
+    N6["GET /api/v2/projects/:id/plans"]
+    N7["GET /api/v2/runway"]
+    N8["GET /api/v2/concentration"]
 
     A1 --> N1
     A2 --> N2
@@ -888,10 +952,65 @@ graph LR
     A9 --> N5
     A10 --> N5
     A6 --> N6
-    A11 --> N1
+    A11 --> LIXO
     A12 --> N7
     A13 --> N8
 ```
+
+### 8.2 Endpoint descontinuado — Radar (`/allocation`)
+
+O endpoint `GET /allocation` e o schema `PepRadarItem` são **removidos sem substituto**. Aqui está o diagnóstico completo do porquê:
+
+**O que o radar faz hoje:**
+
+```python
+# analytics.py — get_allocation (simplificado)
+rows = (
+    db.query(
+        Collaborator.name,
+        TimesheetRecord.pep_wbs,
+        TimesheetRecord.pep_description,
+        func.sum(TimesheetRecord.total_hours).label("total_hours"),
+        func.sum(TimesheetRecord.total_hours * TimesheetRecord.cost_per_hour).label("actual_cost"),
+    )
+    .join(Collaborator)
+    .group_by(Collaborator.name, TimesheetRecord.pep_wbs)
+    .all()
+)
+```
+
+Retorna uma lista de `AllocationItem` — `{collaborator, pep_wbs, total_hours, actual_cost}` — que o frontend usa para montar um gráfico de radar (`PepRadarItem`):
+
+```json
+[
+  { "pep_description": "Sistema Alpha",  "total_hours": 340.5, "actual_cost": 17025.0 },
+  { "pep_description": "Sistema Beta",   "total_hours": 210.0, "actual_cost": 10500.0 }
+]
+```
+
+**Por que está sendo descontinuado:**
+
+| Problema | Detalhe |
+|---|---|
+| **Informação redundante** | `pep_cycle_summary` já contém `total_hours` e `total_cost` por PEP — o radar re-agrega dados que já existem pré-computados |
+| **Sem filtro de período** | O endpoint ignora `date_from`/`date_to` — mostra o total histórico sempre, inconsistente com todos os outros endpoints |
+| **ACL ausente** | Nenhuma verificação de `UserProjectAccess` |
+| **Gráfico de radar inadequado** | Com 10+ PEPs, o gráfico de radar fica ilegível. Os mesmos dados são melhor representados no treemap do portfólio |
+| **Uso real** | O frontend usa este endpoint apenas para o gráfico de radar na aba Portfólio — que pode ser substituído pela visão de concentração (`/api/v2/concentration`) |
+
+**O que substitui:**  
+O `/api/v2/portfolio` já entrega `total_hours` e `total_cost` por PEP com filtro de período e ACL. O gráfico de radar (se desejado) pode ser alimentado diretamente por esses dados. Não há necessidade de um endpoint dedicado.
+
+**O que é deletado:**
+
+```
+backend/app/routers/analytics.py   → função get_allocation
+backend/app/schemas.py             → class AllocationItem
+                                   → class PepRadarItem
+frontend/app.js                    → todo código do gráfico de radar
+```
+
+---
 
 **`GET /api/v2/filters`** — novo endpoint que substitui `/collaborators` e `/peps`, retornando ambos em uma única chamada:
 
@@ -909,7 +1028,7 @@ graph LR
 
 O frontend hoje faz 3 chamadas para popular os filtros. Com este endpoint, são 0 chamadas extras — os filtros chegam junto com a inicialização.
 
-### 8.2 ACL centralizada
+### 8.3 ACL centralizada
 
 ```python
 # deps.py — novo helper
@@ -923,7 +1042,7 @@ def _get_allowed_peps(db: Session, user: User) -> list[str] | None:
 
 Todos os endpoints v2 chamam `_get_allowed_peps()` antes de qualquer query. Zero exceções.
 
-### 8.3 Contrato do `/api/v2/forecast/{id}`
+### 8.4 Contrato do `/api/v2/forecast/:id`
 
 **Antes (frontend calculava EAC, TCPI, VAC, SPI no JS):**
 
