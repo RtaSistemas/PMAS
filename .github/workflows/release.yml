@@ -55,7 +55,6 @@ jobs:
             --strip \
             --name pmas-linux-x64 \
             --add-data "frontend:frontend" \
-            --add-data "static:static" \
             --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops \
             --hidden-import uvicorn.loops.auto \
@@ -86,7 +85,6 @@ jobs:
             --name pmas-windows-x64 `
             --icon assets\icon.ico `
             --add-data "frontend;frontend" `
-            --add-data "static;static" `
             --hidden-import uvicorn.logging `
             --hidden-import uvicorn.loops `
             --hidden-import uvicorn.loops.auto `
@@ -116,7 +114,6 @@ jobs:
             --onefile \
             --name pmas-macos-arm64 \
             --add-data "frontend:frontend" \
-            --add-data "static:static" \
             --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops \
             --hidden-import uvicorn.loops.auto \
