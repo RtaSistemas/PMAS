@@ -83,6 +83,19 @@ def ingest_file(
 
     if pep_codes_raw and user_id is not None:
         authorized = _authorized_peps(db, user_id, user_role, pep_codes_raw)
+        if not authorized:
+            from fastapi import HTTPException
+            top5 = sorted(pep_codes_raw)[:5]
+            extra = f" e mais {len(pep_codes_raw) - 5}" if len(pep_codes_raw) > 5 else ""
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Acesso negado: seu perfil não tem permissão para importar "
+                    f"nenhum dos PEPs encontrados neste arquivo "
+                    f"({', '.join(top5)}{extra}). "
+                    f"Solicite ao administrador que conceda acesso aos PEPs necessários."
+                ),
+            )
         unauthorized = pep_codes_raw - authorized
         if unauthorized:
             mask = df[_COL_PEP_CODE].apply(lambda v: _str_or_none(v) not in unauthorized)

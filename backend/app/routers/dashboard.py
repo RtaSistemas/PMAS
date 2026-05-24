@@ -4,8 +4,9 @@ import calendar
 from datetime import date as DateType, date
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, text as sa_text
+from sqlalchemy.orm import Session
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
@@ -106,15 +107,18 @@ def get_collaborator_daily(
 
     qr_rows = (
         db.query(QuarantineRecord)
-        .filter(QuarantineRecord.review_status == "pending")
+        .filter(
+            QuarantineRecord.review_status == "pending",
+            sa_text(
+                "json_extract(quarantine_record.raw_data, '$.Colaborador') = :collab"
+            ).bindparams(collab=collaborator_name),
+        )
         .all()
     )
 
     quarantine_dates: set = set()
     for qr in qr_rows:
         raw = qr.raw_data or {}
-        if raw.get("Colaborador") != collaborator_name:
-            continue
         raw_date = raw.get("Data")
         if raw_date is None:
             continue

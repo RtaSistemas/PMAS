@@ -1146,7 +1146,7 @@ document.getElementById('runwayExportBtn').addEventListener('click', () => {
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
       d.consumed_hours.toFixed(1),
       d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
-      d.avg_hours_per_cycle.toFixed(1),
+      d.avg_hours_per_cycle != null ? d.avg_hours_per_cycle.toFixed(1) : '',
       d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
       `"${d.estimated_completion_cycle || ''}"`,
       d.cpi != null ? d.cpi.toFixed(2) : '',
@@ -1589,8 +1589,8 @@ function _drawRunwayRows(data) {
         : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
       <td style="white-space:nowrap">${bar}</td>
       <td style="text-align:right">${_evmMode
-        ? `R$ ${item.avg_cost_per_cycle.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
-        : item.avg_hours_per_cycle.toFixed(1)}</td>
+        ? (item.avg_cost_per_cycle  != null ? `R$ ${item.avg_cost_per_cycle.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
+        : (item.avg_hours_per_cycle != null ? item.avg_hours_per_cycle.toFixed(1) : '—')}</td>
       <td style="text-align:right">${cpiCell}</td>
       <td style="text-align:right">${cyclesCell}</td>
       <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
@@ -4867,7 +4867,7 @@ function _handleUnauthorized() {
 
 async function apiFetch(url) {
   const res = await fetch(url, { headers: _authHeaders() });
-  if (res.status === 401) { _handleUnauthorized(); return; }
+  if (res.status === 401) { _handleUnauthorized(); throw new Error('Sessão expirada. Faça login novamente.'); }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
@@ -4881,7 +4881,7 @@ async function apiFetchJSON(url, method, body) {
     headers: _authHeaders({ 'Content-Type': 'application/json' }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) { _handleUnauthorized(); return; }
+  if (res.status === 401) { _handleUnauthorized(); throw new Error('Sessão expirada. Faça login novamente.'); }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.detail ?? res.statusText);
