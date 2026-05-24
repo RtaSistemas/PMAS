@@ -21,12 +21,14 @@ jobs:
           - os: ubuntu-latest
             artifact_name: pmas-linux-x64
             artifact_path: dist/pmas-linux-x64
-            extra_flags: --strip
 
           - os: windows-latest
             artifact_name: pmas-windows-x64.exe
             artifact_path: dist/pmas-windows-x64.exe
-            extra_flags: ""
+
+          - os: macos-latest
+            artifact_name: pmas-macos-arm64
+            artifact_path: dist/pmas-macos-arm64
 
     steps:
       - name: Checkout repository
@@ -41,7 +43,7 @@ jobs:
       - name: Install dependencies and PyInstaller
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install -r requirements-lock.txt pyinstaller
 
       - name: Build standalone executable (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -51,6 +53,7 @@ jobs:
             --strip \
             --name pmas-linux-x64 \
             --add-data "frontend:frontend" \
+            --add-data "static:static" \
             --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops \
             --hidden-import uvicorn.loops.auto \
@@ -66,6 +69,8 @@ jobs:
             --hidden-import multipart \
             --hidden-import anyio \
             --hidden-import h11 \
+            --hidden-import slowapi \
+            --hidden-import limits \
             --collect-all openpyxl \
             run.py
 
@@ -75,8 +80,8 @@ jobs:
           pyinstaller `
             --onefile `
             --name pmas-windows-x64 `
-            --icon assets\icon.ico `
             --add-data "frontend;frontend" `
+            --add-data "static;static" `
             --hidden-import uvicorn.logging `
             --hidden-import uvicorn.loops `
             --hidden-import uvicorn.loops.auto `
@@ -92,7 +97,37 @@ jobs:
             --hidden-import multipart `
             --hidden-import anyio `
             --hidden-import h11 `
+            --hidden-import slowapi `
+            --hidden-import limits `
             --collect-all openpyxl `
+            run.py
+
+      - name: Build standalone executable (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          pyinstaller \
+            --onefile \
+            --name pmas-macos-arm64 \
+            --add-data "frontend:frontend" \
+            --add-data "static:static" \
+            --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops \
+            --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols \
+            --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto \
+            --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto \
+            --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on \
+            --hidden-import fastapi \
+            --hidden-import sqlalchemy.dialects.sqlite \
+            --hidden-import multipart \
+            --hidden-import anyio \
+            --hidden-import h11 \
+            --hidden-import slowapi \
+            --hidden-import limits \
+            --collect-all openpyxl \
             run.py
 
       - name: Upload executable to GitHub Release

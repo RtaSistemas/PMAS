@@ -13,11 +13,20 @@ Opções via env:
 from __future__ import annotations
 
 import os
+import sys
 
 import uvicorn
 
 if __name__ == "__main__":
-    host = os.getenv("PMAS_HOST", "127.0.0.1")
-    port = int(os.getenv("PMAS_PORT", "8765"))
-    dev  = os.getenv("PMAS_ENV", "development") != "production"
-    uvicorn.run("backend.app.main:app", host=host, port=port, reload=dev)
+    host   = os.getenv("PMAS_HOST", "127.0.0.1")
+    port   = int(os.getenv("PMAS_PORT", "8765"))
+    frozen = getattr(sys, "frozen", False)
+
+    if frozen:
+        # Em executável PyInstaller: importação direta + reload desativado
+        # (módulos Python não existem como ficheiros no binário)
+        from backend.app.main import app as _app
+        uvicorn.run(_app, host=host, port=port, reload=False)
+    else:
+        dev = os.getenv("PMAS_ENV", "development") != "production"
+        uvicorn.run("backend.app.main:app", host=host, port=port, reload=dev)
