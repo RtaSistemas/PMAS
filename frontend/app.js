@@ -1923,13 +1923,13 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
 
       const healthByCycle = await Promise.all(
         sortedCycleIds.map(id =>
-          apiFetch(`/api/portfolio-health?cycle_id=${id}&${hParams}`)
+          apiFetch(`/api/v2/portfolio?cycle_id=${id}&${hParams}`)
             .then(items => ({ cycleId: id, items }))
             .catch(() => ({ cycleId: id, items: [] }))
         )
       );
 
-      // Cumulative CPI: accumulate consumed_hours and actual_cost per PEP across cycles
+      // Cumulative CPI: accumulate total_hours and total_cost per PEP across cycles
       const cumConsumed = {};
       const cumAc = {};
       const pepMap = {};
@@ -1940,8 +1940,8 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
           if (d.budget_cost == null || d.budget_cost === 0) return;
           if (d.budget_hours == null || d.budget_hours === 0) return;
 
-          cumConsumed[d.pep_wbs] = (cumConsumed[d.pep_wbs] || 0) + (d.consumed_hours || 0);
-          cumAc[d.pep_wbs]       = (cumAc[d.pep_wbs]       || 0) + (d.actual_cost    || 0);
+          cumConsumed[d.pep_wbs] = (cumConsumed[d.pep_wbs] || 0) + (d.total_hours || 0);
+          cumAc[d.pep_wbs]       = (cumAc[d.pep_wbs]       || 0) + (d.total_cost  || 0);
 
           if (cumAc[d.pep_wbs] === 0) return;
 
@@ -1971,7 +1971,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       const spiMapByPep = {};
       try {
         const fcResults = await Promise.all(
-          peps.map(([wbs]) => apiFetch(`/api/forecast?pep_wbs=${encodeURIComponent(wbs)}`).catch(() => null))
+          peps.map(([wbs]) => apiFetch(`/api/v2/forecast?pep_wbs=${encodeURIComponent(wbs)}`).catch(() => null))
         );
         fcResults.forEach((fc, i) => {
           if (!fc?.history) return;
@@ -2023,7 +2023,7 @@ async function _renderAllocationTab() {
     if (dateFrom) p.set('date_from', dateFrom);
     if (dateTo)   p.set('date_to', dateTo);
 
-    const data = await apiFetch(`/api/allocation?${p}`);
+    const data = await apiFetch(`/api/v2/allocation?${p}`);
     _lastAllocData = data;
     _allocSortCol  = '__total__';
     _allocSortDir  = -1;
@@ -2058,7 +2058,7 @@ function _drawAllocMatrix() {
 
   data.forEach(d => {
     const pep = d.pep_wbs || '__none__';
-    const val = _evmMode ? d.actual_cost : d.total_hours;
+    const val = _evmMode ? d.total_cost : d.total_hours;
     if (!matrix[d.collaborator]) matrix[d.collaborator] = {};
     matrix[d.collaborator][pep] = (matrix[d.collaborator][pep] || 0) + val;
     collabTotals[d.collaborator] = (collabTotals[d.collaborator] || 0) + val;
@@ -2144,7 +2144,8 @@ async function _populateForecastPepSelect() {
   const sel = document.getElementById('forecastPepSelect');
   const current = sel.value;
   try {
-    const peps = await apiFetch('/api/peps');
+    const filters = await apiFetch('/api/v2/filters');
+    const peps = filters.peps;
     sel.innerHTML = `<option value="">${_t('forecast.select_pep')}</option>` +
       peps.map(p => `<option value="${escHtml(p.code)}">${escHtml(p.code)}${p.descriptions[0] ? ' — ' + escHtml(p.descriptions[0]) : ''}</option>`).join('');
     if (peps.some(p => p.code === current)) sel.value = current;
@@ -2495,7 +2496,7 @@ async function _renderForecastTab() {
 
   try {
     const [fc, projects] = await Promise.all([
-      apiFetch(`/api/forecast?${p}`),
+      apiFetch(`/api/v2/forecast?${p}`),
       apiFetch('/api/projects'),
     ]);
     const proj = projects.find(pr => pr.pep_wbs === pep) || null;
@@ -3134,35 +3135,6 @@ function _buildEvmQuadrantOption(items) {
   };
 }
 
-function _drawScatterRefLine_unused(chart, avgRate, maxH, maxC) {
-  const p0 = chart.convertToPixel({ gridIndex: 0 }, [0, 0]);
-  const p1 = chart.convertToPixel({ gridIndex: 0 }, [maxH, Math.min(maxH * avgRate, maxC)]);
-  if (!p0 || !p1) return;
-  chart.setOption({
-    graphic: [{
-      type: 'group',
-      children: [
-        {
-          type: 'line',
-          shape: { x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1] },
-          style: { stroke: _cssVar('--border'), lineWidth: 1.5, lineDash: [6, 4] },
-          z: 0,
-        },
-        {
-          type: 'text',
-          x: p1[0] - 60, y: p1[1] - 16,
-          style: {
-            text: `avg ${_currencySymbol} ${avgRate.toFixed(0)}/h`,
-            fill: _cssVar('--text-3'),
-            fontSize: 10,
-          },
-          z: 0,
-        },
-      ],
-    }],
-  });
-}
-
 function _buildTreemapOption(health, evmMode = false) {
   const fmtVal = (v, raw = false) => evmMode
     ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
@@ -3639,73 +3611,7 @@ async function _renderCollabCalendar(name, year, month) {
     (quarantineDates.size ? stat(_t('cal.stat.quarantine'), quarantineDates.size) : '');
 }
 
-// ---------------------------------------------------------------------------
-// (cpiChart removed — IDP por ciclo merged into trends; see _buildHoursBarOption)
-// ---------------------------------------------------------------------------
-function _buildCpiOption_unused(trends) {
-  const cats = trends.map(d => d.cycle_name);
-  const cpiSeries = trends.map(d => d.cpi != null ? +d.cpi.toFixed(3) : null);
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({
-      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
-    }, 'PMAS-Previsao'),
-    tooltip: {
-      trigger: 'axis',
-      formatter: params => {
-        const p = params[0];
-        if (p.value == null) return `${p.name}<br/>IDP: —`;
-        const color = p.value >= 1 ? _cssVar('--primary') : p.value >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-        return `${p.name}<br/>IDP: <b style="color:${color}">${p.value.toFixed(3)}</b>`;
-      },
-    },
-    grid: { left: 60, right: 20, top: 20, bottom: 50 },
-    xAxis: { type: 'category', data: cats, axisLabel: { color: _cssVar('--text-3'), fontSize: 10, rotate: 30 } },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-    },
-    series: [{
-      type: 'line',
-      data: cpiSeries,
-      connectNulls: true,
-      smooth: false,
-      lineStyle: { color: _cssVar('--primary'), width: 2 },
-      itemStyle: {
-        color: params => {
-          const v = params.value;
-          if (v == null) return _cssVar('--primary');
-          return v >= 1 ? _cssVar('--primary') : v >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-        },
-      },
-      label: {
-        show: true,
-        position: 'top',
-        fontSize: 10,
-        fontWeight: 600,
-        formatter: params => {
-          if (params.value == null) return '';
-          const v = params.value;
-          const style = v >= 1 ? 'good' : v >= 0.9 ? 'amber' : 'red';
-          return `{${style}|${v.toFixed(2)}}`;
-        },
-        rich: {
-          good: { color: _cssVar('--primary'), fontWeight: 700, fontSize: 10 },
-          amber: { color: _cssVar('--amber'), fontWeight: 700, fontSize: 10 },
-          red:   { color: _cssVar('--red'), fontWeight: 700, fontSize: 10 },
-        },
-      },
-      markLine: {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1 },
-        label: { formatter: 'IDP = 1.0', color: _cssVar('--text-3'), fontSize: 10 },
-        data: [{ yAxis: 1.0 }],
-      },
-    }],
-  };
-}
+
 
 function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
   const pal = _getPalette();
@@ -4070,10 +3976,10 @@ async function loadProjectsTable() {
   try {
     const [projects, health] = await Promise.all([
       apiFetch('/api/projects'),
-      apiFetch('/api/portfolio-health').catch(() => []),
+      apiFetch('/api/v2/portfolio').catch(() => []),
     ]);
     _allProjects   = projects;
-    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.consumed_hours]));
+    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.total_hours]));
 
     // Fetch active baselines for all projects in parallel (best-effort)
     const blResults = await Promise.allSettled(
@@ -6031,7 +5937,7 @@ async function loadSemaphore() {
   const bar = document.getElementById('semaphoreBar');
   if (!bar) return;
   try {
-    const data = await apiFetch('/api/portfolio-health');
+    const data = await apiFetch('/api/v2/portfolio');
     if (!data.length) {
       bar.style.display = 'none';
       const hdr = document.getElementById('headerSemaphore');
@@ -6039,12 +5945,18 @@ async function loadSemaphore() {
       return;
     }
 
-    const classify = p => {
-      if (!p.budget_hours && !p.budget_cost) return 'grey';
-      const pctH = p.budget_hours ? p.consumed_hours / p.budget_hours : 0;
-      const pctC = p.budget_cost  ? p.actual_cost    / p.budget_cost  : 0;
-      const max  = Math.max(pctH, pctC);
-      return max >= _budgetCritical ? 'red' : max >= _budgetWarning ? 'yellow' : 'green';
+    // v2 returns health_hours and health_cost already classified by the server
+    const _semClass = p => {
+      if (p.health_hours === 'no_budget' && p.health_cost === 'no_budget') return 'grey';
+      const worseColor = (a, b) => {
+        const rank = { ok: 0, warning: 1, critical: 2, overrun: 2, no_budget: -1 };
+        return (rank[a] ?? 0) >= (rank[b] ?? 0) ? a : b;
+      };
+      const worst = worseColor(p.health_hours, p.health_cost);
+      if (worst === 'overrun' || worst === 'critical') return 'red';
+      if (worst === 'warning') return 'yellow';
+      if (worst === 'no_budget') return 'grey';
+      return 'green';
     };
 
     const wPct = Math.round(_budgetWarning  * 100);
@@ -6052,10 +5964,10 @@ async function loadSemaphore() {
 
     const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
     const pills  = data.map(p => {
-      const s = classify(p);
+      const s = _semClass(p);
       counts[s]++;
-      const pH = p.budget_hours ? (p.consumed_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
-      const pC = p.budget_cost  ? (p.actual_cost    / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
+      const pH = p.budget_hours ? (p.total_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
+      const pC = p.budget_cost  ? (p.total_cost  / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
       const tip = `${p.pep_wbs}: ${pH} · ${pC} — clique para detalhar`;
       return `<span class="sem-project ${s}" data-pep="${escHtml(p.pep_wbs)}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
     });
