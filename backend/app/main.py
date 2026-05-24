@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import logging.config
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -9,8 +10,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from backend.app.database import init_db
+from backend.app.limiter import limiter
 from backend.app.routers import (
     acl, auditlog, auth, baselines, cycles, dashboard,
     my, plans, projects, quarantine, ratecard,
@@ -24,8 +29,38 @@ from backend.app.routers.v2 import (
     trends as trends_v2,
 )
 
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+_LOG_LEVEL = os.getenv("PMAS_LOG_LEVEL", "INFO").upper()
+
+logging.config.dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "root": {"level": _LOG_LEVEL, "handlers": ["console"]},
+    "loggers": {
+        "sqlalchemy.engine": {"level": "WARNING", "propagate": True},
+        "uvicorn":           {"propagate": True},
+        "uvicorn.error":     {"propagate": True},
+        "uvicorn.access":    {"propagate": True},
+    },
+})
+
 log = logging.getLogger(__name__)
 
+
+# ── App ───────────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
@@ -41,18 +76,32 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+
+_port = os.getenv("PMAS_PORT", "8765")
+_extra_origins = [o.strip() for o in os.getenv("PMAS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost",
-        "http://localhost:8000",
+        f"http://localhost:{_port}",
         "http://127.0.0.1",
-        "http://127.0.0.1:8000",
+        f"http://127.0.0.1:{_port}",
+        *_extra_origins,
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(auth.router)
 app.include_router(users.router)

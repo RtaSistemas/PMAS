@@ -13,8 +13,9 @@ log = logging.getLogger(__name__)
 
 
 def _db_path() -> str:
+    if env_path := os.getenv("PMAS_DB_PATH"):
+        return env_path
     # When frozen (PyInstaller), store next to the executable so the file persists.
-    # In development, use the project root (same original behaviour).
     if getattr(sys, "frozen", False):
         base = os.path.dirname(sys.executable)
     else:
