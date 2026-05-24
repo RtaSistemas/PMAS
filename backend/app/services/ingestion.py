@@ -7,8 +7,10 @@ from datetime import date, timedelta
 from io import BytesIO
 
 import pandas as pd
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from backend.app.audit import log_audit
 from backend.app.models import (
     Collaborator,
     Cycle,
@@ -70,11 +72,30 @@ def ingest_file(
     user_role: str = "admin",
     user_id: int | None = None,
     username: str = "system",
+    current_user=None,
 ) -> dict:
     # Phase 0: Load and validate structure
     df = _load_dataframe(file_bytes, filename)
     ingest_warnings: list[str] = []
     ingest_infos: list[str] = []
+
+    # Item 2: non-admin with ACL restrictions must supply a PEP column so the
+    # authorization filter has something to evaluate.
+    if user_role != "admin" and user_id is not None and _COL_PEP_CODE not in df.columns:
+        has_acl = (
+            db.query(UserProjectAccess)
+            .filter(UserProjectAccess.user_id == user_id)
+            .first()
+        ) is not None
+        if has_acl:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Seu perfil possui restrições de acesso por PEP, mas o arquivo "
+                    "não contém a coluna 'Código PEP'. Inclua essa coluna no export "
+                    "ou solicite ao administrador acesso irrestrito."
+                ),
+            )
 
     # Authorization filter (read-only, outside transaction)
     pep_codes_raw: set[str] = set()
@@ -84,7 +105,6 @@ def ingest_file(
     if pep_codes_raw and user_id is not None:
         authorized = _authorized_peps(db, user_id, user_role, pep_codes_raw)
         if not authorized:
-            from fastapi import HTTPException
             top5 = sorted(pep_codes_raw)[:5]
             extra = f" e mais {len(pep_codes_raw) - 5}" if len(pep_codes_raw) > 5 else ""
             raise HTTPException(
@@ -442,19 +462,26 @@ def ingest_file(
                 rule_id=qr_data.get("rule_id"),
             )
 
+        # Phase 6: AuditLog — inside the same transaction so data + audit are atomic
+        _status = (
+            "quarantine" if quarantine_buffer
+            else "warnings" if ingest_warnings
+            else "ok"
+        )
+        if current_user is not None:
+            log_audit(db, current_user, "import", "timesheet", detail={
+                "file": filename,
+                "status": _status,
+                "records_inserted": inserted,
+                "records_skipped": skipped,
+                "quarantine_records_added": len(quarantine_buffer),
+            })
+
         session_id = upload_session.id
         db.commit()
     except Exception:
         db.rollback()
         raise
-
-    # Phase 6: audit (caller may also call log_audit after this returns)
-    if quarantine_buffer:
-        status = "quarantine"
-    elif ingest_warnings:
-        status = "warnings"
-    else:
-        status = "ok"
 
     log.info(
         "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas.",
@@ -462,7 +489,7 @@ def ingest_file(
     )
 
     return {
-        "status": status,
+        "status": _status,
         "records_inserted": inserted,
         "records_skipped": skipped,
         "quarantine_records_added": len(quarantine_buffer),
