@@ -1187,20 +1187,27 @@ async function onCollabChange()   { await refreshPeps(); }
 // ---------------------------------------------------------------------------
 async function loadDashboardCycles() {
   try {
-    const cycles = await apiFetch('/api/cycles');
+    const filters = await apiFetch('/api/v2/filters');
+    const cycles = filters.cycles;
+    const peps   = filters.peps;
+    const collabs = filters.collaborators;
+
     _allCycles = cycles;
     cycleMs.setItems(cycles.map(c => ({ value: c.id, label: c.name })));
-  } catch (e) { notify(`Erro ao carregar ciclos: ${e.message}`, 'error'); }
+
+    pepDataCache = {};
+    peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
+    pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
+    refreshPepDescriptions();
+
+    collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
+  } catch (e) { notify(`Erro ao carregar filtros: ${e.message}`, 'error'); }
 }
 
 async function refreshPeps() {
-  const cycleIds  = cycleMs.getValues();
-  const collabIds = collaboratorMs.getValues();
-  const p = new URLSearchParams();
-  cycleIds.forEach(id  => p.append('cycle_id', id));
-  collabIds.forEach(id => p.append('collaborator_id', id));
   try {
-    const peps = await apiFetch(`/api/peps?${p}`);
+    const filters = await apiFetch('/api/v2/filters');
+    const peps = filters.peps;
     pepDataCache = {};
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
@@ -1215,16 +1222,9 @@ function refreshPepDescriptions() {
 }
 
 async function refreshCollaborators() {
-  const cycleIds = cycleMs.getValues();
-  const pepCodes = pepMs.getValues();
-  const pepDescs = pepDescMs.getValues();
-  const p = new URLSearchParams();
-  cycleIds.forEach(id => p.append('cycle_id', id));
-  pepCodes.forEach(c  => p.append('pep_code', c));
-  pepDescs.forEach(d  => p.append('pep_description', d));
   try {
-    const collabs = await apiFetch(`/api/collaborators?${p}`);
-    collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
+    const filters = await apiFetch('/api/v2/filters');
+    collaboratorMs.setItems(filters.collaborators.map(c => ({ value: c.id, label: c.name })), true);
   } catch (e) { console.warn('refreshCollaborators:', e); notify(`Erro ao atualizar filtro de colaboradores: ${e.message}`, 'warning'); }
 }
 
@@ -1403,30 +1403,24 @@ async function _renderEffortTab() {
   const dateTo    = document.getElementById('dateToInput').value;
 
   const p = new URLSearchParams();
-  pepCodes.forEach(c  => p.append('pep_code', c));
-  pepDescs.forEach(d  => p.append('pep_description', d));
+  cycleIds.forEach(id => p.append('cycle_id', id));
+  pepCodes.forEach(c   => p.append('pep_wbs', c));
+  pepDescs.forEach(d   => p.append('pep_description', d));
   collabIds.forEach(id => p.append('collaborator_id', id));
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
   try {
-    let payload;
-    if (cycleIds.length === 0) {
-      payload = await apiFetch(`/api/dashboard?${p}`);
-    } else {
-      payload = await apiFetch(`/api/dashboard/${cycleIds[0]}?${p}`);
-    }
-
-    const data = payload.data || [];
+    const data = await apiFetch(`/api/v2/effort?${p}`);
     _lastEffortData = data;
-    const bva  = (payload.budget_vs_actual || []).filter(d => d.budget_hours > 0);
+    const bva = [];
 
     // Stats row
     document.getElementById('effortStats').innerHTML = '';
     document.getElementById('effortStats').appendChild(_buildStatsRow(data, bva));
 
     // Title
-    document.getElementById('effortTitle').textContent = _buildEffortTitle(payload, cycleIds.length);
+    document.getElementById('effortTitle').textContent = _buildEffortTitle({}, cycleIds.length);
 
     if (data.length === 0) {
       _showEmpty('effortEmpty', true);
@@ -1674,10 +1668,10 @@ async function _renderPortfolioTab() {
 
   try {
     const [health, trends, runway, concentration] = await Promise.all([
-      apiFetch(`/api/portfolio-health?${p}`),
-      apiFetch(`/api/trends?${p}`).catch(() => []),
-      apiFetch(`/api/portfolio-runway?${p}`).catch(() => []),
-      apiFetch(`/api/portfolio-concentration?${p}`).catch(() => []),
+      apiFetch(`/api/v2/portfolio?${p}`),
+      apiFetch(`/api/v2/trends?${p}`).catch(() => []),
+      apiFetch(`/api/v2/runway?${p}`).catch(() => []),
+      apiFetch(`/api/v2/concentration?${p}`).catch(() => []),
     ]);
 
     // Stats row — rendered before the empty-state guard so it clears on no data
@@ -1859,7 +1853,7 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
   if (wTo)   p.set('date_to',   wTo);
 
   try {
-    const trends = await apiFetch(`/api/trends?${p}`);
+    const trends = await apiFetch(`/api/v2/trends?${p}`);
 
     if (!trends.length) {
       _showEmpty('trendsEmpty', true);
@@ -3185,7 +3179,7 @@ function _buildTreemapOption(health, evmMode = false) {
         let html = `<b>${escHtml(d.pep_wbs)}</b>`;
         if (d.pep_description) html += `<br><span style="color:${_cssVar('--text-3')}">${escHtml(d.pep_description)}</span>`;
         if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
-        const consumed = evmMode ? d.actual_cost : d.consumed_hours;
+        const consumed = evmMode ? d.total_cost : d.total_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
         html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed, true)}</b>`;
         if (budget != null) {
@@ -3206,7 +3200,7 @@ function _buildTreemapOption(health, evmMode = false) {
         show: true, fontSize: 11, color: '#f1f5f9',
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
-          const val = d ? (evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours) : 0;
+          const val = d ? (evmMode ? d.total_cost * _currencyFactor : d.total_hours) : 0;
           const valStr = evmMode
             ? _currencySymbol + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
             : val.toFixed(0) + 'h';
@@ -3220,7 +3214,7 @@ function _buildTreemapOption(health, evmMode = false) {
         upperLabel: { show: false },
       }],
       data: health.map(d => {
-        const consumed = evmMode ? d.actual_cost * _currencyFactor : d.consumed_hours;
+        const consumed = evmMode ? d.total_cost * _currencyFactor : d.total_hours;
         const budget   = evmMode ? (d.budget_cost ?? null) && d.budget_cost * _currencyFactor : d.budget_hours;
         return {
           name: d.pep_wbs,
@@ -3245,7 +3239,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
   const budgets = withBudget.map(d => (evmMode ? (d.budget_cost || 0) * _currencyFactor : d.budget_hours) || 0);
   const actuals = withBudget.map((d, i) => {
-    const consumed = evmMode ? (d.actual_cost || 0) * _currencyFactor : d.consumed_hours;
+    const consumed = evmMode ? (d.total_cost || 0) * _currencyFactor : d.total_hours;
     const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
     const color = pct >= _budgetCritical ? _cssVar('--red') : pct >= _budgetWarning ? _cssVar('--amber') : _cssVar('--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
@@ -3869,11 +3863,11 @@ function _buildStatsRow(data, budgetData = []) {
 // Stats row (portfolio tab) — KPIs de custo proporcional
 // ---------------------------------------------------------------------------
 function _buildPortfolioStatsRow(health, trends) {
-  const totalCost   = health.reduce((s, d) => s + (d.actual_cost || 0), 0);
+  const totalCost   = health.reduce((s, d) => s + (d.total_cost || 0), 0);
   const totalBudget = health
     .filter(d => d.budget_cost != null)
     .reduce((s, d) => s + d.budget_cost, 0);
-  const pepsActive  = health.filter(d => d.consumed_hours > 0).length;
+  const pepsActive  = health.filter(d => d.total_hours > 0).length;
 
   let costNormal = 0, costExtra = 0, costStandby = 0;
   (trends || []).forEach(r => {

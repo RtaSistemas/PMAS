@@ -118,6 +118,11 @@ def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
+            func.sum(
+                TimesheetRecord.normal_cost
+                + TimesheetRecord.extra_cost
+                + TimesheetRecord.standby_cost
+            ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
@@ -147,7 +152,7 @@ def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_
             "extra_hours":   round(r.extra_hours   or 0.0, 2),
             "standby_hours": round(r.standby_hours or 0.0, 2),
             "total_hours":   round(r.total_hours   or 0.0, 2),
-            "total_cost":    0.0,
+            "total_cost":    round(r.total_cost    or 0.0, 2),
         }
         for r in rows
     ]

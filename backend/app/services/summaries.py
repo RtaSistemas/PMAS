@@ -168,105 +168,110 @@ def backfill_summaries(db: Session) -> None:
     Uses the legacy cost calculation (cost_per_hour × weighted hours) for rows
     that pre-date the frozen-cost columns, falling back gracefully.
     """
-    if db.query(PepCycleSummary).count() > 0:
-        return  # already populated
+    pep_empty    = db.query(PepCycleSummary).count() == 0
+    collab_empty = db.query(CollaboratorCycleSummary).count() == 0
+
+    if not pep_empty and not collab_empty:
+        return  # both tables already populated
 
     now = datetime.utcnow()
 
-    # PEP × cycle grain
-    rows = (
-        db.query(
-            TimesheetRecord.pep_wbs,
-            TimesheetRecord.pep_description,
-            TimesheetRecord.cycle_id,
-            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
-            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
-            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
-            func.sum(
-                TimesheetRecord.normal_hours
-                + TimesheetRecord.extra_hours
-                + TimesheetRecord.standby_hours
-            ).label("total_hours"),
-            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
-            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
-            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
+    # PEP × cycle grain — only if empty
+    if pep_empty:
+        rows = (
+            db.query(
+                TimesheetRecord.pep_wbs,
+                TimesheetRecord.pep_description,
+                TimesheetRecord.cycle_id,
+                func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+                func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+                func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+                func.sum(
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                ).label("total_hours"),
+                func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+                func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+                func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
+            )
+            .filter(TimesheetRecord.pep_wbs.isnot(None))
+            .group_by(
+                TimesheetRecord.pep_wbs,
+                TimesheetRecord.pep_description,
+                TimesheetRecord.cycle_id,
+            )
+            .all()
         )
-        .filter(TimesheetRecord.pep_wbs.isnot(None))
-        .group_by(
-            TimesheetRecord.pep_wbs,
-            TimesheetRecord.pep_description,
-            TimesheetRecord.cycle_id,
+
+        pep_cycle_agg: dict[tuple, dict] = {}
+        for r in rows:
+            key = (r.pep_wbs, r.cycle_id)
+            if key not in pep_cycle_agg:
+                pep_cycle_agg[key] = {
+                    "pep_wbs": r.pep_wbs,
+                    "pep_description": r.pep_description,
+                    "cycle_id": r.cycle_id,
+                    "normal_hours": 0.0,
+                    "extra_hours": 0.0,
+                    "standby_hours": 0.0,
+                    "total_hours": 0.0,
+                    "normal_cost": 0.0,
+                    "extra_cost": 0.0,
+                    "standby_cost": 0.0,
+                    "refreshed_at": now,
+                }
+            agg = pep_cycle_agg[key]
+            agg["normal_hours"]  += r.normal_hours  or 0.0
+            agg["extra_hours"]   += r.extra_hours   or 0.0
+            agg["standby_hours"] += r.standby_hours or 0.0
+            agg["total_hours"]   += r.total_hours   or 0.0
+            agg["normal_cost"]   += r.normal_cost   or 0.0
+            agg["extra_cost"]    += r.extra_cost    or 0.0
+            agg["standby_cost"]  += r.standby_cost  or 0.0
+
+        for agg in pep_cycle_agg.values():
+            agg["total_cost"] = agg["normal_cost"] + agg["extra_cost"] + agg["standby_cost"]
+            db.add(PepCycleSummary(**agg))
+
+    # Collaborator × cycle grain — only if empty
+    if collab_empty:
+        collab_rows = (
+            db.query(
+                TimesheetRecord.collaborator_id,
+                TimesheetRecord.cycle_id,
+                func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+                func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+                func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+                func.sum(
+                    TimesheetRecord.normal_hours
+                    + TimesheetRecord.extra_hours
+                    + TimesheetRecord.standby_hours
+                ).label("total_hours"),
+                func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+                func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+                func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
+            )
+            .group_by(TimesheetRecord.collaborator_id, TimesheetRecord.cycle_id)
+            .all()
         )
-        .all()
-    )
 
-    pep_cycle_agg: dict[tuple, dict] = {}
-    for r in rows:
-        key = (r.pep_wbs, r.cycle_id)
-        if key not in pep_cycle_agg:
-            pep_cycle_agg[key] = {
-                "pep_wbs": r.pep_wbs,
-                "pep_description": r.pep_description,
-                "cycle_id": r.cycle_id,
-                "normal_hours": 0.0,
-                "extra_hours": 0.0,
-                "standby_hours": 0.0,
-                "total_hours": 0.0,
-                "normal_cost": 0.0,
-                "extra_cost": 0.0,
-                "standby_cost": 0.0,
-                "refreshed_at": now,
-            }
-        agg = pep_cycle_agg[key]
-        agg["normal_hours"]  += r.normal_hours  or 0.0
-        agg["extra_hours"]   += r.extra_hours   or 0.0
-        agg["standby_hours"] += r.standby_hours or 0.0
-        agg["total_hours"]   += r.total_hours   or 0.0
-        agg["normal_cost"]   += r.normal_cost   or 0.0
-        agg["extra_cost"]    += r.extra_cost    or 0.0
-        agg["standby_cost"]  += r.standby_cost  or 0.0
-
-    for agg in pep_cycle_agg.values():
-        agg["total_cost"] = agg["normal_cost"] + agg["extra_cost"] + agg["standby_cost"]
-        db.add(PepCycleSummary(**agg))
-
-    # Collaborator × cycle grain
-    collab_rows = (
-        db.query(
-            TimesheetRecord.collaborator_id,
-            TimesheetRecord.cycle_id,
-            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
-            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
-            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
-            func.sum(
-                TimesheetRecord.normal_hours
-                + TimesheetRecord.extra_hours
-                + TimesheetRecord.standby_hours
-            ).label("total_hours"),
-            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
-            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
-            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
-        )
-        .group_by(TimesheetRecord.collaborator_id, TimesheetRecord.cycle_id)
-        .all()
-    )
-
-    for r in collab_rows:
-        nc = r.normal_cost  or 0.0
-        ec = r.extra_cost   or 0.0
-        sc = r.standby_cost or 0.0
-        db.add(CollaboratorCycleSummary(
-            collaborator_id=r.collaborator_id,
-            cycle_id=r.cycle_id,
-            normal_hours=r.normal_hours  or 0.0,
-            extra_hours=r.extra_hours   or 0.0,
-            standby_hours=r.standby_hours or 0.0,
-            total_hours=r.total_hours   or 0.0,
-            normal_cost=nc,
-            extra_cost=ec,
-            standby_cost=sc,
-            total_cost=nc + ec + sc,
-            refreshed_at=now,
-        ))
+        for r in collab_rows:
+            nc = r.normal_cost  or 0.0
+            ec = r.extra_cost   or 0.0
+            sc = r.standby_cost or 0.0
+            db.add(CollaboratorCycleSummary(
+                collaborator_id=r.collaborator_id,
+                cycle_id=r.cycle_id,
+                normal_hours=r.normal_hours  or 0.0,
+                extra_hours=r.extra_hours   or 0.0,
+                standby_hours=r.standby_hours or 0.0,
+                total_hours=r.total_hours   or 0.0,
+                normal_cost=nc,
+                extra_cost=ec,
+                standby_cost=sc,
+                total_cost=nc + ec + sc,
+                refreshed_at=now,
+            ))
 
     db.commit()

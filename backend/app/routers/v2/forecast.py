@@ -21,6 +21,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline, ProjectCyclePlan,
     TimesheetRecord,
 )
+from backend.app.routers.v2.portfolio import _allowed_peps
 from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
@@ -40,11 +41,15 @@ router = APIRouter(prefix="/api/v2", tags=["v2"])
 @router.get("/forecast", summary="Previsão EVM completa — render-ready com todos os indicadores")
 def get_forecast(
     db: DbSession,
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     pep_wbs: str = Query(...),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None and pep_wbs not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
     pep_desc_row = (

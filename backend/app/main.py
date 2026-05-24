@@ -16,7 +16,13 @@ from backend.app.routers import (
     my, plans, projects, quarantine, ratecard, reference,
     theme, upload, users, validation_rules,
 )
-from backend.app.routers.v2 import effort, filters, forecast, portfolio, trends as trends_v2
+from backend.app.routers.v2 import (
+    allocation as allocation_v2,
+    concentration as concentration_v2,
+    effort, filters, forecast, portfolio,
+    runway as runway_v2,
+    trends as trends_v2,
+)
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +77,9 @@ app.include_router(portfolio.router)
 app.include_router(effort.router)
 app.include_router(trends_v2.router)
 app.include_router(forecast.router)
+app.include_router(allocation_v2.router)
+app.include_router(runway_v2.router)
+app.include_router(concentration_v2.router)
 
 
 def _frontend_dir() -> str:

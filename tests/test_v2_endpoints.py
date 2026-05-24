@@ -418,3 +418,314 @@ class TestEvmService:
         assert compute_cv(8000.0, 6000.0) == pytest.approx(2000.0)   # under budget
         assert compute_cv(5000.0, 7000.0) == pytest.approx(-2000.0)  # over budget
         assert compute_cv(None, 6000.0) is None
+
+    # ── compute_spi ──────────────────────────────────────────────────────────
+    # Signature: compute_spi(cumulative_planned_hours, cumulative_actual_hours)
+    # Result: actual / planned — > 1 means ahead of schedule.
+
+    def test_compute_spi_ahead(self):
+        from backend.app.services.evm import compute_spi
+        # planned=50, actual=60 → 60/50 = 1.2 (ahead of schedule)
+        assert compute_spi(50.0, 60.0) == pytest.approx(1.2, rel=1e-3)
+
+    def test_compute_spi_behind(self):
+        from backend.app.services.evm import compute_spi
+        # planned=50, actual=40 → 40/50 = 0.8 (behind schedule)
+        assert compute_spi(50.0, 40.0) == pytest.approx(0.8, rel=1e-3)
+
+    def test_compute_spi_no_planned(self):
+        from backend.app.services.evm import compute_spi
+        assert compute_spi(None, 40.0) is None
+
+    def test_compute_spi_zero_planned(self):
+        from backend.app.services.evm import compute_spi
+        assert compute_spi(0.0, 40.0) is None
+
+    # ── compute_tcpi ─────────────────────────────────────────────────────────
+    # TCPI = (BAC − EV) / (BAC − AC)
+
+    def test_compute_tcpi_normal(self):
+        from backend.app.services.evm import compute_tcpi
+        # BAC=10000, AC=8000, EV=6000 → (10000-6000)/(10000-8000) = 4000/2000 = 2.0
+        assert compute_tcpi(10000.0, 8000.0, 6000.0) == pytest.approx(2.0, rel=1e-3)
+
+    def test_compute_tcpi_on_budget(self):
+        from backend.app.services.evm import compute_tcpi
+        # BAC == AC → denominator = 0 → returns None
+        assert compute_tcpi(5000.0, 5000.0, 4000.0) is None
+
+    def test_compute_tcpi_no_budget(self):
+        from backend.app.services.evm import compute_tcpi
+        assert compute_tcpi(None, 3000.0, 2000.0) is None
+
+
+# ── services/summaries.py tests ──────────────────────────────────────────────
+
+import io
+import csv
+
+from backend.app.models import PepCycleSummary, CollaboratorCycleSummary
+
+
+class TestSummaries:
+    def _make_csv(self, collab, pep, date_str, hours):
+        """Create a minimal valid CSV payload for upload."""
+        rows = [
+            ["Colaborador", "Data", "Horas totais (decimal)", "Código PEP", "PEP"],
+            [collab, date_str, str(hours), pep, f"Desc {pep}"],
+        ]
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerows(rows)
+        return buf.getvalue().encode()
+
+    def test_pep_cycle_summary_created_after_upload(self, client, db_session, clean_db):
+        cy = Cycle(
+            name="MAI/2026",
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 5, 31),
+            is_active=True,
+            is_closed=False,
+        )
+        db_session.add(cy)
+        db_session.commit()
+
+        csv_bytes = self._make_csv("João Silva", "PEP-001", "15/05/2026", 8.0)
+        r = client.post(
+            "/api/upload-timesheet",
+            files={"file": ("t.csv", csv_bytes, "text/csv")},
+        )
+        assert r.status_code == 200
+
+        s = db_session.query(PepCycleSummary).filter_by(pep_wbs="PEP-001").first()
+        assert s is not None
+        assert s.total_hours > 0
+
+    def test_collaborator_cycle_summary_created_after_upload(self, client, db_session, clean_db):
+        from backend.app.models import Collaborator as CollabModel
+
+        cy = Cycle(
+            name="MAI/2026",
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 5, 31),
+            is_active=True,
+            is_closed=False,
+        )
+        db_session.add(cy)
+        db_session.commit()
+
+        csv_bytes = self._make_csv("Maria Santos", "PEP-002", "10/05/2026", 6.0)
+        client.post(
+            "/api/upload-timesheet",
+            files={"file": ("t.csv", csv_bytes, "text/csv")},
+        )
+
+        collab = db_session.query(CollabModel).filter_by(name="Maria Santos").first()
+        assert collab is not None
+        s = db_session.query(CollaboratorCycleSummary).filter_by(collaborator_id=collab.id).first()
+        assert s is not None
+        assert s.total_hours > 0
+
+    def test_backfill_summaries_idempotent(self, db_session, clean_db):
+        from backend.app.services.summaries import backfill_summaries
+
+        # Run twice on an empty DB — should not raise and count stays the same.
+        backfill_summaries(db_session)
+        count1 = db_session.query(PepCycleSummary).count()
+        backfill_summaries(db_session)
+        count2 = db_session.query(PepCycleSummary).count()
+        assert count1 == count2
+
+
+# ── ACL v2 tests ─────────────────────────────────────────────────────────────
+
+from contextlib import contextmanager
+
+from fastapi.testclient import TestClient as _TestClient
+
+from backend.app.deps import get_current_user
+from backend.app.main import app
+from backend.app.models import User, UserProjectAccess
+
+
+@contextmanager
+def _acting_as(user):
+    """Override get_current_user for a single TestClient block."""
+    saved = dict(app.dependency_overrides)
+    app.dependency_overrides[get_current_user] = lambda: user
+    with _TestClient(app, raise_server_exceptions=True) as c:
+        yield c
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(saved)
+
+
+class TestV2Acl:
+    def _setup_restricted_user(self, db_session):
+        """Create a non-admin user with access only to PEP-A."""
+        from backend.app.routers.auth import hash_password
+
+        user = User(
+            username="restricted_user_acl",
+            hashed_password=hash_password("pass"),
+            role="user",
+        )
+        db_session.add(user)
+        db_session.flush()
+
+        proj = Project(pep_wbs="PEP-A", name="Projeto A")
+        db_session.add(proj)
+        db_session.flush()
+
+        access = UserProjectAccess(user_id=user.id, project_id=proj.id)
+        db_session.add(access)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    def test_portfolio_acl_restricts_non_admin(self, db_session, clean_db):
+        user = self._setup_restricted_user(db_session)
+
+        cy = Cycle(
+            name="T1",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            is_active=True,
+            is_closed=False,
+        )
+        db_session.add(cy)
+        db_session.commit()
+
+        co = Collaborator(name="Worker")
+        db_session.add(co)
+        db_session.flush()
+
+        for pep in ["PEP-A", "PEP-B"]:
+            r = TimesheetRecord(
+                collaborator_id=co.id,
+                cycle_id=cy.id,
+                record_date=date(2026, 1, 10),
+                pep_wbs=pep,
+                normal_hours=8.0,
+                extra_hours=0.0,
+                standby_hours=0.0,
+                cost_per_hour=0.0,
+                normal_cost=0.0,
+                extra_cost=0.0,
+                standby_cost=0.0,
+            )
+            db_session.add(r)
+        db_session.commit()
+
+        with _acting_as(user) as c:
+            r = c.get("/api/v2/portfolio")
+        assert r.status_code == 200
+        peps = [item["pep_wbs"] for item in r.json()]
+        assert "PEP-A" in peps
+        assert "PEP-B" not in peps
+
+    def test_forecast_acl_restricts_non_admin(self, db_session, clean_db):
+        user = self._setup_restricted_user(db_session)
+
+        cy = Cycle(
+            name="T1",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            is_active=True,
+            is_closed=False,
+        )
+        db_session.add(cy)
+        db_session.commit()
+
+        co = Collaborator(name="Worker2")
+        db_session.add(co)
+        db_session.flush()
+
+        # PEP-B is not in the user's access list
+        r_rec = TimesheetRecord(
+            collaborator_id=co.id,
+            cycle_id=cy.id,
+            record_date=date(2026, 1, 10),
+            pep_wbs="PEP-B",
+            normal_hours=8.0,
+            extra_hours=0.0,
+            standby_hours=0.0,
+            cost_per_hour=0.0,
+            normal_cost=0.0,
+            extra_cost=0.0,
+            standby_cost=0.0,
+        )
+        db_session.add(r_rec)
+        db_session.commit()
+
+        with _acting_as(user) as c:
+            resp = c.get("/api/v2/forecast?pep_wbs=PEP-B")
+        assert resp.status_code == 403
+
+
+# ── /api/v2/allocation tests ─────────────────────────────────────────────────
+
+class TestAllocationV2:
+    def _make_cycle(self, db, name, year, month):
+        import calendar
+        last = calendar.monthrange(year, month)[1]
+        cy = Cycle(
+            name=name,
+            start_date=date(year, month, 1),
+            end_date=date(year, month, last),
+            is_active=True,
+            is_closed=False,
+        )
+        db.add(cy)
+        db.commit()
+        return cy
+
+    def _make_collab(self, db, name):
+        c = Collaborator(name=name)
+        db.add(c)
+        db.commit()
+        return c
+
+    def _make_record(self, db, cy, co, pep, normal=8.0, desc=None):
+        r = TimesheetRecord(
+            collaborator_id=co.id,
+            cycle_id=cy.id,
+            record_date=date(cy.start_date.year, cy.start_date.month, 5),
+            pep_wbs=pep,
+            pep_description=desc or f"Desc {pep}",
+            normal_hours=normal,
+            extra_hours=0.0,
+            standby_hours=0.0,
+            cost_per_hour=50.0,
+            normal_cost=round(normal * 50.0, 4),
+            extra_cost=0.0,
+            standby_cost=0.0,
+        )
+        db.add(r)
+        db.commit()
+        return r
+
+    def test_empty(self, client, clean_db):
+        assert client.get("/api/v2/allocation").json() == []
+
+    def test_groups_by_collaborator_and_pep(self, client, db_session, clean_db):
+        cy = self._make_cycle(db_session, "JAN/2026", 2026, 1)
+        co = self._make_collab(db_session, "AllocUser")
+        self._make_record(db_session, cy, co, "PEP-X", normal=8.0)
+
+        result = client.get("/api/v2/allocation").json()
+        assert len(result) >= 1
+        item = next((x for x in result if x["collaborator"] == "AllocUser"), None)
+        assert item is not None
+        assert item["pep_wbs"] == "PEP-X"
+        assert item["total_hours"] == pytest.approx(8.0)
+
+    def test_returns_total_cost(self, client, db_session, clean_db):
+        cy = self._make_cycle(db_session, "FEV/2026", 2026, 2)
+        co = self._make_collab(db_session, "CostUser")
+        self._make_record(db_session, cy, co, "PEP-Y", normal=10.0)
+        # normal_cost = 10.0 * 50.0 = 500.0
+
+        result = client.get("/api/v2/allocation").json()
+        item = next((x for x in result if x["collaborator"] == "CostUser"), None)
+        assert item is not None
+        assert item["total_cost"] == pytest.approx(500.0)
