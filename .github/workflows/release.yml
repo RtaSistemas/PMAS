@@ -18,17 +18,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            artifact_name: pmas-linux-x64
-            artifact_path: dist/pmas-linux-x64
+          # ── Linux — desativado temporariamente (em teste) ──────────────────
+          # - os: ubuntu-latest
+          #   artifact_name: pmas-linux-x64
+          #   artifact_path: dist/pmas-linux-x64
 
           - os: windows-latest
             artifact_name: pmas-windows-x64.exe
             artifact_path: dist/pmas-windows-x64.exe
 
-          - os: macos-latest
-            artifact_name: pmas-macos-arm64
-            artifact_path: dist/pmas-macos-arm64
+          # ── macOS — desativado temporariamente (em teste) ──────────────────
+          # - os: macos-latest
+          #   artifact_name: pmas-macos-arm64
+          #   artifact_path: dist/pmas-macos-arm64
 
     steps:
       - name: Checkout repository
