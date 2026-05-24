@@ -45,6 +45,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-lock.txt pyinstaller
 
+      # ── Linux ──────────────────────────────────────────────────────────────
+
       - name: Build standalone executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -74,12 +76,15 @@ jobs:
             --collect-all openpyxl \
             run.py
 
+      # ── Windows ────────────────────────────────────────────────────────────
+
       - name: Build standalone executable (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           pyinstaller `
             --onefile `
             --name pmas-windows-x64 `
+            --icon assets\icon.ico `
             --add-data "frontend;frontend" `
             --add-data "static;static" `
             --hidden-import uvicorn.logging `
@@ -101,6 +106,60 @@ jobs:
             --hidden-import limits `
             --collect-all openpyxl `
             run.py
+
+      # ── Windows Code Signing ───────────────────────────────────────────────
+      # Escolha UMA das duas opções abaixo e remova a outra.
+      #
+      # OPÇÃO A — Azure Trusted Signing (~R$50/mês, sem hardware, recomendado)
+      # Secrets necessários: AZURE_TENANT_ID, AZURE_CLIENT_ID,
+      #   AZURE_CLIENT_SECRET, AZURE_SIGNING_ACCOUNT, AZURE_CERT_PROFILE,
+      #   AZURE_ENDPOINT
+      #
+      # OPÇÃO B — Certificado OV/EV tradicional (PFX armazenado como secret)
+      # Secrets necessários: WINDOWS_CERT_PFX (base64), WINDOWS_CERT_PASSWORD
+
+      - name: Sign executable — Azure Trusted Signing (Opção A)
+        if: |
+          matrix.os == 'windows-latest' &&
+          vars.SIGNING_METHOD == 'azure'
+        uses: azure/trusted-signing-action@v0.4.0
+        with:
+          azure-tenant-id:            ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id:            ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret:        ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint:                   ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name:   ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder:               dist
+          files-folder-filter:        exe
+          file-digest:                SHA256
+          timestamp-rfc3161:          http://timestamp.acs.microsoft.com
+          timestamp-digest:           SHA256
+
+      - name: Sign executable — OV/EV certificate PFX (Opção B)
+        if: |
+          matrix.os == 'windows-latest' &&
+          vars.SIGNING_METHOD == 'pfx'
+        shell: pwsh
+        run: |
+          # Decodifica PFX armazenado como secret base64
+          $pfxBytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_PFX }}")
+          $pfxPath  = "$env:RUNNER_TEMP\cert.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+
+          # Assina com signtool (já presente nos runners windows-latest)
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign `
+            /f  $pfxPath `
+            /p  "${{ secrets.WINDOWS_CERT_PASSWORD }}" `
+            /tr http://timestamp.digicert.com `
+            /td sha256 `
+            /fd sha256 `
+            dist\pmas-windows-x64.exe
+
+          # Remove certificado da memória do runner imediatamente
+          Remove-Item $pfxPath -Force
+
+      # ── macOS ──────────────────────────────────────────────────────────────
 
       - name: Build standalone executable (macOS)
         if: matrix.os == 'macos-latest'
@@ -129,6 +188,8 @@ jobs:
             --hidden-import limits \
             --collect-all openpyxl \
             run.py
+
+      # ── Upload ─────────────────────────────────────────────────────────────
 
       - name: Upload executable to GitHub Release
         uses: softprops/action-gh-release@v2
