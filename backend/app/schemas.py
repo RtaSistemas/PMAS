@@ -115,17 +115,6 @@ class UserProjectAccessOut(BaseModel):
     pep_wbs: str
 
 
-class CollaboratorOut(BaseModel):
-    id: int
-    name: str
-
-
-class PepOut(BaseModel):
-    code: str
-    descriptions: List[str]
-    total_records: int
-
-
 class ProjectCyclePlanIn(BaseModel):
     cycle_id: int
     planned_hours: float = Field(ge=0)
@@ -185,124 +174,12 @@ class SeniorityAssignOut(BaseModel):
     seniority_level_id: Optional[int] = None
 
 
-# Dashboard nested types
-
-class CycleInfo(BaseModel):
-    id: Optional[int] = None
-    name: str
-    start_date: Optional[DateType] = None
-    end_date: Optional[DateType] = None
-
-
-class DashboardFilters(BaseModel):
-    pep_codes: List[str]
-    pep_descriptions: List[str]
-    collaborator_ids: List[int]
-
-
-class CollaboratorHours(BaseModel):
-    collaborator: str
-    normal_hours: float
-    extra_hours: float
-    standby_hours: float
-
-
-class BreakdownItem(BaseModel):
-    collaborator: str
-    pep_code: Optional[str] = None
-    pep_description: Optional[str] = None
-    normal_hours: float
-    extra_hours: float
-    standby_hours: float
-
-
-class BudgetVsActualItem(BaseModel):
-    pep_wbs: str
-    name: Optional[str] = None
-    budget_hours: float
-    actual_hours: float
-
-
-class DashboardOut(BaseModel):
-    cycle: CycleInfo
-    filters: DashboardFilters
-    data: List[CollaboratorHours]
-    breakdown: List[BreakdownItem]
-    budget_vs_actual: List[BudgetVsActualItem]   # ← última linha atual do DashboardOut
-                                                  # ← linha em branco
-                                                  # ← linha em branco
 class CollaboratorTimelineItem(BaseModel):
     cycle_name: str
     cycle_start: str
     normal_hours: float
     extra_hours: float
     standby_hours: float
-
-
-# Analytics types
-
-class PortfolioHealthItem(BaseModel):
-    pep_wbs: str
-    pep_description: Optional[str] = None
-    name: Optional[str] = None
-    budget_hours: Optional[float] = None
-    budget_cost: Optional[float] = None
-    consumed_hours: float
-    actual_cost: float
-    cpi: Optional[float] = None
-    is_registered: bool
-
-
-class TrendItem(BaseModel):
-    cycle_name: str
-    normal_hours: float
-    extra_hours: float
-    standby_hours: float
-    actual_cost: float
-    cpi: float | None = None
-    normal_cost: float = 0.0
-    extra_cost: float = 0.0
-    standby_cost: float = 0.0
-
-
-class BurnHistoryPoint(BaseModel):
-    cycle_name: str
-    cycle_start: date
-    period_hours: float
-    period_cost: float
-    cumulative_hours: float
-    cumulative_cost: float
-    planned_hours: float | None = None
-    planned_cost: float | None = None
-    cumulative_planned_hours: float | None = None
-    cumulative_planned_cost: float | None = None
-    cumulative_ev_cost: float | None = None
-    spi_cumulative: float | None = None
-
-
-class ForecastOut(BaseModel):
-    pep_wbs: str
-    pep_description: str | None
-    budget_hours: float | None
-    budget_cost: float | None
-    consumed_hours: float
-    actual_cost: float
-    remaining_hours: float | None
-    remaining_cost: float | None = None
-    cpi: float | None
-    eac: float | None
-    cv: float | None = None
-    tcpi: float | None = None
-    vac: float | None = None
-    spi: float | None = None
-    sv: float | None = None
-    avg_hours_per_cycle: float
-    estimated_cycles_to_complete: float | None
-    estimated_completion_cycle: str | None
-    history: list[BurnHistoryPoint]
-    using_baseline: bool = False
-    baseline_locked_at: datetime | None = None
-    baseline_label: str | None = None
 
 
 class UploadOut(BaseModel):
@@ -475,47 +352,3 @@ class UIThemeOut(UIThemeIn):
     logo_url: Optional[str] = None
 
 
-# ── Portfolio Runway ──────────────────────────────────────────────────────────
-
-class RunwayItem(BaseModel):
-    pep_wbs: str
-    pep_description: Optional[str] = None
-    name: Optional[str] = None
-    budget_hours: Optional[float] = None
-    budget_cost: Optional[float] = None
-    consumed_hours: float
-    actual_cost: float
-    pct_consumed: Optional[float] = None
-    pct_consumed_cost: Optional[float] = None
-    avg_hours_per_cycle: float
-    avg_cost_per_cycle: float
-    cycles_to_complete: Optional[float] = None
-    estimated_completion_cycle: Optional[str] = None
-    spi: Optional[float] = None
-    schedule_status: str = "no_baseline"  # on_track | at_risk | behind | no_baseline
-    cpi: Optional[float] = None
-    risk: str  # ok | warning | critical | overrun | no_budget
-    cost_risk: str  # ok | warning | critical | overrun | no_budget
-
-
-# ── Portfolio Concentration ───────────────────────────────────────────────────
-
-class ConcentrationContributor(BaseModel):
-    name: str
-    hours: float
-    cost: float
-    pct: float
-    pct_cost: float
-
-
-class ConcentrationItem(BaseModel):
-    pep_wbs: str
-    pep_description: Optional[str] = None
-    name: Optional[str] = None
-    total_hours: float
-    total_cost: float
-    top_contributors: List[ConcentrationContributor]
-    top1_pct: float
-    top1_pct_cost: float
-    risk: str       # high | medium | low  (hours-based)
-    risk_cost: str  # high | medium | low  (cost-based)

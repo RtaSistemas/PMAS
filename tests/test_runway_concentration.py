@@ -49,19 +49,21 @@ def _rec_with_cost(db, cycle, collab, pep, desc="D", normal=8.0, cost_per_hour=1
         pep_wbs=pep, pep_description=desc,
         normal_hours=normal, extra_hours=0.0, standby_hours=0.0,
         cost_per_hour=cost_per_hour,
+        normal_cost=round(normal * cost_per_hour, 4),
+        extra_cost=0.0, standby_cost=0.0,
     )
     db.add(r); db.commit()
     return r
 
 
 # ===========================================================================
-# /api/portfolio-runway
+# /api/v2/runway
 # ===========================================================================
 
 class TestPortfolioRunway:
 
     def test_empty(self, client):
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         assert result.json() == []
 
@@ -71,7 +73,7 @@ class TestPortfolioRunway:
         _project(db_session, "P-RW1", budget_h=100.0, name="Runway Project")
         _rec(db_session, cy, co, "P-RW1", normal=40.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         assert len(data) == 1
@@ -88,7 +90,7 @@ class TestPortfolioRunway:
         # No project registered for this PEP
         _rec(db_session, cy, co, "P-NOBUDGET", normal=10.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-NOBUDGET"), None)
@@ -107,7 +109,7 @@ class TestPortfolioRunway:
         _rec(db_session, c1, co, "P-COMPL", normal=40.0, day=10)
         _rec(db_session, c2, co, "P-COMPL", normal=40.0, day=10)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-COMPL"), None)
@@ -122,7 +124,7 @@ class TestPortfolioRunway:
         _project(db_session, "P-OVER", budget_h=50.0)
         _rec(db_session, cy, co, "P-OVER", normal=60.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-OVER"), None)
@@ -136,7 +138,7 @@ class TestPortfolioRunway:
         _project(db_session, "P-OK", budget_h=200.0)
         _rec(db_session, cy, co, "P-OK", normal=10.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-OK"), None)
@@ -150,7 +152,7 @@ class TestPortfolioRunway:
         _rec(db_session, c1, co, "P-ONLY-C1", normal=8.0)
         _rec(db_session, c2, co, "P-ONLY-C2", normal=8.0)
 
-        result = client.get(f"/api/portfolio-runway?cycle_id={c1.id}")
+        result = client.get(f"/api/v2/runway?cycle_id={c1.id}")
         assert result.status_code == 200
         codes = [r["pep_wbs"] for r in result.json()]
         assert "P-ONLY-C1" in codes
@@ -162,7 +164,7 @@ class TestPortfolioRunway:
         _rec(db_session, cy, co, "P-TARGET", normal=8.0)
         _rec(db_session, cy, co, "P-OTHER",  normal=8.0)
 
-        result = client.get("/api/portfolio-runway?pep_wbs=P-TARGET")
+        result = client.get("/api/v2/runway?pep_wbs=P-TARGET")
         assert result.status_code == 200
         data = result.json()
         assert all(r["pep_wbs"] == "P-TARGET" for r in data)
@@ -175,7 +177,7 @@ class TestPortfolioRunway:
         _project(db_session, "P-CLOSED", budget_h=100.0)
         _rec(db_session, c, co, "P-CLOSED", normal=30.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         codes = [r["pep_wbs"] for r in result.json()]
         # Closed cycles should be included since they have valid timesheet data
@@ -187,7 +189,7 @@ class TestPortfolioRunway:
         _project(db_session, "P-CPI", budget_h=100.0, budget_c=1000.0)
         _rec_with_cost(db_session, cy, co, "P-CPI", normal=50.0, cost_per_hour=10.0)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-CPI"), None)
@@ -208,7 +210,7 @@ class TestPortfolioRunway:
         _rec(db_session, c2, co, "P-EST", normal=40.0, day=10)
         # remaining 120h / 40h per cycle = 3 cycles → should complete around cycle at index 2+3=5 (EC5)
 
-        result = client.get("/api/portfolio-runway")
+        result = client.get("/api/v2/runway")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-EST"), None)
@@ -217,13 +219,13 @@ class TestPortfolioRunway:
 
 
 # ===========================================================================
-# /api/portfolio-concentration
+# /api/v2/concentration
 # ===========================================================================
 
 class TestPortfolioConcentration:
 
     def test_empty(self, client):
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         assert result.json() == []
 
@@ -232,7 +234,7 @@ class TestPortfolioConcentration:
         co = _collab(db_session, "Ana")
         _rec(db_session, cy, co, "P-CON1", normal=40.0)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         assert len(data) >= 1
@@ -250,7 +252,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co1, "P-HIGH", normal=70.0, day=1)
         _rec(db_session, cy, co2, "P-HIGH", normal=30.0, day=2)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-HIGH"), None)
@@ -266,7 +268,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co1, "P-MED", normal=50.0, day=1)
         _rec(db_session, cy, co2, "P-MED", normal=50.0, day=2)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-MED"), None)
@@ -283,7 +285,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co2, "P-LOW", normal=33.0, day=2)
         _rec(db_session, cy, co3, "P-LOW", normal=34.0, day=3)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-LOW"), None)
@@ -296,7 +298,7 @@ class TestPortfolioConcentration:
         for i, co in enumerate(collabs):
             _rec(db_session, cy, co, "P-MANY", normal=float(20 - i), day=i + 1)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-MANY"), None)
@@ -313,7 +315,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co1, "P-FEW", normal=20.0, day=1)
         _rec(db_session, cy, co2, "P-FEW", normal=10.0, day=2)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-FEW"), None)
@@ -330,7 +332,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co2, "P-PCT", normal=30.0, day=2)
         _rec(db_session, cy, co3, "P-PCT", normal=10.0, day=3)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-PCT"), None)
@@ -345,7 +347,7 @@ class TestPortfolioConcentration:
         _rec(db_session, c1, co, "P-FCON1", normal=8.0)
         _rec(db_session, c2, co, "P-FCON2", normal=8.0)
 
-        result = client.get(f"/api/portfolio-concentration?cycle_id={c1.id}")
+        result = client.get(f"/api/v2/concentration?cycle_id={c1.id}")
         assert result.status_code == 200
         codes = [r["pep_wbs"] for r in result.json()]
         assert "P-FCON1" in codes
@@ -357,7 +359,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co, "P-D1", desc="TargetDesc", normal=8.0, day=1)
         _rec(db_session, cy, co, "P-D2", desc="OtherDesc",  normal=8.0, day=2)
 
-        result = client.get("/api/portfolio-concentration?pep_description=TargetDesc")
+        result = client.get("/api/v2/concentration?pep_description=TargetDesc")
         assert result.status_code == 200
         codes = [r["pep_wbs"] for r in result.json()]
         assert "P-D1" in codes
@@ -369,7 +371,7 @@ class TestPortfolioConcentration:
         _project(db_session, "P-NAMED", name="Named Project")
         _rec(db_session, cy, co, "P-NAMED", normal=10.0)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-NAMED"), None)
@@ -383,7 +385,7 @@ class TestPortfolioConcentration:
         _rec(db_session, cy, co1, "P-TOTAL", normal=25.0, day=1)
         _rec(db_session, cy, co2, "P-TOTAL", normal=15.0, day=2)
 
-        result = client.get("/api/portfolio-concentration")
+        result = client.get("/api/v2/concentration")
         assert result.status_code == 200
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-TOTAL"), None)

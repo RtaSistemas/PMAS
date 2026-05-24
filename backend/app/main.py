@@ -12,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.database import init_db
 from backend.app.routers import (
-    acl, analytics, auditlog, auth, baselines, cycles, dashboard,
-    my, plans, projects, quarantine, ratecard, reference,
+    acl, auditlog, auth, baselines, cycles, dashboard,
+    my, plans, projects, quarantine, ratecard,
     theme, upload, users, validation_rules,
 )
 from backend.app.routers.v2 import (
@@ -62,8 +62,6 @@ app.include_router(projects.router)
 app.include_router(plans.router)
 app.include_router(baselines.router)
 app.include_router(dashboard.router)
-app.include_router(reference.router)
-app.include_router(analytics.router)
 app.include_router(ratecard.router)
 app.include_router(acl.router)
 app.include_router(upload.router)
