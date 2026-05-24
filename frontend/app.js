@@ -345,6 +345,13 @@ const _LANG = {
     'onboard.step2':'Cadastre seus Projetos com código PEP e orçamento',
     'onboard.step3':'Importe um timesheet em Minha Área → Upload',
     'onboard.cta':'Ir para Ciclos',
+    'velocity.title':'Velocidade por Ciclo',
+    'velocity.note':'Horas totais por ciclo · média móvel 3 ciclos',
+    'velocity.empty':'Nenhum dado encontrado.',
+    'velocity.bars':'Horas por Ciclo',
+    'velocity.mavg':'Média Móvel (3 ciclos)',
+    'burnup.eac':'EAC (Estimativa no Término)',
+    'chart.velocityChart':'Velocidade por Ciclo',
   },
   en: {
     'app.title':'PMAS — Project Management Dashboard',
@@ -687,6 +694,13 @@ const _LANG = {
     'onboard.step2':'Register your Projects with PEP code and budget',
     'onboard.step3':'Import a timesheet in My Area → Upload',
     'onboard.cta':'Go to Cycles',
+    'velocity.title':'Cycle Velocity',
+    'velocity.note':'Total hours per cycle · 3-cycle moving average',
+    'velocity.empty':'No data found.',
+    'velocity.bars':'Hours per Cycle',
+    'velocity.mavg':'3-Cycle Moving Avg',
+    'burnup.eac':'EAC (Estimate at Completion)',
+    'chart.velocityChart':'Cycle Velocity',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -1032,7 +1046,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
+  effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart', 'velocityChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart', 'burnUpChart'],
 };
@@ -1294,12 +1308,13 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Load button
 // ---------------------------------------------------------------------------
-loadBtn.addEventListener('click', () => _renderActiveTab());
+loadBtn.addEventListener('click', () => { _saveFilters(); _renderActiveTab(); });
 
 clearBtn.addEventListener('click', () => {
   cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
+  try { localStorage.removeItem('pmas_filters_v1'); } catch (_) {}
   pepDataCache = {};
   _evmMode = false;
   document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
@@ -1410,8 +1425,10 @@ async function _renderEffortTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  _setChartLoading(['effortChart'], true);
   try {
     const data = await apiFetch(`/api/v2/effort?${p}`);
+    _setChartLoading(['effortChart'], false);
     _lastEffortData = data;
     const bva = [];
 
@@ -1464,6 +1481,7 @@ async function _renderEffortTab() {
     await _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo);
 
   } catch (err) {
+    _setChartLoading(['effortChart'], false);
     notify(`Erro: ${err.message}`, 'error');
   }
 }
@@ -1666,6 +1684,7 @@ async function _renderPortfolioTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  _setChartLoading(['treemapChart'], true);
   try {
     const [health, trends, runway, concentration] = await Promise.all([
       apiFetch(`/api/v2/portfolio?${p}`),
@@ -1673,6 +1692,7 @@ async function _renderPortfolioTab() {
       apiFetch(`/api/v2/runway?${p}`).catch(() => []),
       apiFetch(`/api/v2/concentration?${p}`).catch(() => []),
     ]);
+    _setChartLoading(['treemapChart'], false);
 
     // Stats row — rendered before the empty-state guard so it clears on no data
     const statsEl = document.getElementById('portfolioStats');
@@ -1742,7 +1762,10 @@ async function _renderPortfolioTab() {
     // Allocation matrix — last item in portfolio
     await _renderAllocationTab();
 
-  } catch (err) { notify(`Erro: ${err.message}`, 'error'); }
+  } catch (err) {
+    _setChartLoading(['treemapChart'], false);
+    notify(`Erro: ${err.message}`, 'error');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1840,6 +1863,104 @@ function _computeTrendsWindow(cycleIds, dateFrom, dateTo) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Skeleton / shimmer loading state for chart containers
+// ---------------------------------------------------------------------------
+function _setChartLoading(ids, on) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.toggleAttribute('data-chart-loading', on);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Filter persistence — dateFrom / dateTo saved across sessions
+// ---------------------------------------------------------------------------
+function _saveFilters() {
+  try {
+    localStorage.setItem('pmas_filters_v1', JSON.stringify({
+      dateFrom: document.getElementById('dateFromInput').value,
+      dateTo:   document.getElementById('dateToInput').value,
+    }));
+  } catch (_) {}
+}
+function _restoreFilterDates() {
+  try {
+    const s = JSON.parse(localStorage.getItem('pmas_filters_v1') || 'null');
+    if (!s) return;
+    if (s.dateFrom) document.getElementById('dateFromInput').value = s.dateFrom;
+    if (s.dateTo)   document.getElementById('dateToInput').value   = s.dateTo;
+  } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// Velocity chart — total hours per cycle + 3-cycle moving average
+// ---------------------------------------------------------------------------
+function _buildVelocityOption(trends) {
+  const cats = trends.map(d => d.cycle_name);
+  const bars = trends.map(d => d.total_hours);
+  const mavg = trends.map(d => d.moving_avg_3_hours ?? null);
+  const pal  = _getPalette();
+  const barClr = pal[0] || '#0ea5e9';
+  const avgClr = _cssVar('--amber') || '#f59e0b';
+
+  return {
+    backgroundColor: 'transparent',
+    toolbox: _toolbox({}, 'PMAS-Velocidade'),
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
+      textStyle: { color: _cssVar('--text') },
+      formatter: params => {
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
+        params.forEach(p => {
+          if (p.value == null) return;
+          html += `${p.marker} ${p.seriesName}: <b>${(+p.value).toFixed(1)}h</b><br>`;
+        });
+        return html;
+      },
+    },
+    legend: {
+      data: [_t('velocity.bars'), _t('velocity.mavg')],
+      top: 8, left: 'center',
+      textStyle: { color: _cssVar('--text'), fontSize: 12 },
+      itemGap: 20,
+    },
+    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
+    xAxis: {
+      type: 'category', data: cats,
+      axisLabel: { color: _cssVar('--text-3'), rotate: cats.length > 8 ? 30 : 0, fontSize: 11 },
+      axisTick: { alignWithLabel: true },
+    },
+    yAxis: {
+      type: 'value', name: _t('ch.hours'),
+      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 11, formatter: v => `${v}h` },
+      splitLine: { lineStyle: { color: _cssVar('--border') } },
+    },
+    series: [
+      {
+        name: _t('velocity.bars'),
+        type: 'bar',
+        data: bars,
+        itemStyle: { color: barClr, opacity: 0.85 },
+        barMaxWidth: 48,
+      },
+      {
+        name: _t('velocity.mavg'),
+        type: 'line',
+        data: mavg,
+        smooth: true,
+        symbol: 'circle', symbolSize: 6,
+        lineStyle: { color: avgClr, width: 2.5 },
+        itemStyle: { color: avgClr },
+        connectNulls: false,
+        z: 10,
+      },
+    ],
+  };
+}
+
 // Trends + CPI helper — called from _renderEffortTab
 // ---------------------------------------------------------------------------
 async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo) {
@@ -1852,8 +1973,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
   if (wFrom) p.set('date_from', wFrom);
   if (wTo)   p.set('date_to',   wTo);
 
+  _setChartLoading(['trendsChart'], true);
   try {
     const trends = await apiFetch(`/api/v2/trends?${p}`);
+    _setChartLoading(['trendsChart'], false);
 
     if (!trends.length) {
       _showEmpty('trendsEmpty', true);
@@ -1863,6 +1986,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       document.getElementById('costCompositionPanel').hidden = true;
       if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
         _charts['costCompositionChart'].dispose(); delete _charts['costCompositionChart'];
+      }
+      document.getElementById('velocityPanel').hidden = true;
+      if (_charts['velocityChart'] && !_charts['velocityChart'].isDisposed()) {
+        _charts['velocityChart'].dispose(); delete _charts['velocityChart'];
       }
       return;
     }
@@ -1882,6 +2009,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     }), true);
     tc.resize();
 
+    // Velocity chart — D1
+    document.getElementById('velocityPanel').hidden = false;
+    _showEmpty('velocityEmpty', false);
+    const vc = _getOrCreateChart('velocityChart');
+    vc.setOption(_buildVelocityOption(trends), true);
+    vc.resize();
 
     // Cost Composition chart — G3
     _renderCostCompositionChart(trends);
@@ -1992,7 +2125,10 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     } catch (err) {
       notify(`CPI por PEP — erro: ${err.message}`, 'error');
     }
-  } catch (err) { notify(`Erro ao carregar tendências: ${err.message}`, 'error'); }
+  } catch (err) {
+    _setChartLoading(['trendsChart'], false);
+    notify(`Erro ao carregar tendências: ${err.message}`, 'error');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2405,11 +2541,50 @@ function _buildBurnUpOption(fc) {
 
   const _fmtR = v => v == null ? '' : `R$ ${(+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
 
+  const eacColor = _cssVar('--amber') || '#f59e0b';
+  const legendData = [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')];
+  if (fc.eac != null) legendData.push(_t('burnup.eac'));
+
+  const series = [
+    {
+      name: _t('burnup.pv'),
+      type: 'line', data: pvData,
+      symbol: 'none', connectNulls: true,
+      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
+      itemStyle: { color: '#94a3b8' },
+    },
+    {
+      name: _t('burnup.ev'),
+      type: 'line', data: evData,
+      symbol: 'circle', symbolSize: 5, connectNulls: false,
+      lineStyle: { color: _cssVar('--green') || '#22c55e', width: 2.5 },
+      itemStyle: { color: _cssVar('--green') || '#22c55e' },
+      areaStyle: { color: (_cssVar('--green') || '#22c55e') + '18' },
+    },
+    {
+      name: _t('burnup.ac'),
+      type: 'line', data: acData,
+      symbol: 'circle', symbolSize: 5, connectNulls: false,
+      lineStyle: { color: _cssVar('--red') || '#ef4444', width: 2.5 },
+      itemStyle: { color: _cssVar('--red') || '#ef4444' },
+    },
+  ];
+  if (fc.eac != null) {
+    series.push({
+      name: _t('burnup.eac'),
+      type: 'line',
+      data: cats.map(() => fc.eac),
+      symbol: 'none',
+      lineStyle: { color: eacColor, width: 1.5, type: 'dotted' },
+      itemStyle: { color: eacColor },
+      tooltip: { formatter: () => `EAC: ${_fmtR(fc.eac)}` },
+    });
+  }
+
   return {
     backgroundColor: 'transparent',
     legend: {
-      data: [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')],
-      top: 8, left: 'center',
+      data: legendData, top: 8, left: 'center',
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
       itemGap: 24, itemWidth: 18, itemHeight: 10,
     },
@@ -2444,30 +2619,7 @@ function _buildBurnUpOption(fc) {
       },
       splitLine: { lineStyle: { color: _cssVar('--border') } },
     },
-    series: [
-      {
-        name: _t('burnup.pv'),
-        type: 'line', data: pvData,
-        symbol: 'none', connectNulls: true,
-        lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
-        itemStyle: { color: '#94a3b8' },
-      },
-      {
-        name: _t('burnup.ev'),
-        type: 'line', data: evData,
-        symbol: 'circle', symbolSize: 5, connectNulls: false,
-        lineStyle: { color: '#22c55e', width: 2.5 },
-        itemStyle: { color: '#22c55e' },
-        areaStyle: { color: '#22c55e18' },
-      },
-      {
-        name: _t('burnup.ac'),
-        type: 'line', data: acData,
-        symbol: 'circle', symbolSize: 5, connectNulls: false,
-        lineStyle: { color: '#ef4444', width: 2.5 },
-        itemStyle: { color: '#ef4444' },
-      },
-    ],
+    series,
   };
 }
 
@@ -2494,11 +2646,13 @@ async function _renderForecastTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  _setChartLoading(['forecastChart', 'burnUpChart'], true);
   try {
     const [fc, projects] = await Promise.all([
       apiFetch(`/api/v2/forecast?${p}`),
       apiFetch('/api/projects'),
     ]);
+    _setChartLoading(['forecastChart', 'burnUpChart'], false);
     const proj = projects.find(pr => pr.pep_wbs === pep) || null;
     _showEmpty('forecastEmpty', false);
     kpisEl.hidden = false;
@@ -2515,6 +2669,7 @@ async function _renderForecastTab() {
     await _renderPlanTable(pep);
     document.getElementById('planCard').hidden = false;
   } catch (err) {
+    _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
@@ -3046,8 +3201,14 @@ function _buildEvmQuadrantOption(items) {
     return red;
   };
 
-  const spis = items.map(d => d.spi);
-  const cpis = items.map(d => d.cpi);
+  const spis  = items.map(d => d.spi);
+  const cpis  = items.map(d => d.cpi);
+  const costs = items.map(d => d.total_cost || 0);
+  const maxCost = Math.max(...costs, 1);
+  const _bubbleSize = cost => {
+    const normalized = Math.sqrt(Math.max(0, cost) / maxCost);
+    return Math.round(10 + normalized * 34);
+  };
   const xMin = +Math.max(0, Math.min(...spis, 0.8) - 0.1).toFixed(2);
   const xMax = +Math.max(...spis, 1.2).toFixed(2) + 0.1;
   const yMin = +Math.max(0, Math.min(...cpis, 0.8) - 0.1).toFixed(2);
@@ -3094,7 +3255,7 @@ function _buildEvmQuadrantOption(items) {
     },
     series: [{
       type: 'scatter',
-      symbolSize: 16,
+      symbolSize: (value, params) => _bubbleSize(params.data._raw?.total_cost || 0),
       data: items.map(d => ({
         value: [d.spi, d.cpi],
         itemStyle: { color: colorOf(d), opacity: 0.9, borderColor: _cssVar('--bg'), borderWidth: 2 },
@@ -3782,14 +3943,24 @@ function _buildPortfolioStatsRow(health, trends) {
     costStandby += r.standby_cost || 0;
   });
 
+  const lastTrend = trends && trends.length ? trends[trends.length - 1] : null;
+  const _fmtDelta = pct => {
+    if (pct == null) return '';
+    const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
+    const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
+    return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
+  };
+
   const pct  = totalBudget > 0 ? (totalCost / totalBudget * 100).toFixed(1) : '—';
   const over = totalBudget > 0 && totalCost > totalBudget;
+
+  const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
 
   const cards = [
     { val: _fmtCost(costNormal),  lbl: _t('stat.cost_normal'),    cls: 'blue'    },
     { val: _fmtCost(costExtra),   lbl: _t('stat.cost_extra'),     cls: 'amber'   },
     { val: _fmtCost(costStandby), lbl: _t('stat.cost_standby'),   cls: 'violet'  },
-    { val: _fmtCost(totalCost),   lbl: _t('stat.cost_total'),     cls: 'green'   },
+    { val: costTotalVal,          lbl: _t('stat.cost_total'),     cls: 'green'   },
     { val: pepsActive,            lbl: _t('stat.peps_active'),    cls: 'neutral' },
   ];
   if (totalBudget > 0) {
@@ -6093,6 +6264,7 @@ function _bootApp() {
   _loadTheme();
   _loadPreferences().then(() => _applyLayoutPreferences());
   _updateHeaderUser();
+  _restoreFilterDates();
   loadDashboardCycles().then(() => {
     if (!_allCycles.length && _isAdmin()) _showOnboardingBanner();
   });

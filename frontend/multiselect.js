@@ -100,6 +100,13 @@ class MultiSelect {
 
   clear() { this.selected.clear(); this._renderPanel(); this._updateBtn(); }
 
+  selectValues(values) {
+    const valid = new Set(this.items.map(i => String(i.value)));
+    (values || []).forEach(v => { if (valid.has(String(v))) this.selected.add(String(v)); });
+    this._renderPanel();
+    this._updateBtn();
+  }
+
   setPlaceholder(text) {
     this.placeholder = text;
     if (this.selected.size === 0) {

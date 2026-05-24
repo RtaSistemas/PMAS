@@ -82,11 +82,19 @@ def _trends_from_summary(db, pep_wbs_filter, date_from, date_to):
     result = []
     prev_hours: float | None = None
     prev_cost:  float | None = None
+    hours_window: list[float] = []
+    cost_window:  list[float] = []
     for cid in sorted_ids:
         agg  = cycle_map[cid]
         cyc  = agg["_cycle"]
         th   = round(agg["total_hours"], 2)
         tc   = round(agg["total_cost"],  2)
+        hours_window.append(th)
+        cost_window.append(tc)
+        if len(hours_window) > 3:
+            hours_window.pop(0)
+        if len(cost_window) > 3:
+            cost_window.pop(0)
         result.append({
             "cycle_name":           cyc.name,
             "cycle_start":          str(cyc.start_date),
@@ -102,6 +110,8 @@ def _trends_from_summary(db, pep_wbs_filter, date_from, date_to):
             "hours_delta_pct":      compute_period_delta_pct(th, prev_hours),
             "cost_delta":           compute_period_delta(tc, prev_cost),
             "cost_delta_pct":       compute_period_delta_pct(tc, prev_cost),
+            "moving_avg_3_hours":   round(sum(hours_window) / len(hours_window), 2),
+            "moving_avg_3_cost":    round(sum(cost_window)  / len(cost_window),  2),
         })
         prev_hours = th
         prev_cost  = tc
@@ -153,24 +163,34 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
     result = []
     prev_hours: float | None = None
     prev_cost:  float | None = None
+    hours_window: list[float] = []
+    cost_window:  list[float] = []
     for r in rows:
         th = round(r.total_hours  or 0.0, 2)
         tc = round(r.actual_cost  or 0.0, 2)
+        hours_window.append(th)
+        cost_window.append(tc)
+        if len(hours_window) > 3:
+            hours_window.pop(0)
+        if len(cost_window) > 3:
+            cost_window.pop(0)
         result.append({
-            "cycle_name":      r.cycle_name,
-            "cycle_start":     str(r.cycle_start),
-            "normal_hours":    round(r.normal_hours  or 0.0, 2),
-            "extra_hours":     round(r.extra_hours   or 0.0, 2),
-            "standby_hours":   round(r.standby_hours or 0.0, 2),
-            "total_hours":     th,
-            "actual_cost":     tc,
-            "normal_cost":     0.0,
-            "extra_cost":      0.0,
-            "standby_cost":    0.0,
-            "hours_delta":     compute_period_delta(th, prev_hours),
-            "hours_delta_pct": compute_period_delta_pct(th, prev_hours),
-            "cost_delta":      compute_period_delta(tc, prev_cost),
-            "cost_delta_pct":  compute_period_delta_pct(tc, prev_cost),
+            "cycle_name":           r.cycle_name,
+            "cycle_start":          str(r.cycle_start),
+            "normal_hours":         round(r.normal_hours  or 0.0, 2),
+            "extra_hours":          round(r.extra_hours   or 0.0, 2),
+            "standby_hours":        round(r.standby_hours or 0.0, 2),
+            "total_hours":          th,
+            "actual_cost":          tc,
+            "normal_cost":          0.0,
+            "extra_cost":           0.0,
+            "standby_cost":         0.0,
+            "hours_delta":          compute_period_delta(th, prev_hours),
+            "hours_delta_pct":      compute_period_delta_pct(th, prev_hours),
+            "cost_delta":           compute_period_delta(tc, prev_cost),
+            "cost_delta_pct":       compute_period_delta_pct(tc, prev_cost),
+            "moving_avg_3_hours":   round(sum(hours_window) / len(hours_window), 2),
+            "moving_avg_3_cost":    round(sum(cost_window)  / len(cost_window),  2),
         })
         prev_hours = th
         prev_cost  = tc
