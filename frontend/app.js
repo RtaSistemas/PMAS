@@ -52,6 +52,8 @@ const _LANG = {
     'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
     'pepcpi.note':'Orçamento / Custo Real por ciclo · Linha de referência em 1.0 · Requer orçamento (R$) nos projetos',
     'pepcpi.empty':'Sem dados de orçamento. Defina o orçamento (R$) nos projetos para habilitar o rastreamento de CPI.',
+    'pepcpi.yaxis':'IDC / IDP (cumulativo)','pepcpi.ref_line':'= 1,0',
+    'pepcpi.cpi_suffix':'(IDC)','pepcpi.spi_suffix':'(IDP)',
     'cpi.zone_critical':'Crítico < 0,9','cpi.zone_warning':'Atenção 0,9–1,0',
     'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
     'trends.all':'Todos',
@@ -401,6 +403,8 @@ const _LANG = {
     'pepcpi.title':'CPI per PEP by Cycle',
     'pepcpi.note':'Budget / Actual Cost per cycle · Reference line at 1.0 · Requires budget_cost on projects',
     'pepcpi.empty':'No budget data found. Set budget_cost on projects to enable CPI tracking.',
+    'pepcpi.yaxis':'CPI / SPI (cumulative)','pepcpi.ref_line':'= 1.0',
+    'pepcpi.cpi_suffix':'(CPI)','pepcpi.spi_suffix':'(SPI)',
     'cpi.zone_critical':'Critical < 0.9','cpi.zone_warning':'Warning 0.9–1.0',
     'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
     'trends.all':'All',
@@ -3785,7 +3789,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
     const data    = allCycleNames.map(n => dataMap[n] ?? null);
     const color   = pal[i % pal.length];
     return {
-      name: `${wbs} — ${desc} (IDC)`,
+      name: `${wbs} — ${desc} ${_t('pepcpi.cpi_suffix')}`,
       type: 'line',
       data,
       connectNulls: false,
@@ -3805,7 +3809,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
       const data  = allCycleNames.map(n => spiMap[n] ?? null);
       const color = pal[i % pal.length];
       return {
-        name: `${wbs} — ${desc} (IDP)`,
+        name: `${wbs} — ${desc} ${_t('pepcpi.spi_suffix')}`,
         type: 'line',
         data,
         connectNulls: false,
@@ -3839,7 +3843,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
           .filter(p => p.value != null)
           .map(p => {
             const val   = p.value;
-            const isSpi = p.seriesName.endsWith('(IDP)');
+            const isSpi = p.seriesName.endsWith(_t('pepcpi.spi_suffix'));
             const color = val >= 1.0 ? _cssVar('--primary') : val >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
             const shape = isSpi
               ? `<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);margin-right:4px"></span>`
@@ -3864,7 +3868,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
       splitLine: { show: false },
     },
     yAxis: {
-      name: 'IDC / IDP (cumulativo)',
+      name: _t('pepcpi.yaxis'),
       nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
       axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
       axisLine:  { lineStyle: { color: _cssVar('--border') } },
@@ -3875,7 +3879,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
         silent: true,
         symbol: 'none',
         lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: '= 1,0', color: _cssVar('--text-3'), fontSize: 10 } }],
+        data: [{ yAxis: 1.0, label: { formatter: _t('pepcpi.ref_line'), color: _cssVar('--text-3'), fontSize: 10 } }],
       },
     },
     series: series.map((s, i) => i > 0 ? s : {

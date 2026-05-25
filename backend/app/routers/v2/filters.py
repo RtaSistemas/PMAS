@@ -60,6 +60,7 @@ def get_filters(db: DbSession, _=Depends(get_current_user)):
                 "name": c.name,
                 "start_date": str(c.start_date),
                 "end_date": str(c.end_date),
+                "is_active": c.is_active,
                 "is_closed": c.is_closed,
             }
             for c in cycles
