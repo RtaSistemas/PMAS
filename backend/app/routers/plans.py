@@ -27,6 +27,7 @@ def _plan_to_dict(p: ProjectCyclePlan) -> dict:
         "cycle_id": p.cycle_id,
         "cycle_name": p.cycle.name,
         "planned_hours": p.planned_hours,
+        "planned_cost": p.planned_cost,
     }
 
 
@@ -59,9 +60,10 @@ def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
     )
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["pep_wbs", "cycle_name", "planned_hours"])
+    writer.writerow(["pep_wbs", "cycle_name", "planned_hours", "planned_cost"])
     for p in plans:
-        writer.writerow([project.pep_wbs, p.cycle.name, p.planned_hours])
+        writer.writerow([project.pep_wbs, p.cycle.name, p.planned_hours,
+                         "" if p.planned_cost is None else p.planned_cost])
     filename = f"baseline_{project.pep_wbs.replace('/', '-')}.csv"
     return Response(
         content=buf.getvalue(),
@@ -87,6 +89,7 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
     if rows and not required.issubset(set(rows[0].keys())):
         missing = required - set(rows[0].keys())
         raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {missing}")
+    has_cost_col = bool(rows) and "planned_cost" in rows[0].keys()
 
     # Pre-load indexes to avoid N+1 queries
     projects = {p.pep_wbs: p for p in db.query(Project).all()}
@@ -114,6 +117,18 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
             errors.append(f"Linha {i}: planned_hours inválido ({raw_h!r})")
             continue
 
+        cost: float | None = None
+        if has_cost_col:
+            raw_c = (row.get("planned_cost") or "").strip()
+            if raw_c:
+                try:
+                    cost = float(raw_c)
+                    if cost < 0:
+                        raise ValueError
+                except ValueError:
+                    errors.append(f"Linha {i}: planned_cost inválido ({raw_c!r})")
+                    continue
+
         proj = projects.get(pep)
         if proj is None:
             errors.append(f"Linha {i}: projeto '{pep}' não encontrado")
@@ -129,10 +144,13 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
             .first()
         )
         if plan is None:
-            db.add(ProjectCyclePlan(project_id=proj.id, cycle_id=cycle.id, planned_hours=hours))
+            db.add(ProjectCyclePlan(project_id=proj.id, cycle_id=cycle.id,
+                                    planned_hours=hours, planned_cost=cost))
             created += 1
         else:
             plan.planned_hours = hours
+            if has_cost_col:
+                plan.planned_cost = cost
             updated += 1
 
     if created or updated:
@@ -154,15 +172,18 @@ def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: Db
         .first()
     )
     if plan is None:
-        plan = ProjectCyclePlan(project_id=project_id, cycle_id=cycle_id, planned_hours=body.planned_hours)
+        plan = ProjectCyclePlan(project_id=project_id, cycle_id=cycle_id,
+                                planned_hours=body.planned_hours, planned_cost=body.planned_cost)
         db.add(plan)
         db.flush()
         log_audit(db, current_user, "create", "project_plan", plan.id,
-                  {"project_id": project_id, "cycle_id": cycle_id, "planned_hours": body.planned_hours})
+                  {"project_id": project_id, "cycle_id": cycle_id,
+                   "planned_hours": body.planned_hours, "planned_cost": body.planned_cost})
     else:
         plan.planned_hours = body.planned_hours
+        plan.planned_cost  = body.planned_cost
         log_audit(db, current_user, "update", "project_plan", plan.id,
-                  {"planned_hours": body.planned_hours})
+                  {"planned_hours": body.planned_hours, "planned_cost": body.planned_cost})
     db.commit()
     db.refresh(plan)
     return _plan_to_dict(plan)

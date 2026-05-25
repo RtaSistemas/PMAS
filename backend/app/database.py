@@ -13,8 +13,9 @@ log = logging.getLogger(__name__)
 
 
 def _db_path() -> str:
+    if env_path := os.getenv("PMAS_DB_PATH"):
+        return env_path
     # When frozen (PyInstaller), store next to the executable so the file persists.
-    # In development, use the project root (same original behaviour).
     if getattr(sys, "frozen", False):
         base = os.path.dirname(sys.executable)
     else:
@@ -46,6 +47,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -62,6 +66,20 @@ def init_db() -> None:
     _seed_admin()
     _seed_config()
     _seed_validation_rules()
+    _backfill_summaries()
+
+
+def _backfill_summaries() -> None:
+    """Populate pre-computed summary tables from existing data on first migration."""
+    try:
+        from backend.app.services.summaries import backfill_summaries
+        db = SessionLocal()
+        try:
+            backfill_summaries(db)
+        finally:
+            db.close()
+    except Exception:
+        log.debug("_backfill_summaries: erro", exc_info=True)
 
 
 def _seed_config() -> None:
@@ -165,12 +183,22 @@ def _migrate_columns() -> None:
                     "ALTER TABLE global_config"
                     " ADD COLUMN timezone VARCHAR NOT NULL DEFAULT 'America/Sao_Paulo'"
                 ))
+            pcp_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project_cycle_plan)"))}
+            if "planned_cost" not in pcp_cols:
+                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN planned_cost FLOAT"))
             qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
             if "review_status" not in qr_cols:
                 conn.execute(text(
                     "ALTER TABLE quarantine_record"
                     " ADD COLUMN review_status VARCHAR NOT NULL DEFAULT 'pending'"
                 ))
+            # Fase 1 — frozen cost columns on TimesheetRecord
+            if "normal_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN normal_cost FLOAT"))
+            if "extra_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN extra_cost FLOAT"))
+            if "standby_cost" not in tr_cols:
+                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 

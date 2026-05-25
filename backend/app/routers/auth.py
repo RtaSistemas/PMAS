@@ -4,12 +4,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import bcrypt as _bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 
 from backend.app.database import DbSession
 from backend.app.deps import ALGORITHM, SECRET_KEY
+from backend.app.limiter import limiter
 from backend.app.models import User
 from backend.app.schemas import Token
 
@@ -27,7 +28,9 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 @router.post("/token", response_model=Token)
+@limiter.limit("10/minute")
 def login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DbSession,
 ):

@@ -1,0 +1,40 @@
+# Dependências com versões exatas — gerado com pip freeze em 2026-05-24.
+# Use este arquivo em deploys para garantir reprodutibilidade:
+#   pip install -r requirements-lock.txt
+annotated-types==0.7.0
+anyio==4.13.0
+bcrypt==5.0.0
+certifi==2026.2.25
+click==8.3.3
+Deprecated==1.3.1
+fastapi==0.136.1
+greenlet==3.4.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.7.1
+httpx==0.28.1
+idna==3.11
+limits==5.8.0
+numpy==2.4.4
+openpyxl==3.1.5
+packaging==24.0
+pandas==3.0.2
+pluggy==1.6.0
+pydantic==2.13.3
+pydantic_core==2.46.3
+pytest==9.0.3
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+python-jose==3.5.0
+python-multipart==0.0.26
+six==1.16.0
+slowapi==0.1.9
+SQLAlchemy==2.0.49
+starlette==1.0.0
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.46.0
+uvloop==0.22.1; sys_platform != "win32"
+watchfiles==1.1.1
+websockets==16.0
+wrapt==2.2.1

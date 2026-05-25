@@ -369,7 +369,7 @@ class TestGlobalConfig:
             cost_per_hour=100.0,
         )
         db_session.add(rec); db_session.commit()
-        r = client.get("/api/portfolio-health")
+        r = client.get("/api/v2/portfolio")
         item = next((x for x in r.json() if x["pep_wbs"] == "60OP-MULT"), None)
         assert item is not None
-        assert item["actual_cost"] == pytest.approx(800.0)
+        assert item["total_cost"] == pytest.approx(800.0)

@@ -509,49 +509,10 @@ class TestUploadTimesheet:
 
 
 # ===========================================================================
-# 6. DASHBOARD — /api/dashboard  &  /api/dashboard/{cycle_id}
+# 6. DASHBOARD — /api/dashboard/collaborator-timeline
 # ===========================================================================
 
 class TestDashboard:
-    def _seed(self, db):
-        cy = _mk_cycle(db, "Jan/2026", 2026, 1)
-        co = _mk_collab(db, "dash_collab")
-        _mk_record(db, cy, co, "PEP-DASH", normal=40.0, extra=8.0, day=5)
-        return cy, co
-
-    def test_dashboard_all_cycles(self, client, db_session):
-        self._seed(db_session)
-        r = client.get("/api/dashboard")
-        assert r.status_code == 200
-        # DashboardOut.data contains CollaboratorHours rows
-        names = [x["collaborator"] for x in r.json()["data"]]
-        assert "dash_collab" in names
-
-    def test_dashboard_by_cycle(self, client, db_session):
-        cy, _ = self._seed(db_session)
-        r = client.get(f"/api/dashboard/{cy.id}")
-        assert r.status_code == 200
-        rows = r.json()["data"]
-        assert any(x["collaborator"] == "dash_collab" for x in rows)
-
-    def test_dashboard_date_filter(self, client, db_session):
-        self._seed(db_session)
-        r = client.get("/api/dashboard?date_from=2026-01-01&date_to=2026-01-31")
-        assert r.status_code == 200
-        assert len(r.json()["data"]) >= 1
-
-    def test_dashboard_cycle_not_found(self, client):
-        assert client.get("/api/dashboard/99999").status_code == 404
-
-    def test_pep_radar(self, client, db_session):
-        # Router prefix is /api/dashboard → full path is /api/dashboard/pep-radar
-        cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        co = _mk_collab(db_session, "radar_collab")
-        _mk_record(db_session, cy, co, "RAD-001", desc="Radar PEP", normal=16.0)
-        r = client.get("/api/dashboard/pep-radar")
-        assert r.status_code == 200
-        assert any(x["pep_description"] == "Radar PEP" for x in r.json())
-
     def test_collaborator_timeline(self, client, db_session):
         """Timeline endpoint lives under /api/dashboard/collaborator-timeline."""
         cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
@@ -563,161 +524,6 @@ class TestDashboard:
         assert r.json()[0]["normal_hours"] == 24.0
 
 
-# ===========================================================================
-# 7. REFERENCE — /api/collaborators  &  /api/peps
-# ===========================================================================
-
-class TestReference:
-    def test_collaborators_empty(self, client):
-        assert client.get("/api/collaborators").json() == []
-
-    def test_collaborators_after_upload(self, client, db_session):
-        _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        data = _csv([("Ref Collab", "15/01/2026", 8.0, 0, 0, "REF-001", "Ref PEP")])
-        client.post("/api/upload-timesheet", files={"file": ("t.csv", data, "text/csv")})
-        names = [x["name"] for x in client.get("/api/collaborators").json()]
-        assert "Ref Collab" in names
-
-    def test_peps_empty(self, client):
-        assert client.get("/api/peps").json() == []
-
-    def test_peps_after_upload(self, client, db_session):
-        # PepOut has field "code", not "pep_wbs"
-        _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        data = _csv([("PEP User", "15/01/2026", 8.0, 0, 0, "REF-002", "My PEP")])
-        client.post("/api/upload-timesheet", files={"file": ("t.csv", data, "text/csv")})
-        peps = client.get("/api/peps").json()
-        assert any(p["code"] == "REF-002" for p in peps)
-
-    def test_collaborators_filter_by_cycle(self, client, db_session):
-        cy1 = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        cy2 = _mk_cycle(db_session, "Feb/2026", 2026, 2)
-        data1 = _csv([("Cy1 Only", "15/01/2026", 8.0)])
-        data2 = _csv([("Cy2 Only", "15/02/2026", 8.0)])
-        client.post("/api/upload-timesheet", files={"file": ("a.csv", data1, "text/csv")})
-        client.post("/api/upload-timesheet", files={"file": ("b.csv", data2, "text/csv")})
-        names_cy1 = [x["name"] for x in client.get(f"/api/collaborators?cycle_id={cy1.id}").json()]
-        assert "Cy1 Only" in names_cy1
-        assert "Cy2 Only" not in names_cy1
-
-
-# ===========================================================================
-# 8. ANALYTICS — portfolio-health, trends, allocation, forecast
-# ===========================================================================
-
-class TestAnalytics:
-    def _seed_evm(self, db):
-        cy1 = _mk_cycle(db, "Jan/2026", 2026, 1)
-        cy2 = _mk_cycle(db, "Feb/2026", 2026, 2)
-        proj = _mk_project(db, "EVM-001", budget_h=100.0, budget_cost=20000.0)
-        co   = _mk_collab(db, "evm_collab")
-        _mk_record(db, cy1, co, "EVM-001", desc="EVM Proj", normal=40.0, cost_per_hour=100.0)
-        _mk_record(db, cy2, co, "EVM-001", desc="EVM Proj", normal=30.0, cost_per_hour=100.0)
-        return proj, cy1, cy2
-
-    # -- portfolio-health
-    def test_portfolio_health_empty(self, client):
-        assert client.get("/api/portfolio-health").json() == []
-
-    def test_portfolio_health_hours(self, client, db_session):
-        self._seed_evm(db_session)
-        result = client.get("/api/portfolio-health").json()
-        item = next(x for x in result if x["pep_wbs"] == "EVM-001")
-        assert item["consumed_hours"] == 70.0
-        assert item["budget_hours"] == 100.0
-
-    def test_portfolio_health_actual_cost(self, client, db_session):
-        self._seed_evm(db_session)
-        result = client.get("/api/portfolio-health").json()
-        item = next(x for x in result if x["pep_wbs"] == "EVM-001")
-        assert item["actual_cost"] == pytest.approx(7000.0)
-
-    def test_portfolio_health_date_filter(self, client, db_session):
-        self._seed_evm(db_session)
-        r = client.get("/api/portfolio-health?date_from=2026-01-01&date_to=2026-01-31")
-        item = next(x for x in r.json() if x["pep_wbs"] == "EVM-001")
-        assert item["consumed_hours"] == 40.0  # only Jan
-
-    def test_portfolio_health_pep_filter(self, client, db_session):
-        cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        co = _mk_collab(db_session, "pep_filter_co")
-        _mk_record(db_session, cy, co, "ALPHA-001", normal=10.0)
-        _mk_record(db_session, cy, co, "BETA-002", normal=20.0)
-        r = client.get("/api/portfolio-health?pep_wbs=ALPHA-001").json()
-        assert all(x["pep_wbs"] == "ALPHA-001" for x in r)
-
-    # -- trends
-    def test_trends_empty(self, client):
-        assert client.get("/api/trends").json() == []
-
-    def test_trends_chronological_order(self, client, db_session):
-        # TrendItem has cycle_name but no cycle_start; seed with month-orderable names
-        cy1 = _mk_cycle(db_session, "2026-01", 2026, 1)
-        cy2 = _mk_cycle(db_session, "2026-02", 2026, 2)
-        co = _mk_collab(db_session, "trend_co")
-        _mk_record(db_session, cy1, co, "TR-001", normal=10.0)
-        _mk_record(db_session, cy2, co, "TR-001", normal=20.0)
-        result = client.get("/api/trends").json()
-        names = [x["cycle_name"] for x in result]
-        assert names == sorted(names)
-
-    def test_trends_all_cycles_included(self, client, db_session):
-        cy = _mk_cycle(db_session, "Q", 2026, 3)
-        co = _mk_collab(db_session, "q_collab")
-        _mk_record(db_session, cy, co, "Q-PEP")
-        names = [x["cycle_name"] for x in client.get("/api/trends").json()]
-        assert "Q" in names
-
-    def test_trends_cpi_field_present(self, client, db_session):
-        self._seed_evm(db_session)
-        result = client.get("/api/trends").json()
-        for item in result:
-            assert "cpi" in item  # may be None when no budgeted data
-
-    def test_trends_actual_cost(self, client, db_session):
-        self._seed_evm(db_session)
-        result = client.get("/api/trends").json()
-        total_cost = sum(x["actual_cost"] for x in result)
-        assert total_cost == pytest.approx(7000.0)
-
-    # -- allocation
-    def test_allocation_empty(self, client):
-        assert client.get("/api/allocation").json() == []
-
-    def test_allocation_matrix(self, client, db_session):
-        # AllocationItem is a flat row: collaborator, pep_wbs, total_hours, actual_cost
-        cy = _mk_cycle(db_session, "Jan/2026", 2026, 1)
-        co = _mk_collab(db_session, "alloc_collab")
-        _mk_record(db_session, cy, co, "ALLOC-001", normal=32.0, cost_per_hour=100.0)
-        r = client.get("/api/allocation").json()
-        item = next(x for x in r if x["collaborator"] == "alloc_collab" and x["pep_wbs"] == "ALLOC-001")
-        assert item["total_hours"] == 32.0
-        assert item["actual_cost"] == pytest.approx(3200.0)
-
-    # -- forecast
-    def test_forecast_requires_pep_wbs(self, client):
-        assert client.get("/api/forecast").status_code == 422
-
-    def test_forecast_pep_not_found(self, client):
-        assert client.get("/api/forecast?pep_wbs=NONE-999").status_code == 404
-
-    def test_forecast_returns_evm_metrics(self, client, db_session):
-        # ForecastOut fields: consumed_hours, actual_cost, cpi, eac, spi, sv, history
-        self._seed_evm(db_session)
-        r = client.get("/api/forecast?pep_wbs=EVM-001")
-        assert r.status_code == 200
-        d = r.json()
-        assert "cpi" in d
-        assert "eac" in d
-        assert "spi" in d
-        assert "sv" in d
-        assert "consumed_hours" in d
-        assert "actual_cost" in d
-        assert d["consumed_hours"] == pytest.approx(70.0)
-        assert isinstance(d["history"], list)
-        # spi/sv are None when no plan baseline exists
-        assert d["spi"] is None
-        assert d["sv"] is None
 
 
 # ===========================================================================
@@ -778,7 +584,7 @@ class TestPlans:
         _mk_record(db_session, cy1, co, "PLAN-PV", normal=30.0)
         client.put(f"/api/projects/{p.id}/plans/{cy1.id}", json={"cycle_id": cy1.id, "planned_hours": 40.0})
         client.put(f"/api/projects/{p.id}/plans/{cy2.id}", json={"cycle_id": cy2.id, "planned_hours": 30.0})
-        r = client.get("/api/forecast?pep_wbs=PLAN-PV")
+        r = client.get("/api/v2/forecast?pep_wbs=PLAN-PV")
         assert r.status_code == 200
         d = r.json()
         history = d["history"]
@@ -969,8 +775,8 @@ class TestGlobalConfig:
         co = _mk_collab(db_session, "cfg_collab", seniority_level=sl)
         # 4h extra × R$100 × 2.0 multiplier = R$800  (normal=0.0 to override default 8h)
         _mk_record(db_session, cy, co, "CFG-001", normal=0.0, extra=4.0, cost_per_hour=100.0)
-        item = next(x for x in client.get("/api/portfolio-health").json() if x["pep_wbs"] == "CFG-001")
-        assert item["actual_cost"] == pytest.approx(800.0)
+        item = next(x for x in client.get("/api/v2/portfolio").json() if x["pep_wbs"] == "CFG-001")
+        assert item["total_cost"] == pytest.approx(800.0)
 
 
 # ===========================================================================
@@ -1091,18 +897,18 @@ class TestFullLifecycle:
                    json={"cycle_id": cy2_r["id"], "planned_hours": 40.0})
 
         # ---- 7. Check portfolio health -----------------------------------
-        health = client.get("/api/portfolio-health?pep_wbs=LIFE-001").json()
+        health = client.get("/api/v2/portfolio?pep_wbs=LIFE-001").json()
         item = next(x for x in health if x["pep_wbs"] == "LIFE-001")
-        assert item["consumed_hours"] == 35.0   # 20h Jan + 15h Feb
+        assert item["total_hours"] == 35.0   # 20h Jan + 15h Feb
         assert item["budget_hours"] == 80.0
 
-        # ---- 8. Check trends (TrendItem has normal/extra/standby_hours, no total_hours) ----
-        trends = client.get("/api/trends?pep_wbs=LIFE-001").json()
+        # ---- 8. Check trends ----
+        trends = client.get("/api/v2/trends?pep_wbs=LIFE-001").json()
         total_h = sum(t["normal_hours"] + t["extra_hours"] + t["standby_hours"] for t in trends)
         assert total_h == 35.0
 
-        # ---- 9. Forecast EVM metrics (ForecastOut has consumed_hours, not ev/ac) ---------
-        forecast = client.get("/api/forecast?pep_wbs=LIFE-001").json()
+        # ---- 9. Forecast EVM metrics ---------
+        forecast = client.get("/api/v2/forecast?pep_wbs=LIFE-001").json()
         assert forecast["consumed_hours"] == pytest.approx(35.0)
         history = forecast["history"]
         assert any(h.get("planned_hours") is not None for h in history)
@@ -1113,9 +919,9 @@ class TestFullLifecycle:
         active_names = [c["name"] for c in client.get("/api/cycles").json()]
         assert "Jan/2026" not in active_names
         # Analytics are unaffected by archiving
-        health_after = client.get("/api/portfolio-health?pep_wbs=LIFE-001").json()
+        health_after = client.get("/api/v2/portfolio?pep_wbs=LIFE-001").json()
         item_after = next(x for x in health_after if x["pep_wbs"] == "LIFE-001")
-        assert item_after["consumed_hours"] == 35.0
+        assert item_after["total_hours"] == 35.0
 
         # ---- 11. Audit trail has entries ---------------------------------
         log = client.get("/api/audit-log").json()

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 
-from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import UploadSession
@@ -56,15 +55,10 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
             user_role=current_user.role,
             user_id=current_user.id,
             username=current_user.username,
+            current_user=current_user,
         )
-        log_audit(db, current_user, "import", "timesheet", detail={
-            "file": fname,
-            "status": summary["status"],
-            "records_inserted": summary["records_inserted"],
-            "records_skipped": summary["records_skipped"],
-            "quarantine_records_added": summary.get("quarantine_records_added", 0),
-        })
-        db.commit()
+    except HTTPException:
+        raise
     except (ClosedCycleError, ArchivedCycleError) as exc:
         db.rollback()
         _save_rejected_session(db, current_user, fname, str(exc))

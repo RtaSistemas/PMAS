@@ -9,6 +9,9 @@ dist/
 build/
 .eggs/
 
+# PyInstaller
+*.spec
+
 # Virtual environments
 venv/
 .venv/

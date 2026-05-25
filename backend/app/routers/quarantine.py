@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session, joinedload
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
-from backend.app.models import Collaborator, QuarantineRecord, TimesheetRecord, UploadSession
+from backend.app.models import Collaborator, GlobalConfig, QuarantineRecord, TimesheetRecord, UploadSession
 from backend.app.schemas import QuarantineRecordOut, QuarantineReviewIn
+from backend.app.services.evm import freeze_costs
+from backend.app.services.summaries import refresh_collaborator_cycle, refresh_pep_cycle
 from backend.app.services.ingestion import (
     ArchivedCycleError,
     _COL_COLLABORATOR,
@@ -85,6 +87,12 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
         normal_h, extra_h, standby_h = total_h, 0.0, 0.0
 
     rate = _lookup_rate(db, collab, record_date)
+
+    cfg = db.get(GlobalConfig, 1)
+    em = cfg.extra_hours_multiplier   if cfg else 1.5
+    sm = cfg.standby_hours_multiplier if cfg else 0.33
+    nc, ec, sc = freeze_costs(normal_h, extra_h, standby_h, rate or 0.0, em, sm)
+
     db.add(TimesheetRecord(
         collaborator_id=collab.id,
         cycle_id=cycle.id,
@@ -95,8 +103,13 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
         extra_hours=extra_h,
         standby_hours=standby_h,
         cost_per_hour=rate,
+        normal_cost=nc,
+        extra_cost=ec,
+        standby_cost=sc,
     ))
     db.flush()
+    refresh_pep_cycle(db, [pep_code] if pep_code else [], [cycle.id])
+    refresh_collaborator_cycle(db, [collab.id], [cycle.id])
 
 
 @router.get("", response_model=list[QuarantineRecordOut])

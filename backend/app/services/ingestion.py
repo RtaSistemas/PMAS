@@ -7,19 +7,24 @@ from datetime import date, timedelta
 from io import BytesIO
 
 import pandas as pd
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from backend.app.audit import log_audit
 from backend.app.models import (
     Collaborator,
     Cycle,
+    GlobalConfig,
     Project,
     RateCard,
     TimesheetRecord,
     UserProjectAccess,
     ValidationRule,
 )
+from backend.app.services.evm import freeze_costs
 from backend.app.services.quarantine_svc import create_quarantine_record
 from backend.app.services.rule_engine import evaluate_aggregate_rules, evaluate_row_rules
+from backend.app.services.summaries import refresh_collaborator_cycle, refresh_pep_cycle
 from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
@@ -67,11 +72,30 @@ def ingest_file(
     user_role: str = "admin",
     user_id: int | None = None,
     username: str = "system",
+    current_user=None,
 ) -> dict:
     # Phase 0: Load and validate structure
     df = _load_dataframe(file_bytes, filename)
     ingest_warnings: list[str] = []
     ingest_infos: list[str] = []
+
+    # Item 2: non-admin with ACL restrictions must supply a PEP column so the
+    # authorization filter has something to evaluate.
+    if user_role != "admin" and user_id is not None and _COL_PEP_CODE not in df.columns:
+        has_acl = (
+            db.query(UserProjectAccess)
+            .filter(UserProjectAccess.user_id == user_id)
+            .first()
+        ) is not None
+        if has_acl:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Seu perfil possui restrições de acesso por PEP, mas o arquivo "
+                    "não contém a coluna 'Código PEP'. Inclua essa coluna no export "
+                    "ou solicite ao administrador acesso irrestrito."
+                ),
+            )
 
     # Authorization filter (read-only, outside transaction)
     pep_codes_raw: set[str] = set()
@@ -80,6 +104,18 @@ def ingest_file(
 
     if pep_codes_raw and user_id is not None:
         authorized = _authorized_peps(db, user_id, user_role, pep_codes_raw)
+        if not authorized:
+            top5 = sorted(pep_codes_raw)[:5]
+            extra = f" e mais {len(pep_codes_raw) - 5}" if len(pep_codes_raw) > 5 else ""
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Acesso negado: seu perfil não tem permissão para importar "
+                    f"nenhum dos PEPs encontrados neste arquivo "
+                    f"({', '.join(top5)}{extra}). "
+                    f"Solicite ao administrador que conceda acesso aos PEPs necessários."
+                ),
+            )
         unauthorized = pep_codes_raw - authorized
         if unauthorized:
             mask = df[_COL_PEP_CODE].apply(lambda v: _str_or_none(v) not in unauthorized)
@@ -289,6 +325,11 @@ def ingest_file(
             elif m.action == "info":
                 ingest_infos.append(f"{collab_name} em {d}: {m.message}")
 
+    # Load GlobalConfig multipliers once — used for freeze_costs
+    cfg = db.get(GlobalConfig, 1)
+    extra_multiplier   = cfg.extra_hours_multiplier   if cfg else 1.5
+    standby_multiplier = cfg.standby_hours_multiplier if cfg else 0.33
+
     try:
         # Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records
         pep_cycle_scope: set[tuple[str | None, int]] = set()
@@ -365,6 +406,11 @@ def ingest_file(
                 )
                 warned_zero_rate.add(collab.name)
 
+            nc, ec, sc = freeze_costs(
+                normal_h, extra_h, standby_h,
+                rate, extra_multiplier, standby_multiplier,
+            )
+
             db.add(TimesheetRecord(
                 collaborator_id=collab.id,
                 cycle_id=cycle.id,
@@ -375,8 +421,19 @@ def ingest_file(
                 extra_hours=extra_h,
                 standby_hours=standby_h,
                 cost_per_hour=rate,
+                normal_cost=nc,
+                extra_cost=ec,
+                standby_cost=sc,
             ))
             inserted += 1
+
+        # Refresh pre-computed summary tables for the affected (pep, cycle) pairs
+        touched_peps    = list({pep for pep, _ in pep_cycle_scope})
+        touched_cycles  = list({cid for _, cid in pep_cycle_scope})
+        touched_collabs = list({vr["collab"].id for vr in valid_rows})
+        db.flush()  # make inserted records visible to summary queries
+        refresh_pep_cycle(db, touched_peps, touched_cycles)
+        refresh_collaborator_cycle(db, touched_collabs, touched_cycles)
 
         # Phase 5: QuarantineRecords + UploadSession + commit
         upload_session = create_upload_session(
@@ -405,19 +462,26 @@ def ingest_file(
                 rule_id=qr_data.get("rule_id"),
             )
 
+        # Phase 6: AuditLog — inside the same transaction so data + audit are atomic
+        _status = (
+            "quarantine" if quarantine_buffer
+            else "warnings" if ingest_warnings
+            else "ok"
+        )
+        if current_user is not None:
+            log_audit(db, current_user, "import", "timesheet", detail={
+                "file": filename,
+                "status": _status,
+                "records_inserted": inserted,
+                "records_skipped": skipped,
+                "quarantine_records_added": len(quarantine_buffer),
+            })
+
         session_id = upload_session.id
         db.commit()
     except Exception:
         db.rollback()
         raise
-
-    # Phase 6: audit (caller may also call log_audit after this returns)
-    if quarantine_buffer:
-        status = "quarantine"
-    elif ingest_warnings:
-        status = "warnings"
-    else:
-        status = "ok"
 
     log.info(
         "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas.",
@@ -425,7 +489,7 @@ def ingest_file(
     )
 
     return {
-        "status": status,
+        "status": _status,
         "records_inserted": inserted,
         "records_skipped": skipped,
         "quarantine_records_added": len(quarantine_buffer),

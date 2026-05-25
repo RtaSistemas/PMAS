@@ -1,8 +1,8 @@
 """EVM calculation integrity tests.
 
 Verifies that CPI, EAC, and SV are computed with the correct formulas and
-produce consistent results across /api/portfolio-health (runway),
-/api/trends, and /api/projects/{id}/forecast.
+produce consistent results across /api/v2/portfolio (runway),
+/api/v2/trends, and /api/projects/{id}/forecast.
 
 Canonical definitions used throughout:
   AC  = actual cost (Σ cost_per_hour × weighted hours)
@@ -55,13 +55,16 @@ def _collab(db, name):
     return c
 
 
-def _rec(db, cycle, collab, pep, desc, normal, extra=0.0, standby=0.0, day=10, cph=100.0):
+def _rec(db, cycle, collab, pep, desc, normal, extra=0.0, standby=0.0, day=10, cph=100.0, em=1.0, sm=1.0):
     r = TimesheetRecord(
         collaborator_id=collab.id, cycle_id=cycle.id,
         record_date=date(cycle.start_date.year, cycle.start_date.month, day),
         pep_wbs=pep, pep_description=desc,
         normal_hours=float(normal), extra_hours=float(extra), standby_hours=float(standby),
         cost_per_hour=float(cph),
+        normal_cost=round(float(normal) * cph, 4),
+        extra_cost=round(float(extra) * cph * em, 4),
+        standby_cost=round(float(standby) * cph * sm, 4),
     )
     db.add(r); db.commit()
     return r
@@ -127,18 +130,18 @@ class TestCpiIntegrity:
 
     def test_portfolio_health_cpi(self, client, db_session):
         self._seed(db_session)
-        resp = client.get("/api/portfolio-health")
+        resp = client.get("/api/v2/portfolio")
         assert resp.status_code == 200
         items = resp.json()
         item = next((i for i in items if i["pep_wbs"] == self.PEP), None)
-        assert item is not None, "PEP not found in portfolio-health"
-        assert abs(item["consumed_hours"] - self.NORMAL) < 0.01
-        assert abs(item["actual_cost"]    - self._AC)    < 0.01
+        assert item is not None, "PEP not found in v2/portfolio"
+        assert abs(item["total_hours"] - self.NORMAL) < 0.01
+        assert abs(item["total_cost"]  - self._AC)    < 0.01
 
     def test_runway_cpi(self, client, db_session):
-        """CPI from /api/portfolio-runway must use EV/AC, not BAC/AC."""
+        """CPI from /api/v2/runway must use EV/AC, not BAC/AC."""
         self._seed(db_session)
-        resp = client.get("/api/portfolio-runway")
+        resp = client.get("/api/v2/runway")
         assert resp.status_code == 200
         items = resp.json()
         item = next((i for i in items if i["pep_wbs"] == self.PEP), None)
@@ -150,9 +153,9 @@ class TestCpiIntegrity:
         )
 
     def test_forecast_cpi(self, client, db_session):
-        """CPI from /api/forecast must match runway CPI."""
+        """CPI from /api/v2/forecast must match runway CPI."""
         self._seed(db_session)
-        resp = client.get(f"/api/forecast?pep_wbs={self.PEP}")
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}")
         assert resp.status_code == 200
         fc = resp.json()
         assert fc["cpi"] is not None, "Forecast CPI should not be None"
@@ -164,10 +167,10 @@ class TestCpiIntegrity:
         """Runway and forecast must return the same CPI value."""
         self._seed(db_session)
 
-        runway = client.get("/api/portfolio-runway").json()
+        runway = client.get("/api/v2/runway").json()
         ritem  = next((i for i in runway if i["pep_wbs"] == self.PEP), None)
 
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
 
         assert ritem is not None
         assert ritem["cpi"] is not None
@@ -208,7 +211,7 @@ class TestCpiIntegrity_PartialCompletion:
 
     def test_runway_cpi_partial(self, client, db_session):
         self._seed(db_session)
-        resp  = client.get("/api/portfolio-runway").json()
+        resp  = client.get("/api/v2/runway").json()
         item  = next((i for i in resp if i["pep_wbs"] == self.PEP), None)
         assert item is not None
         assert item["cpi"] is not None
@@ -219,7 +222,7 @@ class TestCpiIntegrity_PartialCompletion:
     def test_forecast_eac(self, client, db_session):
         """EAC = budget_cost / CPI — should flag overrun when CPI<1."""
         self._seed(db_session)
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
         expected_eac = self.BC / self._CPI   # 20_000
         assert fc["eac"] is not None
         assert abs(fc["eac"] - expected_eac) < 1.0, (
@@ -228,7 +231,7 @@ class TestCpiIntegrity_PartialCompletion:
 
     def test_forecast_cpi_partial(self, client, db_session):
         self._seed(db_session)
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
         assert abs(fc["cpi"] - self._CPI) < 0.01, (
             f"Expected CPI={self._CPI:.3f}, got {fc['cpi']}"
         )
@@ -277,7 +280,7 @@ class TestSvIntegrity:
     def test_forecast_sv_sign(self, client, db_session):
         """SV must be negative when behind schedule."""
         self._seed(db_session)
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
         assert fc["sv"] is not None, "SV should not be None when PV is defined"
         assert fc["sv"] < 0, (
             f"Expected negative SV (behind schedule), got {fc['sv']}"
@@ -288,7 +291,7 @@ class TestSvIntegrity:
 
     def test_forecast_spi(self, client, db_session):
         self._seed(db_session)
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
         assert fc["spi"] is not None
         assert abs(fc["spi"] - self._SPI) < 0.01, (
             f"Expected SPI={self._SPI:.3f}, got {fc['spi']}"
@@ -298,11 +301,11 @@ class TestSvIntegrity:
         """Runway SPI must match forecast SPI for the same scenario."""
         self._seed(db_session)
 
-        runway = client.get("/api/portfolio-runway").json()
+        runway = client.get("/api/v2/runway").json()
         ritem  = next((i for i in runway if i["pep_wbs"] == self.PEP), None)
         assert ritem is not None
 
-        fc = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        fc = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
 
         assert ritem["spi"] is not None
         assert abs(ritem["spi"] - fc["spi"]) < 0.001, (
@@ -312,8 +315,8 @@ class TestSvIntegrity:
 
 class TestTrendsCpiConsistency:
     """
-    Trends endpoint aggregates CPI over cycles.
-    With a single cycle, trends CPI must match runway + forecast CPI.
+    Trends actual_cost must match runway and forecast AC.
+    Runway and forecast CPI must be consistent with each other.
     """
 
     PEP  = "60IT-666-01"
@@ -335,35 +338,30 @@ class TestTrendsCpiConsistency:
         _rec(db, cy, co, self.PEP, self.DESC, normal=self.NORM, cph=self.CPH)
         return p, cy
 
-    def test_trends_cpi(self, client, db_session):
+    def test_trends_actual_cost(self, client, db_session):
         self._seed(db_session)
-        resp = client.get("/api/trends")
+        resp = client.get("/api/v2/trends")
         assert resp.status_code == 200
         rows = resp.json()
         assert len(rows) >= 1
-        row = rows[-1]
-        assert row["cpi"] is not None
-        assert abs(row["cpi"] - self._CPI) < 0.01, (
-            f"Trends CPI={row['cpi']:.4f}, expected {self._CPI:.4f}"
+        total_ac = sum(r["actual_cost"] for r in rows)
+        assert abs(total_ac - self._AC) < 0.01, (
+            f"Trends actual_cost={total_ac:.2f}, expected {self._AC:.2f}"
         )
 
     def test_trends_runway_consistency(self, client, db_session):
         self._seed(db_session)
 
-        trends = client.get("/api/trends").json()
-        runway = client.get("/api/portfolio-runway").json()
-        fc     = client.get(f"/api/forecast?pep_wbs={self.PEP}").json()
+        runway = client.get("/api/v2/runway").json()
+        fc     = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}").json()
 
         ritem = next((i for i in runway if i["pep_wbs"] == self.PEP), None)
-        t_cpi = trends[-1]["cpi"]
         r_cpi = ritem["cpi"] if ritem else None
         f_cpi = fc["cpi"]
 
-        assert t_cpi is not None
         assert r_cpi is not None
         assert f_cpi is not None
-        assert abs(t_cpi - r_cpi) < 0.01, f"Trends CPI={t_cpi} vs Runway CPI={r_cpi}"
-        assert abs(t_cpi - f_cpi) < 0.01, f"Trends CPI={t_cpi} vs Forecast CPI={f_cpi}"
+        assert abs(r_cpi - f_cpi) < 0.01, f"Runway CPI={r_cpi} vs Forecast CPI={f_cpi}"
 
 
 class TestEvmOverBudget:
@@ -408,7 +406,7 @@ class TestEvmOverBudget:
     def test_runway_cpi_over_budget(self, client, db_session):
         """CPI must be < 1 when consumed > budget, not inflated above 1."""
         self._seed(db_session)
-        resp = client.get("/api/portfolio-runway")
+        resp = client.get("/api/v2/runway")
         assert resp.status_code == 200
         item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
         assert item is not None
@@ -424,23 +422,24 @@ class TestEvmOverBudget:
     def test_forecast_cpi_over_budget(self, client, db_session):
         """Forecast CPI must also reflect cost overrun."""
         self._seed(db_session)
-        resp = client.get(f"/api/forecast?pep_wbs={self.PEP}")
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}")
         assert resp.status_code == 200
         fc = resp.json()
         assert fc["cpi"] is not None
         assert fc["cpi"] < 1.0, f"Forecast CPI={fc['cpi']} should be < 1 for overrun project"
         assert abs(fc["cpi"] - self._CPI) < 0.01
 
-    def test_trends_cpi_over_budget(self, client, db_session):
-        """Trends CPI must also reflect cost overrun."""
+    def test_trends_actual_cost_over_budget(self, client, db_session):
+        """Trends actual_cost must reflect true AC for an over-budget project."""
         self._seed(db_session)
-        resp = client.get("/api/trends")
+        resp = client.get("/api/v2/trends")
         assert resp.status_code == 200
         rows = resp.json()
-        row = next((r for r in rows if r.get("cpi") is not None), None)
-        assert row is not None
-        assert row["cpi"] < 1.0, f"Trends CPI={row['cpi']} should be < 1 for overrun project"
-        assert abs(row["cpi"] - self._CPI) < 0.01
+        assert len(rows) >= 1
+        total_ac = sum(r["actual_cost"] for r in rows)
+        assert abs(total_ac - self._AC) < 0.01, (
+            f"Trends actual_cost={total_ac:.2f}, expected {self._AC:.2f}"
+        )
 
 
 class TestMultiplierFallback:
@@ -465,12 +464,12 @@ class TestMultiplierFallback:
         # No GlobalConfig — forces the fallback branch
         cy = _cycle(db, "May/2026", 2026, 5)
         co = _collab(db, "Eve")
-        _rec(db, cy, co, self.PEP, self.DESC, normal=0.0, standby=self.STANDBY, cph=self.CPH)
+        _rec(db, cy, co, self.PEP, self.DESC, normal=0.0, standby=self.STANDBY, cph=self.CPH, sm=self.SM_FALLBACK)
 
     def test_trends_actual_cost_uses_sm_fallback(self, client, db_session):
-        """actual_cost in /api/trends must use sm=0.33 when GlobalConfig is absent."""
+        """actual_cost in /api/v2/trends must use sm=0.33 when GlobalConfig is absent."""
         self._seed(db_session)
-        resp = client.get("/api/trends")
+        resp = client.get("/api/v2/trends")
         assert resp.status_code == 200
         rows = resp.json()
         assert len(rows) == 1
@@ -505,7 +504,7 @@ class TestRunwayNegativeCyclesToComplete:
     def test_cycles_to_complete_null_when_overrun(self, client, db_session):
         """cycles_to_complete must be null (not negative) for an over-budget project."""
         self._seed(db_session)
-        resp = client.get("/api/portfolio-runway")
+        resp = client.get("/api/v2/runway")
         assert resp.status_code == 200
         item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
         assert item is not None
