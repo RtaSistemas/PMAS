@@ -2699,9 +2699,8 @@ async function _renderForecastTab() {
 function _renderBurnUpChart(fc) {
   const card = document.getElementById('burnUpCard');
   const history = fc.history || [];
-  const hasPV = history.some(h => h.cumulative_planned_cost != null);
   const hasEV = history.some(h => h.cumulative_ev_cost != null);
-  if (!hasPV || !hasEV) {
+  if (!hasEV) {
     card.hidden = true;
     if (_charts['burnUpChart'] && !_charts['burnUpChart'].isDisposed()) {
       _charts['burnUpChart'].dispose();
