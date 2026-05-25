@@ -21,7 +21,8 @@ const _LANG = {
     'forecast.select_pep':'— selecione um PEP —',
     'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
-    'forecast.remaining_cost':'Custo Restante (EPC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
+    'forecast.consumed_cost':'Custo Consumido','forecast.utilization_hours':'Utilização Horas','forecast.utilization_cost':'Utilização Custo',
+    'forecast.remaining_cost':'Custo Restante (ETC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
     'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
     'forecast.now_marker':'Atual',
     'forecast.pv_line':'VP (Valor Planejado)',
@@ -33,6 +34,7 @@ const _LANG = {
     'forecast.info.budget':'Orçamento','forecast.info.status':'Status',
     'forecast.info.no_manager':'—','forecast.info.no_name':'Sem nome cadastrado',
     'forecast.info.no_budget':'Sem orçamento',
+    'forecast.info.baseline':'Baseline','forecast.info.baseline_none':'Sem baseline',
     'sem.green':'Verde','sem.yellow':'Atenção','sem.red':'Crítico','sem.grey':'Sem orçamento',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
@@ -372,6 +374,7 @@ const _LANG = {
     'forecast.select_pep':'— select a PEP —',
     'forecast.empty':'Select a PEP to view the completion forecast.',
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
+    'forecast.consumed_cost':'Consumed Cost','forecast.utilization_hours':'Hours Utilization','forecast.utilization_cost':'Cost Utilization',
     'forecast.remaining_cost':'Remaining Cost (ETC)','forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
     'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
     'forecast.now_marker':'Now',
@@ -384,6 +387,7 @@ const _LANG = {
     'forecast.info.budget':'Budget','forecast.info.status':'Status',
     'forecast.info.no_manager':'—','forecast.info.no_name':'No name registered',
     'forecast.info.no_budget':'No budget',
+    'forecast.info.baseline':'Baseline','forecast.info.baseline_none':'No baseline',
     'sem.green':'Green','sem.yellow':'Warning','sem.red':'Critical','sem.grey':'No budget',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
@@ -2298,65 +2302,61 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 
 function _buildForecastKpis(fc) {
   const fmtH = h => `${(+h).toFixed(1)}h`;
-  // Baseline status banner
-  let baselineBanner = '';
-  if (fc.using_baseline && fc.baseline_locked_at) {
-    const dt = _fmtDateShort(fc.baseline_locked_at);
-    const lbl = fc.baseline_label ? ` — ${escHtml(fc.baseline_label)}` : '';
-    baselineBanner = `<div class="baseline-banner active">📍 ${_t('baseline.active')}${lbl} · ${_t('baseline.locked_at')} ${dt}</div>`;
-  } else if (!fc.using_baseline && fc.budget_cost != null) {
-    baselineBanner = `<div class="baseline-banner warning">⚠️ ${_t('baseline.warning')}</div>`;
-  }
   const fmtR = v => _fmtCost(v);
 
-  const pct = fc.budget_hours
+  const pctH = fc.budget_hours
     ? `${Math.min(fc.consumed_hours / fc.budget_hours * 100, 999).toFixed(1)}%`
     : '—';
-  const over = fc.budget_hours != null && fc.consumed_hours > fc.budget_hours;
+  const overH = fc.budget_hours != null && fc.consumed_hours > fc.budget_hours;
 
-  const cpiVal = fc.cpi != null ? (+fc.cpi).toFixed(2) : '—';
-  const cpiCls = fc.cpi == null ? 'neutral' : fc.cpi >= 1.0 ? 'green' : fc.cpi >= 0.9 ? 'amber' : 'red';
+  const pctC = fc.budget_cost && fc.actual_cost != null
+    ? `${Math.min(fc.actual_cost / fc.budget_cost * 100, 999).toFixed(1)}%`
+    : '—';
+  const overC = fc.budget_cost != null && fc.actual_cost != null && fc.actual_cost > fc.budget_cost;
 
-  const spiVal = fc.spi != null ? (+fc.spi).toFixed(2) : '—';
-  const spiCls = fc.spi == null ? 'neutral' : fc.spi >= 1.0 ? 'green' : fc.spi >= 0.9 ? 'amber' : 'red';
-  const svFmt  = fc.sv != null ? (fc.sv >= 0 ? '+' : '') + fmtR(fc.sv) : '—';
-  const svCls  = fc.sv == null ? 'neutral' : fc.sv >= 0 ? 'green' : 'red';
+  const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
+  const spiCls  = fc.spi  == null ? 'neutral' : fc.spi  >= 1.0 ? 'green' : fc.spi  >= 0.9 ? 'amber' : 'red';
+  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtH(fc.sv)  : '—';
+  const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
 
-  const cvFmt  = fc.cv != null ? (fc.cv >= 0 ? '+' : '') + fmtR(fc.cv) : '—';
-  const cvCls  = fc.cv == null ? 'neutral' : fc.cv >= 0 ? 'green' : 'red';
-
+  const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
+  const cpiCls  = fc.cpi  == null ? 'neutral' : fc.cpi  >= 1.0 ? 'green' : fc.cpi  >= 0.9 ? 'amber' : 'red';
+  const cvFmt   = fc.cv   != null ? (fc.cv  >= 0 ? '+' : '') + fmtR(fc.cv)  : '—';
+  const cvCls   = fc.cv   == null ? 'neutral' : fc.cv   >= 0 ? 'green' : 'red';
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
   const tcpiCls = fc.tcpi == null ? 'neutral' : fc.tcpi <= 1.0 ? 'green' : fc.tcpi <= 1.1 ? 'amber' : 'red';
-
-  const vacFmt  = fc.vac != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
-  const vacCls  = fc.vac == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red';
+  const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
+  const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
 
   const completionVal = fc.estimated_completion_cycle
     || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
 
-  const cards = [
-    { val: fmtH(fc.consumed_hours),                          lbl: _t('forecast.consumed'),        cls: 'blue'              },
-    { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',
-                                                              lbl: _t('forecast.remaining'),       cls: over ? 'red' : 'neutral' },
-    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',
-                                                              lbl: _t('forecast.remaining_cost'),  cls: 'neutral', evm: 'ETC' },
-    { val: pct,                                               lbl: _t('forecast.utilization'),     cls: over ? 'red' : 'green'   },
-    { val: cpiVal,                                            lbl: 'CPI',                          cls: cpiCls,   evm: 'CPI' },
-    { val: cvFmt,                                             lbl: _t('forecast.cv'),              cls: cvCls,    evm: 'CV'  },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',              lbl: 'EAC',                          cls: 'neutral', evm: 'EAC' },
-    { val: vacFmt,                                            lbl: _t('forecast.vac'),             cls: vacCls,   evm: 'VAC' },
-    { val: tcpiVal,                                           lbl: _t('forecast.tcpi'),            cls: tcpiCls,  evm: 'TCPI'},
-    { val: spiVal,                                            lbl: _t('forecast.spi'),             cls: spiCls,   evm: 'SPI' },
-    { val: svFmt,                                             lbl: _t('forecast.sv'),              cls: svCls,    evm: 'SV'  },
-    { val: escHtml(String(completionVal)),                    lbl: _t('forecast.completion'),      cls: 'violet'              },
-  ];
-  const cardsHtml = cards.map(({ val, lbl, cls, evm }) => {
-    const lblHtml = evm
-      ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
-      : escHtml(lbl);
+  const mkCard = ({ val, lbl, cls, evm }) => {
+    const lblHtml = evm ? `<span data-evm="${evm}">${escHtml(lbl)}</span>` : escHtml(lbl);
     return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
-  }).join('');
-  return baselineBanner + cardsHtml;
+  };
+
+  const row1 = [
+    { val: fmtH(fc.consumed_hours),                                                    lbl: _t('forecast.consumed'),          cls: 'blue'                    },
+    { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
+    { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
+    { val: spiVal,                                                                      lbl: _t('forecast.spi'),               cls: spiCls,  evm: 'SPI'       },
+    { val: svFmt,                                                                       lbl: _t('forecast.sv'),                cls: svCls,   evm: 'SV'        },
+    { val: escHtml(String(completionVal)),                                              lbl: _t('forecast.completion'),        cls: 'violet'                  },
+    { val: tcpiVal,                                                                     lbl: _t('forecast.tcpi'),              cls: tcpiCls, evm: 'TCPI'      },
+  ].map(mkCard).join('');
+
+  const row2 = [
+    { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: _t('forecast.consumed_cost'),    cls: 'blue'                    },
+    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: _t('forecast.remaining_cost'),   cls: 'neutral', evm: 'ETC'     },
+    { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
+    { val: cpiVal,                                                                      lbl: 'CPI',                           cls: cpiCls,  evm: 'CPI'       },
+    { val: cvFmt,                                                                       lbl: _t('forecast.cv'),               cls: cvCls,   evm: 'CV'        },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',                           cls: 'neutral', evm: 'EAC'     },
+    { val: vacFmt,                                                                      lbl: _t('forecast.vac'),              cls: vacCls,  evm: 'VAC'       },
+  ].map(mkCard).join('');
+
+  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
 }
 
 function _buildForecastOption(fc) {
@@ -2526,13 +2526,25 @@ function _renderForecastProjectInfo(fc, proj) {
 
   const dotHtml = `<span class="sem-dot ${semColor}" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span>`;
 
+  let baselineStr;
+  if (fc.using_baseline && fc.baseline_locked_at) {
+    const dt = _fmtDateShort(fc.baseline_locked_at);
+    const lbl = fc.baseline_label ? ` — ${escHtml(fc.baseline_label)}` : '';
+    baselineStr = `📍 ${_t('baseline.active')}${lbl} · ${_t('baseline.locked_at')} ${dt}`;
+  } else if (!fc.using_baseline && fc.budget_cost != null) {
+    baselineStr = `⚠️ ${_t('baseline.warning')}`;
+  } else {
+    baselineStr = escHtml(_t('forecast.info.baseline_none'));
+  }
+
   el.innerHTML =
     _forecastInfoStat(_t('forecast.info.project'),
       escHtml(proj?.name || _t('forecast.info.no_name'))) +
     _forecastInfoStat(_t('forecast.info.manager'),
       escHtml(proj?.manager || _t('forecast.info.no_manager'))) +
     _forecastInfoStat(_t('forecast.info.budget'), budgetStr) +
-    _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`);
+    _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`) +
+    _forecastInfoStat(_t('forecast.info.baseline'), baselineStr);
   el.hidden = false;
 }
 
