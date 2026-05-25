@@ -1433,24 +1433,12 @@ async function _renderEffortTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
-  // Portfolio uses date range + pep filters only (no cycle_id / collaborator — budget is PEP-level)
-  const pPortfolio = new URLSearchParams();
-  pepCodes.forEach(c   => pPortfolio.append('pep_wbs', c));
-  pepDescs.forEach(d   => pPortfolio.append('pep_description', d));
-  if (dateFrom) pPortfolio.set('date_from', dateFrom);
-  if (dateTo)   pPortfolio.set('date_to',   dateTo);
-
   _setChartLoading(['effortChart'], true);
   try {
-    const [data, portfolioData] = await Promise.all([
-      apiFetch(`/api/v2/effort?${p}`),
-      apiFetch(`/api/v2/portfolio?${pPortfolio}`).catch(() => []),
-    ]);
+    const data = await apiFetch(`/api/v2/effort?${p}`);
     _setChartLoading(['effortChart'], false);
     _lastEffortData = data;
-    const bva = (portfolioData || [])
-      .filter(pd => pd.budget_hours != null && pd.budget_hours > 0)
-      .map(pd => ({ budget_hours: pd.budget_hours, actual_hours: pd.total_hours }));
+    const bva = [];
 
     // Stats row
     document.getElementById('effortStats').innerHTML = '';
@@ -3962,20 +3950,9 @@ function _buildStatsRow(data, budgetData = []) {
 // Stats row (portfolio tab) — KPIs de custo proporcional
 // ---------------------------------------------------------------------------
 function _buildPortfolioStatsRow(health, trends) {
-  const totalCost   = health.reduce((s, d) => s + (d.total_cost || 0), 0);
-  const totalBudget = health
-    .filter(d => d.budget_cost != null)
-    .reduce((s, d) => s + d.budget_cost, 0);
-  const pepsActive  = health.filter(d => d.total_hours > 0).length;
+  const pepsActive = health.filter(d => d.total_hours > 0).length;
+  const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
 
-  let costNormal = 0, costExtra = 0, costStandby = 0;
-  (trends || []).forEach(r => {
-    costNormal  += r.normal_cost  || 0;
-    costExtra   += r.extra_cost   || 0;
-    costStandby += r.standby_cost || 0;
-  });
-
-  const lastTrend = trends && trends.length ? trends[trends.length - 1] : null;
   const _fmtDelta = pct => {
     if (pct == null) return '';
     const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
@@ -3983,23 +3960,66 @@ function _buildPortfolioStatsRow(health, trends) {
     return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
   };
 
-  const pct  = totalBudget > 0 ? (totalCost / totalBudget * 100).toFixed(1) : '—';
-  const over = totalBudget > 0 && totalCost > totalBudget;
+  let cards;
 
-  const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
+  if (!_evmMode) {
+    // ── Hours mode ──────────────────────────────────────────────
+    let hNormal = 0, hExtra = 0, hStandby = 0;
+    (trends || []).forEach(r => {
+      hNormal  += r.normal_hours  || 0;
+      hExtra   += r.extra_hours   || 0;
+      hStandby += r.standby_hours || 0;
+    });
+    const totalHours  = health.reduce((s, d) => s + (d.total_hours || 0), 0);
+    const budgetHours = health
+      .filter(d => d.budget_hours != null && d.budget_hours > 0)
+      .reduce((s, d) => s + d.budget_hours, 0);
+    const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
+    const overH = budgetHours > 0 && totalHours > budgetHours;
+    const totalHoursVal = `${fmt(totalHours)}${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct) : ''}`;
 
-  const cards = [
-    { val: _fmtCost(costNormal),  lbl: _t('stat.cost_normal'),    cls: 'blue'    },
-    { val: _fmtCost(costExtra),   lbl: _t('stat.cost_extra'),     cls: 'amber'   },
-    { val: _fmtCost(costStandby), lbl: _t('stat.cost_standby'),   cls: 'violet'  },
-    { val: costTotalVal,          lbl: _t('stat.cost_total'),     cls: 'green'   },
-    { val: pepsActive,            lbl: _t('stat.peps_active'),    cls: 'neutral' },
-  ];
-  if (totalBudget > 0) {
-    cards.push(
-      { val: _fmtCost(totalBudget),             lbl: _t('stat.budget_cost'),    cls: 'neutral'             },
-      { val: pct !== '—' ? `${pct}%` : '—',    lbl: _t('stat.vs_budget_cost'), cls: over ? 'red' : 'green' },
-    );
+    cards = [
+      { val: fmt(hNormal),    lbl: _t('stat.normal_h'),   cls: 'blue'    },
+      { val: fmt(hExtra),     lbl: _t('stat.extra_h'),    cls: 'amber'   },
+      { val: fmt(hStandby),   lbl: _t('stat.standby_h'),  cls: 'violet'  },
+      { val: totalHoursVal,   lbl: _t('stat.total'),      cls: 'green'   },
+      { val: pepsActive,      lbl: _t('stat.peps_active'), cls: 'neutral' },
+    ];
+    if (budgetHours > 0) {
+      cards.push(
+        { val: fmt(budgetHours),                       lbl: _t('stat.budgeted'),   cls: 'neutral'              },
+        { val: pctH !== '—' ? `${pctH}%` : '—',       lbl: _t('stat.vs_budget'),  cls: overH ? 'red' : 'green' },
+      );
+    }
+  } else {
+    // ── Cost mode (R$) ───────────────────────────────────────────
+    let costNormal = 0, costExtra = 0, costStandby = 0;
+    (trends || []).forEach(r => {
+      costNormal  += r.normal_cost  || 0;
+      costExtra   += r.extra_cost   || 0;
+      costStandby += r.standby_cost || 0;
+    });
+    const totalCost   = health.reduce((s, d) => s + (d.total_cost || 0), 0);
+    const budgetCost  = health
+      .filter(d => d.budget_cost != null)
+      .reduce((s, d) => s + d.budget_cost, 0);
+    const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
+    const overC = budgetCost > 0 && totalCost > budgetCost;
+    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
+
+    cards = [
+      { val: _fmtCost(costNormal),  lbl: _t('stat.cost_normal'),    cls: 'blue'    },
+      { val: _fmtCost(costExtra),   lbl: _t('stat.cost_extra'),     cls: 'amber'   },
+      { val: _fmtCost(costStandby), lbl: _t('stat.cost_standby'),   cls: 'violet'  },
+      { val: costTotalVal,          lbl: _t('stat.cost_total'),     cls: 'green'   },
+      { val: pepsActive,            lbl: _t('stat.peps_active'),    cls: 'neutral' },
+    ];
+    if (budgetCost > 0) {
+      cards.push(
+        { val: _fmtCost(budgetCost),                    lbl: _t('stat.budget_cost'),    cls: 'neutral'              },
+        { val: pctC !== '—' ? `${pctC}%` : '—',        lbl: _t('stat.vs_budget_cost'), cls: overC ? 'red' : 'green' },
+      );
+    }
   }
 
   const row = document.createElement('div');
