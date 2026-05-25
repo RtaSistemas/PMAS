@@ -1433,12 +1433,24 @@ async function _renderEffortTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  // Portfolio uses date range + pep filters only (no cycle_id / collaborator — budget is PEP-level)
+  const pPortfolio = new URLSearchParams();
+  pepCodes.forEach(c   => pPortfolio.append('pep_wbs', c));
+  pepDescs.forEach(d   => pPortfolio.append('pep_description', d));
+  if (dateFrom) pPortfolio.set('date_from', dateFrom);
+  if (dateTo)   pPortfolio.set('date_to',   dateTo);
+
   _setChartLoading(['effortChart'], true);
   try {
-    const data = await apiFetch(`/api/v2/effort?${p}`);
+    const [data, portfolioData] = await Promise.all([
+      apiFetch(`/api/v2/effort?${p}`),
+      apiFetch(`/api/v2/portfolio?${pPortfolio}`).catch(() => []),
+    ]);
     _setChartLoading(['effortChart'], false);
     _lastEffortData = data;
-    const bva = [];
+    const bva = (portfolioData || [])
+      .filter(pd => pd.budget_hours != null && pd.budget_hours > 0)
+      .map(pd => ({ budget_hours: pd.budget_hours, actual_hours: pd.total_hours }));
 
     // Stats row
     document.getElementById('effortStats').innerHTML = '';
