@@ -21,6 +21,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord,
 )
 from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.services.evm import compute_cpi_ev
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -205,9 +206,7 @@ def get_runway(
                         if target_idx < len(all_cycles):
                             estimated_completion_cycle = all_cycles[target_idx].name
 
-        if budget_hours and budget_hours > 0 and budget_cost and actual_cost > 0:
-            ev = min(consumed_hours / budget_hours, 1.0) * budget_cost
-            cpi = round(ev / actual_cost, 3)
+        cpi = compute_cpi_ev(consumed_hours, budget_hours, budget_cost, actual_cost)
 
         # SPI — freeze EV/PV at the last plan cycle boundary
         spi = None

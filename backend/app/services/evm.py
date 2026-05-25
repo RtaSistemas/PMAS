@@ -45,6 +45,28 @@ def compute_cpi(
     return round(budget_cost / actual_cost, 4)
 
 
+def compute_cpi_ev(
+    consumed_hours: float,
+    budget_hours: Optional[float],
+    budget_cost: Optional[float],
+    actual_cost: float,
+) -> Optional[float]:
+    """CPI = EV / AC using proper earned-value: EV = min(consumed/budget, 1.0) × BAC.
+
+    Caps EV at BAC so a project cannot earn more value than its budget.
+    Returns None when any required input is missing or zero.
+    > 1.0 → under budget;  < 1.0 → over budget.
+    """
+    if not budget_hours or budget_hours == 0:
+        return None
+    if not budget_cost:
+        return None
+    if actual_cost == 0:
+        return None
+    ev = min(consumed_hours / budget_hours, 1.0) * budget_cost
+    return round(ev / actual_cost, 4)
+
+
 def compute_spi(
     cumulative_planned_hours: Optional[float],
     cumulative_actual_hours: float,

@@ -17,7 +17,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline,
     TimesheetRecord, UserProjectAccess,
 )
-from backend.app.services.evm import classify_health, compute_cpi
+from backend.app.services.evm import classify_health, compute_cpi_ev
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -114,7 +114,7 @@ def get_portfolio(
         bh   = (bl.budget_hours if bl else None) or (proj.budget_hours if proj else None)
         bc   = (bl.budget_cost  if bl else None) or (proj.budget_cost  if proj else None)
 
-        cpi        = compute_cpi(bc, data["total_cost"])
+        cpi        = compute_cpi_ev(data["total_hours"], bh, bc, data["total_cost"])
         h_health   = classify_health(data["total_hours"], bh, warning_threshold, critical_threshold)
         c_health   = classify_health(data["total_cost"],  bc, warning_threshold, critical_threshold)
 
@@ -239,7 +239,7 @@ def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, da
         bl   = active_baselines.get(proj.id) if proj else None
         bh   = (bl.budget_hours if bl else None) or (proj.budget_hours if proj else None)
         bc   = (bl.budget_cost  if bl else None) or (proj.budget_cost  if proj else None)
-        cpi        = compute_cpi(bc, data["total_cost"])
+        cpi        = compute_cpi_ev(data["total_hours"], bh, bc, data["total_cost"])
         h_health   = classify_health(data["total_hours"], bh, warning_threshold, critical_threshold)
         c_health   = classify_health(data["total_cost"],  bc, warning_threshold, critical_threshold)
         result.append({
