@@ -2244,7 +2244,7 @@ function _buildForecastKpis(fc) {
 
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
   const spiCls  = fc.spi  == null ? 'neutral' : fc.spi  >= 1.0 ? 'green' : fc.spi  >= 0.9 ? 'amber' : 'red';
-  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtH(fc.sv)  : '—';
+  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
   const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
