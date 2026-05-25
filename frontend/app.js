@@ -2735,7 +2735,7 @@ async function _renderPlanTable(pep_wbs) {
         <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
         <td style="text-align:right">${costStr}</td>
         <td style="white-space:nowrap">
-          <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${JSON.stringify(escHtml(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
+          <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${escHtml(JSON.stringify(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
           <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>
         </td>
       </tr>`;
