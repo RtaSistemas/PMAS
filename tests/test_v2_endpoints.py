@@ -132,11 +132,14 @@ class TestPortfolio:
         assert no_bgt["cpi"] is None
 
     def test_cpi_under_budget(self, client, db_session, clean_db):
+        # blended planned rate = 5000/100 = 50 R$/h
+        # actual rate = 30 R$/h → AC = 8×30 = 240
+        # EV = min(8/100, 1.0) × 5000 = 400
+        # CPI = EV/AC = 400/240 ≈ 1.67  (under budget → > 1)
         c = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
         _make_project(db_session, "60IT-001-01", "Alpha", budget_hours=100.0, budget_cost=5000.0)
-        collab = _make_collab(db_session, "Ana")
-        # 8h normal + 2h extra → cost = 400 + 150 = 550; budget_cost=5000 → CPI ≫ 1
-        _make_record(db_session, collab, c, "60IT-001-01", "Sistema Alpha", 8.0, extra_h=2.0)
+        collab = _make_collab(db_session, "Ana", rate=30.0)
+        _make_record(db_session, collab, c, "60IT-001-01", "Sistema Alpha", 8.0, rate=30.0)
         db_session.commit()
 
         r = client.get("/api/v2/portfolio")

@@ -224,15 +224,17 @@ class TestAuthorizationFilter:
         assert summary["records_inserted"] == 1
         assert not any("permissão" in w for w in summary["warnings"])
 
-    def test_user_without_access_rows_discarded_silently(self, db_session, sample_cycle):
-        """Non-admin with no project access has rows silently discarded + warning."""
+    def test_user_without_access_raises_403(self, db_session, sample_cycle):
+        """Non-admin with no access to any PEP in the file gets a 403 rejection."""
+        from fastapi import HTTPException
         user = self._make_user(db_session, "no_access_user")
         self._make_project(db_session, "60OP-001")  # project exists, user NOT manager
         db_session.commit()
-        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session,
-                              user_role="user", user_id=user.id)
-        assert summary["records_inserted"] == 0
-        assert any("permissão" in w for w in summary["warnings"])
+        with pytest.raises(HTTPException) as exc_info:
+            ingest_file(_csv(BASE_ROW), "t.csv", db_session,
+                        user_role="user", user_id=user.id)
+        assert exc_info.value.status_code == 403
+        assert "permissão" in exc_info.value.detail
 
     def test_manager_id_grants_auto_access(self, db_session, sample_cycle):
         """User registered as project manager gets automatic upload access."""
