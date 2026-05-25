@@ -1437,7 +1437,7 @@ async function _renderEffortTab() {
     document.getElementById('effortStats').appendChild(_buildStatsRow(data, bva));
 
     // Title
-    document.getElementById('effortTitle').textContent = _buildEffortTitle({}, cycleIds.length);
+    document.getElementById('effortTitle').textContent = _buildEffortTitle(cycleIds, pepCodes);
 
     if (data.length === 0) {
       _showEmpty('effortEmpty', true);
@@ -2927,10 +2927,14 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
 
 function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
 
-function _buildEffortTitle(payload, cycleCount) {
-  const { cycle, filters } = payload;
-  let t = cycleCount > 1 ? `${cycle.name} (${_t('lbl.plus_cycles').replace('{n}', cycleCount - 1)})` : cycle.name;
-  if (filters.pep_codes?.length) t += `  |  PEP: ${filters.pep_codes.join(', ')}`;
+function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
+  if (!selectedCycleIds.length) return 'Todos os ciclos';
+  const first = (_allCycles || []).find(c => String(c.id) === String(selectedCycleIds[0]));
+  const name = first ? first.name : `Ciclo #${selectedCycleIds[0]}`;
+  let t = selectedCycleIds.length > 1
+    ? `${name} (${_t('lbl.plus_cycles').replace('{n}', selectedCycleIds.length - 1)})`
+    : name;
+  if (selectedPepCodes?.length) t += `  |  PEP: ${selectedPepCodes.join(', ')}`;
   return t;
 }
 
