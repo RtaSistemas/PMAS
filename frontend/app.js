@@ -349,13 +349,8 @@ const _LANG = {
     'onboard.step2':'Cadastre seus Projetos com código PEP e orçamento',
     'onboard.step3':'Importe um timesheet em Minha Área → Upload',
     'onboard.cta':'Ir para Ciclos',
-    'velocity.title':'Velocidade por Ciclo',
-    'velocity.note':'Horas totais por ciclo · média móvel 3 ciclos',
-    'velocity.empty':'Nenhum dado encontrado.',
-    'velocity.bars':'Horas por Ciclo',
     'velocity.mavg':'Média Móvel (3 ciclos)',
     'burnup.eac':'EAC (Estimativa no Término)',
-    'chart.velocityChart':'Velocidade por Ciclo',
   },
   en: {
     'app.title':'PMAS — Project Management Dashboard',
@@ -702,13 +697,8 @@ const _LANG = {
     'onboard.step2':'Register your Projects with PEP code and budget',
     'onboard.step3':'Import a timesheet in My Area → Upload',
     'onboard.cta':'Go to Cycles',
-    'velocity.title':'Cycle Velocity',
-    'velocity.note':'Total hours per cycle · 3-cycle moving average',
-    'velocity.empty':'No data found.',
-    'velocity.bars':'Hours per Cycle',
     'velocity.mavg':'3-Cycle Moving Avg',
     'burnup.eac':'EAC (Estimate at Completion)',
-    'chart.velocityChart':'Cycle Velocity',
   },
 };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
@@ -1054,7 +1044,7 @@ const _charts = {};
 
 // Which chart IDs belong to each sub-tab (to dispose on leave)
 const CHARTS_PER_TAB = {
-  effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart', 'velocityChart'],
+  effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
   forecast:   ['forecastChart', 'burnUpChart'],
 };
@@ -1902,73 +1892,6 @@ function _restoreFilterDates() {
 }
 
 // ---------------------------------------------------------------------------
-// Velocity chart — total hours per cycle + 3-cycle moving average
-// ---------------------------------------------------------------------------
-function _buildVelocityOption(trends) {
-  const cats = trends.map(d => d.cycle_name);
-  const bars = trends.map(d => d.total_hours);
-  const mavg = trends.map(d => d.moving_avg_3_hours ?? null);
-  const pal  = _getPalette();
-  const barClr = pal[0] || '#0ea5e9';
-  const avgClr = _cssVar('--amber') || '#f59e0b';
-
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Velocidade'),
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text') },
-      formatter: params => {
-        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
-        params.forEach(p => {
-          if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${(+p.value).toFixed(1)}h</b><br>`;
-        });
-        return html;
-      },
-    },
-    legend: {
-      data: [_t('velocity.bars'), _t('velocity.mavg')],
-      top: 8, left: 'center',
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
-      itemGap: 20,
-    },
-    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
-    xAxis: {
-      type: 'category', data: cats,
-      axisLabel: { color: _cssVar('--text-3'), rotate: cats.length > 8 ? 30 : 0, fontSize: 11 },
-      axisTick: { alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value', name: _t('ch.hours'),
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: _cssVar('--border') } },
-    },
-    series: [
-      {
-        name: _t('velocity.bars'),
-        type: 'bar',
-        data: bars,
-        itemStyle: { color: barClr, opacity: 0.85 },
-        barMaxWidth: 48,
-      },
-      {
-        name: _t('velocity.mavg'),
-        type: 'line',
-        data: mavg,
-        smooth: true,
-        symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: avgClr, width: 2.5 },
-        itemStyle: { color: avgClr },
-        connectNulls: false,
-        z: 10,
-      },
-    ],
-  };
-}
-
 // Trends + CPI helper — called from _renderEffortTab
 // ---------------------------------------------------------------------------
 async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, dateFrom, dateTo) {
@@ -1995,17 +1918,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       if (_charts['costCompositionChart'] && !_charts['costCompositionChart'].isDisposed()) {
         _charts['costCompositionChart'].dispose(); delete _charts['costCompositionChart'];
       }
-      document.getElementById('velocityPanel').hidden = true;
-      if (_charts['velocityChart'] && !_charts['velocityChart'].isDisposed()) {
-        _charts['velocityChart'].dispose(); delete _charts['velocityChart'];
-      }
       return;
     }
     _showEmpty('trendsEmpty', false);
 
-    // Trends chart — G2 ✅
-    const tc = _getOrCreateChart('trendsChart');
-    tc.setOption(_buildHoursBarOption({
+    // Trends chart with moving average overlay
+    const trendsOpt = _buildHoursBarOption({
       data:        trends,
       categoryKey: 'cycle_name',
       orientation: 'vertical',
@@ -2014,15 +1932,26 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Queima',
-    }), true);
+    });
+    const mavg = trends.map(d => d.moving_avg_3_hours ?? null);
+    if (mavg.some(v => v != null)) {
+      const avgClr = _cssVar('--amber') || '#f59e0b';
+      trendsOpt.series.push({
+        name: _t('velocity.mavg'),
+        type: 'line',
+        data: mavg,
+        smooth: true,
+        symbol: 'circle', symbolSize: 5,
+        lineStyle: { color: avgClr, width: 2 },
+        itemStyle: { color: avgClr },
+        connectNulls: false,
+        z: 10,
+      });
+      if (Array.isArray(trendsOpt.legend?.data)) trendsOpt.legend.data.push(_t('velocity.mavg'));
+    }
+    const tc = _getOrCreateChart('trendsChart');
+    tc.setOption(trendsOpt, true);
     tc.resize();
-
-    // Velocity chart — D1
-    document.getElementById('velocityPanel').hidden = false;
-    _showEmpty('velocityEmpty', false);
-    const vc = _getOrCreateChart('velocityChart');
-    vc.setOption(_buildVelocityOption(trends), true);
-    vc.resize();
 
     // Cost Composition chart — G3
     _renderCostCompositionChart(trends);
@@ -2242,10 +2171,9 @@ function _drawAllocMatrix() {
   html += `<th class="${thCls('__name__')}" data-sort-key="__name__">${_t('allocation.collaborator')}</th>`;
   sortedPeps.forEach(pep => {
     const desc  = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
-    const shortDesc = desc.length > 13 ? desc.slice(0, 12) + '…' : desc;
     const headerContent = pep === '__none__'
-      ? escHtml(shortDesc)
-      : `${escHtml(pep)}<br><span class="alloc-th-desc">${escHtml(shortDesc)}</span>`;
+      ? escHtml(desc)
+      : `${escHtml(pep)}<br><span class="alloc-th-desc">${escHtml(desc)}</span>`;
     html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(pep + ' · ' + desc)}">${headerContent}</th>`;
   });
   html += `<th class="${thCls('__total__')}" data-sort-key="__total__">${_t('allocation.total')}</th></tr></thead><tbody>`;
@@ -3951,6 +3879,7 @@ function _buildStatsRow(data, budgetData = []) {
 function _buildPortfolioStatsRow(health, trends) {
   const pepsActive = health.filter(d => d.total_hours > 0).length;
   const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
+  const prevTrend  = trends && trends.length > 1 ? trends[trends.length - 2] : null;
 
   const _fmtDelta = pct => {
     if (pct == null) return '';
@@ -3958,6 +3887,8 @@ function _buildPortfolioStatsRow(health, trends) {
     const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
     return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
   };
+  const _pctDelta = (curr, prev) =>
+    (prev != null && prev !== 0) ? (curr - prev) / Math.abs(prev) * 100 : null;
 
   let cards;
 
@@ -3976,13 +3907,16 @@ function _buildPortfolioStatsRow(health, trends) {
     const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
     const overH = budgetHours > 0 && totalHours > budgetHours;
     const totalHoursVal = `${fmt(totalHours)}${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct) : ''}`;
+    const normalHDelta  = lastTrend && prevTrend ? _pctDelta(lastTrend.normal_hours,  prevTrend.normal_hours)  : null;
+    const extraHDelta   = lastTrend && prevTrend ? _pctDelta(lastTrend.extra_hours,   prevTrend.extra_hours)   : null;
+    const standbyHDelta = lastTrend && prevTrend ? _pctDelta(lastTrend.standby_hours, prevTrend.standby_hours) : null;
 
     cards = [
-      { val: fmt(hNormal),    lbl: _t('stat.normal_h'),   cls: 'blue'    },
-      { val: fmt(hExtra),     lbl: _t('stat.extra_h'),    cls: 'amber'   },
-      { val: fmt(hStandby),   lbl: _t('stat.standby_h'),  cls: 'violet'  },
-      { val: totalHoursVal,   lbl: _t('stat.total'),      cls: 'green'   },
-      { val: pepsActive,      lbl: _t('stat.peps_active'), cls: 'neutral' },
+      { val: `${fmt(hNormal)}${_fmtDelta(normalHDelta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue'    },
+      { val: `${fmt(hExtra)}${_fmtDelta(extraHDelta)}`,     lbl: _t('stat.extra_h'),     cls: 'amber'   },
+      { val: `${fmt(hStandby)}${_fmtDelta(standbyHDelta)}`, lbl: _t('stat.standby_h'),   cls: 'violet'  },
+      { val: totalHoursVal,                                  lbl: _t('stat.total'),       cls: 'green'   },
+      { val: pepsActive,                                     lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
     if (budgetHours > 0) {
       cards.push(
@@ -4004,14 +3938,17 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_cost, 0);
     const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
     const overC = budgetCost > 0 && totalCost > budgetCost;
-    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
+    const costTotalVal   = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
+    const normalCDelta   = lastTrend && prevTrend ? _pctDelta(lastTrend.normal_cost,  prevTrend.normal_cost)  : null;
+    const extraCDelta    = lastTrend && prevTrend ? _pctDelta(lastTrend.extra_cost,   prevTrend.extra_cost)   : null;
+    const standbyCDelta  = lastTrend && prevTrend ? _pctDelta(lastTrend.standby_cost, prevTrend.standby_cost) : null;
 
     cards = [
-      { val: _fmtCost(costNormal),  lbl: _t('stat.cost_normal'),    cls: 'blue'    },
-      { val: _fmtCost(costExtra),   lbl: _t('stat.cost_extra'),     cls: 'amber'   },
-      { val: _fmtCost(costStandby), lbl: _t('stat.cost_standby'),   cls: 'violet'  },
-      { val: costTotalVal,          lbl: _t('stat.cost_total'),     cls: 'green'   },
-      { val: pepsActive,            lbl: _t('stat.peps_active'),    cls: 'neutral' },
+      { val: `${_fmtCost(costNormal)}${_fmtDelta(normalCDelta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue'    },
+      { val: `${_fmtCost(costExtra)}${_fmtDelta(extraCDelta)}`,     lbl: _t('stat.cost_extra'),   cls: 'amber'   },
+      { val: `${_fmtCost(costStandby)}${_fmtDelta(standbyCDelta)}`, lbl: _t('stat.cost_standby'), cls: 'violet'  },
+      { val: costTotalVal,                                            lbl: _t('stat.cost_total'),   cls: 'green'   },
+      { val: pepsActive,                                              lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
     if (budgetCost > 0) {
       cards.push(
