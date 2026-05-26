@@ -322,7 +322,7 @@ const _LANG = {
     'runway.th.progress':'Progresso',
     'runway.th.avg':'Média/ciclo (h)','runway.th.avg_r':'Média/ciclo (R$)',
     'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
-    'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento',
+    'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento','runway.closed':'Encerrado',
     'runway.th.spi':'SPI','runway.th.status':'Status',
     'runway.status.on_track':'No prazo','runway.status.at_risk':'Atenção',
     'runway.status.behind':'Atrasado','runway.status.no_baseline':'Sem baseline',
@@ -680,7 +680,7 @@ const _LANG = {
     'runway.th.progress':'Progress',
     'runway.th.avg':'Avg/cycle (h)','runway.th.avg_r':'Avg/cycle (R$)',
     'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
-    'runway.overrun':'Overrun','runway.no_budget':'No budget',
+    'runway.overrun':'Overrun','runway.no_budget':'No budget','runway.closed':'Closed',
     'runway.th.spi':'SPI','runway.th.status':'Status',
     'runway.status.on_track':'On track','runway.status.at_risk':'At risk',
     'runway.status.behind':'Behind','runway.status.no_baseline':'No baseline',
@@ -1577,11 +1577,20 @@ function _drawRunwayRows(data) {
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
       `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${pctLabel}</span>`;
 
-    let cyclesCell = '—';
-    if (item.risk === 'overrun') {
-      cyclesCell = `<span style="color:var(--red,#c56d76);font-weight:600">${_t('runway.overrun')}</span>`;
-    } else if (item.cycles_to_complete != null) {
-      cyclesCell = item.cycles_to_complete.toFixed(1);
+    let cyclesCell;
+    let completionCell;
+    if (item.is_closed) {
+      const closedTag = `<span style="color:var(--green,#5ad388);font-weight:600">${_t('runway.closed')}</span>`;
+      cyclesCell    = closedTag;
+      completionCell = closedTag;
+    } else {
+      cyclesCell = '—';
+      if (item.risk === 'overrun') {
+        cyclesCell = `<span style="color:var(--red,#c56d76);font-weight:600">${_t('runway.overrun')}</span>`;
+      } else if (item.cycles_to_complete != null) {
+        cyclesCell = item.cycles_to_complete.toFixed(1);
+      }
+      completionCell = escHtml(item.estimated_completion_cycle || '—');
     }
 
     let spiCell = '—';
@@ -1623,7 +1632,7 @@ function _drawRunwayRows(data) {
         : (item.avg_hours_per_cycle != null ? item.avg_hours_per_cycle.toFixed(1) : '—')}</td>
       <td style="text-align:right">${cpiCell}</td>
       <td style="text-align:right">${cyclesCell}</td>
-      <td style="font-size:.82rem">${escHtml(item.estimated_completion_cycle || '—')}</td>
+      <td style="font-size:.82rem">${completionCell}</td>
       <td style="text-align:right">${spiCell}</td>
       <td>${statusCell}</td>
     `;
@@ -2015,46 +2024,62 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         return aD < bD ? -1 : aD > bD ? 1 : 0;
       });
 
-      // Build shared filter params (cycle_id added per-request)
-      const hParams = new URLSearchParams();
-      pepCodes.forEach(c   => hParams.append('pep_wbs', c));
-      pepDescs.forEach(d   => hParams.append('pep_description', d));
-      collabIds.forEach(id => hParams.append('collaborator_id', id));
-      if (dateFrom) hParams.set('date_from', dateFrom);
-      if (dateTo)   hParams.set('date_to',   dateTo);
+      // Get PEP list: use filter selection or fall back to single portfolio call
+      let pepWbsList;
+      if (pepCodes.length > 0) {
+        pepWbsList = [...pepCodes];
+      } else {
+        try {
+          const listP = new URLSearchParams();
+          pepDescs.forEach(d   => listP.append('pep_description', d));
+          collabIds.forEach(id => listP.append('collaborator_id', id));
+          if (dateFrom) listP.set('date_from', dateFrom);
+          if (dateTo)   listP.set('date_to',   dateTo);
+          const listItems = await apiFetch(`/api/v2/portfolio?${listP}`);
+          pepWbsList = [...new Set(listItems.map(i => i.pep_wbs).filter(Boolean))];
+        } catch (_) { pepWbsList = []; }
+      }
 
-      const healthByCycle = await Promise.all(
-        sortedCycleIds.map(id =>
-          apiFetch(`/api/v2/portfolio?cycle_id=${id}&${hParams}`)
-            .then(items => ({ cycleId: id, items }))
-            .catch(() => ({ cycleId: id, items: [] }))
+      if (!pepWbsList.length) {
+        _showEmpty('pepCpiEmpty', true);
+        document.getElementById('pepCpiPanel').hidden = false;
+        return;
+      }
+
+      // Fetch forecast per PEP — uses baseline-aware budget for correct EV/CPI
+      const fcParams = new URLSearchParams();
+      if (dateFrom) fcParams.set('date_from', dateFrom);
+      if (dateTo)   fcParams.set('date_to',   dateTo);
+
+      const selectedCycleNames = new Set(effectiveCycleIds.map(id => cycleNameMap[id]).filter(Boolean));
+
+      const fcAll = await Promise.all(
+        pepWbsList.map(wbs =>
+          apiFetch(`/api/v2/forecast?pep_wbs=${encodeURIComponent(wbs)}&${fcParams}`).catch(() => null)
         )
       );
 
-      // Cumulative CPI: accumulate total_hours and total_cost per PEP across cycles
-      const cumConsumed = {};
-      const cumAc = {};
+      // Build pepMap + spiMapByPep from forecast history
+      // CPI = cumulative_ev_cost / cumulative_cost (server-computed, baseline-aware)
       const pepMap = {};
+      const spiMapByPep = {};
 
-      healthByCycle.forEach(({ cycleId, items: hItems }) => {
-        const cycleName = cycleNameMap[cycleId] ?? `Cycle ${cycleId}`;
-        hItems.forEach(d => {
-          if (d.budget_cost == null || d.budget_cost === 0) return;
-          if (d.budget_hours == null || d.budget_hours === 0) return;
-
-          cumConsumed[d.pep_wbs] = (cumConsumed[d.pep_wbs] || 0) + (d.total_hours || 0);
-          cumAc[d.pep_wbs]       = (cumAc[d.pep_wbs]       || 0) + (d.total_cost  || 0);
-
-          if (cumAc[d.pep_wbs] === 0) return;
-
-          const ev     = Math.min(cumConsumed[d.pep_wbs] / d.budget_hours, 1.0) * d.budget_cost;
-          const cpiVal = +(ev / cumAc[d.pep_wbs]).toFixed(3);
-
-          if (!pepMap[d.pep_wbs]) {
-            pepMap[d.pep_wbs] = { desc: d.pep_description ?? d.pep_wbs, points: [] };
+      fcAll.forEach((fc, i) => {
+        if (!fc?.history?.length) return;
+        const wbs = pepWbsList[i];
+        const points = [];
+        const spiMap = {};
+        fc.history.forEach(h => {
+          // Honour cycle filter when active
+          if (cycleIds.length > 0 && !selectedCycleNames.has(h.cycle_name)) return;
+          if (h.cumulative_cost > 0 && h.cumulative_ev_cost != null) {
+            points.push({ cycleName: h.cycle_name, cpi: +(h.cumulative_ev_cost / h.cumulative_cost).toFixed(3) });
           }
-          pepMap[d.pep_wbs].points.push({ cycleName, cpi: cpiVal });
+          if (h.spi_cumulative != null) spiMap[h.cycle_name] = h.spi_cumulative;
         });
+        if (!points.length) return;
+        pepMap[wbs] = { desc: fc.pep_description || fc.name || wbs, points };
+        spiMapByPep[wbs] = spiMap;
       });
 
       const peps = Object.entries(pepMap);
@@ -2068,23 +2093,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         }
         return;
       }
-
-      // Fetch SPI history per PEP in parallel (from forecast endpoint)
-      const spiMapByPep = {};
-      try {
-        const fcResults = await Promise.all(
-          peps.map(([wbs]) => apiFetch(`/api/v2/forecast?pep_wbs=${encodeURIComponent(wbs)}`).catch(() => null))
-        );
-        fcResults.forEach((fc, i) => {
-          if (!fc?.history) return;
-          const wbs = peps[i][0];
-          spiMapByPep[wbs] = Object.fromEntries(
-            fc.history
-              .filter(h => h.spi_cumulative != null)
-              .map(h => [h.cycle_name, h.spi_cumulative])
-          );
-        });
-      } catch (_) { /* SPI overlay is best-effort */ }
 
       _showEmpty('pepCpiEmpty', false);
       document.getElementById('pepCpiPanel').hidden = false;
