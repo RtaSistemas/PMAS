@@ -325,6 +325,62 @@ class TestForecast:
         r = client.get("/api/v2/forecast?pep_wbs=60IT-001-01")
         assert r.json()["name"] == "Projeto Alpha"
 
+    def test_closed_project_freezes_evm(self, client, db_session, clean_db):
+        c = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        proj = Project(
+            pep_wbs="60IT-CLO-01", name="Encerrado",
+            budget_hours=100.0, budget_cost=5000.0,
+            status="encerrado",
+            start_date=date(2025, 1, 1),
+            planned_end_date=date(2025, 12, 31),
+            completion_date=date(2025, 1, 31),
+        )
+        db_session.add(proj)
+        db_session.flush()
+        collab = _make_collab(db_session, "Bia", rate=40.0)
+        _make_record(db_session, collab, c, "60IT-CLO-01", "Encerrado", 50.0, rate=40.0)
+        db_session.commit()
+
+        r = client.get("/api/v2/forecast?pep_wbs=60IT-CLO-01")
+        assert r.status_code == 200
+        body = r.json()
+
+        assert body["is_closed"] is True
+        assert body["remaining_hours"] == 0.0
+        assert body["remaining_cost"] == 0.0
+        assert body["tcpi"] is None
+        assert body["estimated_cycles_to_complete"] is None
+        assert body["estimated_completion_cycle"] is None
+        # EAC = AC for closed projects
+        assert body["eac"] == pytest.approx(body["actual_cost"])
+        # Date fields are returned
+        assert body["start_date"] == "2025-01-01"
+        assert body["planned_end_date"] == "2025-12-31"
+        assert body["completed_on"] == "2025-01-31"
+
+    def test_open_project_date_fields_returned(self, client, db_session, clean_db):
+        c = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        proj = Project(
+            pep_wbs="60IT-OPN-01", name="Aberto",
+            budget_hours=100.0, budget_cost=5000.0,
+            status="ativo",
+            start_date=date(2025, 1, 1),
+            planned_end_date=date(2025, 12, 31),
+        )
+        db_session.add(proj)
+        db_session.flush()
+        collab = _make_collab(db_session, "Carlos", rate=50.0)
+        _make_record(db_session, collab, c, "60IT-OPN-01", "Aberto", 10.0)
+        db_session.commit()
+
+        r = client.get("/api/v2/forecast?pep_wbs=60IT-OPN-01")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["is_closed"] is False
+        assert body["start_date"] == "2025-01-01"
+        assert body["planned_end_date"] == "2025-12-31"
+        assert body["completed_on"] is None
+
 
 # ── services/evm.py unit tests ───────────────────────────────────────────────
 

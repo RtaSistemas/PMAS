@@ -104,6 +104,11 @@ const _LANG = {
     'pm.client_lbl':'Cliente','pm.client_ph':'Nome do cliente',
     'pm.mgr_lbl':'Gerente','pm.mgr_ph':'Nome do gerente',
     'pm.bh_lbl':'Orçamento de horas','pm.bc_lbl':'Orçamento (R$)',
+    'pm.start_lbl':'Início','pm.planned_end_lbl':'Término planejado','pm.completion_lbl':'Concluído em',
+    'projects.th.dates':'Datas',
+    'forecast.info.start':'Início','forecast.info.planned_end':'Término Planejado','forecast.info.completed':'Concluído em',
+    'forecast.completed_on':'Concluído em',
+    'confirm.set_encerrado':'Data de conclusão preenchida. Alterar status para "Encerrado"?',
     'opt.ativo':'Ativo','opt.suspenso':'Suspenso','opt.encerrado':'Encerrado',
     'sm.title_new':'Novo Nível de Senioridade','sm.name_lbl':'Nome *','sm.name_ph':'Ex: Pleno, Sênior',
     'rm.title_new':'Nova Taxa','rm.level_lbl':'Nível de Senioridade *',
@@ -452,6 +457,11 @@ const _LANG = {
     'pm.client_lbl':'Client','pm.client_ph':'Client name',
     'pm.mgr_lbl':'Manager','pm.mgr_ph':'Manager name',
     'pm.bh_lbl':'Hours budget','pm.bc_lbl':'Budget (R$)',
+    'pm.start_lbl':'Start','pm.planned_end_lbl':'Planned end','pm.completion_lbl':'Completed on',
+    'projects.th.dates':'Dates',
+    'forecast.info.start':'Start','forecast.info.planned_end':'Planned end','forecast.info.completed':'Completed on',
+    'forecast.completed_on':'Completed on',
+    'confirm.set_encerrado':'Completion date set. Change status to "Closed"?',
     'opt.ativo':'Active','opt.suspenso':'Suspended','opt.encerrado':'Closed',
     'sm.title_new':'New Seniority Level','sm.name_lbl':'Name *','sm.name_ph':'E.g.: Mid, Senior',
     'rm.title_new':'New Rate','rm.level_lbl':'Seniority Level *',
@@ -2256,8 +2266,11 @@ function _buildForecastKpis(fc) {
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
 
-  const completionVal = fc.estimated_completion_cycle
-    || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
+  const completionVal = fc.is_closed && fc.completed_on
+    ? _fmtDateBR(fc.completed_on)
+    : (fc.estimated_completion_cycle
+      || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—'));
+  const completionLbl = fc.is_closed ? _t('forecast.completed_on') : _t('forecast.completion');
 
   const mkCard = ({ val, lbl, cls, evm }) => {
     const lblHtml = evm ? `<span data-evm="${evm}">${escHtml(lbl)}</span>` : escHtml(lbl);
@@ -2270,7 +2283,7 @@ function _buildForecastKpis(fc) {
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
     { val: spiVal,                                                                      lbl: _t('forecast.spi'),               cls: spiCls,  evm: 'SPI'       },
     { val: svFmt,                                                                       lbl: _t('forecast.sv'),                cls: svCls,   evm: 'SV'        },
-    { val: escHtml(String(completionVal)),                                              lbl: _t('forecast.completion'),        cls: 'violet'                  },
+    { val: escHtml(String(completionVal)),                                              lbl: completionLbl,                    cls: 'violet'                  },
     { val: tcpiVal,                                                                     lbl: _t('forecast.tcpi'),              cls: tcpiCls, evm: 'TCPI'      },
   ].map(mkCard).join('');
 
@@ -2465,12 +2478,18 @@ function _renderForecastProjectInfo(fc, proj) {
     baselineStr = escHtml(_t('forecast.info.baseline_none'));
   }
 
+  const dateChips = [];
+  if (fc.start_date)       dateChips.push(`▸ ${_t('forecast.info.start')}: ${_fmtDateBR(fc.start_date)}`);
+  if (fc.planned_end_date) dateChips.push(`→ ${_t('forecast.info.planned_end')}: ${_fmtDateBR(fc.planned_end_date)}`);
+  if (fc.completed_on)     dateChips.push(`✓ ${_t('forecast.info.completed')}: ${_fmtDateBR(fc.completed_on)}`);
+
   el.innerHTML =
     _forecastInfoStat(_t('forecast.info.project'),
       escHtml(proj?.name || _t('forecast.info.no_name'))) +
     _forecastInfoStat(_t('forecast.info.manager'),
       escHtml(proj?.manager || _t('forecast.info.no_manager'))) +
     _forecastInfoStat(_t('forecast.info.budget'), budgetStr) +
+    (dateChips.length ? _forecastInfoStat(_t('projects.th.dates'), escHtml(dateChips.join('  '))) : '') +
     _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`) +
     _forecastInfoStat(_t('forecast.info.baseline'), baselineStr);
   el.hidden = false;
@@ -4159,10 +4178,24 @@ function _buildBudgetCell(p) {
   return budgetStr;
 }
 
+function _fmtDateBR(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function _buildDatesCell(p) {
+  const parts = [];
+  if (p.start_date)       parts.push(`▸ ${_fmtDateBR(p.start_date)}`);
+  if (p.planned_end_date) parts.push(`→ ${_fmtDateBR(p.planned_end_date)}`);
+  if (p.completion_date)  parts.push(`✓ ${_fmtDateBR(p.completion_date)}`);
+  return parts.length ? `<span style="font-size:.8rem;color:#94a3b8">${parts.join(' ')}</span>` : '—';
+}
+
 function _renderProjectsTable(projects) {
   const tbody = document.getElementById('projectsBody');
   if (!projects.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
     return;
   }
   tbody.innerHTML = projects.map(p => {
@@ -4178,6 +4211,7 @@ function _renderProjectsTable(projects) {
       <td>${escHtml(p.manager || '—')}</td>
       <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
+      <td>${_buildDatesCell(p)}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
@@ -4199,12 +4233,17 @@ function openProjectModal(id = null) {
       document.getElementById('projectNameInput').value        = p.name    || '';
       document.getElementById('projectClientInput').value      = p.client  || '';
       document.getElementById('projectManagerInput').value     = p.manager || '';
-      document.getElementById('projectBudgetInput').value      = p.budget_hours ?? '';
-      document.getElementById('projectBudgetCostInput').value  = p.budget_cost ?? '';
-      document.getElementById('projectStatusInput').value      = p.status;
+      document.getElementById('projectBudgetInput').value         = p.budget_hours ?? '';
+      document.getElementById('projectBudgetCostInput').value      = p.budget_cost ?? '';
+      document.getElementById('projectStatusInput').value          = p.status;
+      document.getElementById('projectStartInput').value           = p.start_date       || '';
+      document.getElementById('projectPlannedEndInput').value      = p.planned_end_date || '';
+      document.getElementById('projectCompletionInput').value      = p.completion_date  || '';
     }
   } else {
-    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput','projectBudgetCostInput']
+    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput',
+     'projectBudgetInput','projectBudgetCostInput',
+     'projectStartInput','projectPlannedEndInput','projectCompletionInput']
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
@@ -4216,16 +4255,24 @@ function closeProjectModal() { closeModal('projectModal'); }
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
   if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
-  const budget     = document.getElementById('projectBudgetInput').value;
-  const budgetCost = document.getElementById('projectBudgetCostInput').value;
+  const budget         = document.getElementById('projectBudgetInput').value;
+  const budgetCost     = document.getElementById('projectBudgetCostInput').value;
+  const completionDate = document.getElementById('projectCompletionInput').value || null;
+  let status = document.getElementById('projectStatusInput').value;
+  if (completionDate && status !== 'encerrado') {
+    if (confirm(_t('confirm.set_encerrado'))) status = 'encerrado';
+  }
   const body = {
-    pep_wbs:      pep,
-    name:         document.getElementById('projectNameInput').value.trim()    || null,
-    client:       document.getElementById('projectClientInput').value.trim()  || null,
-    manager:      document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours: budget     !== '' ? parseFloat(budget)     : null,
-    budget_cost:  budgetCost !== '' ? parseFloat(budgetCost) : null,
-    status:       document.getElementById('projectStatusInput').value,
+    pep_wbs:          pep,
+    name:             document.getElementById('projectNameInput').value.trim()    || null,
+    client:           document.getElementById('projectClientInput').value.trim()  || null,
+    manager:          document.getElementById('projectManagerInput').value.trim() || null,
+    budget_hours:     budget     !== '' ? parseFloat(budget)     : null,
+    budget_cost:      budgetCost !== '' ? parseFloat(budgetCost) : null,
+    status,
+    start_date:       document.getElementById('projectStartInput').value       || null,
+    planned_end_date: document.getElementById('projectPlannedEndInput').value  || null,
+    completion_date:  completionDate,
   };
   try {
     if (_projectEditId) {
@@ -4449,10 +4496,10 @@ document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { c
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
-  const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status';
+  const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status,start_date,planned_end_date,completion_date';
   const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
   const rows = _allProjects.map(p =>
-    `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status}`
+    `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status},${p.start_date ?? ''},${p.planned_end_date ?? ''},${p.completion_date ?? ''}`
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

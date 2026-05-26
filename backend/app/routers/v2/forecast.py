@@ -180,12 +180,18 @@ def get_forecast(
             spi = compute_spi(last_plan_pv, last_plan_ev) if last_plan_ev is not None else None
             sv  = compute_sv(last_plan_ev or 0, last_plan_pv)
 
+    is_closed = (
+        project is not None
+        and project.status == "encerrado"
+        and project.completion_date is not None
+    )
+
     remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours else None
     remaining_cost  = round(eac - actual_cost, 2) if eac is not None else None
 
     est_cycles = None
     est_completion = None
-    if remaining_hours and remaining_hours > 0 and avg_hours > 0:
+    if not is_closed and remaining_hours and remaining_hours > 0 and avg_hours > 0:
         effective_velocity = avg_hours * spi if (spi and spi > 0) else avg_hours
         est_cycles = round(remaining_hours / effective_velocity, 1)
         n = math.ceil(est_cycles)
@@ -199,6 +205,19 @@ def get_forecast(
         )
         if len(future) >= n:
             est_completion = future[n - 1].name
+
+    # For closed projects: freeze metrics at final state
+    if is_closed:
+        remaining_hours = 0.0
+        remaining_cost  = 0.0
+        tcpi            = None
+        est_cycles      = None
+        est_completion  = None
+        # EAC = AC (actual final cost, not a projection)
+        if actual_cost > 0:
+            eac = round(actual_cost, 2)
+            vac = compute_vac(budget_cost, eac)
+            cv  = compute_cv(ev_val, actual_cost)
 
     return {
         "pep_wbs":                    pep_wbs,
@@ -224,6 +243,10 @@ def get_forecast(
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
         "estimated_completion_cycle": est_completion,
+        "is_closed":                  is_closed,
+        "start_date":                 str(project.start_date)       if (project and project.start_date)       else None,
+        "planned_end_date":           str(project.planned_end_date) if (project and project.planned_end_date) else None,
+        "completed_on":               str(project.completion_date)  if is_closed                              else None,
         "using_baseline":             active_baseline is not None,
         "baseline_locked_at":         active_baseline.locked_at if active_baseline else None,
         "baseline_label":             active_baseline.label if active_baseline else None,

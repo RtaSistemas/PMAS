@@ -23,6 +23,9 @@ class ProjectIn(BaseModel):
     budget_hours: Optional[float] = Field(default=None, ge=0)
     budget_cost: Optional[float] = Field(default=None, ge=0)
     status: Literal["ativo", "suspenso", "encerrado"] = "ativo"
+    start_date:       Optional[DateType] = None
+    planned_end_date: Optional[DateType] = None
+    completion_date:  Optional[DateType] = None
 
 
 class SeniorityLevelIn(BaseModel):
@@ -101,6 +104,9 @@ class ProjectOut(BaseModel):
     budget_hours: Optional[float] = None
     budget_cost: Optional[float] = None
     status: str
+    start_date:       Optional[DateType] = None
+    planned_end_date: Optional[DateType] = None
+    completion_date:  Optional[DateType] = None
 
 
 class UserProjectAccessIn(BaseModel):
