@@ -419,7 +419,7 @@
         <div id="burnUpChart" role="img" data-i18n-aria="chart.burnUpChart"></div>
       </div>
 
-      <div class="card" id="forecastAllocCard" hidden>
+      <div class="card" id="forecastAllocCard" data-panel-id="forecast-alloc" hidden>
         <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
           <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador</h2>
           <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
@@ -711,6 +711,10 @@
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-burnup">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="burnup.title">Burn-Up de Custo (R$)</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador</span>
                 </li>
               </ul>
             </li>
