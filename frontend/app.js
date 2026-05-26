@@ -2697,33 +2697,17 @@ function _renderBurnUpChart(fc) {
 }
 
 // ---------------------------------------------------------------------------
-// Generic collapsible card utility
-// ---------------------------------------------------------------------------
-
-function _initToggleCard(headerId, bodyId, { chartIds = [] } = {}) {
-  const headerEl = document.getElementById(headerId);
-  const bodyEl   = document.getElementById(bodyId);
-  if (!headerEl || !bodyEl) return;
-  let expanded = true;
-  const chevronEl = headerEl.querySelector('.card-chevron');
-  headerEl.addEventListener('click', (e) => {
-    if (e.target.closest('button, a, input, select, label')) return;
-    expanded = !expanded;
-    bodyEl.style.display = expanded ? '' : 'none';
-    if (chevronEl) chevronEl.style.transform = expanded ? '' : 'rotate(-90deg)';
-    if (expanded && chartIds.length) {
-      setTimeout(() => {
-        chartIds.forEach(cid => {
-          try { echarts.getInstanceByDom(document.getElementById(cid))?.resize(); } catch (_) {}
-        });
-      }, 50);
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Forecast allocation table (hours heatmap per collaborator, single PEP)
 // ---------------------------------------------------------------------------
+
+let _forecastAllocExpanded = true;
+
+document.getElementById('forecastAllocToggle').addEventListener('click', () => {
+  _forecastAllocExpanded = !_forecastAllocExpanded;
+  document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
+  const ch = document.getElementById('forecastAllocChevron');
+  ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
+});
 
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
   const card = document.getElementById('forecastAllocCard');
@@ -6435,23 +6419,6 @@ function _bootApp() {
   loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
-
-  // Collapsible cards — all section-header cards across the app
-  _initToggleCard('planHeader',         'planCardBody');
-  _initToggleCard('burnUpHeader',       'burnUpBody',        { chartIds: ['burnUpChart'] });
-  _initToggleCard('forecastAllocToggle','forecastAllocBody');
-  _initToggleCard('projectsHeader',     'projectsCardBody');
-  _initToggleCard('cyclesHeader',       'cyclesCardBody');
-  _initToggleCard('seniorityHeader',    'seniorityCardBody');
-  _initToggleCard('rateCardHeader',     'rateCardCardBody');
-  _initToggleCard('teamHeader',         'teamCardBody');
-  _initToggleCard('layoutHeader',       'layoutCardBody');
-  _initToggleCard('myHistoryHeader',    'myHistoryCardBody');
-  _initToggleCard('myQrHeader',         'myQrCardBody');
-  _initToggleCard('adminUsersHeader',   'adminUsersCardBody');
-  _initToggleCard('adminRulesHeader',   'adminRulesCardBody');
-  _initToggleCard('adminThemeHeader',   'adminThemeCardBody');
-  _initToggleCard('adminAuditHeader',   'adminAuditCardBody');
 }
 
 function _showOnboardingBanner() {

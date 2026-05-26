@@ -284,11 +284,6 @@ main {
   margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;
 }
 .section-header h2 { margin-bottom: 0; }
-.section-header[data-toggle] { cursor: pointer; user-select: none; }
-.card-chevron {
-  font-size: 1rem; transition: transform .25s; display: inline-block;
-  flex-shrink: 0; color: var(--text-3); margin-left: auto;
-}
 
 /* ── Buttons ─────────────────────────────────────────────────── */
 .btn {
