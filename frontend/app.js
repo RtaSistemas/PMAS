@@ -760,6 +760,18 @@ const _EVM_TERMS = {
       formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
     },
   },
+  AC: {
+    pt: {
+      name: 'AC — Custo Real (Actual Cost)',
+      desc: 'Total de custos reais incorridos e registrados para o trabalho realizado até o momento.',
+      formula: 'AC = Σ (horas × custo/hora)\n  Calculado com a tarifa congelada no momento da importação',
+    },
+    en: {
+      name: 'AC — Actual Cost',
+      desc: 'Total of actual costs incurred for work performed to date.',
+      formula: 'AC = Σ (hours × cost/hour)\n  Rate is frozen at ingestion time (EVM freeze pattern)',
+    },
+  },
   SV: {
     pt: {
       name: 'VS — Variação de Prazo',
@@ -2281,20 +2293,20 @@ function _buildForecastKpis(fc) {
     { val: fmtH(fc.consumed_hours),                                                    lbl: _t('forecast.consumed'),          cls: 'blue'                    },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
-    { val: spiVal,                                                                      lbl: _t('forecast.spi'),               cls: spiCls,  evm: 'SPI'       },
-    { val: svFmt,                                                                       lbl: _t('forecast.sv'),                cls: svCls,   evm: 'SV'        },
+    { val: spiVal,                                                                      lbl: 'SPI',                            cls: spiCls,  evm: 'SPI'       },
+    { val: svFmt,                                                                       lbl: 'SV',                             cls: svCls,   evm: 'SV'        },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl,                    cls: 'violet'                  },
-    { val: tcpiVal,                                                                     lbl: _t('forecast.tcpi'),              cls: tcpiCls, evm: 'TCPI'      },
+    { val: tcpiVal,                                                                     lbl: 'TCPI',                           cls: tcpiCls, evm: 'TCPI'      },
   ].map(mkCard).join('');
 
   const row2 = [
-    { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: _t('forecast.consumed_cost'),    cls: 'blue'                    },
-    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: _t('forecast.remaining_cost'),   cls: 'neutral', evm: 'ETC'     },
+    { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: 'AC',                            cls: 'blue',    evm: 'AC'      },
+    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: 'ETC',                           cls: 'neutral', evm: 'ETC'     },
     { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
     { val: cpiVal,                                                                      lbl: 'CPI',                           cls: cpiCls,  evm: 'CPI'       },
-    { val: cvFmt,                                                                       lbl: _t('forecast.cv'),               cls: cvCls,   evm: 'CV'        },
+    { val: cvFmt,                                                                       lbl: 'CV',                            cls: cvCls,   evm: 'CV'        },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',                           cls: 'neutral', evm: 'EAC'     },
-    { val: vacFmt,                                                                      lbl: _t('forecast.vac'),              cls: vacCls,  evm: 'VAC'       },
+    { val: vacFmt,                                                                      lbl: 'VAC',                           cls: vacCls,  evm: 'VAC'       },
   ].map(mkCard).join('');
 
   return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
