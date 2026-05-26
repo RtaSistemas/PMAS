@@ -111,6 +111,9 @@ class Project(Base):
     budget_cost = Column(Float, nullable=True)
     # ativo | encerrado | suspenso
     status = Column(String, default="ativo", nullable=False)
+    start_date       = Column(Date, nullable=True)
+    planned_end_date = Column(Date, nullable=True)
+    completion_date  = Column(Date, nullable=True)
 
     plans = relationship("ProjectCyclePlan", back_populates="project", cascade="all, delete-orphan")
     user_access = relationship("UserProjectAccess", back_populates="project", cascade="all, delete-orphan")

@@ -104,6 +104,16 @@ const _LANG = {
     'pm.client_lbl':'Cliente','pm.client_ph':'Nome do cliente',
     'pm.mgr_lbl':'Gerente','pm.mgr_ph':'Nome do gerente',
     'pm.bh_lbl':'Orçamento de horas','pm.bc_lbl':'Orçamento (R$)',
+    'pm.start_lbl':'Início','pm.planned_end_lbl':'Término planejado','pm.completion_lbl':'Concluído em',
+    'projects.th.dates':'Datas',
+    'forecast.info.start':'Início','forecast.info.planned_end':'Término Planejado','forecast.info.completed':'Concluído em',
+    'forecast.completed_on':'Concluído em',
+    'forecast.alloc.title':'Alocação por Colaborador',
+    'forecast.alloc.collaborator':'Colaborador',
+    'forecast.alloc.normal':'Normal (h)','forecast.alloc.extra':'Extra (h)',
+    'forecast.alloc.standby':'Sobreaviso (h)','forecast.alloc.total':'Total (h)',
+    'forecast.alloc.empty':'Sem dados de alocação para este período.',
+    'confirm.set_encerrado':'Data de conclusão preenchida. Alterar status para "Encerrado"?',
     'opt.ativo':'Ativo','opt.suspenso':'Suspenso','opt.encerrado':'Encerrado',
     'sm.title_new':'Novo Nível de Senioridade','sm.name_lbl':'Nome *','sm.name_ph':'Ex: Pleno, Sênior',
     'rm.title_new':'Nova Taxa','rm.level_lbl':'Nível de Senioridade *',
@@ -452,6 +462,16 @@ const _LANG = {
     'pm.client_lbl':'Client','pm.client_ph':'Client name',
     'pm.mgr_lbl':'Manager','pm.mgr_ph':'Manager name',
     'pm.bh_lbl':'Hours budget','pm.bc_lbl':'Budget (R$)',
+    'pm.start_lbl':'Start','pm.planned_end_lbl':'Planned end','pm.completion_lbl':'Completed on',
+    'projects.th.dates':'Dates',
+    'forecast.info.start':'Start','forecast.info.planned_end':'Planned end','forecast.info.completed':'Completed on',
+    'forecast.completed_on':'Completed on',
+    'forecast.alloc.title':'Allocation by Collaborator',
+    'forecast.alloc.collaborator':'Collaborator',
+    'forecast.alloc.normal':'Normal (h)','forecast.alloc.extra':'Extra (h)',
+    'forecast.alloc.standby':'Standby (h)','forecast.alloc.total':'Total (h)',
+    'forecast.alloc.empty':'No allocation data for this period.',
+    'confirm.set_encerrado':'Completion date set. Change status to "Closed"?',
     'opt.ativo':'Active','opt.suspenso':'Suspended','opt.encerrado':'Closed',
     'sm.title_new':'New Seniority Level','sm.name_lbl':'Name *','sm.name_ph':'E.g.: Mid, Senior',
     'rm.title_new':'New Rate','rm.level_lbl':'Seniority Level *',
@@ -748,6 +768,18 @@ const _EVM_TERMS = {
       name: 'EAC — Estimate at Completion',
       desc: 'Projected total cost of the project at completion, based on current cost performance.',
       formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
+    },
+  },
+  AC: {
+    pt: {
+      name: 'AC — Custo Real (Actual Cost)',
+      desc: 'Total de custos reais incorridos e registrados para o trabalho realizado até o momento.',
+      formula: 'AC = Σ (horas × custo/hora)\n  Calculado com a tarifa congelada no momento da importação',
+    },
+    en: {
+      name: 'AC — Actual Cost',
+      desc: 'Total of actual costs incurred for work performed to date.',
+      formula: 'AC = Σ (hours × cost/hour)\n  Rate is frozen at ingestion time (EVM freeze pattern)',
     },
   },
   SV: {
@@ -2244,7 +2276,7 @@ function _buildForecastKpis(fc) {
 
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
   const spiCls  = fc.spi  == null ? 'neutral' : fc.spi  >= 1.0 ? 'green' : fc.spi  >= 0.9 ? 'amber' : 'red';
-  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtH(fc.sv)  : '—';
+  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
   const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
@@ -2256,8 +2288,11 @@ function _buildForecastKpis(fc) {
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
 
-  const completionVal = fc.estimated_completion_cycle
-    || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—');
+  const completionVal = fc.is_closed && fc.completed_on
+    ? _fmtDateBR(fc.completed_on)
+    : (fc.estimated_completion_cycle
+      || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—'));
+  const completionLbl = fc.is_closed ? _t('forecast.completed_on') : _t('forecast.completion');
 
   const mkCard = ({ val, lbl, cls, evm }) => {
     const lblHtml = evm ? `<span data-evm="${evm}">${escHtml(lbl)}</span>` : escHtml(lbl);
@@ -2268,20 +2303,20 @@ function _buildForecastKpis(fc) {
     { val: fmtH(fc.consumed_hours),                                                    lbl: _t('forecast.consumed'),          cls: 'blue'                    },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
-    { val: spiVal,                                                                      lbl: _t('forecast.spi'),               cls: spiCls,  evm: 'SPI'       },
-    { val: svFmt,                                                                       lbl: _t('forecast.sv'),                cls: svCls,   evm: 'SV'        },
-    { val: escHtml(String(completionVal)),                                              lbl: _t('forecast.completion'),        cls: 'violet'                  },
-    { val: tcpiVal,                                                                     lbl: _t('forecast.tcpi'),              cls: tcpiCls, evm: 'TCPI'      },
+    { val: spiVal,                                                                      lbl: 'SPI',                            cls: spiCls,  evm: 'SPI'       },
+    { val: svFmt,                                                                       lbl: 'SV',                             cls: svCls,   evm: 'SV'        },
+    { val: escHtml(String(completionVal)),                                              lbl: completionLbl,                    cls: 'violet'                  },
+    { val: tcpiVal,                                                                     lbl: 'TCPI',                           cls: tcpiCls, evm: 'TCPI'      },
   ].map(mkCard).join('');
 
   const row2 = [
-    { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: _t('forecast.consumed_cost'),    cls: 'blue'                    },
-    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: _t('forecast.remaining_cost'),   cls: 'neutral', evm: 'ETC'     },
+    { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: 'AC',                            cls: 'blue',    evm: 'AC'      },
+    { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: 'ETC',                           cls: 'neutral', evm: 'ETC'     },
     { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
     { val: cpiVal,                                                                      lbl: 'CPI',                           cls: cpiCls,  evm: 'CPI'       },
-    { val: cvFmt,                                                                       lbl: _t('forecast.cv'),               cls: cvCls,   evm: 'CV'        },
+    { val: cvFmt,                                                                       lbl: 'CV',                            cls: cvCls,   evm: 'CV'        },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',                           cls: 'neutral', evm: 'EAC'     },
-    { val: vacFmt,                                                                      lbl: _t('forecast.vac'),              cls: vacCls,  evm: 'VAC'       },
+    { val: vacFmt,                                                                      lbl: 'VAC',                           cls: vacCls,  evm: 'VAC'       },
   ].map(mkCard).join('');
 
   return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
@@ -2465,12 +2500,18 @@ function _renderForecastProjectInfo(fc, proj) {
     baselineStr = escHtml(_t('forecast.info.baseline_none'));
   }
 
+  const dateChips = [];
+  if (fc.start_date)       dateChips.push(`▸ ${_t('forecast.info.start')}: ${_fmtDateBR(fc.start_date)}`);
+  if (fc.planned_end_date) dateChips.push(`→ ${_t('forecast.info.planned_end')}: ${_fmtDateBR(fc.planned_end_date)}`);
+  if (fc.completed_on)     dateChips.push(`✓ ${_t('forecast.info.completed')}: ${_fmtDateBR(fc.completed_on)}`);
+
   el.innerHTML =
     _forecastInfoStat(_t('forecast.info.project'),
       escHtml(proj?.name || _t('forecast.info.no_name'))) +
     _forecastInfoStat(_t('forecast.info.manager'),
       escHtml(proj?.manager || _t('forecast.info.no_manager'))) +
     _forecastInfoStat(_t('forecast.info.budget'), budgetStr) +
+    (dateChips.length ? _forecastInfoStat(_t('projects.th.dates'), escHtml(dateChips.join('  '))) : '') +
     _forecastInfoStat(_t('forecast.info.status'), `${dotHtml}${escHtml(semLabel)}`) +
     _forecastInfoStat(_t('forecast.info.baseline'), baselineStr);
   el.hidden = false;
@@ -2582,6 +2623,7 @@ async function _renderForecastTab() {
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
+    document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -2610,6 +2652,7 @@ async function _renderForecastTab() {
       chart.resize();
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderBurnUpChart(fc);
+    await _renderForecastAllocTable(pep, dateFrom, dateTo);
     await _renderPlanTable(pep);
     document.getElementById('planCard').hidden = false;
   } catch (err) {
@@ -2619,6 +2662,7 @@ async function _renderForecastTab() {
     if (infoEl) infoEl.hidden = true;
     document.getElementById('planCard').hidden = true;
     document.getElementById('burnUpCard').hidden = true;
+    document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
   }
@@ -2642,6 +2686,94 @@ function _renderBurnUpChart(fc) {
     chart.setOption(_buildBurnUpOption(fc), true);
     chart.resize();
   } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// Forecast allocation table (hours heatmap per collaborator, single PEP)
+// ---------------------------------------------------------------------------
+
+let _forecastAllocExpanded = true;
+
+document.getElementById('forecastAllocToggle').addEventListener('click', () => {
+  _forecastAllocExpanded = !_forecastAllocExpanded;
+  document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
+  const ch = document.getElementById('forecastAllocChevron');
+  ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
+});
+
+async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
+  const card = document.getElementById('forecastAllocCard');
+  const tbl  = document.getElementById('forecastAllocTable');
+  if (!pep) { card.hidden = true; return; }
+
+  try {
+    const p = new URLSearchParams({ pep_wbs: pep });
+    if (dateFrom) p.set('date_from', dateFrom);
+    if (dateTo)   p.set('date_to',   dateTo);
+    const data = await apiFetch(`/api/v2/allocation?${p}`);
+
+    if (!data.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    // Aggregate per collaborator (multiple pep_description rows possible for same pep_wbs)
+    const byCollab = {};
+    data.forEach(d => {
+      if (!byCollab[d.collaborator]) byCollab[d.collaborator] = { normal: 0, extra: 0, standby: 0, total: 0 };
+      byCollab[d.collaborator].normal  += d.normal_hours  || 0;
+      byCollab[d.collaborator].extra   += d.extra_hours   || 0;
+      byCollab[d.collaborator].standby += d.standby_hours || 0;
+      byCollab[d.collaborator].total   += d.total_hours   || 0;
+    });
+
+    const collabs = Object.entries(byCollab).sort((a, b) => b[1].total - a[1].total);
+
+    // Independent max per column for meaningful per-type heatmap
+    const maxNormal  = Math.max(...collabs.map(([, v]) => v.normal),  0.001);
+    const maxExtra   = Math.max(...collabs.map(([, v]) => v.extra),   0.001);
+    const maxStandby = Math.max(...collabs.map(([, v]) => v.standby), 0.001);
+
+    const heat = (v, max) => {
+      if (!v) return '';
+      const a = (0.08 + (v / max) * 0.72).toFixed(2);
+      return `style="background:rgba(14,165,233,${a})"`;
+    };
+    const fmt = v => v > 0 ? `${v.toFixed(1)}h` : '—';
+
+    const totNormal  = collabs.reduce((s, [, v]) => s + v.normal,  0);
+    const totExtra   = collabs.reduce((s, [, v]) => s + v.extra,   0);
+    const totStandby = collabs.reduce((s, [, v]) => s + v.standby, 0);
+    const totTotal   = collabs.reduce((s, [, v]) => s + v.total,   0);
+
+    let html = `<table class="data-table alloc-matrix" style="width:100%"><thead><tr>
+      <th>${_t('forecast.alloc.collaborator')}</th>
+      <th>${_t('forecast.alloc.normal')}</th>
+      <th>${_t('forecast.alloc.extra')}</th>
+      <th>${_t('forecast.alloc.standby')}</th>
+      <th class="alloc-total">${_t('forecast.alloc.total')}</th>
+    </tr></thead><tbody>`;
+
+    collabs.forEach(([name, v]) => {
+      html += `<tr>
+        <td class="alloc-name">${escHtml(name)}</td>
+        <td ${heat(v.normal,  maxNormal)}>${fmt(v.normal)}</td>
+        <td ${heat(v.extra,   maxExtra)}>${fmt(v.extra)}</td>
+        <td ${heat(v.standby, maxStandby)}>${fmt(v.standby)}</td>
+        <td class="alloc-total">${fmt(v.total)}</td>
+      </tr>`;
+    });
+
+    html += `<tr class="alloc-footer">
+      <td>${_t('forecast.alloc.total')}</td>
+      <td>${fmt(totNormal)}</td>
+      <td>${fmt(totExtra)}</td>
+      <td>${fmt(totStandby)}</td>
+      <td class="alloc-total">${fmt(totTotal)}</td>
+    </tr></tbody></table>`;
+
+    tbl.innerHTML = html;
+  } catch (_) {
+    card.hidden = true;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -4159,10 +4291,24 @@ function _buildBudgetCell(p) {
   return budgetStr;
 }
 
+function _fmtDateBR(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function _buildDatesCell(p) {
+  const parts = [];
+  if (p.start_date)       parts.push(`▸ ${_fmtDateBR(p.start_date)}`);
+  if (p.planned_end_date) parts.push(`→ ${_fmtDateBR(p.planned_end_date)}`);
+  if (p.completion_date)  parts.push(`✓ ${_fmtDateBR(p.completion_date)}`);
+  return parts.length ? `<span style="font-size:.8rem;color:#94a3b8">${parts.join(' ')}</span>` : '—';
+}
+
 function _renderProjectsTable(projects) {
   const tbody = document.getElementById('projectsBody');
   if (!projects.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
     return;
   }
   tbody.innerHTML = projects.map(p => {
@@ -4178,6 +4324,7 @@ function _renderProjectsTable(projects) {
       <td>${escHtml(p.manager || '—')}</td>
       <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
+      <td>${_buildDatesCell(p)}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
@@ -4199,12 +4346,17 @@ function openProjectModal(id = null) {
       document.getElementById('projectNameInput').value        = p.name    || '';
       document.getElementById('projectClientInput').value      = p.client  || '';
       document.getElementById('projectManagerInput').value     = p.manager || '';
-      document.getElementById('projectBudgetInput').value      = p.budget_hours ?? '';
-      document.getElementById('projectBudgetCostInput').value  = p.budget_cost ?? '';
-      document.getElementById('projectStatusInput').value      = p.status;
+      document.getElementById('projectBudgetInput').value         = p.budget_hours ?? '';
+      document.getElementById('projectBudgetCostInput').value      = p.budget_cost ?? '';
+      document.getElementById('projectStatusInput').value          = p.status;
+      document.getElementById('projectStartInput').value           = p.start_date       || '';
+      document.getElementById('projectPlannedEndInput').value      = p.planned_end_date || '';
+      document.getElementById('projectCompletionInput').value      = p.completion_date  || '';
     }
   } else {
-    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput','projectBudgetInput','projectBudgetCostInput']
+    ['projectPepInput','projectNameInput','projectClientInput','projectManagerInput',
+     'projectBudgetInput','projectBudgetCostInput',
+     'projectStartInput','projectPlannedEndInput','projectCompletionInput']
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
@@ -4216,16 +4368,24 @@ function closeProjectModal() { closeModal('projectModal'); }
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
   if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
-  const budget     = document.getElementById('projectBudgetInput').value;
-  const budgetCost = document.getElementById('projectBudgetCostInput').value;
+  const budget         = document.getElementById('projectBudgetInput').value;
+  const budgetCost     = document.getElementById('projectBudgetCostInput').value;
+  const completionDate = document.getElementById('projectCompletionInput').value || null;
+  let status = document.getElementById('projectStatusInput').value;
+  if (completionDate && status !== 'encerrado') {
+    if (confirm(_t('confirm.set_encerrado'))) status = 'encerrado';
+  }
   const body = {
-    pep_wbs:      pep,
-    name:         document.getElementById('projectNameInput').value.trim()    || null,
-    client:       document.getElementById('projectClientInput').value.trim()  || null,
-    manager:      document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours: budget     !== '' ? parseFloat(budget)     : null,
-    budget_cost:  budgetCost !== '' ? parseFloat(budgetCost) : null,
-    status:       document.getElementById('projectStatusInput').value,
+    pep_wbs:          pep,
+    name:             document.getElementById('projectNameInput').value.trim()    || null,
+    client:           document.getElementById('projectClientInput').value.trim()  || null,
+    manager:          document.getElementById('projectManagerInput').value.trim() || null,
+    budget_hours:     budget     !== '' ? parseFloat(budget)     : null,
+    budget_cost:      budgetCost !== '' ? parseFloat(budgetCost) : null,
+    status,
+    start_date:       document.getElementById('projectStartInput').value       || null,
+    planned_end_date: document.getElementById('projectPlannedEndInput').value  || null,
+    completion_date:  completionDate,
   };
   try {
     if (_projectEditId) {
@@ -4449,10 +4609,10 @@ document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { c
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
-  const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status';
+  const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status,start_date,planned_end_date,completion_date';
   const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
   const rows = _allProjects.map(p =>
-    `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status}`
+    `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status},${p.start_date ?? ''},${p.planned_end_date ?? ''},${p.completion_date ?? ''}`
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

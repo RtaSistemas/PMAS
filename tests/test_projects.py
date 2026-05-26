@@ -100,6 +100,50 @@ class TestUpdateProject:
         assert r.status_code == 200
 
 
+class TestProjectDates:
+    def test_create_with_dates(self, client):
+        r = client.post("/api/projects", json={
+            "pep_wbs": "DT-001",
+            "start_date": "2025-01-01",
+            "planned_end_date": "2025-12-31",
+        })
+        assert r.status_code == 201
+        d = r.json()
+        assert d["start_date"] == "2025-01-01"
+        assert d["planned_end_date"] == "2025-12-31"
+        assert d["completion_date"] is None
+
+    def test_completion_date_forces_encerrado(self, client):
+        r = client.post("/api/projects", json={
+            "pep_wbs": "DT-002",
+            "status": "ativo",
+            "completion_date": "2025-06-30",
+        })
+        assert r.status_code == 201
+        assert r.json()["status"] == "encerrado"
+        assert r.json()["completion_date"] == "2025-06-30"
+
+    def test_update_sets_completion_date(self, client):
+        p = _create(client, pep="DT-003", status="ativo")
+        r = client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "DT-003",
+            "status": "ativo",
+            "completion_date": "2025-09-15",
+        })
+        assert r.status_code == 200
+        d = r.json()
+        assert d["status"] == "encerrado"
+        assert d["completion_date"] == "2025-09-15"
+
+    def test_dates_null_by_default(self, client):
+        r = client.post("/api/projects", json={"pep_wbs": "DT-004"})
+        assert r.status_code == 201
+        d = r.json()
+        assert d["start_date"] is None
+        assert d["planned_end_date"] is None
+        assert d["completion_date"] is None
+
+
 class TestDeleteProject:
     def test_success(self, client):
         p = _create(client, pep="DEL-001")

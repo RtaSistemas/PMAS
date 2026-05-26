@@ -418,6 +418,16 @@
         </div>
         <div id="burnUpChart" role="img" data-i18n-aria="chart.burnUpChart"></div>
       </div>
+
+      <div class="card" id="forecastAllocCard" hidden>
+        <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
+          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador</h2>
+          <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        </div>
+        <div id="forecastAllocBody">
+          <div id="forecastAllocTable"></div>
+        </div>
+      </div>
     </div>
 
   </section>
@@ -447,11 +457,12 @@
             <th data-i18n="projects.th.client">Cliente</th>
             <th data-i18n="projects.th.mgr">Gerente</th>
             <th class="text-right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th data-i18n="projects.th.dates">Datas</th>
             <th data-i18n="projects.th.status">Status</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="projectsBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
+        <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
     </div>
     <div class="card">
@@ -962,6 +973,18 @@
       <div class="form-group">
         <label for="projectBudgetCostInput" data-i18n="pm.bc_lbl">Budget (R$)</label>
         <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label for="projectStartInput" data-i18n="pm.start_lbl">Início</label>
+        <input type="date" id="projectStartInput" />
+      </div>
+      <div class="form-group">
+        <label for="projectPlannedEndInput" data-i18n="pm.planned_end_lbl">Término planejado</label>
+        <input type="date" id="projectPlannedEndInput" />
+      </div>
+      <div class="form-group">
+        <label for="projectCompletionInput" data-i18n="pm.completion_lbl">Concluído em</label>
+        <input type="date" id="projectCompletionInput" />
       </div>
     </div>
     <div class="error-msg" id="projectError"></div>

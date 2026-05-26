@@ -149,6 +149,12 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE project ADD COLUMN client VARCHAR"))
             if "manager" not in p_cols:
                 conn.execute(text("ALTER TABLE project ADD COLUMN manager VARCHAR"))
+            if "start_date" not in p_cols:
+                conn.execute(text("ALTER TABLE project ADD COLUMN start_date DATE"))
+            if "planned_end_date" not in p_cols:
+                conn.execute(text("ALTER TABLE project ADD COLUMN planned_end_date DATE"))
+            if "completion_date" not in p_cols:
+                conn.execute(text("ALTER TABLE project ADD COLUMN completion_date DATE"))
             cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
             if "is_closed" not in cy_cols:
                 conn.execute(text(

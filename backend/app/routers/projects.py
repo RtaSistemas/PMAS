@@ -33,6 +33,21 @@ def _float_or_none(value) -> float | None:
         return None
 
 
+def _date_or_none(value):
+    if value is None:
+        return None
+    from datetime import date as _date
+    if isinstance(value, _date):
+        return value
+    s = str(value).strip()
+    if s.lower() in {"nan", "none", ""}:
+        return None
+    try:
+        return _date.fromisoformat(s)
+    except ValueError:
+        return None
+
+
 def _project_to_dict(p: Project) -> dict:
     return {
         "id": p.id,
@@ -44,6 +59,9 @@ def _project_to_dict(p: Project) -> dict:
         "budget_hours": p.budget_hours,
         "budget_cost": p.budget_cost,
         "status": p.status,
+        "start_date":       p.start_date,
+        "planned_end_date": p.planned_end_date,
+        "completion_date":  p.completion_date,
     }
 
 
@@ -61,6 +79,8 @@ def create_project(body: ProjectIn, db: DbSession, current_user: AdminUser):
     if db.query(Project).filter(Project.pep_wbs == body.pep_wbs).first():
         raise HTTPException(status_code=409, detail="Já existe um projeto com esse código PEP.")
     project = Project(**body.model_dump())
+    if project.completion_date is not None:
+        project.status = "encerrado"
     db.add(project)
     db.flush()
     log_audit(db, current_user, "create", "project", project.id, {"pep_wbs": project.pep_wbs, "name": project.name})
@@ -81,6 +101,8 @@ def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user
         raise HTTPException(status_code=409, detail="Já existe outro projeto com esse código PEP.")
     for field, value in body.model_dump().items():
         setattr(project, field, value)
+    if project.completion_date is not None:
+        project.status = "encerrado"
     log_audit(db, current_user, "update", "project", project_id, body.model_dump())
     db.commit()
     db.refresh(project)
@@ -112,21 +134,31 @@ def import_projects(file: UploadFile, db: DbSession, current_user: AdminUser):
             manager = _str_or_none(row.get("manager"))
             raw_status = str(row.get("status", "ativo")).strip()
             status = raw_status if raw_status in ("ativo", "suspenso", "encerrado") else "ativo"
-            budget_hours = _float_or_none(row.get("budget_hours"))
-            budget_cost  = _float_or_none(row.get("budget_cost"))
+            budget_hours     = _float_or_none(row.get("budget_hours"))
+            budget_cost      = _float_or_none(row.get("budget_cost"))
+            start_date       = _date_or_none(row.get("start_date"))
+            planned_end_date = _date_or_none(row.get("planned_end_date"))
+            completion_date  = _date_or_none(row.get("completion_date"))
+            if completion_date is not None:
+                status = "encerrado"
             existing = db.query(Project).filter(Project.pep_wbs == pep).first()
             if existing:
                 if name    is not None: existing.name         = name
                 if client  is not None: existing.client       = client
                 if manager is not None: existing.manager      = manager
                 existing.status = status
-                if budget_hours is not None: existing.budget_hours = budget_hours
-                if budget_cost  is not None: existing.budget_cost  = budget_cost
+                if budget_hours     is not None: existing.budget_hours     = budget_hours
+                if budget_cost      is not None: existing.budget_cost      = budget_cost
+                if start_date       is not None: existing.start_date       = start_date
+                if planned_end_date is not None: existing.planned_end_date = planned_end_date
+                if completion_date  is not None: existing.completion_date  = completion_date
                 updated += 1
             else:
                 db.add(Project(
                     pep_wbs=pep, name=name, client=client, manager=manager,
                     status=status, budget_hours=budget_hours, budget_cost=budget_cost,
+                    start_date=start_date, planned_end_date=planned_end_date,
+                    completion_date=completion_date,
                 ))
                 created += 1
         except Exception as exc:
