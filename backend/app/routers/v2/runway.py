@@ -158,8 +158,11 @@ def get_runway(
 
         consumed_hours = data["consumed_hours"]
         actual_cost    = data["actual_cost"]
+        is_closed = bool(
+            proj and proj.status == "encerrado" and proj.completion_date is not None
+        )
 
-        # Use the last-3-cycles velocity window
+        # Use the last-3-cycles velocity window — exclude zero-value cycles from denominator
         sorted_cids = sorted(
             data["cycle_ids"],
             key=lambda cid: cycle_start_by_id.get(cid, __import__('datetime').date.min),
@@ -168,8 +171,10 @@ def get_runway(
         recent_hours = [pep_cycle_hours.get(key, {}).get(cid, 0.0) for cid in recent_cids]
         recent_costs = [pep_cycle_costs.get(key, {}).get(cid, 0.0) for cid in recent_cids]
 
-        avg_hours_per_cycle = sum(recent_hours) / len(recent_hours) if recent_hours else 0.0
-        avg_cost_per_cycle  = sum(recent_costs) / len(recent_costs) if recent_costs else 0.0
+        recent_hours_nz = [h for h in recent_hours if h > 0]
+        recent_costs_nz = [c for c in recent_costs if c > 0]
+        avg_hours_per_cycle = sum(recent_hours_nz) / len(recent_hours_nz) if recent_hours_nz else 0.0
+        avg_cost_per_cycle  = sum(recent_costs_nz) / len(recent_costs_nz) if recent_costs_nz else 0.0
 
         pct_consumed       = None
         remaining_hours    = None
@@ -191,7 +196,7 @@ def get_runway(
             else:
                 risk = "ok"
 
-            if avg_hours_per_cycle > 0 and remaining_hours is not None:
+            if not is_closed and avg_hours_per_cycle > 0 and remaining_hours is not None:
                 cycles_to_complete = remaining_hours / avg_hours_per_cycle
 
                 if remaining_hours > 0 and cycles_to_complete > 0:
@@ -263,6 +268,7 @@ def get_runway(
             "pep_wbs": key,
             "pep_description": data["pep_description"],
             "name": name,
+            "is_closed": is_closed,
             "budget_hours": budget_hours,
             "budget_cost": round(budget_cost, 2) if budget_cost is not None else None,
             "consumed_hours": round(consumed_hours, 2),
@@ -271,8 +277,8 @@ def get_runway(
             "pct_consumed_cost": pct_consumed_cost,
             "avg_hours_per_cycle": round(avg_hours_per_cycle, 2),
             "avg_cost_per_cycle":  round(avg_cost_per_cycle,  2),
-            "cycles_to_complete": round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None,
-            "estimated_completion_cycle": estimated_completion_cycle,
+            "cycles_to_complete": None if is_closed else (round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None),
+            "estimated_completion_cycle": None if is_closed else estimated_completion_cycle,
             "spi": spi,
             "schedule_status": schedule_status,
             "cpi": cpi,
