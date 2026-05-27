@@ -174,7 +174,7 @@ function _buildHoursBarOption({
       formatter:  p => p.value === maxTotal
         ? `{peak|${p.value.toFixed(1)}h}`
         : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontWeight: 700 } },
+      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 10 } },
     },
     z: 10,
   }] : [];
