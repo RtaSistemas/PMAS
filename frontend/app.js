@@ -3932,7 +3932,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
           .map(p => {
             const val   = p.value;
             const isSpi = p.seriesName.endsWith(_t('pepcpi.spi_suffix'));
-            const color = val >= 1.0 ? _cssVar('--primary') : val >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+            const color = val >= _budgetCritical ? _cssVar('--primary') : val >= _budgetWarning ? _cssVar('--amber') : _cssVar('--red');
             const shape = isSpi
               ? `<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);margin-right:4px"></span>`
               : `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
@@ -4278,7 +4278,7 @@ async function loadProjectsTable() {
       apiFetch('/api/v2/portfolio').catch(() => []),
     ]);
     _allProjects   = projects;
-    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.total_hours]));
+    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, { hours: h.total_hours, health: h.health_hours }]));
 
     // Fetch active baselines for all projects in parallel (best-effort)
     const blResults = await Promise.allSettled(
@@ -4298,13 +4298,13 @@ async function loadProjectsTable() {
 
 function _buildBudgetCell(p) {
   if (p.budget_hours == null) return '—';
-  const consumed = _consumedByPep[p.pep_wbs];
+  const entry = _consumedByPep[p.pep_wbs];
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
-  if (!consumed) return budgetStr;
-  const pct = consumed / p.budget_hours;
+  if (!entry) return budgetStr;
+  const { hours: consumed, health } = entry;
   const wPct = Math.round(_budgetWarning * 100);
-  if (pct >= _budgetCritical) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
+  if (health === 'overrun' || health === 'critical') return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
+  if (health === 'warning') return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
   return budgetStr;
 }
 

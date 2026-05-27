@@ -23,6 +23,7 @@ from backend.app.models import (
 from backend.app.routers.v2.portfolio import _allowed_peps
 from backend.app.services.evm import (
     classify_health,
+    classify_schedule_status,
     compute_cpi_ev,
     compute_ev_capped,
     cpi_color,
@@ -248,12 +249,7 @@ def get_runway(
 
                 if last_plan_pv and last_plan_pv > 0 and last_plan_ev is not None:
                     spi = round(last_plan_ev / last_plan_pv, 3)
-                    if spi >= 1.0:
-                        schedule_status = "on_track"
-                    elif spi >= 0.9:
-                        schedule_status = "at_risk"
-                    else:
-                        schedule_status = "behind"
+                    schedule_status = classify_schedule_status(spi)
 
         pct_consumed_cost = (
             round(actual_cost / budget_cost * 100, 1)

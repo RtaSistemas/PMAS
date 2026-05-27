@@ -37,9 +37,13 @@ from backend.app.services.evm import (
     compute_vac,
     cpi_color,
     cpi_label,
+    cv_color,
+    cv_label,
     resolve_effective_budget,
     spi_color,
     spi_label,
+    sv_color,
+    sv_label,
     tcpi_color,
 )
 
@@ -160,11 +164,11 @@ def get_forecast(
             "cumulative_ev_cost":        ev_cost_cum,
             "spi_cumulative":            spi_cum,
             "sv":                        sv_period,
-            "sv_label":                  _sv_label(sv_period),
-            "sv_color":                  _sv_color(sv_period),
+            "sv_label":                  sv_label(sv_period),
+            "sv_color":                  sv_color(sv_period),
             "cv":                        cv_period,
-            "cv_label":                  _cv_label(cv_period),
-            "cv_color":                  _cv_color(cv_period),
+            "cv_label":                  cv_label(cv_period),
+            "cv_color":                  cv_color(cv_period),
         })
         prev_period_h = period_h
         prev_period_c = period_c
@@ -331,20 +335,3 @@ def _load_cycle_data(
 
 
 # ── Label/color helpers ──────────────────────────────────────────────────────
-
-def _sv_label(v):
-    if v is None: return None
-    if v > 0:  return f"Adiantado em {abs(v):.1f}h"
-    if v < 0:  return f"Atrasado em {abs(v):.1f}h"
-    return "No prazo"
-def _sv_color(v):
-    if v is None: return None
-    return "success" if v >= 0 else "warning" if v >= -10 else "danger"
-def _cv_label(v):
-    if v is None: return None
-    if v > 0:  return f"Economia de R$ {abs(v):,.2f}"
-    if v < 0:  return f"Estouro de R$ {abs(v):,.2f}"
-    return "No prazo"
-def _cv_color(v):
-    if v is None: return None
-    return "success" if v >= 0 else "danger"
