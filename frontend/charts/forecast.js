@@ -110,7 +110,7 @@ function _buildForecastOption(fc) {
   if (budgetData) legendData.push(_t('forecast.budget_line'));
 
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     legend: {
       data: legendData, top: 8, left: 'center',
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
@@ -119,8 +119,7 @@ function _buildForecastOption(fc) {
     grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text') },
+      ..._chartDefaults().tooltip,
       formatter: params => {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
@@ -201,7 +200,7 @@ function _buildBurnUpOption(fc) {
   }
 
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     legend: {
       data: legendData, top: 8, left: 'center',
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
@@ -210,8 +209,7 @@ function _buildBurnUpOption(fc) {
     grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text') },
+      ..._chartDefaults().tooltip,
       formatter: params => {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
@@ -288,7 +286,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
   const series = [...cpiSeries, ...spiSeries];
 
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     toolbox: _toolbox({}, 'PMAS-CPI-PEP'),
     title: {
       text: _t('pepcpi.title'),
@@ -297,9 +295,7 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: _cssVar('--card'),
-      borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
+      ..._chartDefaults().tooltip,
       formatter: params => {
         const header = `<b>${escHtml(params[0]?.axisValue)}</b><br/>`;
         const lines  = params

@@ -947,11 +947,12 @@ function _renderCostCompositionChart(trends) {
   const pal = _getPalette();
   const cc = _getOrCreateChart('costCompositionChart');
   cc.setOption({
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     legend: { top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
+      ..._chartDefaults().tooltip,
       formatter(params) {
         const total = params.reduce((s, p) => s + (p.value || 0), 0);
         let html = `<b>${params[0].axisValue}</b><br/>`;
@@ -2105,8 +2106,9 @@ async function _renderCollabCalendar(name, year, month) {
   cc.setOption({ aria: { enabled: true } });
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     tooltip: {
+      ..._chartDefaults().tooltip,
       formatter(p) {
         if (!p.value || p.value[1] < 0) return '';
         const [d_date, , n, e, s] = p.value;

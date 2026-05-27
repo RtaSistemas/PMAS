@@ -36,13 +36,11 @@ function _buildEvmQuadrantOption(items) {
   const yMax = +Math.max(...cpis, 1.2).toFixed(2) + 0.1;
 
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
     tooltip: {
       trigger: 'item',
-      backgroundColor: _cssVar('--card'),
-      borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
+      ..._chartDefaults().tooltip,
       formatter: p => {
         const d = p.data._raw;
         const _evmQ = { success: green, warning: amber, danger: red };
@@ -126,11 +124,11 @@ function _buildTreemapOption(health, evmMode = false) {
     ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
     : v.toFixed(1) + 'h';
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     toolbox: _toolbox({}, 'PMAS-Treemap'),
     tooltip: {
       trigger: 'item',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
+      ..._chartDefaults().tooltip,
       formatter: params => {
         const d = health.find(x => x.pep_wbs === params.name);
         if (!d) return escHtml(params.name);
@@ -206,12 +204,12 @@ function _buildBulletOption(withBudget, evmMode = false) {
     ? v => v >= 1000 ? `${_currencySymbol}${(v/1000).toFixed(0)}k` : `${_currencySymbol}${v.toFixed(0)}`
     : v => `${v}h`;
   return {
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     toolbox: _toolbox({}, 'PMAS-Bullet'),
     grid: { top: 46, right: '10%', bottom: 16, left: '2%', containLabel: true },
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'none' },
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
+      ..._chartDefaults().tooltip,
       formatter: params => {
         const idx = params[0].dataIndex;
         const b   = budgets[idx];

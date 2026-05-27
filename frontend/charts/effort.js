@@ -108,9 +108,7 @@ function _buildHoursBarOption({
   const tooltip = {
     trigger:     'axis',
     axisPointer: { type: 'shadow' },
-    backgroundColor: _cssVar('--card'),
-    borderColor:     _cssVar('--border'),
-    textStyle:       { color: _cssVar('--text') },
+    ..._chartDefaults().tooltip,
     formatter: params => {
       const bars  = params.filter(p => p.seriesName !== _t('stat.total'));
       let html    = `<b>${params[0].axisValue}</b><br/>`;
@@ -201,7 +199,7 @@ function _buildHoursBarOption({
 
   // ── 9. Final assembly ────────────────────────────────────────────────
   return {
-    backgroundColor: _cssVar('--card'),
+    ..._chartDefaults(),
 
     title: truncated ? {
       subtext:      `Exibindo os primeiros ${maxItems} itens`,

@@ -69,3 +69,20 @@ function _chartDefaults() {
 function _renderEmptyState(container, message) {
   container.innerHTML = `<p class="empty-state" style="text-align:center;color:var(--text-3);padding:2rem">${escHtml(message)}</p>`;
 }
+
+// ---------------------------------------------------------------------------
+// C6 — Build a <tr> element from an array of cell descriptors
+// Each cell is either a plain string (used as innerHTML) or an object:
+//   { html: '...', style: '...', cls: '...' }
+// Optional attrs object sets attributes on the <tr> itself.
+// ---------------------------------------------------------------------------
+function _buildTableRow(cells, attrs = {}) {
+  const tr = document.createElement('tr');
+  Object.entries(attrs).forEach(([k, v]) => tr.setAttribute(k, v));
+  tr.innerHTML = cells.map(c =>
+    typeof c === 'string'
+      ? `<td>${c}</td>`
+      : `<td style="${c.style || ''}" class="${c.cls || ''}">${c.html ?? c}</td>`
+  ).join('');
+  return tr;
+}
