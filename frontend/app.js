@@ -4285,11 +4285,17 @@ async function _loadThemeEditor() {
   try {
     _currentTheme = await fetch('/api/theme').then(r => r.json());
     _renderThemeEditor();
+    _renderCustomPresets();
   } catch (e) { notify(`Erro ao carregar tema: ${e.message}`, 'error'); }
 }
 
 function _applyThemePreset(key) {
   const preset = _THEME_PRESETS[key];
+  if (!preset) return;
+  _applyThemePresetConfig(preset);
+}
+
+function _applyThemePresetConfig(preset) {
   if (!preset) return;
   _THEME_FIELDS.forEach(f => {
     if (preset[f.key]) {
@@ -4315,6 +4321,110 @@ function _applyThemePreset(key) {
       if (txt)    txt.value   = c;
     });
   }
+}
+
+async function _renderCustomPresets() {
+  const container = document.getElementById('customPresetsList');
+  if (!container) return;
+  try {
+    const presets = await fetch('/api/theme/presets').then(r => r.json());
+    container.innerHTML = presets.map(p => {
+      if (p.is_builtin) {
+        return `<button class="btn btn-secondary btn-sm" type="button"
+          onclick="_applyThemePresetConfig(${JSON.stringify(p.config)})"
+          title="${_t('appearance.preset_builtin')}">
+          ${escHtml(p.name)}
+        </button>`;
+      }
+      return `<span style="display:inline-flex;align-items:center;gap:.25rem">
+        <button class="btn btn-secondary btn-sm" type="button"
+          onclick="_applyThemePresetConfig(${JSON.stringify(p.config)})">
+          ${escHtml(p.name)}
+        </button>
+        <button class="btn btn-sm" type="button"
+          style="padding:.2rem .4rem;background:transparent;color:#c56d76;border:1px solid #c56d76"
+          onclick="_deleteCustomPreset(${p.id},'${escHtml(p.name).replace(/'/g,"\\'")}')">
+          🗑
+        </button>
+      </span>`;
+    }).join('');
+  } catch (e) { container.innerHTML = ''; }
+}
+
+async function _deleteCustomPreset(id, name) {
+  try {
+    const resp = await fetch(`/api/theme/presets/${id}`, {
+      method: 'DELETE',
+      headers: _authHeaders(),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      notify(err.detail || 'Erro ao excluir preset.', 'error');
+      return;
+    }
+    notify(_t('appearance.preset_deleted'), 'success');
+    _renderCustomPresets();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _saveCurrentAsPreset() {
+  const nameInput = document.getElementById('presetNameInput');
+  const name = (nameInput?.value || '').trim();
+  if (!name) { notify(_t('msg.name_required'), 'error'); return; }
+  const payload = { ..._currentTheme };
+  _THEME_FIELDS.forEach(f => {
+    const txt = document.getElementById(`themeColorTxt_${f.key}`);
+    if (txt) payload[f.key] = txt.value;
+  });
+  const appNameEl = document.getElementById('themeAppName');
+  if (appNameEl) payload.app_name = appNameEl.value.trim() || 'PMAS';
+  const activeBtn = document.querySelector('.theme-density-btn.active');
+  if (activeBtn) payload.density = activeBtn.dataset.density;
+  payload.chart_palette = Array.from({ length: 6 }, (_, i) => {
+    return document.getElementById(`themePalTxt_${i}`)?.value || _THEME_PRESETS.pmas.chart_palette[i];
+  });
+  try {
+    await apiFetchJSON('/api/theme/presets', 'POST', { name, config: payload });
+    notify(_t('appearance.preset_saved'), 'success');
+    if (nameInput) nameInput.value = '';
+    _renderCustomPresets();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _exportPresetsCSV() {
+  try {
+    const resp = await fetch('/api/theme/presets/export', { headers: _authHeaders() });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'theme_presets.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+async function _importPresetsCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/theme/presets/import', {
+      method: 'POST',
+      headers: _authHeaders(),
+      body: fd,
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      notify(err.detail || 'Erro ao importar.', 'error');
+      return;
+    }
+    const data = await resp.json();
+    const n = (data.created || 0) + (data.updated || 0);
+    notify(_t('appearance.preset_imported').replace('{n}', n), 'success');
+    _renderCustomPresets();
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  input.value = '';
 }
 
 function _renderThemeEditor() {
@@ -4350,6 +4460,18 @@ function _renderThemeEditor() {
             onclick="_applyThemePreset('${k}')">${_t('appearance.preset.'+k)}</button>
         `).join('')}
       </div>
+    </div>
+    <div class="form-group full" style="margin-bottom:.5rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.my_presets')}</label>
+      <div id="customPresetsList" style="display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0"></div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+        <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
+               style="flex:1;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+        <button onclick="_saveCurrentAsPreset()" class="btn btn-primary btn-sm" type="button">${_t('appearance.save_preset')}</button>
+        <button onclick="_exportPresetsCSV()" class="btn btn-secondary btn-sm" type="button">${_t('appearance.preset_export')}</button>
+        <button onclick="document.getElementById('presetImportInput').click()" class="btn btn-secondary btn-sm" type="button">${_t('appearance.preset_import')}</button>
+        <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
+      </div>
     </div>`;
 
   // Section: colors
@@ -4384,7 +4506,22 @@ function _renderThemeEditor() {
       </div>
     `).join('')}`;
 
-  grid.innerHTML = densitySection + presetsSection + colorSection + paletteSection;
+  const myPresetsSection = `
+    <div class="form-group full" style="margin-bottom:.5rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.my_presets')}</label>
+      <div id="customPresetsList" style="display:flex;flex-wrap:wrap;gap:.5rem;margin:.35rem 0 .5rem"></div>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
+          style="flex:1;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+        <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()">${_t('appearance.save_preset')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()">${_t('appearance.preset_export')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()">${_t('appearance.preset_import')}</button>
+        <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
+      </div>
+    </div>`;
+
+  grid.innerHTML = densitySection + presetsSection + myPresetsSection + colorSection + paletteSection;
+  _renderCustomPresets();
 
   // Wire color pickers ↔ text inputs
   _THEME_FIELDS.forEach(f => {

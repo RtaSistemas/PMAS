@@ -66,6 +66,7 @@ def init_db() -> None:
     _seed_admin()
     _seed_config()
     _seed_validation_rules()
+    _seed_theme_presets()
     _backfill_summaries()
 
 
@@ -207,6 +208,65 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
+
+
+_BUILTIN_PRESETS = [
+    {
+        "name": "Padrão PMAS",
+        "is_builtin": True,
+        "config": {
+            "color_primary": "#4f8ef7", "color_background": "#081122",
+            "color_surface": "#0e2038", "color_accent": "#07b3d7",
+            "color_success": "#5ad388", "color_warning": "#d9b273",
+            "color_danger": "#c56d76", "color_text": "#e0e0e0",
+            "color_text_muted": "#818998", "density": "normal",
+            "chart_palette": ["#4f8ef7","#d9b273","#a78bfa","#35a1f3","#5ad388","#01c1b9"],
+        },
+    },
+    {
+        "name": "Azul Corporativo",
+        "is_builtin": True,
+        "config": {
+            "color_primary": "#0070f3", "color_background": "#0a0a23",
+            "color_surface": "#111133", "color_accent": "#00d4ff",
+            "color_success": "#00c853", "color_warning": "#ffab00",
+            "color_danger": "#ff1744", "color_text": "#f0f4ff",
+            "color_text_muted": "#7986cb", "density": "normal",
+            "chart_palette": ["#0070f3","#00d4ff","#00c853","#ffab00","#7c4dff","#26c6da"],
+        },
+    },
+    {
+        "name": "Alto Contraste",
+        "is_builtin": True,
+        "config": {
+            "color_primary": "#ffffff", "color_background": "#000000",
+            "color_surface": "#111111", "color_accent": "#ffff00",
+            "color_success": "#00ff00", "color_warning": "#ff8800",
+            "color_danger": "#ff0000", "color_text": "#ffffff",
+            "color_text_muted": "#aaaaaa", "density": "relaxed",
+            "chart_palette": ["#ffffff","#ffff00","#00ff00","#ff8800","#00ffff","#ff00ff"],
+        },
+    },
+]
+
+_BUILTIN_PRESET_NAMES = {p["name"] for p in _BUILTIN_PRESETS}
+
+
+def _seed_theme_presets() -> None:
+    from backend.app.models import ThemePreset
+
+    db = SessionLocal()
+    try:
+        for preset in _BUILTIN_PRESETS:
+            if not db.query(ThemePreset).filter_by(name=preset["name"]).first():
+                db.add(ThemePreset(
+                    name=preset["name"],
+                    is_builtin=preset["is_builtin"],
+                    config=preset["config"],
+                ))
+        db.commit()
+    finally:
+        db.close()
 
 
 def _seed_validation_rules() -> None:
