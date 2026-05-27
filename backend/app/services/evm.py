@@ -214,3 +214,19 @@ def classify_health(
     if ratio >= warning_threshold:
         return "warning"
     return "ok"
+
+
+# ── Budget resolution ─────────────────────────────────────────────────────────
+
+def resolve_effective_budget(project, baseline=None) -> tuple[Optional[float], Optional[float]]:
+    """Return (budget_hours, budget_cost) — active baseline takes precedence over project fields.
+
+    This is the single rule for which budget is authoritative:
+      1. Active baseline (locked, approved revision)
+      2. Project fields (initial estimate or manually updated)
+
+    All routers must call this function instead of reading project.budget_* directly.
+    """
+    bh = (baseline.budget_hours if baseline else None) or (project.budget_hours if project else None)
+    bc = (baseline.budget_cost  if baseline else None) or (project.budget_cost  if project else None)
+    return bh, bc

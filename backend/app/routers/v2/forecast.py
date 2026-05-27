@@ -34,6 +34,7 @@ from backend.app.services.evm import (
     compute_sv,
     compute_tcpi,
     compute_vac,
+    resolve_effective_budget,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -81,8 +82,7 @@ def get_forecast(
         db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
         if project else None
     )
-    budget_hours = (active_baseline.budget_hours if active_baseline else None) or (project.budget_hours if project else None)
-    budget_cost  = (active_baseline.budget_cost  if active_baseline else None) or (project.budget_cost  if project else None)
+    budget_hours, budget_cost = resolve_effective_budget(project, active_baseline)
 
     # Build per-cycle actual data — prefer summary, fall back to raw
     cycle_data = _load_cycle_data(db, pep_wbs, date_from, date_to)

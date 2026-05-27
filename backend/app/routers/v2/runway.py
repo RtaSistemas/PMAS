@@ -18,10 +18,10 @@ from sqlalchemy import func
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import (
-    Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord,
+    Cycle, GlobalConfig, Project, ProjectBaseline, ProjectCyclePlan, TimesheetRecord,
 )
 from backend.app.routers.v2.portfolio import _allowed_peps
-from backend.app.services.evm import compute_cpi_ev
+from backend.app.services.evm import compute_cpi_ev, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -126,6 +126,16 @@ def get_runway(
         .all()
     }
 
+    # Batch-fetch active baselines — same precedence rule as forecast.py and portfolio.py
+    project_ids = [p.id for p in projects.values()]
+    active_baselines: dict[int, ProjectBaseline] = {}
+    if project_ids:
+        for bl in db.query(ProjectBaseline).filter(
+            ProjectBaseline.project_id.in_(project_ids),
+            ProjectBaseline.is_active == True,  # noqa: E712
+        ).all():
+            active_baselines[bl.project_id] = bl
+
     # All active cycles ordered by start_date for estimated completion
     all_cycles = (
         db.query(Cycle)
@@ -136,7 +146,6 @@ def get_runway(
     cycle_start_by_id = {c.id: c.start_date for c in all_cycles}
 
     # Batch-fetch all ProjectCyclePlan entries for the relevant projects (avoid N+1)
-    project_ids = [p.id for p in projects.values()]
     all_plans = (
         db.query(ProjectCyclePlan)
         .filter(ProjectCyclePlan.project_id.in_(project_ids))
@@ -152,9 +161,9 @@ def get_runway(
     result = []
     for key, data in pep_data.items():
         proj = projects.get(key)
-        budget_hours = proj.budget_hours if proj else None
-        budget_cost  = proj.budget_cost  if proj else None
-        name         = proj.name         if proj else None
+        bl   = active_baselines.get(proj.id) if proj else None
+        budget_hours, budget_cost = resolve_effective_budget(proj, bl)
+        name = proj.name if proj else None
 
         consumed_hours = data["consumed_hours"]
         actual_cost    = data["actual_cost"]
