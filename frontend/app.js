@@ -2481,13 +2481,12 @@ function _renderForecastProjectInfo(fc, proj) {
   const el = document.getElementById('forecastProjectInfo');
   if (!el) return;
 
-  const hrRatio   = fc.budget_hours ? fc.consumed_hours / fc.budget_hours : null;
-  const costRatio = fc.budget_cost  ? fc.actual_cost    / fc.budget_cost  : null;
-  const ratios    = [hrRatio, costRatio].filter(r => r != null);
-  const semColor  = !ratios.length ? 'grey'
-                  : Math.max(...ratios) >= 1.0 ? 'red'
-                  : Math.max(...ratios) >= 0.9 ? 'yellow'
-                  : 'green';
+  const _HEALTH_PRIORITY = { overrun: 0, critical: 1, warning: 2, ok: 3, no_budget: 4 };
+  const _HEALTH_TO_SEM   = { ok: 'green', warning: 'yellow', critical: 'red', overrun: 'red', no_budget: 'grey' };
+  const hh = fc.health_hours || 'no_budget';
+  const hc = fc.health_cost  || 'no_budget';
+  const worstHealth = (_HEALTH_PRIORITY[hh] ?? 4) <= (_HEALTH_PRIORITY[hc] ?? 4) ? hh : hc;
+  const semColor = _HEALTH_TO_SEM[worstHealth] || 'grey';
   const semLabel  = _t(`sem.${semColor}`);
 
   const budgetParts = [];
@@ -3435,18 +3434,15 @@ function _buildTreemapOption(health, evmMode = false) {
       }],
       data: health.map(d => {
         const consumed = evmMode ? d.total_cost * _currencyFactor : d.total_hours;
-        const budget   = evmMode ? (d.budget_cost ?? null) && d.budget_cost * _currencyFactor : d.budget_hours;
+        const _HCSS = { success: '--primary', warning: '--amber', danger: '--red', muted: '--text-3' };
+        const hColor = evmMode ? d.health_cost_color : d.health_hours_color;
         return {
           name: d.pep_wbs,
           value: consumed,
           itemStyle: {
             color: !d.is_registered
               ? _cssVar('--text-3')
-              : budget != null && consumed / budget >= _budgetCritical
-                ? _cssVar('--red')
-                : budget != null && consumed / budget >= _budgetWarning
-                  ? _cssVar('--amber')
-                  : _cssVar('--primary'),
+              : _cssVar(_HCSS[hColor] || '--primary'),
             borderColor: _cssVar('--bg'),
           },
         };
@@ -3458,10 +3454,11 @@ function _buildTreemapOption(health, evmMode = false) {
 function _buildBulletOption(withBudget, evmMode = false) {
   const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
   const budgets = withBudget.map(d => (evmMode ? (d.budget_cost || 0) * _currencyFactor : d.budget_hours) || 0);
-  const actuals = withBudget.map((d, i) => {
+  const _HCSS = { success: '--primary', warning: '--amber', danger: '--red', muted: '--text-3' };
+  const actuals = withBudget.map(d => {
     const consumed = evmMode ? (d.total_cost || 0) * _currencyFactor : d.total_hours;
-    const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= _budgetCritical ? _cssVar('--red') : pct >= _budgetWarning ? _cssVar('--amber') : _cssVar('--primary');
+    const hColor = evmMode ? d.health_cost_color : d.health_hours_color;
+    const color  = _cssVar(_HCSS[hColor] || '--primary');
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';

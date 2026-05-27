@@ -23,6 +23,7 @@ from backend.app.models import (
 )
 from backend.app.routers.v2.portfolio import _allowed_peps
 from backend.app.services.evm import (
+    classify_health,
     compute_cpi,
     compute_cv,
     compute_eac,
@@ -49,6 +50,10 @@ def get_forecast(
     allowed = _allowed_peps(db, current_user)
     if allowed is not None and pep_wbs not in allowed:
         raise HTTPException(status_code=403, detail="Acesso negado.")
+
+    cfg = db.get(GlobalConfig, 1)
+    warning_threshold  = cfg.budget_warning_threshold  if cfg and hasattr(cfg, 'budget_warning_threshold')  else 0.9
+    critical_threshold = cfg.budget_critical_threshold if cfg and hasattr(cfg, 'budget_critical_threshold') else 1.0
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
@@ -250,6 +255,8 @@ def get_forecast(
         "using_baseline":             active_baseline is not None,
         "baseline_locked_at":         active_baseline.locked_at if active_baseline else None,
         "baseline_label":             active_baseline.label if active_baseline else None,
+        "health_hours":               classify_health(consumed_hours, budget_hours, warning_threshold, critical_threshold),
+        "health_cost":                classify_health(actual_cost,    budget_cost,  warning_threshold, critical_threshold),
         "history":                    history,
     }
 
