@@ -2929,29 +2929,28 @@ async function loadRateCards() {
 }
 
 function _renderTeamTable(rows) {
-  const tbody = document.getElementById('teamBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_team')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(m => `
+  _renderTable('teamBody', rows, {
+    colspan: 4,
+    emptyKey: 'no_team',
+    rowFn: m => `
     <tr>
       <td>${escHtml(m.name)}</td>
       <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
       <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadTeamTable() {
-  try {
-    _allTeam = await apiFetch('/api/team');
+  await _loadTable('/api/team', data => {
+    _allTeam = data;
     _renderTeamTable(_applySort('teamTable', _allTeam));
     // Populate bulk seniority select
     const bulkSel = document.getElementById('bulkSenioritySelect');
     bulkSel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
       _allSeniorityLevels.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // Seniority level modal
@@ -3350,21 +3349,19 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 let _allUsers = [];
 
 async function loadUsersTable() {
-  try {
-    _allUsers = await apiFetch('/api/users');
+  await _loadTable('/api/users', data => {
+    _allUsers = data;
     _renderUsersTable(_applySort('usersTable', _allUsers));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderUsersTable(users) {
-  const tbody = document.getElementById('usersBody');
-  if (!users.length) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">${_t('no_users')}</td></tr>`;
-    return;
-  }
   const payload = _getTokenPayload();
   const selfId  = payload ? payload.sub : null;
-  tbody.innerHTML = users.map(u => `
+  _renderTable('usersBody', users, {
+    colspan: 3,
+    emptyKey: 'no_users',
+    rowFn: u => `
     <tr>
       <td>${escHtml(u.username)}</td>
       <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? _t('lbl.admin') : _t('lbl.user')}</span></td>
@@ -3372,7 +3369,8 @@ function _renderUsersTable(users) {
         <button class="btn btn-secondary btn-sm" onclick="openPwdModal(${u.id})">${_t('btn.pwd')}</button>
         ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">${_t('btn.delete')}</button>` : ''}
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 document.getElementById('newUserBtn').addEventListener('click', () => {
@@ -3445,28 +3443,26 @@ async function loadAuditLog() {
   const params = new URLSearchParams({ limit: 200 });
   if (entity) params.set('entity', entity);
   if (action) params.set('action', action);
-  try {
-    _auditLogCache = await apiFetch(`/api/audit-log?${params}`);
+  await _loadTable(`/api/audit-log?${params}`, data => {
+    _auditLogCache = data;
     _renderAuditLog(_applySort('auditTable', _auditLogCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderAuditLog(rows) {
-  const tbody = document.getElementById('auditBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_audit')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    let detail = '';
-    if (r.detail) {
-      try {
-        const obj = JSON.parse(r.detail);
-        detail = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', ');
-      } catch { detail = r.detail; }
-    }
-    return `<tr>
+  _renderTable('auditBody', rows, {
+    colspan: 6,
+    emptyKey: 'no_audit',
+    rowFn: r => {
+      const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      let detail = '';
+      if (r.detail) {
+        try {
+          const obj = JSON.parse(r.detail);
+          detail = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', ');
+        } catch { detail = r.detail; }
+      }
+      return `<tr>
       <td style="white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(r.username || '—')}</td>
       <td><code>${escHtml(r.action)}</code></td>
@@ -3474,7 +3470,8 @@ function _renderAuditLog(rows) {
       <td style="text-align:right">${r.entity_id ?? '—'}</td>
       <td style="font-size:.78rem;color:#94a3b8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 document.getElementById('auditRefreshBtn').addEventListener('click', loadAuditLog);
@@ -3855,28 +3852,25 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 let _myHistoryCache = [];
 
 async function loadMyHistory() {
-  try {
-    _myHistoryCache = await apiFetch('/api/upload-history');
+  await _loadTable('/api/upload-history', data => {
+    _myHistoryCache = data;
     _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderMyHistory(rows) {
-  const tbody = document.getElementById('myHistoryBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_import_sessions')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    const statusKey = r.status === 'ok' ? 'history.status.ok'
-      : r.status === 'warnings' ? 'history.status.warnings'
-      : r.status === 'quarantine' ? 'history.status.quarantine'
-      : 'history.status.rejected';
-    const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
-    const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
-    return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
+  _renderTable('myHistoryBody', rows, {
+    colspan: 9,
+    emptyKey: 'msg.no_import_sessions',
+    rowFn: r => {
+      const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const statusKey = r.status === 'ok' ? 'history.status.ok'
+        : r.status === 'warnings' ? 'history.status.warnings'
+        : r.status === 'quarantine' ? 'history.status.quarantine'
+        : 'history.status.rejected';
+      const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
+      const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
+      return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
@@ -3887,7 +3881,8 @@ function _renderMyHistory(rows) {
       <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMyHistory);
@@ -3906,11 +3901,11 @@ async function loadMyQr() {
   if (filter === 'pending')   params.set('review_status', 'pending');
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
-  try {
-    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
+  await _loadTable(`/api/my/quarantine?${params}`, data => {
+    _myQrCache = data;
     _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderMyQrTable(rows) {
@@ -3987,10 +3982,10 @@ let _rulesSortable = null;
 let _editingRuleId = null;
 
 async function loadRulesList() {
-  try {
-    _rules = await apiFetch('/api/validation-rules');
+  await _loadTable('/api/validation-rules', data => {
+    _rules = data;
     _renderRulesList();
-  } catch (e) { notify(`Erro ao carregar regras: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderRulesList() {
