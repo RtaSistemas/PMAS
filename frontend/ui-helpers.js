@@ -86,3 +86,26 @@ function _buildTableRow(cells, attrs = {}) {
   ).join('');
   return tr;
 }
+
+// ---------------------------------------------------------------------------
+// C7 — Generic table loader — handles fetch + error notification
+// ---------------------------------------------------------------------------
+async function _loadTable(endpoint, onSuccess) {
+  try {
+    const data = await apiFetch(endpoint);
+    onSuccess(data);
+  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+}
+
+// ---------------------------------------------------------------------------
+// C8 — Generic table renderer — handles empty state + row injection
+// ---------------------------------------------------------------------------
+function _renderTable(tbodyId, data, { colspan, emptyKey, rowFn }) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;color:var(--text-3);padding:2rem">${_t(emptyKey)}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(rowFn).join('');
+}

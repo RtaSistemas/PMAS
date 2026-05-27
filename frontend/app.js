@@ -2331,20 +2331,18 @@ let _allCycles   = [];
 async function loadCyclesTable() {
   const showArchived = document.getElementById('showArchivedCycles')?.checked;
   const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
-  try {
-    _allCycles = await apiFetch(url);
+  await _loadTable(url, data => {
+    _allCycles = data;
     _renderCyclesTable(_applySort('cyclesTable', _allCycles));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderCyclesTable(cycles) {
-  const tbody = document.getElementById('cyclesBody');
-  if (!cycles.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_cycles')}</td></tr>`;
-    return;
-  }
   const admin = _isAdmin();
-  tbody.innerHTML = cycles.map(c => `
+  _renderTable('cyclesBody', cycles, {
+    colspan: 6,
+    emptyKey: 'no_cycles',
+    rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
       <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
@@ -2357,7 +2355,8 @@ function _renderCyclesTable(cycles) {
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 function toggleCycleLock(id, isClosed) {
@@ -2536,17 +2535,15 @@ function _buildDatesCell(p) {
 }
 
 function _renderProjectsTable(projects) {
-  const tbody = document.getElementById('projectsBody');
-  if (!projects.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = projects.map(p => {
-    const bl = _baselineByProject[p.id];
-    const blBadge = bl
-      ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
-      : '';
-    return `
+  _renderTable('projectsBody', projects, {
+    colspan: 8,
+    emptyKey: 'no_projects',
+    rowFn: p => {
+      const bl = _baselineByProject[p.id];
+      const blBadge = bl
+        ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
+        : '';
+      return `
     <tr>
       <td><code>${escHtml(p.pep_wbs)}</code></td>
       <td>${escHtml(p.name || '—')}</td>
@@ -2562,7 +2559,8 @@ function _renderProjectsTable(projects) {
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 function openProjectModal(id = null) {
@@ -2884,35 +2882,32 @@ async function loadTeamTab() {
 }
 
 function _renderSeniorityTable(rows) {
-  const tbody = document.getElementById('seniorityBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_seniority')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(l => `
+  _renderTable('seniorityBody', rows, {
+    colspan: 2,
+    emptyKey: 'no_seniority',
+    rowFn: l => `
     <tr>
       <td>${escHtml(l.name)}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadSeniorityLevels() {
-  try {
-    _allSeniorityLevels = await apiFetch('/api/seniority-levels');
+  await _loadTable('/api/seniority-levels', data => {
+    _allSeniorityLevels = data;
     _renderSeniorityTable(_applySort('seniorityTable', _allSeniorityLevels));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderRateCardsTable(rows) {
-  const tbody = document.getElementById('rateCardBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_rates')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(c => `
+  _renderTable('rateCardBody', rows, {
+    colspan: 5,
+    emptyKey: 'no_rates',
+    rowFn: c => `
     <tr>
       <td>${escHtml(c.seniority_level_name)}</td>
       <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
@@ -2922,14 +2917,15 @@ function _renderRateCardsTable(rows) {
         <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadRateCards() {
-  try {
-    _allRateCards = await apiFetch('/api/rate-cards');
+  await _loadTable('/api/rate-cards', data => {
+    _allRateCards = data;
     _renderRateCardsTable(_applySort('rateCardTable', _allRateCards));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderTeamTable(rows) {
