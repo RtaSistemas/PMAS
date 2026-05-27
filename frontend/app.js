@@ -2210,12 +2210,13 @@ function _buildStatsRow(data, budgetData = []) {
   data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
   const total = normal + extra + standby;
   const row   = document.createElement('div'); row.className = 'stats-row';
+  const pal   = _getPalette();
   const cards = [
-    { val: fmt(normal)  + 'h', lbl: _t('stat.normal_h'),  cls: 'blue'    },
-    { val: fmt(extra)   + 'h', lbl: _t('stat.extra_h'),   cls: 'amber'   },
-    { val: fmt(standby) + 'h', lbl: _t('stat.standby_h'), cls: 'violet'  },
-    { val: fmt(total)   + 'h', lbl: _t('stat.total'),     cls: 'green'   },
-    { val: data.length,        lbl: _t('stat.collabs'),   cls: 'neutral' },
+    { val: fmt(normal)  + 'h', lbl: _t('stat.normal_h'),  cls: 'blue',    color: pal[0] },
+    { val: fmt(extra)   + 'h', lbl: _t('stat.extra_h'),   cls: 'amber',   color: pal[1] },
+    { val: fmt(standby) + 'h', lbl: _t('stat.standby_h'), cls: 'violet',  color: pal[2] },
+    { val: fmt(total)   + 'h', lbl: _t('stat.total'),     cls: 'green'    },
+    { val: data.length,        lbl: _t('stat.collabs'),   cls: 'neutral'  },
   ];
   if (budgetData.length > 0) {
     const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
@@ -2224,12 +2225,13 @@ function _buildStatsRow(data, budgetData = []) {
     const over = totalBudget > 0 && totalActual > totalBudget;
     cards.push(
       { val: fmt(totalBudget) + 'h', lbl: _t('stat.budgeted'),   cls: 'neutral' },
-      { val: `${pct}%`,        lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
+      { val: `${pct}%`,              lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
     );
   }
-  cards.forEach(({ val, lbl, cls }) => {
+  cards.forEach(({ val, lbl, cls, color }) => {
     const card = document.createElement('div'); card.className = `stat-card ${cls}`;
-    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    const style = color ? ` style="color:${color}"` : '';
+    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
@@ -2256,6 +2258,7 @@ function _buildPortfolioStatsRow(health, trends) {
     return '';
   };
 
+  const pal = _getPalette();
   let cards;
 
   if (!_evmMode) {
@@ -2275,9 +2278,9 @@ function _buildPortfolioStatsRow(health, trends) {
     const totalHoursVal = `${fmt(totalHours)}h${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct, lastTrend.hours_delta) : ''}`;
 
     cards = [
-      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue'    },
-      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber'   },
-      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet'  },
+      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
+      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
+      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
       { val: totalHoursVal,                                                          lbl: _t('stat.total'),       cls: 'green'   },
       { val: pepsActive,                                                              lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
@@ -2304,9 +2307,9 @@ function _buildPortfolioStatsRow(health, trends) {
     const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct, lastTrend.cost_delta) : ''}`;
 
     cards = [
-      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue'    },
-      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber'   },
-      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet'  },
+      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
+      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
+      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
       { val: costTotalVal,                                                                lbl: _t('stat.cost_total'),   cls: 'green'   },
       { val: pepsActive,                                                                  lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
@@ -2320,10 +2323,11 @@ function _buildPortfolioStatsRow(health, trends) {
 
   const row = document.createElement('div');
   row.className = 'stats-row';
-  cards.forEach(({ val, lbl, cls }) => {
+  cards.forEach(({ val, lbl, cls, color }) => {
     const card = document.createElement('div');
     card.className = `stat-card ${cls}`;
-    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    const style = color ? ` style="color:${color}"` : '';
+    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
