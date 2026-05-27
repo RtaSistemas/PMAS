@@ -39,6 +39,7 @@ from backend.app.services.evm import (
     cpi_label,
     cv_color,
     cv_label,
+    freeze_spi_boundary,
     resolve_effective_budget,
     spi_color,
     spi_label,
@@ -109,11 +110,6 @@ def get_forecast(
     cum_h   = 0.0
     cum_c   = 0.0
     cum_pc  = 0.0
-    prev_cum_ph = 0.0
-    last_plan_ev: Optional[float] = None
-    last_plan_pv: Optional[float] = None
-    last_actual_h: Optional[float] = None   # hours at the last plan-advance boundary
-    last_planned_h: Optional[float] = None  # planned hours at the same boundary
     prev_period_h: Optional[float] = None
     prev_period_c: Optional[float] = None
 
@@ -127,14 +123,6 @@ def get_forecast(
             cum_pc += pc_period
 
         ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
-
-        # Freeze EV/PV at the last cycle where the plan advanced (avoids stale SPI/SV)
-        if has_plan and cum_ph > prev_cum_ph:
-            last_plan_ev  = compute_ev_capped(cum_h, budget_hours, budget_cost)
-            last_plan_pv  = compute_ev_capped(cum_ph, budget_hours, budget_cost)
-            last_actual_h  = cum_h
-            last_planned_h = cum_ph
-            prev_cum_ph   = cum_ph
 
         spi_cum = None
         if has_plan and cum_ph > 0:
@@ -177,6 +165,11 @@ def get_forecast(
 
     consumed_hours = cum_h
     actual_cost    = cum_c
+
+    last_actual_h, last_planned_h = (
+        freeze_spi_boundary([(s, h) for _, s, h, _ in cycle_data], sorted_plans)
+        if has_plan else (None, None)
+    )
 
     recent_h = [h for _, _, h, _ in cycle_data[-3:]]
     avg_hours = sum(recent_h) / len(recent_h) if recent_h else 0.0
