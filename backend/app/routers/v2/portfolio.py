@@ -17,7 +17,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline,
     TimesheetRecord, UserProjectAccess,
 )
-from backend.app.services.evm import classify_health, compute_cpi_ev, resolve_effective_budget
+from backend.app.services.evm import classify_health, compute_cpi_ev, cpi_color, cpi_label, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -140,24 +140,6 @@ def get_portfolio(
 
     result.sort(key=lambda x: x["total_hours"], reverse=True)
     return result
-
-
-def _cpi_label(cpi: float | None) -> str | None:
-    if cpi is None:
-        return None
-    if cpi >= 1.0:
-        return "Dentro do orçamento"
-    return "Acima do orçamento"
-
-
-def _cpi_color(cpi: float | None) -> str | None:
-    if cpi is None:
-        return None
-    if cpi >= 1.0:
-        return "success"
-    if cpi >= 0.9:
-        return "warning"
-    return "danger"
 
 
 def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, date_to,

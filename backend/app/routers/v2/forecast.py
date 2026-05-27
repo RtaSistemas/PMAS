@@ -27,6 +27,7 @@ from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_ev_capped,
     compute_ev_cost,
     compute_period_delta,
     compute_period_delta_pct,
@@ -34,7 +35,12 @@ from backend.app.services.evm import (
     compute_sv,
     compute_tcpi,
     compute_vac,
+    cpi_color,
+    cpi_label,
     resolve_effective_budget,
+    spi_color,
+    spi_label,
+    tcpi_color,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -117,17 +123,16 @@ def get_forecast(
         ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
 
         # BUG-A fix: freeze EV/PV at the last cycle where the plan advanced
-        if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
-            last_plan_ev = min(cum_h  / budget_hours, 1.0) * budget_cost
-            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+        if has_plan and cum_ph > prev_cum_ph:
+            last_plan_ev = compute_ev_capped(cum_h, budget_hours, budget_cost)
+            last_plan_pv = compute_ev_capped(cum_ph, budget_hours, budget_cost)
             prev_cum_ph = cum_ph
 
         spi_cum = None
-        if has_plan and budget_hours and budget_cost and cum_ph > 0:
-            ev_cum = min(cum_h  / budget_hours, 1.0) * budget_cost
-            pv_cum = min(cum_ph / budget_hours, 1.0) * budget_cost
-            if pv_cum > 0:
-                spi_cum = round(ev_cum / pv_cum, 3)
+        if has_plan and cum_ph > 0:
+            ev_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
+            pv_cum = compute_ev_capped(cum_ph, budget_hours, budget_cost)
+            spi_cum = compute_spi(pv_cum, ev_cum)
 
         sv_period = compute_sv(cum_h, cum_ph if has_plan else None)
         cv_period = compute_cv(ev_cost_cum, cum_c)
@@ -174,8 +179,8 @@ def get_forecast(
     ev_val = None
     cpi = spi = eac = cv = tcpi = vac = sv = None
     if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
-        if actual_cost > 0:
+        ev_val = compute_ev_capped(consumed_hours, budget_hours, budget_cost)
+        if actual_cost > 0 and ev_val is not None:
             cpi  = compute_cpi(ev_val, actual_cost)
             eac  = compute_eac(budget_cost, cpi)
             cv   = compute_cv(ev_val, actual_cost)
@@ -235,15 +240,16 @@ def get_forecast(
         "remaining_hours":            remaining_hours,
         "remaining_cost":             remaining_cost,
         "cpi":                        cpi,
-        "cpi_label":                  _cpi_label(cpi),
-        "cpi_color":                  _cpi_color(cpi),
+        "cpi_label":                  cpi_label(cpi),
+        "cpi_color":                  cpi_color(cpi),
         "spi":                        spi,
-        "spi_label":                  _spi_label(spi),
-        "spi_color":                  _spi_color(spi),
+        "spi_label":                  spi_label(spi),
+        "spi_color":                  spi_color(spi),
         "eac":                        eac,
         "vac":                        vac,
         "cv":                         cv,
         "tcpi":                       tcpi,
+        "tcpi_color":                 tcpi_color(tcpi),
         "sv":                         sv,
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
@@ -326,10 +332,6 @@ def _load_cycle_data(
 
 # ── Label/color helpers ──────────────────────────────────────────────────────
 
-def _cpi_label(v): return ("Dentro do orçamento" if v >= 1 else "Acima do orçamento") if v else None
-def _cpi_color(v): return ("success" if v >= 1 else "warning" if v >= 0.9 else "danger") if v else None
-def _spi_label(v): return ("No prazo" if v >= 1 else "Atenção" if v >= 0.9 else "Atrasado") if v else None
-def _spi_color(v): return ("success" if v >= 1 else "warning" if v >= 0.9 else "danger") if v else None
 def _sv_label(v):
     if v is None: return None
     if v > 0:  return f"Adiantado em {abs(v):.1f}h"

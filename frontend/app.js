@@ -921,6 +921,15 @@ document.addEventListener('mouseout', e => {
 let _currencyFactor = 1;
 let _currencySymbol = 'R$';
 
+// Backend EVM color → CSS variable name (for charts and table cells)
+const _EVM_COLOR_CSS = {
+  success: 'var(--primary,#4f8ef7)',
+  warning: 'var(--amber,#d9b273)',
+  danger:  'var(--red,#c56d76)',
+};
+// Backend EVM color → stat-card CSS class
+const _EVM_COLOR_CARD = { success: 'green', warning: 'amber', danger: 'red' };
+
 function _fmtCost(rawValue) {
   const v = rawValue * _currencyFactor;
   return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1595,7 +1604,7 @@ function _drawRunwayRows(data) {
 
     let spiCell = '—';
     if (item.spi != null) {
-      const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      const spiColor = _EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.success;
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
@@ -1610,7 +1619,7 @@ function _drawRunwayRows(data) {
 
     let cpiCell = '—';
     if (item.cpi != null) {
-      const cpiColor = item.cpi >= 1 ? 'var(--primary,#4f8ef7)' : item.cpi >= 0.8 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      const cpiColor = _EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.success;
       cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
     }
 
@@ -2283,16 +2292,16 @@ function _buildForecastKpis(fc) {
   const overC = fc.budget_cost != null && fc.actual_cost != null && fc.actual_cost > fc.budget_cost;
 
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
-  const spiCls  = fc.spi  == null ? 'neutral' : fc.spi  >= 1.0 ? 'green' : fc.spi  >= 0.9 ? 'amber' : 'red';
+  const spiCls  = _EVM_COLOR_CARD[fc.spi_color]  || 'neutral';
   const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
   const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
-  const cpiCls  = fc.cpi  == null ? 'neutral' : fc.cpi  >= 1.0 ? 'green' : fc.cpi  >= 0.9 ? 'amber' : 'red';
+  const cpiCls  = _EVM_COLOR_CARD[fc.cpi_color]  || 'neutral';
   const cvFmt   = fc.cv   != null ? (fc.cv  >= 0 ? '+' : '') + fmtR(fc.cv)  : '—';
   const cvCls   = fc.cv   == null ? 'neutral' : fc.cv   >= 0 ? 'green' : 'red';
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
-  const tcpiCls = fc.tcpi == null ? 'neutral' : fc.tcpi <= 1.0 ? 'green' : fc.tcpi <= 1.1 ? 'amber' : 'red';
+  const tcpiCls = _EVM_COLOR_CARD[fc.tcpi_color] || 'neutral';
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
 
@@ -3310,8 +3319,9 @@ function _buildEvmQuadrantOption(items) {
       textStyle: { color: _cssVar('--text'), fontSize: 12 },
       formatter: p => {
         const d = p.data._raw;
-        const cC = d.cpi >= 1 ? green : d.cpi >= 0.9 ? amber : red;
-        const sC = d.spi >= 1.0 ? green : d.spi >= 0.9 ? amber : red;
+        const _evmQ = { success: green, warning: amber, danger: red };
+        const cC = _evmQ[d.cpi_color] || green;
+        const sC = _evmQ[d.spi_color] || green;
         return [
           `<b>${escHtml(d.pep_wbs)}</b>`,
           d.name ? `<span style="color:${_cssVar('--text-3')}">${escHtml(d.name)}</span>` : null,
@@ -3478,12 +3488,14 @@ function _buildBulletOption(withBudget, evmMode = false) {
         const a   = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
         const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
         const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
-        const cpiItem = withBudget[idx]?.cpi;
+        const d = withBudget[idx];
+        const cpiItem = d?.cpi;
         let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
         html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
         html += `${_t('tt.utilization')}: <b>${pct}</b>`;
         if (cpiItem != null) {
-          const cpiColor = cpiItem >= 1.0 ? _cssVar('--green') : cpiItem >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
+          const _cpiC = { success: _cssVar('--green'), warning: _cssVar('--amber'), danger: _cssVar('--red') };
+          const cpiColor = _cpiC[d.cpi_color] || _cssVar('--green');
           html += `<br>IDC (CPI): <b style="color:${cpiColor}">${cpiItem.toFixed(2)}</b>`;
         }
         if (b > 0 && a > b) html += `<br><span style="color:${_cssVar('--red')}">⚠ ${_t('tt.over_budget')}</span>`;

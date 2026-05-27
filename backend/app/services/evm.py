@@ -216,6 +216,80 @@ def classify_health(
     return "ok"
 
 
+# ── Capped Earned Value ───────────────────────────────────────────────────────
+
+def compute_ev_capped(
+    consumed_hours: float,
+    budget_hours: Optional[float],
+    budget_cost: Optional[float],
+) -> Optional[float]:
+    """Earned Value capped at BAC: EV = min(consumed / budget, 1.0) × BAC.
+
+    Used for SPI, CPI, EAC, and other forecast indicators where EV must
+    not exceed the Budget at Completion.  Distinct from compute_ev_cost
+    (uncapped, used for the burn-up chart's EV series).
+    """
+    if not budget_hours or budget_hours == 0 or not budget_cost:
+        return None
+    return round(min(consumed_hours / budget_hours, 1.0) * budget_cost, 2)
+
+
+# ── Color / label classifiers ─────────────────────────────────────────────────
+
+def cpi_color(cpi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for CPI, or None."""
+    if cpi is None:
+        return None
+    if cpi >= 1.0:
+        return "success"
+    if cpi >= 0.9:
+        return "warning"
+    return "danger"
+
+
+def cpi_label(cpi: Optional[float]) -> Optional[str]:
+    """Return human-readable CPI label in pt-BR."""
+    if cpi is None:
+        return None
+    return "Dentro do orçamento" if cpi >= 1.0 else "Acima do orçamento"
+
+
+def spi_color(spi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for SPI, or None."""
+    if spi is None:
+        return None
+    if spi >= 1.0:
+        return "success"
+    if spi >= 0.9:
+        return "warning"
+    return "danger"
+
+
+def spi_label(spi: Optional[float]) -> Optional[str]:
+    """Return human-readable SPI label in pt-BR."""
+    if spi is None:
+        return None
+    if spi >= 1.0:
+        return "No prazo"
+    if spi >= 0.9:
+        return "Atenção"
+    return "Atrasado"
+
+
+def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for TCPI, or None.
+
+    TCPI ≤ 1.0 → achievable (success); ≤ 1.1 → tight (warning); > 1.1 → unreachable (danger).
+    """
+    if tcpi is None:
+        return None
+    if tcpi <= 1.0:
+        return "success"
+    if tcpi <= 1.1:
+        return "warning"
+    return "danger"
+
+
 # ── Budget resolution ─────────────────────────────────────────────────────────
 
 def resolve_effective_budget(project, baseline=None) -> tuple[Optional[float], Optional[float]]:
