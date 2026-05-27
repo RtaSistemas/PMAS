@@ -26,6 +26,7 @@ from backend.app.services.evm import (
     classify_schedule_status,
     compute_cpi_ev,
     compute_ev_capped,
+    compute_spi,
     cpi_color,
     resolve_effective_budget,
     spi_color,
@@ -248,7 +249,7 @@ def get_runway(
                         prev_cum_ph = cum_ph
 
                 if last_plan_pv and last_plan_pv > 0 and last_plan_ev is not None:
-                    spi = round(last_plan_ev / last_plan_pv, 3)
+                    spi = compute_spi(last_plan_pv, last_plan_ev)
                     schedule_status = classify_schedule_status(spi)
 
         pct_consumed_cost = (

@@ -592,10 +592,10 @@ class TestPlans:
         # With plan + budget + actual_cost: SPI and SV must be populated
         # consumed=30h out of 100h budget_h → EV = 30% × 10000 = 3000
         # planned=40h out of 100h budget_h → PV = 40% × 10000 = 4000
-        # SPI = EV/PV = 3000/4000 = 0.75 (behind schedule)
-        # SV  = EV - PV = -1000
+        # SPI = actual_hours / planned_hours = 30 / 40 = 0.75 (behind schedule)
+        # SV  = actual_hours - planned_hours = 30 - 40 = -10h
         assert d["spi"] == pytest.approx(0.75, abs=0.01)
-        assert d["sv"] == pytest.approx(-1000.0, abs=1.0)
+        assert d["sv"] == pytest.approx(-10.0, abs=0.1)
 
 
 # ===========================================================================

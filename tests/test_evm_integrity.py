@@ -239,7 +239,7 @@ class TestCpiIntegrity_PartialCompletion:
 
 class TestSvIntegrity:
     """
-    SV = EV − PV (positive = ahead, negative = behind schedule).
+    SV = actual_hours − planned_hours (positive = ahead, negative = behind schedule).
 
     Scenario:
       budget_hours=100, budget_cost=10_000
@@ -247,8 +247,8 @@ class TestSvIntegrity:
       consumed (C1+C2)=60h, cost_per_hour=100 → AC=6_000
       EV  = (60/100)×10_000 = 6_000
       PV  = (80/100)×10_000 = 8_000
-      SV  = 6_000 − 8_000   = −2_000  (behind)
-      SPI = EV/PV            = 6_000/8_000 = 0.750
+      SV  = 60h − 80h = −20h  (behind schedule)
+      SPI = actual_hours / planned_hours = 60/80 = 0.750
     """
 
     PEP  = "60IT-777-01"
@@ -262,8 +262,8 @@ class TestSvIntegrity:
     _EV  = (_consumed / BH) * BC    # 6_000
     _AC  = _consumed * CPH           # 6_000
     _PV  = (_cum_plan  / BH) * BC   # 8_000
-    _SV  = _EV - _PV                 # −2_000 (behind)
-    _SPI = _EV / _PV                 # 0.750
+    _SV  = _consumed - _cum_plan     # −20h (behind schedule)
+    _SPI = _consumed / _cum_plan     # 0.750
 
     def _seed(self, db):
         _global_config(db, em=1.0, sm=1.0)
