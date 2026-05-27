@@ -234,3 +234,111 @@ class TestThemePresets:
         data = r.json()
         assert data["updated"] == 1
         assert data["created"] == 0
+
+    def test_import_presets_invalid_hex_skipped(self, client):
+        """Row with a color value missing the # prefix is skipped."""
+        csv_content = (
+            "name,is_builtin,color_primary,color_background,color_surface,"
+            "color_accent,color_success,color_warning,color_danger,color_text,"
+            "color_text_muted,density,pal_0,pal_1,pal_2,pal_3,pal_4,pal_5\r\n"
+            # color_primary is missing the leading #
+            "Bad Hex,false,aabbcc,#000000,#111111,"
+            "#ff00ff,#00ff00,#ffff00,#ff0000,#ffffff,"
+            "#888888,normal,,,,,,"
+            "\r\n"
+        )
+        r = client.post(
+            "/api/theme/presets/import",
+            files={"file": ("presets.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["skipped"] == 1
+        assert data["created"] == 0
+
+    def test_import_presets_empty_name_skipped(self, client):
+        """Row with an empty name is skipped."""
+        csv_content = (
+            "name,is_builtin,color_primary,color_background,color_surface,"
+            "color_accent,color_success,color_warning,color_danger,color_text,"
+            "color_text_muted,density,pal_0,pal_1,pal_2,pal_3,pal_4,pal_5\r\n"
+            ",false,#001122,#000000,#111111,"
+            "#ff00ff,#00ff00,#ffff00,#ff0000,#ffffff,"
+            "#888888,normal,,,,,,"
+            "\r\n"
+        )
+        r = client.post(
+            "/api/theme/presets/import",
+            files={"file": ("presets.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["skipped"] == 1
+        assert data["created"] == 0
+
+    def test_import_presets_mixed_valid_invalid(self, client):
+        """Valid rows are still created even when mixed with invalid rows."""
+        csv_content = (
+            "name,is_builtin,color_primary,color_background,color_surface,"
+            "color_accent,color_success,color_warning,color_danger,color_text,"
+            "color_text_muted,density,pal_0,pal_1,pal_2,pal_3,pal_4,pal_5\r\n"
+            # Valid row
+            "Good Preset,false,#001122,#000000,#111111,"
+            "#ff00ff,#00ff00,#ffff00,#ff0000,#ffffff,"
+            "#888888,normal,#001122,#334455,#667788,#99aabb,#ccddef,#001234\r\n"
+            # Invalid: missing # on color_primary
+            "Bad Preset,false,aabbcc,#000000,#111111,"
+            "#ff00ff,#00ff00,#ffff00,#ff0000,#ffffff,"
+            "#888888,normal,,,,,,"
+            "\r\n"
+        )
+        r = client.post(
+            "/api/theme/presets/import",
+            files={"file": ("presets.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["created"] == 1
+        assert data["skipped"] == 1
+
+
+class TestThemeLogo:
+    def test_upload_logo_sets_logo_url(self, client):
+        """POST /api/theme/logo with a valid PNG sets logo_url in GET /api/theme."""
+        client.get("/api/theme")  # ensure GlobalConfig id=1 exists
+
+        r = client.post(
+            "/api/theme/logo",
+            files={"file": ("logo.png", io.BytesIO(b"\x89PNG\r\n\x1a\n"), "image/png")},
+        )
+        assert r.status_code == 200
+        assert r.json()["logo_url"] is not None
+
+        # Subsequent GET also reflects the change
+        r2 = client.get("/api/theme")
+        assert r2.json()["logo_url"] is not None
+
+    def test_delete_logo_clears_logo_url(self, client):
+        """DELETE /api/theme/logo resets logo_url to None."""
+        client.get("/api/theme")  # ensure GlobalConfig exists
+        client.post(
+            "/api/theme/logo",
+            files={"file": ("logo.png", io.BytesIO(b"\x89PNG\r\n\x1a\n"), "image/png")},
+        )
+
+        r = client.delete("/api/theme/logo")
+        assert r.status_code == 200
+        assert r.json()["logo_url"] is None
+
+        r2 = client.get("/api/theme")
+        assert r2.json()["logo_url"] is None
+
+    def test_upload_logo_invalid_extension_returns_400(self, client):
+        """POST /api/theme/logo with a disallowed extension returns 400."""
+        client.get("/api/theme")
+
+        r = client.post(
+            "/api/theme/logo",
+            files={"file": ("document.txt", io.BytesIO(b"not an image"), "text/plain")},
+        )
+        assert r.status_code == 400

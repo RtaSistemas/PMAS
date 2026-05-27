@@ -14,7 +14,7 @@ from datetime import date
 import pytest
 
 from backend.app.models import (
-    Collaborator, Cycle, Project, RateCard, SeniorityLevel, TimesheetRecord,
+    Collaborator, Cycle, Project, ProjectCyclePlan, RateCard, SeniorityLevel, TimesheetRecord,
 )
 
 
@@ -381,6 +381,40 @@ class TestForecast:
         assert body["planned_end_date"] == "2025-12-31"
         assert body["completed_on"] is None
 
+    def test_no_plan_spi_sv_none(self, client, db_session, clean_db):
+        """Forecast with budget + actual but no ProjectCyclePlan → spi=None, sv=None."""
+        c = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        _make_project(db_session, "60IT-NPL-01", "NoPlan", budget_hours=100.0, budget_cost=5000.0)
+        collab = _make_collab(db_session, "Nuno")
+        _make_record(db_session, collab, c, "60IT-NPL-01", "NoPlan", 40.0)
+        db_session.commit()
+
+        body = client.get("/api/v2/forecast?pep_wbs=60IT-NPL-01").json()
+        assert body["spi"] is None
+        assert body["sv"] is None
+        # CPI / EAC still computed when budget is set
+        assert body["cpi"] is not None
+        assert body["eac"] is not None
+
+    def test_plan_exists_spi_sv_populated(self, client, db_session, clean_db):
+        """Forecast returns numeric spi and sv when a ProjectCyclePlan is present."""
+        c = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        proj = _make_project(db_session, "60IT-PLN-01", "WithPlan",
+                             budget_hours=100.0, budget_cost=5000.0)
+        collab = _make_collab(db_session, "Paula")
+        _make_record(db_session, collab, c, "60IT-PLN-01", "WithPlan", 30.0)
+        # Add a plan for the same cycle
+        plan = ProjectCyclePlan(project_id=proj.id, cycle_id=c.id, planned_hours=40.0)
+        db_session.add(plan)
+        db_session.commit()
+
+        body = client.get("/api/v2/forecast?pep_wbs=60IT-PLN-01").json()
+        # SPI = 30h / 40h = 0.75 (behind schedule)
+        assert body["spi"] == pytest.approx(0.75, abs=0.01)
+        # SV = 30h - 40h = -10h (behind)
+        assert body["sv"] == pytest.approx(-10.0, abs=0.1)
+        assert body["sv"] < 0
+
 
 # ── services/evm.py unit tests ───────────────────────────────────────────────
 
@@ -516,6 +550,41 @@ class TestEvmService:
     def test_compute_tcpi_no_budget(self):
         from backend.app.services.evm import compute_tcpi
         assert compute_tcpi(None, 3000.0, 2000.0) is None
+
+    def test_freeze_spi_boundary_basic(self):
+        from backend.app.services.evm import freeze_spi_boundary
+        actual_s = [
+            (date(2025, 1, 1), 30.0),
+            (date(2025, 2, 1), 20.0),
+        ]
+        plan_s = [
+            (date(2025, 1, 1), 40.0),
+            (date(2025, 2, 1), 40.0),
+        ]
+        actual_h, planned_h = freeze_spi_boundary(actual_s, plan_s)
+        # Feb: cum_actual=50, cum_ph=80 → last freeze at (50, 80)
+        assert actual_h == pytest.approx(50.0)
+        assert planned_h == pytest.approx(80.0)
+
+    def test_freeze_spi_boundary_empty_plan(self):
+        from backend.app.services.evm import freeze_spi_boundary
+        actual_s = [(date(2025, 1, 1), 30.0)]
+        actual_h, planned_h = freeze_spi_boundary(actual_s, [])
+        assert actual_h is None
+        assert planned_h is None
+
+    def test_freeze_spi_boundary_single_freeze(self):
+        from backend.app.services.evm import freeze_spi_boundary
+        # Two actual cycles but plan only in first → freeze at first cycle boundary
+        actual_s = [
+            (date(2025, 1, 1), 30.0),
+            (date(2025, 2, 1), 20.0),
+        ]
+        plan_s = [(date(2025, 1, 1), 40.0)]   # plan ends after Jan
+        actual_h, planned_h = freeze_spi_boundary(actual_s, plan_s)
+        # Only Jan advances the plan → freeze at (30h actual, 40h planned)
+        assert actual_h == pytest.approx(30.0)
+        assert planned_h == pytest.approx(40.0)
 
 
 # ── services/summaries.py tests ──────────────────────────────────────────────
@@ -719,6 +788,38 @@ class TestV2Acl:
         with _acting_as(user) as c:
             resp = c.get("/api/v2/forecast?pep_wbs=PEP-B")
         assert resp.status_code == 403
+
+    def test_runway_acl_filters_restricted_pep(self, db_session, clean_db):
+        """Non-admin user sees only their allowed PEPs in /api/v2/runway."""
+        user = self._setup_restricted_user(db_session)
+
+        cy = Cycle(
+            name="T2", start_date=date(2026, 2, 1), end_date=date(2026, 2, 28),
+            is_active=True, is_closed=False,
+        )
+        db_session.add(cy)
+        db_session.commit()
+
+        co = Collaborator(name="WorkerRwy")
+        db_session.add(co)
+        db_session.flush()
+
+        for pep in ["PEP-A", "PEP-B"]:
+            rec = TimesheetRecord(
+                collaborator_id=co.id, cycle_id=cy.id,
+                record_date=date(2026, 2, 10), pep_wbs=pep,
+                normal_hours=8.0, extra_hours=0.0, standby_hours=0.0,
+                cost_per_hour=0.0, normal_cost=0.0, extra_cost=0.0, standby_cost=0.0,
+            )
+            db_session.add(rec)
+        db_session.commit()
+
+        with _acting_as(user) as c:
+            resp = c.get("/api/v2/runway")
+        assert resp.status_code == 200
+        peps = [item["pep_wbs"] for item in resp.json()]
+        assert "PEP-A" in peps
+        assert "PEP-B" not in peps
 
 
 # ── /api/v2/allocation tests ─────────────────────────────────────────────────
