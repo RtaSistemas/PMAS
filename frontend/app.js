@@ -1,726 +1,9 @@
 /* PMAS — Frontend App */
 
 // ---------------------------------------------------------------------------
-// i18n
+// i18n — translation tables live in lang/pt.js and lang/en.js
 // ---------------------------------------------------------------------------
-const _LANG = {
-  pt: {
-    'app.title':'PMAS — Dashboard de Gestão de Projetos',
-    'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
-    'tab.projects':'Projetos','tab.team':'Equipe','tab.my':'Minha Área',
-    'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
-    'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
-    'filter.dfrom':'Data início','filter.dto':'Data fim',
-    'btn.load':'Carregar','btn.clear':'Limpar',
-    'btn.last_month':'Últ. mês','btn.last_quarter':'Últ. trimestre','btn.this_year':'Este ano',
-    'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação','atab.forecast':'Previsão',
-    'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
-    'allocation.collaborator':'Colaborador','allocation.total':'Total',
-    'allocation.btn_h':'Horas','allocation.btn_r':'R$',
-    'forecast.title':'Previsão de Conclusão (EVM)',
-    'forecast.select_pep':'— selecione um PEP —',
-    'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
-    'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
-    'forecast.consumed_cost':'Custo Consumido','forecast.utilization_hours':'Utilização Horas','forecast.utilization_cost':'Utilização Custo',
-    'forecast.remaining_cost':'Custo Restante (ETC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
-    'forecast.realized':'Realizado','forecast.projection':'Projeção','forecast.budget_line':'Orçamento',
-    'forecast.now_marker':'Atual',
-    'forecast.pv_line':'VP (Valor Planejado)',
-    'forecast.spi':'IDP / SPI','forecast.sv':'Variação de Prazo (VS)',
-    'forecast.cv':'Variação de Custo (VC)','forecast.tcpi':'IDC para Conclusão (IDC-PC)',
-    'forecast.vac':'Variação no Término (VNT)',
-    'forecast.no_budget':'Sem orçamento cadastrado para este PEP.',
-    'forecast.info.project':'Projeto','forecast.info.manager':'Gerente',
-    'forecast.info.budget':'Orçamento','forecast.info.status':'Status',
-    'forecast.info.no_manager':'—','forecast.info.no_name':'Sem nome cadastrado',
-    'forecast.info.no_budget':'Sem orçamento',
-    'forecast.info.baseline':'Baseline','forecast.info.baseline_none':'Sem baseline',
-    'sem.green':'Verde','sem.yellow':'Atenção','sem.red':'Crítico','sem.grey':'Sem orçamento',
-    'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
-    'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
-    'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
-    'scatter.title':'Quadrante EVM — CPI × SPI',
-    'scatter.note':'Eixo X = SPI (prazo) · Eixo Y = CPI (custo) · Referência em 1,0',
-    'scatter.empty':'Nenhum dado de PEP disponível para os filtros selecionados.',
-    'q.tr':'No prazo e no orçamento','q.tl':'Custo ok · Prazo em risco',
-    'q.br':'Prazo ok · Custo em risco','q.bl':'Custo e prazo em risco',
-    'portfolio.treemap_h':'Distribuição de Horas por PEP (Treemap)',
-    'portfolio.treemap_r':'Custo Real por PEP (Treemap)',
-    'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
-    'portfolio.note':'Blocos cinzas = PEP sem projeto cadastrado',
-    'btn.view_hours':'Vista: Horas','btn.view_cost':'Vista: R$',
-    'btn.view_cpi':'Ver: CPI por PEP','btn.hide_cpi':'Ocultar CPI por PEP',
-    'bullet.title':'Orçado vs. Realizado — Bullet Chart',
-    'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
-    'pepcpi.note':'Orçamento / Custo Real por ciclo · Linha de referência em 1.0 · Requer orçamento (R$) nos projetos',
-    'pepcpi.empty':'Sem dados de orçamento. Defina o orçamento (R$) nos projetos para habilitar o rastreamento de CPI.',
-    'pepcpi.yaxis':'IDC / IDP (cumulativo)','pepcpi.ref_line':'= 1,0',
-    'pepcpi.cpi_suffix':'(IDC)','pepcpi.spi_suffix':'(IDP)',
-    'cpi.zone_critical':'Crítico < 0,9','cpi.zone_warning':'Atenção 0,9–1,0',
-    'trends.title':'Queima de Horas por Ciclo','trends.pep_lbl':'PEP:',
-    'trends.all':'Todos',
-    'trends.normal':'Normal','trends.extra':'Hora Extra','trends.standby':'Sobreaviso',
-    'trends.empty':'Nenhum dado encontrado. Importe timesheets e crie ciclos para visualizar tendências.',
-    'cycles.title':'Ciclos cadastrados','btn.new_cycle':'+ Novo ciclo',
-    'cycles.search_ph':'Buscar por nome de ciclo…',
-    'cycles.th.name':'Nome','cycles.th.start':'Início','cycles.th.end':'Fim',
-    'cycles.th.type':'Tipo','cycles.th.recs':'Registros',
-    'projects.title':'Projetos / PEPs','btn.new_project':'+ Novo projeto',
-    'projects.search_ph':'Buscar por PEP, nome ou cliente…',
-    'projects.th.pep':'Código PEP','projects.th.name':'Nome do Projeto',
-    'projects.th.client':'Cliente','projects.th.mgr':'Gerente',
-    'projects.th.budget':'Orçamento (h)','projects.th.status':'Status',
-    'seniority.title':'Níveis de Senioridade','seniority.th.name':'Nome',
-    'btn.new_seniority':'+ Novo nível',
-    'ratecard.title':'Tabela de Taxas (Rate Card)','btn.new_ratecard':'+ Nova taxa',
-    'ratecard.th.level':'Nível','ratecard.th.rate':'Valor/hora (R$)',
-    'ratecard.th.from':'Vigência início','ratecard.th.to':'Vigência fim',
-    'config.title':'Fatores Globais de Custo',
-    'config.extra_lbl':'Multiplicador — Hora Extra',
-    'config.standby_lbl':'Multiplicador — Hora Sobreaviso',
-    'config.anomaly_lbl':'Máx. Horas/Dia (Alerta Anomalia)',
-    'btn.save_config':'Salvar fatores',
-    'team.title':'Colaboradores','btn.assign_all':'Atribuir a todos',
-    'team.th.name':'Nome','team.th.seniority':'Senioridade','team.th.rate':'Taxa atual (R$/h)',
-    'admin.title':'Gestão de Usuários','btn.new_user':'+ Novo usuário',
-    'user.th.user':'Usuário','user.th.role':'Perfil',
-    'btn.cancel':'Cancelar','btn.save':'Salvar','btn.edit':'Editar','btn.delete':'Excluir',
-    'baseline.title':'Baseline do Projeto','baseline.active':'Baseline ativo',
-    'baseline.none':'Sem baseline ativo','baseline.locked_at':'Congelado em',
-    'baseline.locked_by':'por','baseline.label_ph':'Rótulo opcional (ex: Baseline v1)',
-    'baseline.create':'Criar Baseline','baseline.history':'Histórico de Baselines',
-    'baseline.budget_h':'Horas Orçadas','baseline.budget_cost':'Custo Orçado',
-    'baseline.activate':'Ativar','baseline.no_history':'Nenhum baseline criado.',
-    'baseline.badge':'✓ Baseline','baseline.warning':'Sem baseline — BAC pode mudar retroativamente',
-    'baseline.created':'Baseline criado com sucesso.',
-    'baseline.deleted':'Baseline removido.',
-    'btn.export_csv2':'⬇ Exportar CSV','btn.import_csv':'⬆ Importar CSV',
-    'cm.title_new':'Novo Ciclo','cm.title_edit':'Editar Ciclo',
-    'cm.name_lbl':'Nome *','cm.name_ph':'Ex: Janeiro/2026',
-    'cm.start_lbl':'Data início *','cm.end_lbl':'Data fim *',
-    'pm.title_new':'Novo Projeto','pm.title_edit':'Editar Projeto',
-    'pm.pep_lbl':'Código PEP *','pm.pep_ph':'Ex: 60OP-03333','pm.status_lbl':'Status',
-    'pm.name_lbl':'Nome do Projeto','pm.name_ph':'Nome descritivo',
-    'pm.client_lbl':'Cliente','pm.client_ph':'Nome do cliente',
-    'pm.mgr_lbl':'Gerente','pm.mgr_ph':'Nome do gerente',
-    'pm.bh_lbl':'Orçamento de horas','pm.bc_lbl':'Orçamento (R$)',
-    'pm.start_lbl':'Início','pm.planned_end_lbl':'Término planejado','pm.completion_lbl':'Concluído em',
-    'projects.th.dates':'Datas',
-    'forecast.info.start':'Início','forecast.info.planned_end':'Término Planejado','forecast.info.completed':'Concluído em',
-    'forecast.completed_on':'Concluído em',
-    'forecast.alloc.title':'Alocação por Colaborador',
-    'forecast.alloc.collaborator':'Colaborador',
-    'forecast.alloc.normal':'Normal (h)','forecast.alloc.extra':'Extra (h)',
-    'forecast.alloc.standby':'Sobreaviso (h)','forecast.alloc.total':'Total (h)',
-    'forecast.alloc.empty':'Sem dados de alocação para este período.',
-    'confirm.set_encerrado':'Data de conclusão preenchida. Alterar status para "Encerrado"?',
-    'opt.ativo':'Ativo','opt.suspenso':'Suspenso','opt.encerrado':'Encerrado',
-    'sm.title_new':'Novo Nível de Senioridade','sm.name_lbl':'Nome *','sm.name_ph':'Ex: Pleno, Sênior',
-    'rm.title_new':'Nova Taxa','rm.level_lbl':'Nível de Senioridade *',
-    'rm.rate_lbl':'Valor/hora (R$) *','rm.rate_ph':'Ex: 120.00',
-    'rm.from_lbl':'Vigência início *','rm.to_lbl':'Vigência fim (opcional)',
-    'as.title':'Atribuir Senioridade','as.level_lbl':'Nível de Senioridade',
-    'as.none_opt':'— Sem senioridade —',
-    'um.title':'Novo Usuário','um.user_lbl':'Usuário *','um.user_ph':'mínimo 3 caracteres',
-    'um.pwd_lbl':'Senha *','um.pwd_ph':'mínimo 6 caracteres','um.role_lbl':'Perfil',
-    'opt.user':'Usuário',
-    'pwdm.title':'Alterar Senha','pwdm.new_lbl':'Nova senha *','pwdm.new_ph':'mínimo 6 caracteres',
-    'ch.normal_h':'Horas Normais','ch.extra_h':'Horas Extras','ch.standby_h':'Sobreaviso',
-    'ch.budget':'Orçado','ch.actual':'Realizado','ch.hours':'Horas','ch.cost':'Custo (R$)',
-    'ch.cycle_axis':'Ciclo','ch.cost_axis':'Custo Real (R$)',
-    'badge.quarantine':'Quarentena','badge.regular':'Regular',
-    'title.lock':'Bloquear ciclo','title.unlock':'Desbloquear ciclo',
-    'title.archive':'Arquivar ciclo','title.restore':'Restaurar ciclo',
-    'cycles.show_archived':'Mostrar arquivados',
-    'anomaly.title':'⚠ Alertas de Anomalia na Importação',
-    'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
-    'stat.total':'Total','stat.collabs':'Colaboradores',
-    'stat.budgeted':'Orçado (PEPs c/ orçamento)','stat.vs_budget':'Realizado vs Orçado',
-    'stat.cost_normal':'Custo Horas Normais','stat.cost_extra':'Custo Horas Extras',
-    'stat.cost_standby':'Custo Sobreaviso','stat.cost_total':'Custo Total Real',
-    'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Orçamento (R$)',
-    'stat.vs_budget_cost':'Realizado vs Orçado',
-    'budget.exceeded':'Estourado','budget.warning':'Atenção',
-    'config.warning_threshold_lbl':'Limiar de Atenção (0–1)',
-    'config.critical_threshold_lbl':'Limiar Crítico (0–1)',
-    'lbl.admin':'Admin','lbl.user':'Usuário',
-    'loading':'Carregando…','no_cycles':'Nenhum ciclo encontrado.',
-    'no_projects':'Nenhum projeto encontrado.','no_seniority':'Nenhum nível cadastrado.',
-    'no_rates':'Nenhuma taxa cadastrada.','no_team':'Nenhum colaborador encontrado.',
-    'no_users':'Nenhum usuário encontrado.',
-    'btn.assign':'Atribuir','btn.pwd':'Senha',
-    'ch.actual_cost':'Custo Real',
-    'tt.over_budget':'Acima do orçado','tt.utilization':'Utilização','tt.total_hours':'Total horas',
-    'tt.project':'Projeto','tt.consumed':'Consumido','tt.actual_cost_lbl':'Custo real',
-    'tt.utilized':'utilizado','tt.pep_not_reg':'⚠ PEP não cadastrado',
-    'collab.timeline_title': 'Evolução por Ciclo — ',
-    'collab.timeline_empty': 'Nenhum dado encontrado para este colaborador.',
-    'collab.calendar_empty': 'Sem atividade neste mês.',
-    'collab.section_cycles': 'Horas por Ciclo',
-    'collab.section_calendar': 'Atividade Diária',
-    'cal.stat.total': 'Total',
-    'cal.stat.active_days': 'Dias ativos',
-    'cal.stat.avg_day': 'Média/dia',
-    'cal.stat.peak': 'Pico',
-    'cal.stat.quarantine': '⚠ Em quarentena',
-    'cal.months': ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
-    'cal.day_names': ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
-    'cal.week_range': '(Domingo - Sábado)',
-    'auditlog.title':'Log de Auditoria','btn.refresh':'↺ Atualizar',
-    'auditlog.filter.all_entity':'Todas entidades','auditlog.filter.all_action':'Todas ações',
-    'auditlog.th.when':'Quando','auditlog.th.user':'Usuário','auditlog.th.action':'Ação',
-    'auditlog.th.entity':'Entidade','auditlog.th.id':'ID','auditlog.th.detail':'Detalhe',
-    'no_audit':'Nenhum evento registrado.',
-    'cpi.title':'IDP — Índice de Desempenho de Custo por Ciclo',
-    'toolbox.save':'Salvar Imagem','toolbox.restore':'Restaurar','toolbox.data_view':'Ver Dados',
-    'toolbox.data_view_lang':['Dados do Gráfico','Fechar','Atualizar'],
-    'toolbox.zoom':'Zoom','toolbox.zoom_back':'Desfazer Zoom',
-    'toolbox.stack':'Empilhado','toolbox.tiled':'Lado a Lado',
-    'plan.title':'Baseline de Planejamento (Horas e Custo/Ciclo)',
-    'plan.btn_add':'+ Adicionar ciclo','plan.btn_export':'↓ Exportar CSV','plan.btn_import':'↑ Importar CSV',
-    'plan.hint':'Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.',
-    'plan.th.cycle':'Ciclo','plan.th.hours':'Horas Planejadas','plan.th.cost':'Custo Planejado (R$)',
-    'plan.select_cycle':'— selecione um ciclo —','plan.no_plans':'Nenhum baseline definido.',
-    'plan.modal_title':'Adicionar ciclos ao baseline',
-    'plan.modal_hint':'Selecione os ciclos e defina as horas e custo planejados. Ciclos já com baseline não são listados.',
-    'plan.modal_add_row':'+ Mais um ciclo',
-    'plan.edit_title':'Editar baseline do ciclo',
-    'burnup.title':'Burn-Up de Custo (R$)',
-    'burnup.pv':'Planejado (PV)','burnup.ev':'Valor Agregado (EV)','burnup.ac':'Custo Real (AC)',
-    'burnup.empty':'Defina o custo planejado por ciclo no baseline para visualizar este gráfico.',
-    'myarea.upload':'Importação de Arquivo','myarea.history':'Histórico de Importações',
-    'myarea.quarantine':'Quarentena',
-    'upload.inserted':'registros inseridos','upload.skipped':'duplicatas ignoradas',
-    'upload.quarantine':'registros em quarentena','upload.warnings':'avisos','upload.infos':'informações',
-    'history.th.when':'Quando','history.th.file':'Arquivo','history.th.inserted':'Inseridos',
-    'history.th.skipped':'Ignorados','history.th.quarantine':'Quarentena',
-    'history.th.warnings':'Avisos','history.th.status':'Status',
-    'history.status.ok':'✅ OK','history.status.warnings':'⚠️ Com avisos',
-    'history.status.quarantine':'🔒 Com quarentena','history.status.rejected':'❌ Rejeitado',
-    'qr.th.date':'Data','qr.th.collaborator':'Colaborador','qr.th.hours':'Horas',
-    'qr.th.pep':'PEP','qr.th.reason':'Motivo','qr.th.type':'Tipo',
-    'qr.th.reviewed':'Revisado','qr.th.sent_by':'Enviado por',
-    'qr.type.structural':'Estrutural','qr.type.rule':'Regra',
-    'qr.btn.export':'⬇ Exportar CSV','qr.btn.review':'✅ Marcar revisado',
-    'qr.btn.discard':'🗑 Descartar','qr.filter.pending':'Apenas pendentes',
-    'qr.btn.detail':'🔍 Detalhar',
-    'qr.btn.approve':'✅ Aprovar','qr.btn.reject':'❌ Rejeitar',
-    'qr.status.pending':'⏳ Pendente','qr.status.approved':'✅ Aprovado','qr.status.rejected':'❌ Rejeitado',
-    'qr.modal.title':'Registro em Quarentena #','qr.modal.collab':'Colaborador',
-    'qr.modal.date':'Data','qr.modal.hours':'Horas','qr.modal.pep':'PEP',
-    'qr.modal.extra':'Hora Extra','qr.modal.standby':'Sobreaviso',
-    'qr.modal.reason':'Motivo','qr.modal.rule':'Regra violada',
-    'qr.modal.session':'Sessão de Importação','qr.modal.status':'Status',
-    'qr.modal.reviewed_by':'Revisado por','qr.modal.raw':'Dados brutos',
-    'alerts.th.rule':'Regra','alerts.th.occurrences':'Ocorrências',
-    'alerts.th.last':'Último disparo','alerts.th.action':'Ação','alerts.th.trend':'Tendência',
-    'vr.title':'Regras de Validação','vr.btn.new':'+ Nova Regra',
-    'vr.th.order':'Ordem','vr.th.field':'Campo','vr.th.operator':'Operador',
-    'vr.th.value':'Valor','vr.th.action':'Ação','vr.th.description':'Descrição',
-    'vr.th.active':'Ativa','vr.th.system':'Sistema',
-    'vr.badge.system':'Sistema','vr.hint.aggregate':'Regras de agregado permitem apenas info ou warning.',
-    'vr.system_hint':'Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.',
-    'vr.empty':'Nenhuma regra cadastrada.',
-    'vr.modal.new':'Nova Regra de Validação','vr.modal.edit':'Editar Regra',
-    'vr.btn.activate':'Ativar','vr.btn.deactivate':'Desativar',
-    'vr.saved':'Regra salva.',
-    'vr.desc_ph':'Descrição legível da regra','vr.value_ph':'Ex: 24 ou 5,6',
-    'opt.yes':'Sim','opt.no':'Não',
-    'pwdm.current_lbl':'Senha atual *','pwdm.current_ph':'senha atual',
-    'prefs.customize':'⚙ Personalizar Layout','prefs.save':'Salvar preferências',
-    'prefs.saved':'Preferências salvas.','prefs.save_error':'Erro ao salvar preferências.',
-    'prefs.restore':'Restaurar padrão','prefs.visible':'Visível','prefs.grid_cols':'Colunas',
-    'size.small':'Pequeno','size.medium':'Médio','size.large':'Grande','size.full':'Largura total',
-    'chart.effortChart':'Esforço por Colaborador','chart.trendsChart':'Tendências por Ciclo',
-    'chart.cpiChart':'CPI por Ciclo (cumulativo)','chart.pepCpiChart':'IDC por PEP (cumulativo)',
-    'chart.costCompositionChart':'Composição de Custo por Tipo de Hora',
-    'chart.collabInlineTimelineChart':'Horas por Ciclo — Colaborador',
-    'chart.collabCalendarChart':'Atividade Diária — Colaborador',
-    'chart.treemapChart':'Treemap de Portfólio','chart.bulletChart':'Orçado vs Realizado',
-    'chart.scatterChart':'Quadrante EVM (CPI × SPI)','chart.forecastChart':'Previsão de Conclusão',
-    'nav.main_label':'Navegação principal','nav.analytics_label':'Sub-navegação de análise',
-    'nav.myarea_label':'Navegação Minha Área',
-    'appearance.title':'Aparência do Sistema','appearance.app_name':'Nome do sistema',
-    'appearance.logo':'Logo','appearance.logo_upload':'⬆ Enviar novo logo',
-    'appearance.logo_remove':'🗑 Remover logo','appearance.density':'Densidade',
-    'appearance.density.compact':'Compacto','appearance.density.normal':'Normal',
-    'appearance.density.relaxed':'Espaçado','appearance.colors':'Cores',
-    'appearance.palette':'Paleta de gráficos','appearance.presets':'Paletas predefinidas',
-    'appearance.preset.pmas':'● Padrão PMAS','appearance.preset.corporate':'● Azul Corporativo',
-    'appearance.preset.high_contrast':'● Alto Contraste',
-    'appearance.restore':'Restaurar padrões','appearance.save':'Salvar aparência',
-    'appearance.saved':'Aparência salva com sucesso.',
-    'login.user_lbl':'Usuário','login.user_ph':'usuário',
-    'login.pwd_lbl':'Senha','login.pwd_ph':'senha',
-    'login.btn':'Entrar',
-    'btn.close':'Fechar',
-    'session.title':'Detalhes da Importação',
-    'session.warnings':'⚠ Avisos','session.infos':'ℹ Informações',
-    'myarea.profile':'Perfil','myarea.profile_title':'Meu Perfil',
-    'myarea.change_pwd':'Alterar senha',
-    'myarea.layout_title':'Layout do Dashboard',
-    'myarea.layout_save':'Salvar layout',
-    'myarea.layout_hint':'Arraste para reordenar os painéis do dashboard.',
-    'myarea.upload_hint':'Importe um arquivo CSV ou XLSX de timesheets.',
-    'myarea.history_hint':'Clique em uma linha para ver o detalhe completo de avisos e informações.',
-    'myarea.quarantine_hint':'Registros em quarentena. Clique para ver detalhes.',
-    'history.th.sent_by':'Enviado por','history.th.infos':'Infos',
-    'qr.th.ingested':'Data reg.','qr.th.status':'Status',
-    'config.timezone_lbl':'Fuso horário',
-    'acl.title':'Controle de Acesso',
-    'acl.hint':'Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.',
-    'acl.granted':'Acessos concedidos',
-    'acl.add_user':'Adicionar usuário',
-    'btn.grant':'Conceder','btn.revoke':'Revogar',
-    'ms.cycle_ph':'— Selecione ciclo(s) —','ms.pep_ph':'— Todos os PEPs —',
-    'ms.pep_desc_ph':'— Todas as descrições —','ms.collab_ph':'— Todos —',
-    'ms.select_ph':'— selecione —',
-    'msg.load_before_export':'Carregue dados antes de exportar.',
-    'msg.no_cycles_export':'Nenhum ciclo para exportar.',
-    'msg.no_projects_export':'Nenhum projeto para exportar.',
-    'msg.no_levels_export':'Nenhum nível para exportar.',
-    'msg.no_rates_export':'Nenhuma taxa para exportar.',
-    'msg.no_baseline_export':'Nenhum baseline para exportar.',
-    'msg.fields_required':'Preencha todos os campos obrigatórios.',
-    'msg.pep_required':'Código PEP é obrigatório.',
-    'msg.positive_numbers':'Os valores devem ser números positivos.',
-    'msg.config_saved':'Fatores salvos com sucesso.',
-    'msg.invalid_credentials':'Credenciais inválidas.',
-    'msg.connection_error':'Erro de conexão. Tente novamente.',
-    'msg.pwd_changed':'Senha alterada com sucesso.',
-    'msg.pwd_fill_all':'Preencha todos os campos.',
-    'msg.user_not_found':'Usuário não encontrado.',
-    'msg.name_required':'Nome é obrigatório.',
-    'msg.select_user':'Selecione um usuário.',
-    'msg.rule_reorder_error':'Erro ao reordenar regras.',
-    'msg.select_cycle_all':'Selecione um ciclo em todas as linhas.',
-    'msg.duplicate_cycle':'Ciclo duplicado na lista.',
-    'msg.valid_hours':'Informe horas válidas (≥ 0) em todas as linhas.',
-    'msg.all_baseline_set':'Todos os ciclos já têm baseline definido.',
-    'msg.baseline_removed':'Linha removida.',
-    'msg.pep_not_registered':'(PEP não cadastrado)',
-    'msg.no_import_sessions':'Nenhuma importação registrada.',
-    'msg.no_quarantine':'Nenhum registro em quarentena.',
-    'msg.no_access_granted':'Nenhum acesso concedido.',
-    'msg.no_warnings_infos':'Sem avisos ou informações adicionais.',
-    'msg.user_created':'Usuário criado com sucesso.',
-    'msg.seniority_title':'Senioridade — ','msg.acl_title':'Acesso — ',
-    'msg.pwd_field_required':'Informe a nova senha.',
-    'confirm.delete_cycle':'Excluir o ciclo?','confirm.delete_project':'Excluir o projeto?',
-    'confirm.delete_user':'Excluir este usuário?',
-    'confirm.delete_level':'Excluir este nível?',
-    'confirm.revoke_access':'Revogar acesso deste usuário?',
-    'confirm.assign_all':'Atribuir esta senioridade a TODOS os colaboradores?',
-    'confirm.remove_baseline':'Remover esta linha do baseline?',
-    'page.label':'Página','page.of':'de',
-    'sm.title_edit':'Editar Nível','rm.title_edit':'Editar Taxa',
-    'runway.title':'Runway do Portfólio',
-    'runway.note':'Ciclos restantes no ritmo atual · apenas PEPs com orçamento',
-    'runway.empty':'Nenhum PEP com orçamento encontrado.',
-    'runway.th.pep':'PEP','runway.th.project':'Projeto',
-    'runway.th.planned':'Planejado (h)','runway.th.planned_r':'Planejado (R$)',
-    'runway.th.progress':'Progresso',
-    'runway.th.avg':'Média/ciclo (h)','runway.th.avg_r':'Média/ciclo (R$)',
-    'runway.th.cycles':'Ciclos restantes','runway.th.completion':'Conclusão estimada',
-    'runway.overrun':'Estourado','runway.no_budget':'Sem orçamento','runway.closed':'Encerrado',
-    'runway.th.spi':'SPI','runway.th.status':'Status',
-    'runway.status.on_track':'No prazo','runway.status.at_risk':'Atenção',
-    'runway.status.behind':'Atrasado','runway.status.no_baseline':'Sem baseline',
-    'costcomp.title':'Composição de Custo por Tipo de Hora',
-    'costcomp.note':'Custo de horas regulares · extras · sobreaviso por ciclo',
-    'costcomp.empty':'Nenhum dado de custo encontrado.',
-    'conc.title':'Concentração de Risco por Projeto',
-    'conc.note':'% de horas por colaborador · ⚠ risco quando um único colaborador detém >60%',
-    'conc.note_cost':'% de custo por colaborador · ⚠ risco quando um único colaborador detém >60%',
-    'conc.empty':'Nenhum dado de horas encontrado.',
-    'conc.others':'Outros',
-    'msg.pep_not_available': 'PEP não disponível para o seu perfil.',
-    'msg.import_done':'Importação concluída',
-    'msg.created_n':'criado(s)','msg.updated_n':'atualizado(s)','msg.errors_n':'erro(s)',
-    'msg.qr_approved':'Registro aprovado e inserido.','msg.qr_rejected':'Registro rejeitado.',
-    'confirm.lock_cycle':'Bloquear este ciclo?','confirm.unlock_cycle':'Desbloquear este ciclo?',
-    'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
-    'page.prev':'‹ Anterior','page.next':'Próximo ›',
-    'qr.filter.all':'Todos os registros','qr.filter.pending_opt':'⏳ Pendentes','qr.filter.approved_opt':'✅ Aprovados','qr.filter.rejected_opt':'❌ Rejeitados',
-    'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.panel.forecast_alloc':'Alocação por Colaborador','layout.tab.forecast':'Previsão (EVM)',
-    'scatter.axis_spi':'SPI — Desempenho de Prazo','scatter.axis_cpi':'CPI — Desempenho de Custo',
-    'risk.warning':'Atenção','risk.critical':'Crítico',
-    'lbl.plus_cycles':'+{n} ciclo(s)',
-    'sem.portfolio':'Portfólio','sem.ok_label':'OK — abaixo de {pct}% do budget','sem.warning_label':'Atenção — ≥ {pct}% do budget','sem.overrun_label':'Estourado — ≥ {pct}% do budget','sem.no_budget':'Sem budget definido',
-    'msg.err_load_timeline':'Erro ao carregar timeline.','msg.err_load_daily':'Erro ao carregar dados diários.','msg.err_export_quarantine':'Erro ao exportar quarentena.',
-    'msg.baseline_imported':'Baseline importado: {n} criados, {m} atualizados',
-    'runway.csv.header':'PEP,Projeto,Planejado (h),Consumido (h),% Consumido,Média/ciclo,Ciclos restantes,Conclusão estimada,CPI,Risco',
-    'currency.symbol_title':'Símbolo da moeda','currency.factor_title':'Fator de conversão',
-    'confirm.delete_rate':'Excluir esta taxa?','confirm.delete_rule':'Excluir esta regra?',
-    'confirm.delete_logo':'Remover logo personalizado?','confirm.modal_title':'Confirmar ação',
-    'btn.confirm':'Confirmar',
-    'onboard.title':'Bem-vindo ao PMAS!',
-    'onboard.step1':'Crie ao menos um Ciclo em Projetos → Ciclos',
-    'onboard.step2':'Cadastre seus Projetos com código PEP e orçamento',
-    'onboard.step3':'Importe um timesheet em Minha Área → Upload',
-    'onboard.cta':'Ir para Ciclos',
-    'velocity.mavg':'Média Móvel (3 ciclos)',
-    'burnup.eac':'EAC (Estimativa no Término)',
-  },
-  en: {
-    'app.title':'PMAS — Project Management Dashboard',
-    'btn.import_ts':'⬆ Import','btn.logout':'Sign Out','btn.lang':'PT',
-    'tab.projects':'Projects','tab.team':'Team','tab.my':'My Area',
-    'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
-    'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',
-    'filter.dfrom':'Start date','filter.dto':'End date',
-    'btn.load':'Load','btn.clear':'Clear',
-    'btn.last_month':'Last month','btn.last_quarter':'Last quarter','btn.this_year':'This year',
-    'atab.effort':'Team Effort','atab.portfolio':'Portfolio Health','atab.trends':'Trends','atab.allocation':'Allocation','atab.forecast':'Forecast',
-    'allocation.empty':'No data found for the selected filters.',
-    'allocation.collaborator':'Collaborator','allocation.total':'Total',
-    'allocation.btn_h':'Hours','allocation.btn_r':'R$',
-    'forecast.title':'Completion Forecast (EVM)',
-    'forecast.select_pep':'— select a PEP —',
-    'forecast.empty':'Select a PEP to view the completion forecast.',
-    'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
-    'forecast.consumed_cost':'Consumed Cost','forecast.utilization_hours':'Hours Utilization','forecast.utilization_cost':'Cost Utilization',
-    'forecast.remaining_cost':'Remaining Cost (ETC)','forecast.utilization':'Utilization','forecast.completion':'Est. Completion',
-    'forecast.realized':'Realized','forecast.projection':'Projection','forecast.budget_line':'Budget',
-    'forecast.now_marker':'Now',
-    'forecast.pv_line':'PV (Planned Value)',
-    'forecast.spi':'SPI','forecast.sv':'Schedule Variance (SV)',
-    'forecast.cv':'Cost Variance (CV)','forecast.tcpi':'TCPI',
-    'forecast.vac':'Variance at Completion (VAC)',
-    'forecast.no_budget':'No budget registered for this PEP.',
-    'forecast.info.project':'Project','forecast.info.manager':'Manager',
-    'forecast.info.budget':'Budget','forecast.info.status':'Status',
-    'forecast.info.no_manager':'—','forecast.info.no_name':'No name registered',
-    'forecast.info.no_budget':'No budget',
-    'forecast.info.baseline':'Baseline','forecast.info.baseline_none':'No baseline',
-    'sem.green':'Green','sem.yellow':'Warning','sem.red':'Critical','sem.grey':'No budget',
-    'effort.empty':'Select a cycle or PEP in the filters and click Load.',
-    'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
-    'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
-    'scatter.title':'EVM Quadrant — CPI × SPI',
-    'scatter.note':'X = SPI (schedule) · Y = CPI (cost) · Reference at 1.0',
-    'scatter.empty':'No PEP data available for selected filters.',
-    'q.tr':'On schedule and on budget','q.tl':'Cost ok · Schedule at risk',
-    'q.br':'Schedule ok · Cost at risk','q.bl':'Cost & schedule at risk',
-    'portfolio.treemap_h':'Hour Distribution by PEP (Treemap)',
-    'portfolio.treemap_r':'Actual Cost by PEP (Treemap)',
-    'portfolio.empty':'No hour data found for the selected filters.',
-    'portfolio.note':'Gray blocks = PEP without registered project',
-    'btn.view_hours':'View: Hours','btn.view_cost':'View: R$',
-    'btn.view_cpi':'View: CPI per PEP','btn.hide_cpi':'Hide CPI per PEP',
-    'bullet.title':'Budget vs. Actual — Bullet Chart',
-    'pepcpi.title':'CPI per PEP by Cycle',
-    'pepcpi.note':'Budget / Actual Cost per cycle · Reference line at 1.0 · Requires budget_cost on projects',
-    'pepcpi.empty':'No budget data found. Set budget_cost on projects to enable CPI tracking.',
-    'pepcpi.yaxis':'CPI / SPI (cumulative)','pepcpi.ref_line':'= 1.0',
-    'pepcpi.cpi_suffix':'(CPI)','pepcpi.spi_suffix':'(SPI)',
-    'cpi.zone_critical':'Critical < 0.9','cpi.zone_warning':'Warning 0.9–1.0',
-    'trends.title':'Hours Burn by Cycle','trends.pep_lbl':'PEP:',
-    'trends.all':'All',
-    'trends.normal':'Normal','trends.extra':'Extra Hours','trends.standby':'Standby',
-    'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
-    'cycles.title':'Registered Cycles','btn.new_cycle':'+ New cycle',
-    'cycles.search_ph':'Search by cycle name…',
-    'cycles.th.name':'Name','cycles.th.start':'Start','cycles.th.end':'End',
-    'cycles.th.type':'Type','cycles.th.recs':'Records',
-    'projects.title':'Projects / PEPs','btn.new_project':'+ New project',
-    'projects.search_ph':'Search by PEP, name or client…',
-    'projects.th.pep':'PEP Code','projects.th.name':'Project Name',
-    'projects.th.client':'Client','projects.th.mgr':'Manager',
-    'projects.th.budget':'Budget (h)','projects.th.status':'Status',
-    'seniority.title':'Seniority Levels','seniority.th.name':'Name',
-    'btn.new_seniority':'+ New level',
-    'ratecard.title':'Rate Card Table','btn.new_ratecard':'+ New rate',
-    'ratecard.th.level':'Level','ratecard.th.rate':'Rate/hour (R$)',
-    'ratecard.th.from':'Valid from','ratecard.th.to':'Valid to',
-    'config.title':'Global Cost Factors',
-    'config.extra_lbl':'Multiplier — Overtime',
-    'config.standby_lbl':'Multiplier — Standby',
-    'config.anomaly_lbl':'Max. Hours/Day (Anomaly Alert)',
-    'btn.save_config':'Save factors',
-    'team.title':'Collaborators','btn.assign_all':'Assign to all',
-    'team.th.name':'Name','team.th.seniority':'Seniority','team.th.rate':'Current rate (R$/h)',
-    'admin.title':'User Management','btn.new_user':'+ New user',
-    'user.th.user':'Username','user.th.role':'Role',
-    'btn.cancel':'Cancel','btn.save':'Save','btn.edit':'Edit','btn.delete':'Delete',
-    'baseline.title':'Project Baseline','baseline.active':'Active Baseline',
-    'baseline.none':'No active baseline','baseline.locked_at':'Locked on',
-    'baseline.locked_by':'by','baseline.label_ph':'Optional label (e.g. Baseline v1)',
-    'baseline.create':'Create Baseline','baseline.history':'Baseline History',
-    'baseline.budget_h':'Budget Hours','baseline.budget_cost':'Budget Cost',
-    'baseline.activate':'Activate','baseline.no_history':'No baselines created.',
-    'baseline.badge':'✓ Baseline','baseline.warning':'No baseline — BAC may change retroactively',
-    'baseline.created':'Baseline created successfully.',
-    'baseline.deleted':'Baseline removed.',
-    'btn.export_csv2':'⬇ Export CSV','btn.import_csv':'⬆ Import CSV',
-    'cm.title_new':'New Cycle','cm.title_edit':'Edit Cycle',
-    'cm.name_lbl':'Name *','cm.name_ph':'E.g.: January/2026',
-    'cm.start_lbl':'Start date *','cm.end_lbl':'End date *',
-    'pm.title_new':'New Project','pm.title_edit':'Edit Project',
-    'pm.pep_lbl':'PEP Code *','pm.pep_ph':'E.g.: 60OP-03333','pm.status_lbl':'Status',
-    'pm.name_lbl':'Project Name','pm.name_ph':'Descriptive name',
-    'pm.client_lbl':'Client','pm.client_ph':'Client name',
-    'pm.mgr_lbl':'Manager','pm.mgr_ph':'Manager name',
-    'pm.bh_lbl':'Hours budget','pm.bc_lbl':'Budget (R$)',
-    'pm.start_lbl':'Start','pm.planned_end_lbl':'Planned end','pm.completion_lbl':'Completed on',
-    'projects.th.dates':'Dates',
-    'forecast.info.start':'Start','forecast.info.planned_end':'Planned end','forecast.info.completed':'Completed on',
-    'forecast.completed_on':'Completed on',
-    'forecast.alloc.title':'Allocation by Collaborator',
-    'forecast.alloc.collaborator':'Collaborator',
-    'forecast.alloc.normal':'Normal (h)','forecast.alloc.extra':'Extra (h)',
-    'forecast.alloc.standby':'Standby (h)','forecast.alloc.total':'Total (h)',
-    'forecast.alloc.empty':'No allocation data for this period.',
-    'confirm.set_encerrado':'Completion date set. Change status to "Closed"?',
-    'opt.ativo':'Active','opt.suspenso':'Suspended','opt.encerrado':'Closed',
-    'sm.title_new':'New Seniority Level','sm.name_lbl':'Name *','sm.name_ph':'E.g.: Mid, Senior',
-    'rm.title_new':'New Rate','rm.level_lbl':'Seniority Level *',
-    'rm.rate_lbl':'Rate/hour (R$) *','rm.rate_ph':'E.g.: 120.00',
-    'rm.from_lbl':'Valid from *','rm.to_lbl':'Valid to (optional)',
-    'as.title':'Assign Seniority','as.level_lbl':'Seniority Level',
-    'as.none_opt':'— No seniority —',
-    'um.title':'New User','um.user_lbl':'Username *','um.user_ph':'minimum 3 characters',
-    'um.pwd_lbl':'Password *','um.pwd_ph':'minimum 6 characters','um.role_lbl':'Role',
-    'opt.user':'User',
-    'pwdm.title':'Change Password','pwdm.new_lbl':'New password *','pwdm.new_ph':'minimum 6 characters',
-    'ch.normal_h':'Normal Hours','ch.extra_h':'Overtime','ch.standby_h':'Standby',
-    'ch.budget':'Budget','ch.actual':'Actual','ch.hours':'Hours','ch.cost':'Cost (R$)',
-    'ch.cycle_axis':'Cycle','ch.cost_axis':'Actual Cost (R$)',
-    'badge.quarantine':'Quarantine','badge.regular':'Regular',
-    'title.lock':'Lock cycle','title.unlock':'Unlock cycle',
-    'title.archive':'Archive cycle','title.restore':'Restore cycle',
-    'cycles.show_archived':'Show archived',
-    'anomaly.title':'⚠ Ingestion Anomaly Alerts',
-    'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
-    'stat.total':'Total','stat.collabs':'Collaborators',
-    'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
-    'stat.cost_normal':'Normal Hours Cost','stat.cost_extra':'Overtime Cost',
-    'stat.cost_standby':'Standby Cost','stat.cost_total':'Total Actual Cost',
-    'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
-    'stat.vs_budget_cost':'Actual vs Budget',
-    'budget.exceeded':'Exceeded','budget.warning':'Warning',
-    'config.warning_threshold_lbl':'Warning Threshold (0–1)',
-    'config.critical_threshold_lbl':'Critical Threshold (0–1)',
-    'lbl.admin':'Admin','lbl.user':'User',
-    'loading':'Loading…','no_cycles':'No cycles found.',
-    'no_projects':'No projects found.','no_seniority':'No levels registered.',
-    'no_rates':'No rates registered.','no_team':'No collaborators found.',
-    'no_users':'No users found.',
-    'btn.assign':'Assign','btn.pwd':'Password',
-    'ch.actual_cost':'Actual Cost',
-    'tt.over_budget':'Above budget','tt.utilization':'Utilization','tt.total_hours':'Total hours',
-    'tt.project':'Project','tt.consumed':'Consumed','tt.actual_cost_lbl':'Actual cost',
-    'tt.utilized':'utilized','tt.pep_not_reg':'⚠ PEP not registered',
-    'collab.timeline_title': 'Cycle Evolution — ',
-    'collab.timeline_empty': 'No data found for this collaborator.',
-    'collab.calendar_empty': 'No activity this month.',
-    'collab.section_cycles': 'Hours by Cycle',
-    'collab.section_calendar': 'Daily Activity',
-    'cal.stat.total': 'Total',
-    'cal.stat.active_days': 'Active days',
-    'cal.stat.avg_day': 'Avg/day',
-    'cal.stat.peak': 'Peak',
-    'cal.stat.quarantine': '⚠ In quarantine',
-    'cal.months': ['January','February','March','April','May','June','July','August','September','October','November','December'],
-    'cal.day_names': ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
-    'cal.week_range': '(Sunday - Saturday)',
-    'auditlog.title':'Audit Log','btn.refresh':'↺ Refresh',
-    'auditlog.filter.all_entity':'All entities','auditlog.filter.all_action':'All actions',
-    'auditlog.th.when':'When','auditlog.th.user':'User','auditlog.th.action':'Action',
-    'auditlog.th.entity':'Entity','auditlog.th.id':'ID','auditlog.th.detail':'Detail',
-    'no_audit':'No events recorded.',
-    'cpi.title':'CPI — Cost Performance Index per Cycle',
-    'toolbox.save':'Save Image','toolbox.restore':'Restore','toolbox.data_view':'View Data',
-    'toolbox.data_view_lang':['Chart Data','Close','Refresh'],
-    'toolbox.zoom':'Zoom','toolbox.zoom_back':'Undo Zoom',
-    'toolbox.stack':'Stacked','toolbox.tiled':'Side by Side',
-    'plan.title':'Planning Baseline (Hours & Cost/Cycle)',
-    'plan.btn_add':'+ Add cycle','plan.btn_export':'↓ Export CSV','plan.btn_import':'↑ Import CSV',
-    'plan.hint':'Set planned hours and cost per cycle to compute PV, SPI, Schedule Variance and the Cost Burn-Up chart.',
-    'plan.th.cycle':'Cycle','plan.th.hours':'Planned Hours','plan.th.cost':'Planned Cost (R$)',
-    'plan.select_cycle':'— select a cycle —','plan.no_plans':'No baseline defined.',
-    'plan.modal_title':'Add cycles to baseline',
-    'plan.modal_hint':'Select cycles and set planned hours and cost. Cycles already in the baseline are not listed.',
-    'plan.modal_add_row':'+ One more cycle',
-    'plan.edit_title':'Edit baseline cycle',
-    'burnup.title':'Cost Burn-Up (R$)',
-    'burnup.pv':'Planned (PV)','burnup.ev':'Earned Value (EV)','burnup.ac':'Actual Cost (AC)',
-    'burnup.empty':'Set planned cost per cycle in the baseline to display this chart.',
-    'myarea.upload':'Upload','myarea.history':'Import History',
-    'myarea.quarantine':'Quarantine',
-    'upload.inserted':'records inserted','upload.skipped':'duplicates skipped',
-    'upload.quarantine':'records quarantined','upload.warnings':'warnings','upload.infos':'info messages',
-    'history.th.when':'When','history.th.file':'File','history.th.inserted':'Inserted',
-    'history.th.skipped':'Skipped','history.th.quarantine':'Quarantine',
-    'history.th.warnings':'Warnings','history.th.status':'Status',
-    'history.status.ok':'✅ OK','history.status.warnings':'⚠️ With warnings',
-    'history.status.quarantine':'🔒 With quarantine','history.status.rejected':'❌ Rejected',
-    'qr.th.date':'Date','qr.th.collaborator':'Collaborator','qr.th.hours':'Hours',
-    'qr.th.pep':'PEP','qr.th.reason':'Reason','qr.th.type':'Type',
-    'qr.th.reviewed':'Reviewed','qr.th.sent_by':'Sent by',
-    'qr.type.structural':'Structural','qr.type.rule':'Rule',
-    'qr.btn.export':'⬇ Export CSV','qr.btn.review':'✅ Mark reviewed',
-    'qr.btn.discard':'🗑 Discard','qr.filter.pending':'Pending only',
-    'qr.btn.detail':'🔍 Detail',
-    'qr.btn.approve':'✅ Approve','qr.btn.reject':'❌ Reject',
-    'qr.status.pending':'⏳ Pending','qr.status.approved':'✅ Approved','qr.status.rejected':'❌ Rejected',
-    'qr.modal.title':'Quarantine Record #','qr.modal.collab':'Collaborator',
-    'qr.modal.date':'Date','qr.modal.hours':'Hours','qr.modal.pep':'PEP',
-    'qr.modal.extra':'Overtime','qr.modal.standby':'Standby',
-    'qr.modal.reason':'Reason','qr.modal.rule':'Violated rule',
-    'qr.modal.session':'Upload Session','qr.modal.status':'Status',
-    'qr.modal.reviewed_by':'Reviewed by','qr.modal.raw':'Raw data',
-    'alerts.th.rule':'Rule','alerts.th.occurrences':'Occurrences',
-    'alerts.th.last':'Last trigger','alerts.th.action':'Action','alerts.th.trend':'Trend',
-    'vr.title':'Validation Rules','vr.btn.new':'+ New Rule',
-    'vr.th.order':'Order','vr.th.field':'Field','vr.th.operator':'Operator',
-    'vr.th.value':'Value','vr.th.action':'Action','vr.th.description':'Description',
-    'vr.th.active':'Active','vr.th.system':'System',
-    'vr.badge.system':'System','vr.hint.aggregate':'Aggregate rules only allow info or warning.',
-    'vr.system_hint':'System rules (🔒) cannot be edited or deleted, but can be activated/deactivated.',
-    'vr.empty':'No rules registered.',
-    'vr.modal.new':'New Validation Rule','vr.modal.edit':'Edit Rule',
-    'vr.btn.activate':'Activate','vr.btn.deactivate':'Deactivate',
-    'vr.saved':'Rule saved.',
-    'vr.desc_ph':'Human-readable rule description','vr.value_ph':'E.g.: 24 or 5,6',
-    'opt.yes':'Yes','opt.no':'No',
-    'pwdm.current_lbl':'Current password *','pwdm.current_ph':'current password',
-    'prefs.customize':'⚙ Customize Layout','prefs.save':'Save preferences',
-    'prefs.saved':'Preferences saved.','prefs.save_error':'Error saving preferences.',
-    'prefs.restore':'Restore defaults','prefs.visible':'Visible','prefs.grid_cols':'Columns',
-    'size.small':'Small','size.medium':'Medium','size.large':'Large','size.full':'Full width',
-    'chart.effortChart':'Effort by Collaborator','chart.trendsChart':'Trends by Cycle',
-    'chart.cpiChart':'CPI by Cycle (cumulative)','chart.pepCpiChart':'CPI by PEP (cumulative)',
-    'chart.costCompositionChart':'Cost Composition by Hour Type',
-    'chart.collabInlineTimelineChart':'Hours per Cycle — Collaborator',
-    'chart.collabCalendarChart':'Daily Activity — Collaborator',
-    'chart.treemapChart':'Portfolio Treemap','chart.bulletChart':'Budget vs Actual',
-    'chart.scatterChart':'EVM Quadrant (CPI × SPI)','chart.forecastChart':'Completion Forecast',
-    'nav.main_label':'Main navigation','nav.analytics_label':'Analytics sub-navigation',
-    'nav.myarea_label':'My Area navigation',
-    'appearance.title':'System Appearance','appearance.app_name':'System name',
-    'appearance.logo':'Logo','appearance.logo_upload':'⬆ Upload new logo',
-    'appearance.logo_remove':'🗑 Remove logo','appearance.density':'Density',
-    'appearance.density.compact':'Compact','appearance.density.normal':'Normal',
-    'appearance.density.relaxed':'Relaxed','appearance.colors':'Colors',
-    'appearance.palette':'Chart palette','appearance.presets':'Preset palettes',
-    'appearance.preset.pmas':'● PMAS Default','appearance.preset.corporate':'● Corporate Blue',
-    'appearance.preset.high_contrast':'● High Contrast',
-    'appearance.restore':'Restore defaults','appearance.save':'Save appearance',
-    'appearance.saved':'Appearance saved successfully.',
-    'login.user_lbl':'Username','login.user_ph':'username',
-    'login.pwd_lbl':'Password','login.pwd_ph':'password',
-    'login.btn':'Sign In',
-    'btn.close':'Close',
-    'session.title':'Import Details',
-    'session.warnings':'⚠ Warnings','session.infos':'ℹ Info',
-    'myarea.profile':'Profile','myarea.profile_title':'My Profile',
-    'myarea.change_pwd':'Change password',
-    'myarea.layout_title':'Dashboard Layout',
-    'myarea.layout_save':'Save layout',
-    'myarea.layout_hint':'Drag to reorder dashboard panels.',
-    'myarea.upload_hint':'Import a CSV or XLSX timesheet file.',
-    'myarea.history_hint':'Click a row to see full details of warnings and info.',
-    'myarea.quarantine_hint':'Quarantine records. Click to view details.',
-    'history.th.sent_by':'Sent by','history.th.infos':'Info',
-    'qr.th.ingested':'Recorded','qr.th.status':'Status',
-    'config.timezone_lbl':'Timezone',
-    'acl.title':'Access Control',
-    'acl.hint':'Users with explicit permission to import timesheets into this project. Admins have unrestricted access.',
-    'acl.granted':'Granted access',
-    'acl.add_user':'Add user',
-    'btn.grant':'Grant','btn.revoke':'Revoke',
-    'ms.cycle_ph':'— Select cycle(s) —','ms.pep_ph':'— All PEPs —',
-    'ms.pep_desc_ph':'— All descriptions —','ms.collab_ph':'— All —',
-    'ms.select_ph':'— select —',
-    'msg.load_before_export':'Load data before exporting.',
-    'msg.no_cycles_export':'No cycles to export.',
-    'msg.no_projects_export':'No projects to export.',
-    'msg.no_levels_export':'No levels to export.',
-    'msg.no_rates_export':'No rates to export.',
-    'msg.no_baseline_export':'No baseline to export.',
-    'msg.fields_required':'Fill in all required fields.',
-    'msg.pep_required':'PEP code is required.',
-    'msg.positive_numbers':'Values must be positive numbers.',
-    'msg.config_saved':'Factors saved successfully.',
-    'msg.invalid_credentials':'Invalid credentials.',
-    'msg.connection_error':'Connection error. Please try again.',
-    'msg.pwd_changed':'Password changed successfully.',
-    'msg.pwd_fill_all':'Fill in all fields.',
-    'msg.user_not_found':'User not found.',
-    'msg.name_required':'Name is required.',
-    'msg.select_user':'Select a user.',
-    'msg.rule_reorder_error':'Error reordering rules.',
-    'msg.select_cycle_all':'Select a cycle in all rows.',
-    'msg.duplicate_cycle':'Duplicate cycle in list.',
-    'msg.valid_hours':'Enter valid hours (≥ 0) in all rows.',
-    'msg.all_baseline_set':'All cycles already have a baseline defined.',
-    'msg.baseline_removed':'Row removed.',
-    'msg.pep_not_registered':'(PEP not registered)',
-    'msg.no_import_sessions':'No imports recorded.',
-    'msg.no_quarantine':'No quarantine records.',
-    'msg.no_access_granted':'No access granted.',
-    'msg.no_warnings_infos':'No warnings or additional info.',
-    'msg.user_created':'User created successfully.',
-    'msg.seniority_title':'Seniority — ','msg.acl_title':'Access — ',
-    'msg.pwd_field_required':'Enter the new password.',
-    'confirm.delete_cycle':'Delete this cycle?','confirm.delete_project':'Delete this project?',
-    'confirm.delete_user':'Delete this user?',
-    'confirm.delete_level':'Delete this level?',
-    'confirm.revoke_access':'Revoke this user\'s access?',
-    'confirm.assign_all':'Assign this seniority to ALL collaborators?',
-    'confirm.remove_baseline':'Remove this baseline row?',
-    'page.label':'Page','page.of':'of',
-    'sm.title_edit':'Edit Level','rm.title_edit':'Edit Rate',
-    'runway.title':'Portfolio Runway',
-    'runway.note':'Remaining cycles at current burn rate · only PEPs with budget',
-    'runway.empty':'No PEPs with budget found.',
-    'runway.th.pep':'PEP','runway.th.project':'Project',
-    'runway.th.planned':'Planned (h)','runway.th.planned_r':'Planned (R$)',
-    'runway.th.progress':'Progress',
-    'runway.th.avg':'Avg/cycle (h)','runway.th.avg_r':'Avg/cycle (R$)',
-    'runway.th.cycles':'Cycles remaining','runway.th.completion':'Est. completion',
-    'runway.overrun':'Overrun','runway.no_budget':'No budget','runway.closed':'Closed',
-    'runway.th.spi':'SPI','runway.th.status':'Status',
-    'runway.status.on_track':'On track','runway.status.at_risk':'At risk',
-    'runway.status.behind':'Behind','runway.status.no_baseline':'No baseline',
-    'costcomp.title':'Cost Composition by Hour Type',
-    'costcomp.note':'Cost of regular · overtime · standby hours per cycle',
-    'costcomp.empty':'No cost data found.',
-    'conc.title':'Project Concentration Risk',
-    'conc.note':'% of hours per collaborator · ⚠ risk when a single collaborator holds >60%',
-    'conc.note_cost':'% of cost per collaborator · ⚠ risk when a single collaborator holds >60%',
-    'conc.empty':'No hour data found.',
-    'conc.others':'Others',
-    'msg.pep_not_available': 'PEP not available for your profile.',
-    'msg.import_done':'Import complete',
-    'msg.created_n':'created','msg.updated_n':'updated','msg.errors_n':'error(s)',
-    'msg.qr_approved':'Record approved and inserted.','msg.qr_rejected':'Record rejected.',
-    'confirm.lock_cycle':'Lock this cycle?','confirm.unlock_cycle':'Unlock this cycle?',
-    'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
-    'page.prev':'‹ Previous','page.next':'Next ›',
-    'qr.filter.all':'All records','qr.filter.pending_opt':'⏳ Pending','qr.filter.approved_opt':'✅ Approved','qr.filter.rejected_opt':'❌ Rejected',
-    'layout.panel.pepcpi':'CPI by PEP','layout.panel.cost_comp':'Cost Composition','layout.panel.bullet':'Budget vs. Actual','layout.panel.quadrant':'EVM Quadrant','layout.panel.concentration':'Concentration Risk','layout.panel.plan':'Planning Baseline','layout.panel.forecast_alloc':'Allocation by Collaborator','layout.tab.forecast':'Forecast (EVM)',
-    'scatter.axis_spi':'SPI — Schedule Performance','scatter.axis_cpi':'CPI — Cost Performance',
-    'risk.warning':'Warning','risk.critical':'Critical',
-    'lbl.plus_cycles':'+{n} cycle(s)',
-    'sem.portfolio':'Portfolio','sem.ok_label':'OK — below {pct}% of budget','sem.warning_label':'Warning — ≥ {pct}% of budget','sem.overrun_label':'Overrun — ≥ {pct}% of budget','sem.no_budget':'No budget defined',
-    'msg.err_load_timeline':'Error loading timeline.','msg.err_load_daily':'Error loading daily data.','msg.err_export_quarantine':'Error exporting quarantine.',
-    'msg.baseline_imported':'Baseline imported: {n} created, {m} updated',
-    'runway.csv.header':'PEP,Project,Planned (h),Consumed (h),% Consumed,Avg/cycle,Cycles remaining,Est. completion,CPI,Risk',
-    'currency.symbol_title':'Currency symbol','currency.factor_title':'Conversion factor',
-    'confirm.delete_rate':'Delete this rate?','confirm.delete_rule':'Delete this rule?',
-    'confirm.delete_logo':'Remove custom logo?','confirm.modal_title':'Confirm action',
-    'btn.confirm':'Confirm',
-    'onboard.title':'Welcome to PMAS!',
-    'onboard.step1':'Create at least one Cycle under Projects → Cycles',
-    'onboard.step2':'Register your Projects with PEP code and budget',
-    'onboard.step3':'Import a timesheet in My Area → Upload',
-    'onboard.cta':'Go to Cycles',
-    'velocity.mavg':'3-Cycle Moving Avg',
-    'burnup.eac':'EAC (Estimate at Completion)',
-  },
-};
+const _LANG = { pt: window._LANG_PT || {}, en: window._LANG_EN || {} };
 let _locale = localStorage.getItem('pmas_lang') || 'pt';
 function _t(key) { return (_LANG[_locale] || _LANG.pt)[key] || key; }
 function _applyI18n() {
@@ -731,189 +14,9 @@ function _applyI18n() {
 }
 
 // ---------------------------------------------------------------------------
-// EVM glossary — tooltip shown on any [data-evm="KEY"] element
+// EVM glossary — terms and tooltip behaviour live in evm-glossary.js
 // ---------------------------------------------------------------------------
-const _EVM_TERMS = {
-  CPI: {
-    pt: {
-      name: 'IDC — Índice de Desempenho de Custo',
-      desc: 'Mede a eficiência do custo realizado. > 1,0 = abaixo do orçamento; < 1,0 = acima.',
-      formula: 'IDC = VA ÷ CR\n  VA = Valor Agregado\n  CR = Custo Real acumulado',
-    },
-    en: {
-      name: 'CPI — Cost Performance Index',
-      desc: 'Measures cost efficiency. > 1.0 = under budget; < 1.0 = over budget.',
-      formula: 'CPI = EV ÷ AC\n  EV = Earned Value\n  AC = Actual Cost',
-    },
-  },
-  SPI: {
-    pt: {
-      name: 'IDP — Índice de Desempenho de Prazo',
-      desc: 'Mede a eficiência do cronograma. > 1,0 = adiantado; < 1,0 = atrasado.',
-      formula: 'IDP = VA ÷ VP\n  VA = Valor Agregado\n  VP = Valor Planejado acumulado',
-    },
-    en: {
-      name: 'SPI — Schedule Performance Index',
-      desc: 'Measures schedule efficiency. > 1.0 = ahead of schedule; < 1.0 = behind.',
-      formula: 'SPI = EV ÷ PV\n  EV = Earned Value\n  PV = Planned Value (cumulative)',
-    },
-  },
-  EAC: {
-    pt: {
-      name: 'EPT — Estimativa no Término',
-      desc: 'Projeção do custo total do projeto ao término, com base no desempenho de custo atual.',
-      formula: 'EPT = OAT ÷ IDC\n  OAT = Orçamento ao Término (BAC)\n  IDC = Índice de Desempenho de Custo',
-    },
-    en: {
-      name: 'EAC — Estimate at Completion',
-      desc: 'Projected total cost of the project at completion, based on current cost performance.',
-      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
-    },
-  },
-  AC: {
-    pt: {
-      name: 'AC — Custo Real (Actual Cost)',
-      desc: 'Total de custos reais incorridos e registrados para o trabalho realizado até o momento.',
-      formula: 'AC = Σ (horas × custo/hora)\n  Calculado com a tarifa congelada no momento da importação',
-    },
-    en: {
-      name: 'AC — Actual Cost',
-      desc: 'Total of actual costs incurred for work performed to date.',
-      formula: 'AC = Σ (hours × cost/hour)\n  Rate is frozen at ingestion time (EVM freeze pattern)',
-    },
-  },
-  SV: {
-    pt: {
-      name: 'VS — Variação de Prazo',
-      desc: 'Diferença entre o valor do trabalho realizado e o planejado. Negativo = atrasado.',
-      formula: 'VS = VA − VP\n  VA = Valor Agregado\n  VP = Valor Planejado',
-    },
-    en: {
-      name: 'SV — Schedule Variance',
-      desc: 'Difference between earned and planned value. Negative = behind schedule.',
-      formula: 'SV = EV − PV\n  EV = Earned Value\n  PV = Planned Value',
-    },
-  },
-  PV: {
-    pt: {
-      name: 'VP — Valor Planejado',
-      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline). Expresso em R$.',
-      formula: 'VP = min(Σ horas planejadas / horas orçadas, 1,0) × OAT\n  OAT = Orçamento ao Término (BAC)\n  Nota: o gráfico de curva S plota horas; VP e VS são calculados em R$',
-    },
-    en: {
-      name: 'PV — Planned Value',
-      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline). Expressed in R$.',
-      formula: 'PV = min(Σ planned_h / budget_h, 1.0) × BAC\n  BAC = Budget at Completion\n  Note: the S-curve chart plots hours; PV and SV are computed in R$',
-    },
-  },
-  CV: {
-    pt: {
-      name: 'VC — Variação de Custo',
-      desc: 'Diferença entre o valor agregado e o custo real. Positivo = abaixo do orçamento; negativo = acima.',
-      formula: 'VC = VA − CR\n  VA = Valor Agregado (EV)\n  CR = Custo Real (AC)',
-    },
-    en: {
-      name: 'CV — Cost Variance',
-      desc: 'Difference between earned value and actual cost. Positive = under budget; negative = over budget.',
-      formula: 'CV = EV − AC\n  EV = Earned Value\n  AC = Actual Cost',
-    },
-  },
-  TCPI: {
-    pt: {
-      name: 'IDC-PC — Índice de Desempenho para Conclusão',
-      desc: 'Eficiência de custo necessária para terminar o projeto dentro do orçamento original. > 1,0 exige melhora de eficiência.',
-      formula: 'IDC-PC = (OAT − VA) ÷ (OAT − CR)\n  OAT = Orçamento ao Término (BAC)',
-    },
-    en: {
-      name: 'TCPI — To-Complete Performance Index',
-      desc: 'Required cost efficiency to finish within the original budget. > 1.0 means tighter performance needed.',
-      formula: 'TCPI = (BAC − EV) ÷ (BAC − AC)\n  BAC = Budget at Completion',
-    },
-  },
-  VAC: {
-    pt: {
-      name: 'VNT — Variação no Término',
-      desc: 'Diferença projetada entre o orçamento e o custo final estimado. Positivo = economia; negativo = estouro.',
-      formula: 'VNT = OAT − EPT\n  OAT = Orçamento ao Término (BAC)\n  EPT = Estimativa no Término (EAC)',
-    },
-    en: {
-      name: 'VAC — Variance at Completion',
-      desc: 'Projected difference between budget and estimated final cost. Positive = savings; negative = overrun.',
-      formula: 'VAC = BAC − EAC\n  BAC = Budget at Completion\n  EAC = Estimate at Completion',
-    },
-  },
-  ETC: {
-    pt: {
-      name: 'EPC — Estimativa para Conclusão',
-      desc: 'Custo restante projetado para concluir o trabalho, com base no desempenho atual.',
-      formula: 'EPC = EPT − CR\n  EPT = Estimativa no Término (EAC)\n  CR = Custo Real acumulado (AC)',
-    },
-    en: {
-      name: 'ETC — Estimate to Complete',
-      desc: 'Projected remaining cost to complete the work, based on current performance.',
-      formula: 'ETC = EAC − AC\n  EAC = Estimate at Completion\n  AC = Actual Cost',
-    },
-  },
-  EVM: {
-    pt: {
-      name: 'EVM — Gestão de Valor Agregado',
-      desc: 'Metodologia que integra escopo, prazo e custo para medir o desempenho real do projeto e projetar tendências.',
-      formula: 'Indicadores: IDC, IDP, EPT, VC, VNT, EPC, IDC-PC, VS, VP',
-    },
-    en: {
-      name: 'EVM — Earned Value Management',
-      desc: 'Methodology integrating scope, schedule and cost to measure actual project performance and forecast trends.',
-      formula: 'Metrics: CPI, SPI, EAC, CV, VAC, ETC, TCPI, SV, PV',
-    },
-  },
-};
-
-let _evmTipEl    = null;
-let _evmTipTimer = null;
-
-function _showEvmTip(anchor) {
-  const key  = anchor.dataset.evm;
-  const term = _EVM_TERMS[key];
-  if (!term) return;
-  const loc  = term[_locale] || term.pt;
-
-  if (!_evmTipEl) {
-    _evmTipEl = document.createElement('div');
-    _evmTipEl.className = 'evm-tooltip';
-    document.body.appendChild(_evmTipEl);
-  }
-  _evmTipEl.innerHTML =
-    `<div class="evm-tip-name">${escHtml(loc.name)}</div>` +
-    `<div class="evm-tip-desc">${escHtml(loc.desc)}</div>` +
-    `<div class="evm-tip-formula">${escHtml(loc.formula)}</div>`;
-  _evmTipEl.hidden = false;
-
-  const rect = anchor.getBoundingClientRect();
-  const tipW = 270;
-  let left = rect.left;
-  let top  = rect.bottom + 6;
-  if (left + tipW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tipW - 8);
-  if (top + 120 > window.innerHeight)      top  = rect.top - 8 - (_evmTipEl.offsetHeight || 120);
-  _evmTipEl.style.left = `${left}px`;
-  _evmTipEl.style.top  = `${top}px`;
-}
-
-function _hideEvmTip() {
-  clearTimeout(_evmTipTimer);
-  if (_evmTipEl) _evmTipEl.hidden = true;
-}
-
-document.addEventListener('mouseover', e => {
-  const el = e.target.closest('[data-evm]');
-  if (!el) return;
-  clearTimeout(_evmTipTimer);
-  _evmTipTimer = setTimeout(() => _showEvmTip(el), 350);
-});
-document.addEventListener('mouseout', e => {
-  if (!e.target.closest('[data-evm]')) return;
-  clearTimeout(_evmTipTimer);
-  _hideEvmTip();
-});
+const _EVM_TERMS = window._EVM_TERMS || {};
 
 // ---------------------------------------------------------------------------
 // Multi-currency display (UI-only conversion, no backend calls)
@@ -1595,7 +698,7 @@ function _drawRunwayRows(data) {
 
     let spiCell = '—';
     if (item.spi != null) {
-      const spiColor = item.spi >= 1 ? 'var(--primary,#4f8ef7)' : item.spi >= 0.9 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      const spiColor = _EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.success;
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
@@ -1610,7 +713,7 @@ function _drawRunwayRows(data) {
 
     let cpiCell = '—';
     if (item.cpi != null) {
-      const cpiColor = item.cpi >= 1 ? 'var(--primary,#4f8ef7)' : item.cpi >= 0.8 ? 'var(--amber,#d9b273)' : 'var(--red,#c56d76)';
+      const cpiColor = _EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.success;
       cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
     }
 
@@ -1844,11 +947,12 @@ function _renderCostCompositionChart(trends) {
   const pal = _getPalette();
   const cc = _getOrCreateChart('costCompositionChart');
   cc.setOption({
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     legend: { top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
+      ..._chartDefaults().tooltip,
       formatter(params) {
         const total = params.reduce((s, p) => s + (p.value || 0), 0);
         let html = `<b>${params[0].axisValue}</b><br/>`;
@@ -2283,16 +1387,16 @@ function _buildForecastKpis(fc) {
   const overC = fc.budget_cost != null && fc.actual_cost != null && fc.actual_cost > fc.budget_cost;
 
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
-  const spiCls  = fc.spi  == null ? 'neutral' : fc.spi  >= 1.0 ? 'green' : fc.spi  >= 0.9 ? 'amber' : 'red';
+  const spiCls  = _EVM_COLOR_CARD[fc.spi_color]  || 'neutral';
   const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
   const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
-  const cpiCls  = fc.cpi  == null ? 'neutral' : fc.cpi  >= 1.0 ? 'green' : fc.cpi  >= 0.9 ? 'amber' : 'red';
+  const cpiCls  = _EVM_COLOR_CARD[fc.cpi_color]  || 'neutral';
   const cvFmt   = fc.cv   != null ? (fc.cv  >= 0 ? '+' : '') + fmtR(fc.cv)  : '—';
   const cvCls   = fc.cv   == null ? 'neutral' : fc.cv   >= 0 ? 'green' : 'red';
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
-  const tcpiCls = fc.tcpi == null ? 'neutral' : fc.tcpi <= 1.0 ? 'green' : fc.tcpi <= 1.1 ? 'amber' : 'red';
+  const tcpiCls = _EVM_COLOR_CARD[fc.tcpi_color] || 'neutral';
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
 
@@ -2302,11 +1406,6 @@ function _buildForecastKpis(fc) {
       || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—'));
   const completionLbl = fc.is_closed ? _t('forecast.completed_on') : _t('forecast.completion');
 
-  const mkCard = ({ val, lbl, cls, evm }) => {
-    const lblHtml = evm ? `<span data-evm="${evm}">${escHtml(lbl)}</span>` : escHtml(lbl);
-    return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
-  };
-
   const row1 = [
     { val: fmtH(fc.consumed_hours),                                                    lbl: _t('forecast.consumed'),          cls: 'blue'                    },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
@@ -2315,7 +1414,7 @@ function _buildForecastKpis(fc) {
     { val: svFmt,                                                                       lbl: 'SV',                             cls: svCls,   evm: 'SV'        },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl,                    cls: 'violet'                  },
     { val: tcpiVal,                                                                     lbl: 'TCPI',                           cls: tcpiCls, evm: 'TCPI'      },
-  ].map(mkCard).join('');
+  ].map(_mkStatCard).join('');
 
   const row2 = [
     { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: 'AC',                            cls: 'blue',    evm: 'AC'      },
@@ -2325,150 +1424,12 @@ function _buildForecastKpis(fc) {
     { val: cvFmt,                                                                       lbl: 'CV',                            cls: cvCls,   evm: 'CV'        },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',                           cls: 'neutral', evm: 'EAC'     },
     { val: vacFmt,                                                                      lbl: 'VAC',                           cls: vacCls,  evm: 'VAC'       },
-  ].map(mkCard).join('');
+  ].map(_mkStatCard).join('');
 
   return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
 }
 
-function _buildForecastOption(fc) {
-  const history  = fc.history || [];
-  const avg      = fc.avg_hours_per_cycle || 0;
-  const lastCum  = history.length ? history.at(-1).cumulative_hours : 0;
-  const budget   = fc.budget_hours;
-
-  const projCount = budget && avg > 0
-    ? Math.max(0, Math.min(Math.ceil((budget - lastCum) / avg) + 1, 14))
-    : 6;
-
-  const projCats = Array.from({ length: projCount }, (_, i) => `▸${i + 1}`);
-  const projVals = [];
-  for (let i = 1; i <= projCount; i++) {
-    const v = lastCum + avg * i;
-    projVals.push(+((budget ? Math.min(v, budget) : v)).toFixed(2));
-  }
-
-  const historyCats = history.map(h => h.cycle_name);
-  const historyVals = history.map(h => h.cumulative_hours);
-  const allCats = [...historyCats, ...projCats];
-  const n = historyVals.length;
-
-  // Realized series: historical values, null for projected slots
-  const realizedData = [...historyVals, ...Array(projCount).fill(null)];
-  const lastHistoryCat = historyCats.at(-1) ?? null;
-
-  // Projection series: null up to last historical, then projected values (bridged from last historical)
-  const projectionData = [
-    ...Array(n - 1).fill(null),
-    historyVals.at(-1) ?? 0,
-    ...projVals,
-  ];
-
-  // Budget flat line
-  const budgetData = budget ? allCats.map(() => budget) : null;
-
-  // Planned Value (PV) curve — only if history contains cumulative_planned_hours
-  const hasPV = history.some(h => h.cumulative_planned_hours != null);
-  const pvData = hasPV
-    ? [...history.map(h => h.cumulative_planned_hours ?? null), ...Array(projCount).fill(null)]
-    : null;
-
-  const _fpal = _getPalette();
-  const _fC0  = _fpal[0] || '#0ea5e9';
-  const series = [
-    {
-      name: _t('forecast.realized'),
-      type: 'line', yAxisIndex: 0,
-      data: realizedData,
-      smooth: false, symbol: 'circle', symbolSize: 6,
-      lineStyle: { color: _fC0, width: 2.5 },
-      itemStyle: { color: _fC0 },
-      areaStyle: { color: _fC0 + '1a' },
-      connectNulls: false,
-      ...(lastHistoryCat ? {
-        markLine: {
-          silent: true, symbol: 'none',
-          lineStyle: { color: _cssVar('--border'), type: 'solid', width: 1 },
-          data: [{ xAxis: lastHistoryCat,
-            label: { show: true, formatter: _t('forecast.now_marker'),
-              color: _cssVar('--text-3'), fontSize: 9, position: 'insideEndTop' } }],
-        },
-      } : {}),
-    },
-    {
-      name: _t('forecast.projection'),
-      type: 'line', yAxisIndex: 0,
-      data: projectionData,
-      smooth: false, symbol: 'circle', symbolSize: 5,
-      lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
-      itemStyle: { color: _cssVar('--text-3') },
-      connectNulls: false,
-    },
-  ];
-  if (pvData) {
-    const _fC3 = _fpal[3] || '#a78bfa';
-    series.push({
-      name: _t('forecast.pv_line'),
-      type: 'line', yAxisIndex: 0,
-      data: pvData,
-      symbol: 'none',
-      lineStyle: { color: _fC3, width: 2, type: 'dotted' },
-      itemStyle: { color: _fC3 },
-      connectNulls: true,
-    });
-  }
-  if (budgetData) {
-    series.push({
-      name: _t('forecast.budget_line'),
-      type: 'line', yAxisIndex: 0,
-      data: budgetData,
-      symbol: 'none',
-      lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
-      itemStyle: { color: _cssVar('--amber') },
-    });
-  }
-
-  const legendData = [_t('forecast.realized'), _t('forecast.projection')];
-  if (pvData) legendData.push(_t('forecast.pv_line'));
-  if (budgetData) legendData.push(_t('forecast.budget_line'));
-
-  return {
-    backgroundColor: 'transparent',
-    legend: {
-      data: legendData, top: 8, left: 'center',
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
-      itemGap: 24, itemWidth: 18, itemHeight: 10,
-    },
-    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text') },
-      formatter: params => {
-        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
-        params.forEach(p => {
-          if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${(+p.value).toFixed(1)}h</b><br>`;
-        });
-        return html;
-      },
-    },
-    toolbox: _toolbox({
-      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
-    }, 'PMAS-IDP'),
-    xAxis: {
-      type: 'category', data: allCats,
-      axisLabel: { color: _cssVar('--text-3'), rotate: allCats.length > 8 ? 30 : 0, fontSize: 11 },
-      axisTick: { alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value', name: _t('ch.hours'),
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), fontSize: 11, formatter: v => `${v}h` },
-      splitLine: { lineStyle: { color: _cssVar('--border') } },
-    },
-    series,
-  };
-}
+// _buildForecastOption — moved to charts/forecast.js
 
 function _forecastInfoStat(lbl, val) {
   return `<div style="display:flex;flex-direction:column;gap:.15rem">
@@ -2481,13 +1442,12 @@ function _renderForecastProjectInfo(fc, proj) {
   const el = document.getElementById('forecastProjectInfo');
   if (!el) return;
 
-  const hrRatio   = fc.budget_hours ? fc.consumed_hours / fc.budget_hours : null;
-  const costRatio = fc.budget_cost  ? fc.actual_cost    / fc.budget_cost  : null;
-  const ratios    = [hrRatio, costRatio].filter(r => r != null);
-  const semColor  = !ratios.length ? 'grey'
-                  : Math.max(...ratios) >= 1.0 ? 'red'
-                  : Math.max(...ratios) >= 0.9 ? 'yellow'
-                  : 'green';
+  const _HEALTH_PRIORITY = { overrun: 0, critical: 1, warning: 2, ok: 3, no_budget: 4 };
+  const _HEALTH_TO_SEM   = { ok: 'green', warning: 'yellow', critical: 'red', overrun: 'red', no_budget: 'grey' };
+  const hh = fc.health_hours || 'no_budget';
+  const hc = fc.health_cost  || 'no_budget';
+  const worstHealth = (_HEALTH_PRIORITY[hh] ?? 4) <= (_HEALTH_PRIORITY[hc] ?? 4) ? hh : hc;
+  const semColor = _HEALTH_TO_SEM[worstHealth] || 'grey';
   const semLabel  = _t(`sem.${semColor}`);
 
   const budgetParts = [];
@@ -2525,96 +1485,7 @@ function _renderForecastProjectInfo(fc, proj) {
   el.hidden = false;
 }
 
-function _buildBurnUpOption(fc) {
-  const history = fc.history || [];
-  const cats = history.map(h => h.cycle_name);
-  const pvData = history.map(h => h.cumulative_planned_cost ?? null);
-  const evData = history.map(h => h.cumulative_ev_cost      ?? null);
-  const acData = history.map(h => h.cumulative_cost         ?? null);
-
-  const _fmtR = v => v == null ? '' : `R$ ${(+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-
-  const eacColor = _cssVar('--amber') || '#f59e0b';
-  const legendData = [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')];
-  if (fc.eac != null) legendData.push(_t('burnup.eac'));
-
-  const series = [
-    {
-      name: _t('burnup.pv'),
-      type: 'line', data: pvData,
-      symbol: 'none', connectNulls: true,
-      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
-      itemStyle: { color: '#94a3b8' },
-    },
-    {
-      name: _t('burnup.ev'),
-      type: 'line', data: evData,
-      symbol: 'circle', symbolSize: 5, connectNulls: false,
-      lineStyle: { color: _cssVar('--green') || '#22c55e', width: 2.5 },
-      itemStyle: { color: _cssVar('--green') || '#22c55e' },
-      areaStyle: { color: (_cssVar('--green') || '#22c55e') + '18' },
-    },
-    {
-      name: _t('burnup.ac'),
-      type: 'line', data: acData,
-      symbol: 'circle', symbolSize: 5, connectNulls: false,
-      lineStyle: { color: _cssVar('--red') || '#ef4444', width: 2.5 },
-      itemStyle: { color: _cssVar('--red') || '#ef4444' },
-    },
-  ];
-  if (fc.eac != null) {
-    series.push({
-      name: _t('burnup.eac'),
-      type: 'line',
-      data: cats.map(() => fc.eac),
-      symbol: 'none',
-      lineStyle: { color: eacColor, width: 1.5, type: 'dotted' },
-      itemStyle: { color: eacColor },
-      tooltip: { formatter: () => `EAC: ${_fmtR(fc.eac)}` },
-    });
-  }
-
-  return {
-    backgroundColor: 'transparent',
-    legend: {
-      data: legendData, top: 8, left: 'center',
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
-      itemGap: 24, itemWidth: 18, itemHeight: 10,
-    },
-    grid: { top: 44, right: '4%', bottom: 56, left: '2%', containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text') },
-      formatter: params => {
-        let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
-        params.forEach(p => {
-          if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${_fmtR(p.value)}</b><br>`;
-        });
-        return html;
-      },
-    },
-    toolbox: _toolbox({
-      dataZoom: { title: { zoom: _t('toolbox.zoom'), back: _t('toolbox.zoom_back') } },
-    }, 'PMAS-BurnUp'),
-    xAxis: {
-      type: 'category', data: cats,
-      axisLabel: { color: _cssVar('--text-3'), rotate: cats.length > 8 ? 30 : 0, fontSize: 11 },
-      axisTick: { alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value', name: 'R$',
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: {
-        color: _cssVar('--text-3'), fontSize: 11,
-        formatter: v => `R$${(v/1000).toFixed(0)}k`,
-      },
-      splitLine: { lineStyle: { color: _cssVar('--border') } },
-    },
-    series,
-  };
-}
+// _buildBurnUpOption — moved to charts/forecast.js
 
 async function _renderForecastTab() {
   await _populateForecastPepSelect();
@@ -3005,21 +1876,9 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
 });
 
 // ---------------------------------------------------------------------------
-// Chart option builders
+// Chart option builders — moved to charts/effort.js, charts/portfolio.js,
+// and charts/forecast.js. Stubs kept here for reference only.
 // ---------------------------------------------------------------------------
-
-function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
-
-function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
-  if (!selectedCycleIds.length) return 'Todos os ciclos';
-  const first = (_allCycles || []).find(c => String(c.id) === String(selectedCycleIds[0]));
-  const name = first ? first.name : `Ciclo #${selectedCycleIds[0]}`;
-  let t = selectedCycleIds.length > 1
-    ? `${name} (${_t('lbl.plus_cycles').replace('{n}', selectedCycleIds.length - 1)})`
-    : name;
-  if (selectedPepCodes?.length) t += `  |  PEP: ${selectedPepCodes.join(', ')}`;
-  return t;
-}
 
 // ---------------------------------------------------------------------------
 // Toolbox padrão ECharts — garante consistência visual em todos os gráficos.
@@ -3038,535 +1897,14 @@ function _toolbox(extra = {}, name = 'PMAS') {
   };
 }
 
-// ============================================================
-// _buildHoursBarOption — Builder unificado de barras de horas
-// Substitui: _buildEffortOption, _buildTrendsOption (bloco de
-// barras) e o bloco inline tc.setOption({…}) do modal timeline.
-//
-// Correções aplicadas vs. documento de design (seção 5):
-//   [C1] showBackground preservado do G1 original (horizontal)
-//   [C2] label da linha de total: 'right' (horizontal) / 'top' (vertical)
-// ============================================================
-function _buildHoursBarOption({
-  data          = [],
-  categoryKey   = 'collaborator',
-  orientation   = 'horizontal',   // 'horizontal' | 'vertical'
-  stacked       = true,
-  showTotal     = true,
-  richLabel     = false,
-  maxItems      = 40,
-  toolboxName   = 'PMAS-Horas',
-} = {}) {
+// _buildHoursBarOption, _buildEffortSeriesOnly — moved to charts/effort.js
 
-  // ── 1. Preparação dos dados ─────────────────────────────────────────
-  const slice      = data.length > maxItems ? data.slice(0, maxItems) : data;
-  const truncated  = data.length > maxItems;
-  const stack      = stacked ? 'total' : undefined;
-  const isHoriz    = orientation === 'horizontal';
 
-  const categories = slice.map(r => r[categoryKey]);
-  const normals    = slice.map(r => +(r.normal_hours  ?? 0).toFixed(2));
-  const extras     = slice.map(r => +(r.extra_hours   ?? 0).toFixed(2));
-  const standbys   = slice.map(r => +(r.standby_hours ?? 0).toFixed(2));
-  const totals     = slice.map((_, i) =>
-    +(normals[i] + extras[i] + standbys[i]).toFixed(2)
-  );
-  const maxTotal   = Math.max(...totals, 0);
+// _buildEvmQuadrantOption — moved to charts/portfolio.js
 
-  // Lookup rápido para richLabel (usado apenas em horizontal)
-  const byCategory = Object.fromEntries(slice.map(r => [r[categoryKey], r]));
+// _buildTreemapOption — moved to charts/portfolio.js
 
-  // ── 2. Eixo de categoria ────────────────────────────────────────────
-  const categoryAxis = {
-    type: 'category',
-    data: categories,
-    axisTick: { show: false },
-    axisLabel: richLabel && isHoriz
-      // [C1] Label rico: nome + breakdown N/E/S — exclusivo do modo horizontal
-      ? {
-          color:      _cssVar('--text'),
-          fontSize:   10,
-          lineHeight: 16,
-          formatter: name => {
-            const d  = byCategory[name];
-            if (!d) return name;
-            const t  = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-            const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
-            return (
-              `{nm|${nm}}\n` +
-              `{hr|N:${d.normal_hours.toFixed(1)}h  ` +
-              `E:${d.extra_hours.toFixed(1)}h  ` +
-              `S:${d.standby_hours.toFixed(1)}h  \u2211${t}h}`
-            );
-          },
-          rich: {
-            nm: { color: _cssVar('--text'), fontSize: 11, lineHeight: 18 },
-            hr: { color: _cssVar('--text-3'), fontSize: 9,  lineHeight: 14 },
-          },
-        }
-      // Label simples para vertical (ciclos) — rotaciona quando há muitas categorias
-      : {
-          color:    _cssVar('--text-3'),
-          fontSize: isHoriz ? 10 : 11,
-          rotate:   (!isHoriz && categories.length > 6) ? 30 : 0,
-        },
-  };
-
-  // ── 3. Eixo de valor ────────────────────────────────────────────────
-  const valueAxis = {
-    type: 'value',
-    name: 'h',
-    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-    axisLabel: {
-      color:     _cssVar('--text-3'),
-      fontSize:  11,
-      formatter: v => `${v}h`,
-    },
-    splitLine: { lineStyle: { color: _cssVar('--surface') } },
-  };
-
-  // ── 4. Tooltip unificado ────────────────────────────────────────────
-  const tooltip = {
-    trigger:     'axis',
-    axisPointer: { type: 'shadow' },
-    backgroundColor: _cssVar('--card'),
-    borderColor:     _cssVar('--border'),
-    textStyle:       { color: _cssVar('--text') },
-    formatter: params => {
-      const bars  = params.filter(p => p.seriesName !== _t('stat.total'));
-      let html    = `<b>${params[0].axisValue}</b><br/>`;
-      let total   = 0;
-      bars.forEach(p => {
-        if (p.value > 0) {
-          html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
-          total += p.value;
-        }
-      });
-      html += `<hr style="border-color:${_cssVar('--border')};margin:4px 0"/>`;
-      html += `Total: <b>${total.toFixed(1)}h</b>`;
-      return html;
-    },
-  };
-
-  // ── 5. Séries de barras ─────────────────────────────────────────────
-  const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.05)' } };
-
-  const barMaxWidth = isHoriz ? 32 : 48;
-
-  const _barSerie = (name, data, color) => ({
-    name,
-    type: 'bar',
-    ...bgStyle,
-    stack,
-    data,
-    itemStyle:   { color },
-    barMaxWidth,
-    label: {
-      show:      !!stack,
-      position:  'inside',
-      fontSize:  9,
-      color:     '#fff',
-      formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
-    },
-  });
-
-  const _pal = _getPalette();
-  const barSeries = [
-    _barSerie(_t('ch.normal_h'),  normals,   _pal[0] || _cssVar('--primary')),
-    _barSerie(_t('ch.extra_h'),   extras,    _pal[1] || _cssVar('--amber')),
-    _barSerie(_t('ch.standby_h'), standbys,  _pal[2] || '#8b5cf6'),
-  ];
-
-  // ── 6. Série de linha de total (opcional) ───────────────────────────
-  // [C2] position dinâmico: 'right' em horizontal (G1), 'top' em vertical (G2/G3)
-  const totalLineSeries = showTotal ? [{
-    name:       _t('stat.total'),
-    type:       'line',
-    color:      '#10b981',
-    legendIcon: 'circle',
-    data:       totals,
-    symbolSize: val => val === maxTotal ? 10 : 6,
-    lineStyle:  { width: 1, type: 'dashed' },
-    itemStyle:  { color: p => p.value === maxTotal ? _cssVar('--red') : _cssVar('--green') },
-    label: {
-      show:       true,
-      position:   isHoriz ? 'right' : 'top',   // [C2]
-      fontSize:   10,
-      fontWeight: 600,
-      color:      _cssVar('--green'),
-      formatter:  p => p.value === maxTotal
-        ? `{peak|${p.value.toFixed(1)}h}`
-        : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontWeight: 700 } },
-    },
-    z: 10,
-  }] : [];
-
-  // ── 7. Legenda ──────────────────────────────────────────────────────
-  const legendData = [
-    _t('ch.normal_h'),
-    _t('ch.extra_h'),
-    _t('ch.standby_h'),
-    ...(showTotal ? [_t('stat.total')] : []),
-  ];
-
-  // ── 8. Grid — margens ajustadas por orientação e presença de total ──
-  const grid = {
-    top:          44,
-    right:        showTotal && isHoriz  ? '8%'  :
-                  showTotal && !isHoriz ? '6%'  : '3%',
-    bottom:       isHoriz ? 28 : 56,
-    left:         '2%',
-    containLabel: true,
-  };
-
-  // ── 9. Montagem final ───────────────────────────────────────────────
-  return {
-    backgroundColor: _cssVar('--card'),
-
-    title: truncated ? {
-      subtext:      `Exibindo os primeiros ${maxItems} itens`,
-      left:         'center',
-      top:          4,
-      subtextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-    } : undefined,
-
-    legend: {
-      data:       legendData,
-      top:        8,
-      left:       'center',
-      textStyle:  { color: _cssVar('--text'), fontSize: 12 },
-      itemGap:    24,
-      itemWidth:  14,
-      itemHeight: 10,
-    },
-
-    toolbox: _toolbox({
-      magicType: {
-        type:  ['stack', 'tiled'],
-        title: {
-          stack: _t('toolbox.stack'),
-          tiled: _t('toolbox.tiled'),
-        },
-      },
-    }, toolboxName),
-
-    grid,
-    tooltip,
-
-    // Eixos: posição invertida conforme orientação
-    xAxis: isHoriz ? valueAxis    : categoryAxis,
-    yAxis: isHoriz ? categoryAxis : valueAxis,
-
-    series: [...barSeries, ...totalLineSeries],
-  };
-}
-
-// Only update the stack property — avoids full re-render flicker
-function _buildEffortSeriesOnly(stacked) {
-  const stack = stacked ? 'total' : undefined;
-  return {
-    series: [
-      { name: _t('ch.normal_h'),  stack },
-      { name: _t('ch.extra_h'),   stack },
-      { name: _t('ch.standby_h'), stack },
-    ],
-  };
-}
-
-function _buildEvmQuadrantOption(items) {
-  const red   = _cssVar('--red')    || '#ef4444';
-  const amber = _cssVar('--amber')  || '#f59e0b';
-  const green = _cssVar('--green')  || '#22c55e';
-  const blue  = _cssVar('--primary') || '#4f8ef7';
-
-  const colorOf = d => {
-    const spiOk = d.spi >= 1.0;
-    if (d.cpi >= 1.0 && spiOk)  return green;
-    if (d.cpi >= 1.0 && !spiOk) return amber;
-    if (d.cpi < 1.0  && spiOk)  return blue;
-    return red;
-  };
-
-  const spis  = items.map(d => d.spi);
-  const cpis  = items.map(d => d.cpi);
-  const costs = items.map(d => d.total_cost || 0);
-  const maxCost = Math.max(...costs, 1);
-  const _bubbleSize = cost => {
-    const normalized = Math.sqrt(Math.max(0, cost) / maxCost);
-    return Math.round(10 + normalized * 34);
-  };
-  const xMin = +Math.max(0, Math.min(...spis, 0.8) - 0.1).toFixed(2);
-  const xMax = +Math.max(...spis, 1.2).toFixed(2) + 0.1;
-  const yMin = +Math.max(0, Math.min(...cpis, 0.8) - 0.1).toFixed(2);
-  const yMax = +Math.max(...cpis, 1.2).toFixed(2) + 0.1;
-
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: _cssVar('--card'),
-      borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
-      formatter: p => {
-        const d = p.data._raw;
-        const cC = d.cpi >= 1 ? green : d.cpi >= 0.9 ? amber : red;
-        const sC = d.spi >= 1.0 ? green : d.spi >= 0.9 ? amber : red;
-        return [
-          `<b>${escHtml(d.pep_wbs)}</b>`,
-          d.name ? `<span style="color:${_cssVar('--text-3')}">${escHtml(d.name)}</span>` : null,
-          `CPI: <b style="color:${cC}">${d.cpi.toFixed(2)}</b>`,
-          `SPI: <b style="color:${sC}">${d.spi.toFixed(2)}</b>`,
-        ].filter(Boolean).join('<br/>');
-      },
-    },
-    grid: { top: 40, bottom: 52, left: 60, right: 24, containLabel: false },
-    xAxis: {
-      name: _t('scatter.axis_spi'),
-      nameLocation: 'middle', nameGap: 34,
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
-      axisLine: { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { show: false },
-      min: xMin, max: xMax,
-    },
-    yAxis: {
-      name: _t('scatter.axis_cpi'),
-      nameLocation: 'middle', nameGap: 52,
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(1) },
-      axisLine: { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { show: false },
-      min: yMin, max: yMax,
-    },
-    series: [{
-      type: 'scatter',
-      symbolSize: (value, params) => _bubbleSize(params.data._raw?.total_cost || 0),
-      data: items.map(d => ({
-        value: [d.spi, d.cpi],
-        itemStyle: { color: colorOf(d), opacity: 0.9, borderColor: _cssVar('--bg'), borderWidth: 2 },
-        label: {
-          show: true, formatter: d.pep_wbs,
-          position: 'top', distance: 6,
-          color: _cssVar('--text'), fontSize: 10, fontWeight: 600,
-        },
-        _raw: d,
-      })),
-      emphasis: { scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
-      markLine: {
-        silent: true, symbol: 'none',
-        lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
-        data: [
-          { xAxis: 1.0, label: { formatter: 'SPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
-          { yAxis: 1.0, label: { formatter: 'CPI=1', color: _cssVar('--text-3'), fontSize: 9 } },
-        ],
-      },
-      markArea: {
-        silent: true,
-        data: [
-          [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
-             label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
-           { coord: [1.0, 1.0] }],
-          [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
-             label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
-           { coord: [xMax + 1, 1.0] }],
-          [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
-             label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
-           { coord: [1.0, yMax + 1] }],
-          [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
-             label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
-           { coord: [xMax + 1, yMax + 1] }],
-        ],
-      },
-    }],
-  };
-}
-
-function _buildTreemapOption(health, evmMode = false) {
-  const fmtVal = (v, raw = false) => evmMode
-    ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
-    : v.toFixed(1) + 'h';
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Treemap'),
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
-      formatter: params => {
-        const d = health.find(x => x.pep_wbs === params.name);
-        if (!d) return escHtml(params.name);
-        let html = `<b>${escHtml(d.pep_wbs)}</b>`;
-        if (d.pep_description) html += `<br><span style="color:${_cssVar('--text-3')}">${escHtml(d.pep_description)}</span>`;
-        if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
-        const consumed = evmMode ? d.total_cost : d.total_hours;
-        const budget   = evmMode ? d.budget_cost : d.budget_hours;
-        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed, true)}</b>`;
-        if (budget != null) {
-          const pct = (consumed / budget * 100).toFixed(1);
-          html += `<br>${_t('ch.budget')}: ${fmtVal(budget, true)} (${pct}% ${_t('tt.utilized')})`;
-        }
-        if (!d.is_registered) html += `<br><span style="color:${_cssVar('--amber')}">${_t('tt.pep_not_reg')}</span>`;
-        return html;
-      },
-    },
-    series: [{
-      type: 'treemap',
-      roam: false,
-      width: '100%',
-      height: '100%',
-      breadcrumb: { show: false },
-      label: {
-        show: true, fontSize: 11, color: '#f1f5f9',
-        formatter: params => {
-          const d = health.find(x => x.pep_wbs === params.name);
-          const val = d ? (evmMode ? d.total_cost * _currencyFactor : d.total_hours) : 0;
-          const valStr = evmMode
-            ? _currencySymbol + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
-            : val.toFixed(0) + 'h';
-          const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
-          return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
-        },
-      },
-      itemStyle: { gapWidth: 2, borderRadius: 4 },
-      levels: [{
-        itemStyle: { borderWidth: 0, gapWidth: 4 },
-        upperLabel: { show: false },
-      }],
-      data: health.map(d => {
-        const consumed = evmMode ? d.total_cost * _currencyFactor : d.total_hours;
-        const budget   = evmMode ? (d.budget_cost ?? null) && d.budget_cost * _currencyFactor : d.budget_hours;
-        return {
-          name: d.pep_wbs,
-          value: consumed,
-          itemStyle: {
-            color: !d.is_registered
-              ? _cssVar('--text-3')
-              : budget != null && consumed / budget >= _budgetCritical
-                ? _cssVar('--red')
-                : budget != null && consumed / budget >= _budgetWarning
-                  ? _cssVar('--amber')
-                  : _cssVar('--primary'),
-            borderColor: _cssVar('--bg'),
-          },
-        };
-      }),
-    }],
-  };
-}
-
-function _buildBulletOption(withBudget, evmMode = false) {
-  const labels  = withBudget.map(d => d.pep_wbs + (d.name ? `\n${d.name.slice(0, 28)}` : ''));
-  const budgets = withBudget.map(d => (evmMode ? (d.budget_cost || 0) * _currencyFactor : d.budget_hours) || 0);
-  const actuals = withBudget.map((d, i) => {
-    const consumed = evmMode ? (d.total_cost || 0) * _currencyFactor : d.total_hours;
-    const pct = budgets[i] > 0 ? consumed / budgets[i] : 0;
-    const color = pct >= _budgetCritical ? _cssVar('--red') : pct >= _budgetWarning ? _cssVar('--amber') : _cssVar('--primary');
-    return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
-  });
-  const unit = evmMode ? _currencySymbol : 'h';
-  const fmtAx = evmMode
-    ? v => v >= 1000 ? `${_currencySymbol}${(v/1000).toFixed(0)}k` : `${_currencySymbol}${v.toFixed(0)}`
-    : v => `${v}h`;
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-Bullet'),
-    grid: { top: 46, right: '10%', bottom: 16, left: '2%', containLabel: true },
-    tooltip: {
-      trigger: 'axis', axisPointer: { type: 'none' },
-      backgroundColor: _cssVar('--card'), borderColor: _cssVar('--border'), textStyle: { color: _cssVar('--text') },
-      formatter: params => {
-        const idx = params[0].dataIndex;
-        const b   = budgets[idx];
-        const a   = params.find(p => p.seriesName === _t('ch.actual'))?.value ?? 0;
-        const pct = b > 0 ? `${(a / b * 100).toFixed(1)}%` : '—';
-        const fmtV = v => evmMode ? _fmtCost(v / _currencyFactor) : v.toFixed(1) + 'h';
-        const cpiItem = withBudget[idx]?.cpi;
-        let html = `<b>${escHtml(params[0].axisValue.replace('\n', ' '))}</b><br>`;
-        html += `${_t('ch.budget')}: <b>${fmtV(b)}</b><br>${_t('ch.actual')}: <b>${fmtV(a)}</b><br>`;
-        html += `${_t('tt.utilization')}: <b>${pct}</b>`;
-        if (cpiItem != null) {
-          const cpiColor = cpiItem >= 1.0 ? _cssVar('--green') : cpiItem >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-          html += `<br>IDC (CPI): <b style="color:${cpiColor}">${cpiItem.toFixed(2)}</b>`;
-        }
-        if (b > 0 && a > b) html += `<br><span style="color:${_cssVar('--red')}">⚠ ${_t('tt.over_budget')}</span>`;
-        return html;
-      },
-    },
-    xAxis: {
-      type: 'value',
-      axisLabel: { color: _cssVar('--text-3'), fontSize: 10, formatter: fmtAx },
-      splitLine: { lineStyle: { color: _cssVar('--border') } },
-    },
-    yAxis: {
-      type: 'category', data: labels,
-      axisTick: { show: false },
-      axisLabel: { color: _cssVar('--text'), fontSize: 10, lineHeight: 16 },
-    },
-    series: [
-      {
-        name: _t('ch.budget'),
-        type: 'bar',
-        barMaxWidth: 48,
-        barGap: '-100%',
-        z: 1,
-        data: budgets.map(b => ({
-          value: b,
-          itemStyle: {
-            color: 'rgba(148,163,184,0.18)',
-            borderColor: 'rgba(148,163,184,0.35)',
-            borderWidth: 1,
-            borderRadius: [0, 3, 3, 0],
-          },
-        })),
-      },
-      {
-        name: _t('ch.actual'),
-        type: 'bar',
-        barMaxWidth: 28,
-        barGap: '-100%',
-        z: 2,
-        data: actuals,
-        label: {
-          show: true,
-          position: 'right',
-          fontSize: 10,
-          color: _cssVar('--text'),
-          formatter: params => {
-            const b = budgets[params.dataIndex];
-            return b > 0 ? `${(params.value / b * 100).toFixed(0)}%` : '';
-          },
-        },
-      },
-      {
-        // Transparent overlay — inside label only, sem barra visual
-        type: 'bar',
-        barMaxWidth: 28,
-        barGap: '-100%',
-        z: 3,
-        silent: true,
-        legendHoverLink: false,
-        data: actuals.map(a => ({
-          value: a.value,
-          itemStyle: { color: 'transparent' },
-        })),
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 10,
-          color: _cssVar('--text'),
-          overflow: 'truncate',
-          formatter: params => {
-            if (!params.value) return '';
-            return evmMode
-              ? _fmtCost(params.value / _currencyFactor)
-              : `${(+params.value).toFixed(1)}h`;
-          },
-        },
-      },
-    ],
-  };
-}
+// _buildBulletOption — moved to charts/portfolio.js
 
 // ---------------------------------------------------------------------------
 // Collaborator Inline Detail Panel
@@ -3768,8 +2106,9 @@ async function _renderCollabCalendar(name, year, month) {
   cc.setOption({ aria: { enabled: true } });
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
-    backgroundColor: 'transparent',
+    ..._chartDefaults(),
     tooltip: {
+      ..._chartDefaults().tooltip,
       formatter(p) {
         if (!p.value || p.value[1] < 0) return '';
         const [d_date, , n, e, s] = p.value;
@@ -3861,124 +2200,7 @@ async function _renderCollabCalendar(name, year, month) {
 
 
 
-function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
-  const pal = _getPalette();
-  const cpiSeries = peps.map(([wbs, { desc, points }], i) => {
-    const dataMap = Object.fromEntries(points.map(p => [p.cycleName, p.cpi]));
-    const data    = allCycleNames.map(n => dataMap[n] ?? null);
-    const color   = pal[i % pal.length];
-    return {
-      name: `${wbs} — ${desc} ${_t('pepcpi.cpi_suffix')}`,
-      type: 'line',
-      data,
-      connectNulls: false,
-      smooth: false,
-      symbol: 'circle', symbolSize: 7,
-      lineStyle: { color, width: 2.5 },
-      itemStyle: { color },
-      emphasis: { focus: 'series' },
-    };
-  });
-
-  // SPI (IDP) series — dashed lines, same color as their CPI counterpart
-  const spiSeries = peps
-    .map(([wbs, { desc }], i) => {
-      const spiMap = spiMapByPep[wbs];
-      if (!spiMap || !Object.keys(spiMap).length) return null;
-      const data  = allCycleNames.map(n => spiMap[n] ?? null);
-      const color = pal[i % pal.length];
-      return {
-        name: `${wbs} — ${desc} ${_t('pepcpi.spi_suffix')}`,
-        type: 'line',
-        data,
-        connectNulls: false,
-        smooth: false,
-        symbol: 'diamond', symbolSize: 6,
-        lineStyle: { color, width: 1.8, type: 'dashed' },
-        itemStyle: { color },
-        emphasis: { focus: 'series' },
-      };
-    })
-    .filter(Boolean);
-
-  const series = [...cpiSeries, ...spiSeries];
-
-  return {
-    backgroundColor: 'transparent',
-    toolbox: _toolbox({}, 'PMAS-CPI-PEP'),
-    title: {
-      text: _t('pepcpi.title'),
-      textStyle: { color: _cssVar('--text'), fontSize: 14, fontWeight: 600 },
-      left: 'center', top: 8,
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: _cssVar('--card'),
-      borderColor: _cssVar('--border'),
-      textStyle: { color: _cssVar('--text'), fontSize: 12 },
-      formatter: params => {
-        const header = `<b>${escHtml(params[0]?.axisValue)}</b><br/>`;
-        const lines  = params
-          .filter(p => p.value != null)
-          .map(p => {
-            const val   = p.value;
-            const isSpi = p.seriesName.endsWith(_t('pepcpi.spi_suffix'));
-            const color = val >= 1.0 ? _cssVar('--primary') : val >= 0.9 ? _cssVar('--amber') : _cssVar('--red');
-            const shape = isSpi
-              ? `<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);margin-right:4px"></span>`
-              : `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
-            return `${shape}${escHtml(p.seriesName)}: <b style="color:${color}">${val.toFixed(2)}</b>`;
-          })
-          .join('<br/>');
-        return header + lines;
-      },
-    },
-    legend: {
-      bottom: 0,
-      textStyle: { color: _cssVar('--text-3'), fontSize: 10 },
-      itemWidth: 14, itemHeight: 3,
-    },
-    grid: { top: 48, bottom: 64, left: 48, right: 16, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: allCycleNames,
-      axisLabel: { color: _cssVar('--text-3'), fontSize: 10, rotate: allCycleNames.length > 6 ? 30 : 0 },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      name: _t('pepcpi.yaxis'),
-      nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
-      axisLabel: { color: _cssVar('--text-3'), formatter: v => v.toFixed(2) },
-      axisLine:  { lineStyle: { color: _cssVar('--border') } },
-      splitLine: { lineStyle: { color: _cssVar('--surface') } },
-      min: v => Math.max(0, +(v.min - 0.15).toFixed(1)),
-      max: v => +(v.max + 0.15).toFixed(1),
-      markLine: {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 1.0, label: { formatter: _t('pepcpi.ref_line'), color: _cssVar('--text-3'), fontSize: 10 } }],
-      },
-    },
-    series: series.map((s, i) => i > 0 ? s : {
-      ...s,
-      markArea: {
-        silent: true,
-        data: [
-          [{ yAxis: 0,   itemStyle: { color: (_cssVar('--red')   || '#ef4444') + '18' },
-             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_critical'),
-               color: _cssVar('--red')   || '#ef4444', fontSize: 9 } },
-           { yAxis: 0.9 }],
-          [{ yAxis: 0.9, itemStyle: { color: (_cssVar('--amber') || '#f59e0b') + '14' },
-             label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_warning'),
-               color: _cssVar('--amber') || '#f59e0b', fontSize: 9 } },
-           { yAxis: 1.0 }],
-        ],
-      },
-    }),
-  };
-}
+// _buildPepCpiOption — moved to charts/forecast.js
 
 // ---------------------------------------------------------------------------
 // Stats row (effort tab)
@@ -3989,11 +2211,11 @@ function _buildStatsRow(data, budgetData = []) {
   const total = normal + extra + standby;
   const row   = document.createElement('div'); row.className = 'stats-row';
   const cards = [
-    { val: fmt(normal),  lbl: _t('stat.normal_h'),  cls: 'blue'    },
-    { val: fmt(extra),   lbl: _t('stat.extra_h'),   cls: 'amber'   },
-    { val: fmt(standby), lbl: _t('stat.standby_h'), cls: 'violet'  },
-    { val: fmt(total),   lbl: _t('stat.total'),     cls: 'green'   },
-    { val: data.length,  lbl: _t('stat.collabs'),   cls: 'neutral' },
+    { val: fmt(normal)  + 'h', lbl: _t('stat.normal_h'),  cls: 'blue'    },
+    { val: fmt(extra)   + 'h', lbl: _t('stat.extra_h'),   cls: 'amber'   },
+    { val: fmt(standby) + 'h', lbl: _t('stat.standby_h'), cls: 'violet'  },
+    { val: fmt(total)   + 'h', lbl: _t('stat.total'),     cls: 'green'   },
+    { val: data.length,        lbl: _t('stat.collabs'),   cls: 'neutral' },
   ];
   if (budgetData.length > 0) {
     const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
@@ -4001,7 +2223,7 @@ function _buildStatsRow(data, budgetData = []) {
     const pct  = totalBudget > 0 ? (totalActual / totalBudget * 100).toFixed(1) : '—';
     const over = totalBudget > 0 && totalActual > totalBudget;
     cards.push(
-      { val: fmt(totalBudget), lbl: _t('stat.budgeted'),   cls: 'neutral' },
+      { val: fmt(totalBudget) + 'h', lbl: _t('stat.budgeted'),   cls: 'neutral' },
       { val: `${pct}%`,        lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
     );
   }
@@ -4020,11 +2242,18 @@ function _buildPortfolioStatsRow(health, trends) {
   const pepsActive = health.filter(d => d.total_hours > 0).length;
   const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
 
-  const _fmtDelta = pct => {
-    if (pct == null) return '';
-    const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
-    const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
-    return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
+  const _fmtDelta = (pct, abs) => {
+    if (pct != null) {
+      const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
+      const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
+      return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
+    }
+    if (abs != null && abs !== 0) {
+      const dir = abs > 0 ? '↑' : '↓';
+      const cls = abs > 0 ? 'delta-up' : 'delta-down';
+      return ` <span class="${cls}">${dir} ${abs > 0 ? '+' : ''}${abs.toFixed(1)}</span>`;
+    }
+    return '';
   };
 
   let cards;
@@ -4043,18 +2272,18 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_hours, 0);
     const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
     const overH = budgetHours > 0 && totalHours > budgetHours;
-    const totalHoursVal = `${fmt(totalHours)}${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct) : ''}`;
+    const totalHoursVal = `${fmt(totalHours)}h${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct, lastTrend.hours_delta) : ''}`;
 
     cards = [
-      { val: `${fmt(hNormal)}${_fmtDelta(lastTrend?.normal_hours_delta_pct)}`,   lbl: _t('stat.normal_h'),    cls: 'blue'    },
-      { val: `${fmt(hExtra)}${_fmtDelta(lastTrend?.extra_hours_delta_pct)}`,     lbl: _t('stat.extra_h'),     cls: 'amber'   },
-      { val: `${fmt(hStandby)}${_fmtDelta(lastTrend?.standby_hours_delta_pct)}`, lbl: _t('stat.standby_h'),   cls: 'violet'  },
-      { val: totalHoursVal,                                                        lbl: _t('stat.total'),       cls: 'green'   },
-      { val: pepsActive,                                                            lbl: _t('stat.peps_active'), cls: 'neutral' },
+      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue'    },
+      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber'   },
+      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet'  },
+      { val: totalHoursVal,                                                          lbl: _t('stat.total'),       cls: 'green'   },
+      { val: pepsActive,                                                              lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
     if (budgetHours > 0) {
       cards.push(
-        { val: fmt(budgetHours),                       lbl: _t('stat.budgeted'),   cls: 'neutral'              },
+        { val: fmt(budgetHours) + 'h',                 lbl: _t('stat.budgeted'),   cls: 'neutral'              },
         { val: pctH !== '—' ? `${pctH}%` : '—',       lbl: _t('stat.vs_budget'),  cls: overH ? 'red' : 'green' },
       );
     }
@@ -4072,12 +2301,12 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_cost, 0);
     const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
     const overC = budgetCost > 0 && totalCost > budgetCost;
-    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct) : ''}`;
+    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct, lastTrend.cost_delta) : ''}`;
 
     cards = [
-      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue'    },
-      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct)}`,     lbl: _t('stat.cost_extra'),   cls: 'amber'   },
-      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct)}`, lbl: _t('stat.cost_standby'), cls: 'violet'  },
+      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue'    },
+      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber'   },
+      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet'  },
       { val: costTotalVal,                                                                lbl: _t('stat.cost_total'),   cls: 'green'   },
       { val: pepsActive,                                                                  lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
@@ -4109,20 +2338,18 @@ let _allCycles   = [];
 async function loadCyclesTable() {
   const showArchived = document.getElementById('showArchivedCycles')?.checked;
   const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
-  try {
-    _allCycles = await apiFetch(url);
+  await _loadTable(url, data => {
+    _allCycles = data;
     _renderCyclesTable(_applySort('cyclesTable', _allCycles));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderCyclesTable(cycles) {
-  const tbody = document.getElementById('cyclesBody');
-  if (!cycles.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_cycles')}</td></tr>`;
-    return;
-  }
   const admin = _isAdmin();
-  tbody.innerHTML = cycles.map(c => `
+  _renderTable('cyclesBody', cycles, {
+    colspan: 6,
+    emptyKey: 'no_cycles',
+    rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
       <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
@@ -4135,7 +2362,8 @@ function _renderCyclesTable(cycles) {
         <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 function toggleCycleLock(id, isClosed) {
@@ -4269,7 +2497,7 @@ async function loadProjectsTable() {
       apiFetch('/api/v2/portfolio').catch(() => []),
     ]);
     _allProjects   = projects;
-    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, h.total_hours]));
+    _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, { hours: h.total_hours, health: h.health_hours }]));
 
     // Fetch active baselines for all projects in parallel (best-effort)
     const blResults = await Promise.allSettled(
@@ -4289,13 +2517,13 @@ async function loadProjectsTable() {
 
 function _buildBudgetCell(p) {
   if (p.budget_hours == null) return '—';
-  const consumed = _consumedByPep[p.pep_wbs];
+  const entry = _consumedByPep[p.pep_wbs];
   const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
-  if (!consumed) return budgetStr;
-  const pct = consumed / p.budget_hours;
+  if (!entry) return budgetStr;
+  const { hours: consumed, health } = entry;
   const wPct = Math.round(_budgetWarning * 100);
-  if (pct >= _budgetCritical) return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (pct >= _budgetWarning)  return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
+  if (health === 'overrun' || health === 'critical') return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
+  if (health === 'warning') return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
   return budgetStr;
 }
 
@@ -4314,17 +2542,15 @@ function _buildDatesCell(p) {
 }
 
 function _renderProjectsTable(projects) {
-  const tbody = document.getElementById('projectsBody');
-  if (!projects.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#475569;padding:2rem">${_t('no_projects')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = projects.map(p => {
-    const bl = _baselineByProject[p.id];
-    const blBadge = bl
-      ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
-      : '';
-    return `
+  _renderTable('projectsBody', projects, {
+    colspan: 8,
+    emptyKey: 'no_projects',
+    rowFn: p => {
+      const bl = _baselineByProject[p.id];
+      const blBadge = bl
+        ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
+        : '';
+      return `
     <tr>
       <td><code>${escHtml(p.pep_wbs)}</code></td>
       <td>${escHtml(p.name || '—')}</td>
@@ -4340,7 +2566,8 @@ function _renderProjectsTable(projects) {
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 function openProjectModal(id = null) {
@@ -4662,35 +2889,32 @@ async function loadTeamTab() {
 }
 
 function _renderSeniorityTable(rows) {
-  const tbody = document.getElementById('seniorityBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_seniority')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(l => `
+  _renderTable('seniorityBody', rows, {
+    colspan: 2,
+    emptyKey: 'no_seniority',
+    rowFn: l => `
     <tr>
       <td>${escHtml(l.name)}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadSeniorityLevels() {
-  try {
-    _allSeniorityLevels = await apiFetch('/api/seniority-levels');
+  await _loadTable('/api/seniority-levels', data => {
+    _allSeniorityLevels = data;
     _renderSeniorityTable(_applySort('seniorityTable', _allSeniorityLevels));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderRateCardsTable(rows) {
-  const tbody = document.getElementById('rateCardBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_rates')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(c => `
+  _renderTable('rateCardBody', rows, {
+    colspan: 5,
+    emptyKey: 'no_rates',
+    rowFn: c => `
     <tr>
       <td>${escHtml(c.seniority_level_name)}</td>
       <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
@@ -4700,40 +2924,40 @@ function _renderRateCardsTable(rows) {
         <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadRateCards() {
-  try {
-    _allRateCards = await apiFetch('/api/rate-cards');
+  await _loadTable('/api/rate-cards', data => {
+    _allRateCards = data;
     _renderRateCardsTable(_applySort('rateCardTable', _allRateCards));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderTeamTable(rows) {
-  const tbody = document.getElementById('teamBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#475569;padding:1.5rem">${_t('no_team')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(m => `
+  _renderTable('teamBody', rows, {
+    colspan: 4,
+    emptyKey: 'no_team',
+    rowFn: m => `
     <tr>
       <td>${escHtml(m.name)}</td>
       <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
       <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 async function loadTeamTable() {
-  try {
-    _allTeam = await apiFetch('/api/team');
+  await _loadTable('/api/team', data => {
+    _allTeam = data;
     _renderTeamTable(_applySort('teamTable', _allTeam));
     // Populate bulk seniority select
     const bulkSel = document.getElementById('bulkSenioritySelect');
     bulkSel.innerHTML = `<option value="">${_t('as.none_opt')}</option>` +
       _allSeniorityLevels.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 // Seniority level modal
@@ -5132,21 +3356,19 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 let _allUsers = [];
 
 async function loadUsersTable() {
-  try {
-    _allUsers = await apiFetch('/api/users');
+  await _loadTable('/api/users', data => {
+    _allUsers = data;
     _renderUsersTable(_applySort('usersTable', _allUsers));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderUsersTable(users) {
-  const tbody = document.getElementById('usersBody');
-  if (!users.length) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#475569;padding:2rem">${_t('no_users')}</td></tr>`;
-    return;
-  }
   const payload = _getTokenPayload();
   const selfId  = payload ? payload.sub : null;
-  tbody.innerHTML = users.map(u => `
+  _renderTable('usersBody', users, {
+    colspan: 3,
+    emptyKey: 'no_users',
+    rowFn: u => `
     <tr>
       <td>${escHtml(u.username)}</td>
       <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? _t('lbl.admin') : _t('lbl.user')}</span></td>
@@ -5154,7 +3376,8 @@ function _renderUsersTable(users) {
         <button class="btn btn-secondary btn-sm" onclick="openPwdModal(${u.id})">${_t('btn.pwd')}</button>
         ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">${_t('btn.delete')}</button>` : ''}
       </div></td>
-    </tr>`).join('');
+    </tr>`,
+  });
 }
 
 document.getElementById('newUserBtn').addEventListener('click', () => {
@@ -5227,28 +3450,26 @@ async function loadAuditLog() {
   const params = new URLSearchParams({ limit: 200 });
   if (entity) params.set('entity', entity);
   if (action) params.set('action', action);
-  try {
-    _auditLogCache = await apiFetch(`/api/audit-log?${params}`);
+  await _loadTable(`/api/audit-log?${params}`, data => {
+    _auditLogCache = data;
     _renderAuditLog(_applySort('auditTable', _auditLogCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderAuditLog(rows) {
-  const tbody = document.getElementById('auditBody');
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem">${_t('no_audit')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    let detail = '';
-    if (r.detail) {
-      try {
-        const obj = JSON.parse(r.detail);
-        detail = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', ');
-      } catch { detail = r.detail; }
-    }
-    return `<tr>
+  _renderTable('auditBody', rows, {
+    colspan: 6,
+    emptyKey: 'no_audit',
+    rowFn: r => {
+      const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      let detail = '';
+      if (r.detail) {
+        try {
+          const obj = JSON.parse(r.detail);
+          detail = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', ');
+        } catch { detail = r.detail; }
+      }
+      return `<tr>
       <td style="white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(r.username || '—')}</td>
       <td><code>${escHtml(r.action)}</code></td>
@@ -5256,7 +3477,8 @@ function _renderAuditLog(rows) {
       <td style="text-align:right">${r.entity_id ?? '—'}</td>
       <td style="font-size:.78rem;color:#94a3b8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 document.getElementById('auditRefreshBtn').addEventListener('click', loadAuditLog);
@@ -5637,28 +3859,25 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 let _myHistoryCache = [];
 
 async function loadMyHistory() {
-  try {
-    _myHistoryCache = await apiFetch('/api/upload-history');
+  await _loadTable('/api/upload-history', data => {
+    _myHistoryCache = data;
     _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderMyHistory(rows) {
-  const tbody = document.getElementById('myHistoryBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_import_sessions')}</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    const statusKey = r.status === 'ok' ? 'history.status.ok'
-      : r.status === 'warnings' ? 'history.status.warnings'
-      : r.status === 'quarantine' ? 'history.status.quarantine'
-      : 'history.status.rejected';
-    const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
-    const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
-    return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
+  _renderTable('myHistoryBody', rows, {
+    colspan: 9,
+    emptyKey: 'msg.no_import_sessions',
+    rowFn: r => {
+      const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const statusKey = r.status === 'ok' ? 'history.status.ok'
+        : r.status === 'warnings' ? 'history.status.warnings'
+        : r.status === 'quarantine' ? 'history.status.quarantine'
+        : 'history.status.rejected';
+      const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
+      const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
+      return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
@@ -5669,7 +3888,8 @@ function _renderMyHistory(rows) {
       <td style="text-align:right">${infoCell}</td>
       <td>${escHtml(_t(statusKey))}</td>
     </tr>`;
-  }).join('');
+    },
+  });
 }
 
 document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMyHistory);
@@ -5688,11 +3908,11 @@ async function loadMyQr() {
   if (filter === 'pending')   params.set('review_status', 'pending');
   if (filter === 'approved')  params.set('review_status', 'approved');
   if (filter === 'rejected')  params.set('review_status', 'rejected');
-  try {
-    _myQrCache = await apiFetch(`/api/my/quarantine?${params}`);
+  await _loadTable(`/api/my/quarantine?${params}`, data => {
+    _myQrCache = data;
     _qrCache = _myQrCache;
     _renderMyQrTable(_applySort('myQrTable', _myQrCache));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderMyQrTable(rows) {
@@ -5769,10 +3989,10 @@ let _rulesSortable = null;
 let _editingRuleId = null;
 
 async function loadRulesList() {
-  try {
-    _rules = await apiFetch('/api/validation-rules');
+  await _loadTable('/api/validation-rules', data => {
+    _rules = data;
     _renderRulesList();
-  } catch (e) { notify(`Erro ao carregar regras: ${e.message}`, 'error'); }
+  });
 }
 
 function _renderRulesList() {

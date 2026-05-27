@@ -18,10 +18,18 @@ from sqlalchemy import func
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import (
-    Cycle, GlobalConfig, Project, ProjectCyclePlan, TimesheetRecord,
+    Cycle, GlobalConfig, Project, ProjectBaseline, ProjectCyclePlan, TimesheetRecord,
 )
 from backend.app.routers.v2.portfolio import _allowed_peps
-from backend.app.services.evm import compute_cpi_ev
+from backend.app.services.evm import (
+    classify_health,
+    classify_schedule_status,
+    compute_cpi_ev,
+    compute_ev_capped,
+    cpi_color,
+    resolve_effective_budget,
+    spi_color,
+)
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -126,6 +134,16 @@ def get_runway(
         .all()
     }
 
+    # Batch-fetch active baselines — same precedence rule as forecast.py and portfolio.py
+    project_ids = [p.id for p in projects.values()]
+    active_baselines: dict[int, ProjectBaseline] = {}
+    if project_ids:
+        for bl in db.query(ProjectBaseline).filter(
+            ProjectBaseline.project_id.in_(project_ids),
+            ProjectBaseline.is_active == True,  # noqa: E712
+        ).all():
+            active_baselines[bl.project_id] = bl
+
     # All active cycles ordered by start_date for estimated completion
     all_cycles = (
         db.query(Cycle)
@@ -136,7 +154,6 @@ def get_runway(
     cycle_start_by_id = {c.id: c.start_date for c in all_cycles}
 
     # Batch-fetch all ProjectCyclePlan entries for the relevant projects (avoid N+1)
-    project_ids = [p.id for p in projects.values()]
     all_plans = (
         db.query(ProjectCyclePlan)
         .filter(ProjectCyclePlan.project_id.in_(project_ids))
@@ -152,9 +169,9 @@ def get_runway(
     result = []
     for key, data in pep_data.items():
         proj = projects.get(key)
-        budget_hours = proj.budget_hours if proj else None
-        budget_cost  = proj.budget_cost  if proj else None
-        name         = proj.name         if proj else None
+        bl   = active_baselines.get(proj.id) if proj else None
+        budget_hours, budget_cost = resolve_effective_budget(proj, bl)
+        name = proj.name if proj else None
 
         consumed_hours = data["consumed_hours"]
         actual_cost    = data["actual_cost"]
@@ -186,15 +203,7 @@ def get_runway(
         if budget_hours is not None and budget_hours > 0:
             pct_consumed    = consumed_hours / budget_hours * 100
             remaining_hours = max(budget_hours - consumed_hours, 0.0)
-
-            if pct_consumed > 100:
-                risk = "overrun"
-            elif pct_consumed >= critical_threshold * 100:
-                risk = "critical"
-            elif pct_consumed >= warning_threshold * 100:
-                risk = "warning"
-            else:
-                risk = "ok"
+            risk = classify_health(consumed_hours, budget_hours, warning_threshold, critical_threshold)
 
             if not is_closed and avg_hours_per_cycle > 0 and remaining_hours is not None:
                 cycles_to_complete = remaining_hours / avg_hours_per_cycle
@@ -234,35 +243,20 @@ def get_runway(
                     running_h += pep_cycle_hours.get(key, {}).get(cid, 0.0)
                     cum_ph = sum(h for s, h in proj_plans_sorted if s <= c_start)
                     if cum_ph > prev_cum_ph:
-                        last_plan_ev = min(running_h / budget_hours, 1.0) * budget_cost
-                        last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+                        last_plan_ev = compute_ev_capped(running_h, budget_hours, budget_cost)
+                        last_plan_pv = compute_ev_capped(cum_ph, budget_hours, budget_cost)
                         prev_cum_ph = cum_ph
 
-                if last_plan_pv and last_plan_pv > 0:
+                if last_plan_pv and last_plan_pv > 0 and last_plan_ev is not None:
                     spi = round(last_plan_ev / last_plan_pv, 3)
-                    if spi >= 1.0:
-                        schedule_status = "on_track"
-                    elif spi >= 0.9:
-                        schedule_status = "at_risk"
-                    else:
-                        schedule_status = "behind"
+                    schedule_status = classify_schedule_status(spi)
 
         pct_consumed_cost = (
             round(actual_cost / budget_cost * 100, 1)
             if (budget_cost is not None and budget_cost > 0)
             else None
         )
-
-        if pct_consumed_cost is None:
-            cost_risk = "no_budget"
-        elif pct_consumed_cost > 100:
-            cost_risk = "overrun"
-        elif pct_consumed_cost >= critical_threshold * 100:
-            cost_risk = "critical"
-        elif pct_consumed_cost >= warning_threshold * 100:
-            cost_risk = "warning"
-        else:
-            cost_risk = "ok"
+        cost_risk = classify_health(actual_cost, budget_cost, warning_threshold, critical_threshold)
 
         result.append({
             "pep_wbs": key,
@@ -280,8 +274,10 @@ def get_runway(
             "cycles_to_complete": None if is_closed else (round(cycles_to_complete, 1) if cycles_to_complete is not None and cycles_to_complete > 0 else None),
             "estimated_completion_cycle": None if is_closed else estimated_completion_cycle,
             "spi": spi,
+            "spi_color": spi_color(spi),
             "schedule_status": schedule_status,
             "cpi": cpi,
+            "cpi_color": cpi_color(cpi),
             "risk": risk,
             "cost_risk": cost_risk,
         })

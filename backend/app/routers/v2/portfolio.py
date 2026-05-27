@@ -17,7 +17,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline,
     TimesheetRecord, UserProjectAccess,
 )
-from backend.app.services.evm import classify_health, compute_cpi_ev
+from backend.app.services.evm import classify_health, compute_cpi_ev, cpi_color, cpi_label, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -111,8 +111,7 @@ def get_portfolio(
     for pep_key, data in by_pep.items():
         proj = projects.get(pep_key)
         bl   = active_baselines.get(proj.id) if proj else None
-        bh   = (bl.budget_hours if bl else None) or (proj.budget_hours if proj else None)
-        bc   = (bl.budget_cost  if bl else None) or (proj.budget_cost  if proj else None)
+        bh, bc = resolve_effective_budget(proj, bl)
 
         cpi        = compute_cpi_ev(data["total_hours"], bh, bc, data["total_cost"])
         h_health   = classify_health(data["total_hours"], bh, warning_threshold, critical_threshold)
@@ -130,8 +129,8 @@ def get_portfolio(
             "extra_cost":     round(data["extra_cost"],  2),
             "standby_cost":   round(data["standby_cost"], 2),
             "cpi":            cpi,
-            "cpi_label":      _cpi_label(cpi),
-            "cpi_color":      _cpi_color(cpi),
+            "cpi_label":      cpi_label(cpi),
+            "cpi_color":      cpi_color(cpi),
             "health_hours":   h_health,
             "health_cost":    c_health,
             "health_hours_color": _HEALTH_COLOR[h_health],
@@ -141,24 +140,6 @@ def get_portfolio(
 
     result.sort(key=lambda x: x["total_hours"], reverse=True)
     return result
-
-
-def _cpi_label(cpi: float | None) -> str | None:
-    if cpi is None:
-        return None
-    if cpi >= 1.0:
-        return "Dentro do orçamento"
-    return "Acima do orçamento"
-
-
-def _cpi_color(cpi: float | None) -> str | None:
-    if cpi is None:
-        return None
-    if cpi >= 1.0:
-        return "success"
-    if cpi >= 0.9:
-        return "warning"
-    return "danger"
 
 
 def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, date_to,
@@ -237,8 +218,7 @@ def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, da
     for pep_key, data in by_pep.items():
         proj = projects.get(pep_key)
         bl   = active_baselines.get(proj.id) if proj else None
-        bh   = (bl.budget_hours if bl else None) or (proj.budget_hours if proj else None)
-        bc   = (bl.budget_cost  if bl else None) or (proj.budget_cost  if proj else None)
+        bh, bc = resolve_effective_budget(proj, bl)
         cpi        = compute_cpi_ev(data["total_hours"], bh, bc, data["total_cost"])
         h_health   = classify_health(data["total_hours"], bh, warning_threshold, critical_threshold)
         c_health   = classify_health(data["total_cost"],  bc, warning_threshold, critical_threshold)
@@ -254,8 +234,8 @@ def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, da
             "extra_cost":     round(data["extra_cost"],   2),
             "standby_cost":   round(data["standby_cost"], 2),
             "cpi":            cpi,
-            "cpi_label":      _cpi_label(cpi),
-            "cpi_color":      _cpi_color(cpi),
+            "cpi_label":      cpi_label(cpi),
+            "cpi_color":      cpi_color(cpi),
             "health_hours":   h_health,
             "health_cost":    c_health,
             "health_hours_color": _HEALTH_COLOR[h_health],

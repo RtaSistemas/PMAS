@@ -17,6 +17,7 @@ from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
 from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.services.evm import classify_concentration_risk
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -157,12 +158,12 @@ def get_concentration(
             })
 
         top1_pct = round(sorted_contribs[0][1] / total_hours * 100, 1)
-        risk = "high" if top1_pct >= 60 else "medium" if top1_pct >= 40 else "low"
+        risk = classify_concentration_risk(top1_pct)
 
         # Cost-based top-1
         top1_cost_name = max(contributors_cost, key=lambda n: contributors_cost[n]) if contributors_cost else None
         top1_pct_cost  = round(contributors_cost[top1_cost_name] / total_cost * 100, 1) if (top1_cost_name and total_cost > 0) else 0.0
-        risk_cost = "high" if top1_pct_cost >= 60 else "medium" if top1_pct_cost >= 40 else "low"
+        risk_cost = classify_concentration_risk(top1_pct_cost)
 
         proj = projects.get(key)
         result.append({

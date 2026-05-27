@@ -214,3 +214,166 @@ def classify_health(
     if ratio >= warning_threshold:
         return "warning"
     return "ok"
+
+
+# ── Capped Earned Value ───────────────────────────────────────────────────────
+
+def compute_ev_capped(
+    consumed_hours: float,
+    budget_hours: Optional[float],
+    budget_cost: Optional[float],
+) -> Optional[float]:
+    """Earned Value capped at BAC: EV = min(consumed / budget, 1.0) × BAC.
+
+    Used for SPI, CPI, EAC, and other forecast indicators where EV must
+    not exceed the Budget at Completion.  Distinct from compute_ev_cost
+    (uncapped, used for the burn-up chart's EV series).
+    """
+    if not budget_hours or budget_hours == 0 or not budget_cost:
+        return None
+    return round(min(consumed_hours / budget_hours, 1.0) * budget_cost, 2)
+
+
+# ── Color / label classifiers ─────────────────────────────────────────────────
+
+def cpi_color(cpi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for CPI, or None."""
+    if cpi is None:
+        return None
+    if cpi >= 1.0:
+        return "success"
+    if cpi >= 0.9:
+        return "warning"
+    return "danger"
+
+
+def cpi_label(cpi: Optional[float]) -> Optional[str]:
+    """Return human-readable CPI label in pt-BR."""
+    if cpi is None:
+        return None
+    return "Dentro do orçamento" if cpi >= 1.0 else "Acima do orçamento"
+
+
+def spi_color(spi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for SPI, or None."""
+    if spi is None:
+        return None
+    if spi >= 1.0:
+        return "success"
+    if spi >= 0.9:
+        return "warning"
+    return "danger"
+
+
+def spi_label(spi: Optional[float]) -> Optional[str]:
+    """Return human-readable SPI label in pt-BR."""
+    if spi is None:
+        return None
+    if spi >= 1.0:
+        return "No prazo"
+    if spi >= 0.9:
+        return "Atenção"
+    return "Atrasado"
+
+
+def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for TCPI, or None.
+
+    TCPI ≤ 1.0 → achievable (success); ≤ 1.1 → tight (warning); > 1.1 → unreachable (danger).
+    """
+    if tcpi is None:
+        return None
+    if tcpi <= 1.0:
+        return "success"
+    if tcpi <= 1.1:
+        return "warning"
+    return "danger"
+
+
+# ── Schedule status ───────────────────────────────────────────────────────────
+
+def classify_schedule_status(
+    spi: Optional[float],
+    warning_threshold: float = 0.9,
+) -> str:
+    """Classify SPI into 'on_track' | 'at_risk' | 'behind' | 'no_baseline'."""
+    if spi is None:
+        return "no_baseline"
+    if spi >= 1.0:
+        return "on_track"
+    if spi >= warning_threshold:
+        return "at_risk"
+    return "behind"
+
+
+# ── Concentration risk ────────────────────────────────────────────────────────
+
+def classify_concentration_risk(
+    top1_pct: float,
+    high_threshold: float = 60.0,
+    medium_threshold: float = 40.0,
+) -> str:
+    """Classify dependency on the top contributor: 'high' | 'medium' | 'low'."""
+    if top1_pct >= high_threshold:
+        return "high"
+    if top1_pct >= medium_threshold:
+        return "medium"
+    return "low"
+
+
+# ── SV / CV labels and colors ─────────────────────────────────────────────────
+
+def sv_label(sv: Optional[float]) -> Optional[str]:
+    """Human-readable Schedule Variance label in pt-BR."""
+    if sv is None:
+        return None
+    if sv > 0:
+        return f"Adiantado em {abs(sv):.1f}h"
+    if sv < 0:
+        return f"Atrasado em {abs(sv):.1f}h"
+    return "No prazo"
+
+
+def sv_color(sv: Optional[float], warning_threshold: float = -10.0) -> Optional[str]:
+    """Return 'success' / 'warning' / 'danger' for Schedule Variance."""
+    if sv is None:
+        return None
+    if sv >= 0:
+        return "success"
+    if sv >= warning_threshold:
+        return "warning"
+    return "danger"
+
+
+def cv_label(cv: Optional[float]) -> Optional[str]:
+    """Human-readable Cost Variance label in pt-BR."""
+    if cv is None:
+        return None
+    if cv > 0:
+        return f"Economia de R$ {abs(cv):,.2f}"
+    if cv < 0:
+        return f"Estouro de R$ {abs(cv):,.2f}"
+    return "No prazo"
+
+
+def cv_color(cv: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'danger' for Cost Variance."""
+    if cv is None:
+        return None
+    return "success" if cv >= 0 else "danger"
+
+
+# ── Budget resolution ─────────────────────────────────────────────────────────
+
+def resolve_effective_budget(project, baseline=None) -> tuple[Optional[float], Optional[float]]:
+    """Return (budget_hours, budget_cost) — active baseline takes precedence over project fields.
+
+    This is the single rule for which budget is authoritative:
+      1. Active baseline (locked, approved revision)
+      2. Project fields (initial estimate or manually updated)
+
+    All routers must call this function instead of reading project.budget_* directly.
+    """
+    bh = (baseline.budget_hours if baseline else None) or (project.budget_hours if project else None)
+    bc = (baseline.budget_cost  if baseline else None) or (project.budget_cost  if project else None)
+    return bh, bc

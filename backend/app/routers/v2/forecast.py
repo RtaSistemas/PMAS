@@ -23,9 +23,11 @@ from backend.app.models import (
 )
 from backend.app.routers.v2.portfolio import _allowed_peps
 from backend.app.services.evm import (
+    classify_health,
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_ev_capped,
     compute_ev_cost,
     compute_period_delta,
     compute_period_delta_pct,
@@ -33,6 +35,16 @@ from backend.app.services.evm import (
     compute_sv,
     compute_tcpi,
     compute_vac,
+    cpi_color,
+    cpi_label,
+    cv_color,
+    cv_label,
+    resolve_effective_budget,
+    spi_color,
+    spi_label,
+    sv_color,
+    sv_label,
+    tcpi_color,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -49,6 +61,10 @@ def get_forecast(
     allowed = _allowed_peps(db, current_user)
     if allowed is not None and pep_wbs not in allowed:
         raise HTTPException(status_code=403, detail="Acesso negado.")
+
+    cfg = db.get(GlobalConfig, 1)
+    warning_threshold  = cfg.budget_warning_threshold  if cfg and hasattr(cfg, 'budget_warning_threshold')  else 0.9
+    critical_threshold = cfg.budget_critical_threshold if cfg and hasattr(cfg, 'budget_critical_threshold') else 1.0
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
@@ -76,8 +92,7 @@ def get_forecast(
         db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
         if project else None
     )
-    budget_hours = (active_baseline.budget_hours if active_baseline else None) or (project.budget_hours if project else None)
-    budget_cost  = (active_baseline.budget_cost  if active_baseline else None) or (project.budget_cost  if project else None)
+    budget_hours, budget_cost = resolve_effective_budget(project, active_baseline)
 
     # Build per-cycle actual data — prefer summary, fall back to raw
     cycle_data = _load_cycle_data(db, pep_wbs, date_from, date_to)
@@ -112,17 +127,16 @@ def get_forecast(
         ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
 
         # BUG-A fix: freeze EV/PV at the last cycle where the plan advanced
-        if has_plan and cum_ph > prev_cum_ph and budget_hours and budget_cost:
-            last_plan_ev = min(cum_h  / budget_hours, 1.0) * budget_cost
-            last_plan_pv = min(cum_ph / budget_hours, 1.0) * budget_cost
+        if has_plan and cum_ph > prev_cum_ph:
+            last_plan_ev = compute_ev_capped(cum_h, budget_hours, budget_cost)
+            last_plan_pv = compute_ev_capped(cum_ph, budget_hours, budget_cost)
             prev_cum_ph = cum_ph
 
         spi_cum = None
-        if has_plan and budget_hours and budget_cost and cum_ph > 0:
-            ev_cum = min(cum_h  / budget_hours, 1.0) * budget_cost
-            pv_cum = min(cum_ph / budget_hours, 1.0) * budget_cost
-            if pv_cum > 0:
-                spi_cum = round(ev_cum / pv_cum, 3)
+        if has_plan and cum_ph > 0:
+            ev_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
+            pv_cum = compute_ev_capped(cum_ph, budget_hours, budget_cost)
+            spi_cum = compute_spi(pv_cum, ev_cum)
 
         sv_period = compute_sv(cum_h, cum_ph if has_plan else None)
         cv_period = compute_cv(ev_cost_cum, cum_c)
@@ -150,11 +164,11 @@ def get_forecast(
             "cumulative_ev_cost":        ev_cost_cum,
             "spi_cumulative":            spi_cum,
             "sv":                        sv_period,
-            "sv_label":                  _sv_label(sv_period),
-            "sv_color":                  _sv_color(sv_period),
+            "sv_label":                  sv_label(sv_period),
+            "sv_color":                  sv_color(sv_period),
             "cv":                        cv_period,
-            "cv_label":                  _cv_label(cv_period),
-            "cv_color":                  _cv_color(cv_period),
+            "cv_label":                  cv_label(cv_period),
+            "cv_color":                  cv_color(cv_period),
         })
         prev_period_h = period_h
         prev_period_c = period_c
@@ -169,8 +183,8 @@ def get_forecast(
     ev_val = None
     cpi = spi = eac = cv = tcpi = vac = sv = None
     if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = min(consumed_hours / budget_hours, 1.0) * budget_cost
-        if actual_cost > 0:
+        ev_val = compute_ev_capped(consumed_hours, budget_hours, budget_cost)
+        if actual_cost > 0 and ev_val is not None:
             cpi  = compute_cpi(ev_val, actual_cost)
             eac  = compute_eac(budget_cost, cpi)
             cv   = compute_cv(ev_val, actual_cost)
@@ -230,15 +244,16 @@ def get_forecast(
         "remaining_hours":            remaining_hours,
         "remaining_cost":             remaining_cost,
         "cpi":                        cpi,
-        "cpi_label":                  _cpi_label(cpi),
-        "cpi_color":                  _cpi_color(cpi),
+        "cpi_label":                  cpi_label(cpi),
+        "cpi_color":                  cpi_color(cpi),
         "spi":                        spi,
-        "spi_label":                  _spi_label(spi),
-        "spi_color":                  _spi_color(spi),
+        "spi_label":                  spi_label(spi),
+        "spi_color":                  spi_color(spi),
         "eac":                        eac,
         "vac":                        vac,
         "cv":                         cv,
         "tcpi":                       tcpi,
+        "tcpi_color":                 tcpi_color(tcpi),
         "sv":                         sv,
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
@@ -250,6 +265,8 @@ def get_forecast(
         "using_baseline":             active_baseline is not None,
         "baseline_locked_at":         active_baseline.locked_at if active_baseline else None,
         "baseline_label":             active_baseline.label if active_baseline else None,
+        "health_hours":               classify_health(consumed_hours, budget_hours, warning_threshold, critical_threshold),
+        "health_cost":                classify_health(actual_cost,    budget_cost,  warning_threshold, critical_threshold),
         "history":                    history,
     }
 
@@ -318,24 +335,3 @@ def _load_cycle_data(
 
 
 # ── Label/color helpers ──────────────────────────────────────────────────────
-
-def _cpi_label(v): return ("Dentro do orçamento" if v >= 1 else "Acima do orçamento") if v else None
-def _cpi_color(v): return ("success" if v >= 1 else "warning" if v >= 0.9 else "danger") if v else None
-def _spi_label(v): return ("No prazo" if v >= 1 else "Atenção" if v >= 0.9 else "Atrasado") if v else None
-def _spi_color(v): return ("success" if v >= 1 else "warning" if v >= 0.9 else "danger") if v else None
-def _sv_label(v):
-    if v is None: return None
-    if v > 0:  return f"Adiantado em {abs(v):.1f}h"
-    if v < 0:  return f"Atrasado em {abs(v):.1f}h"
-    return "No prazo"
-def _sv_color(v):
-    if v is None: return None
-    return "success" if v >= 0 else "warning" if v >= -10 else "danger"
-def _cv_label(v):
-    if v is None: return None
-    if v > 0:  return f"Economia de R$ {abs(v):,.2f}"
-    if v < 0:  return f"Estouro de R$ {abs(v):,.2f}"
-    return "No prazo"
-def _cv_color(v):
-    if v is None: return None
-    return "success" if v >= 0 else "danger"
