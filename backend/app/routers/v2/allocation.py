@@ -20,7 +20,7 @@ from backend.app.routers.v2.portfolio import _allowed_peps
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/allocation", summary="Alocação por colaborador × PEP — horas e custos")
+@router.get("/allocation", summary="Alocação por colaborador × PEP — horas e custos", response_model=list)
 def get_allocation(
     db: DbSession,
     current_user=Depends(get_current_user),

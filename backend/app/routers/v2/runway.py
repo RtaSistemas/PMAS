@@ -25,8 +25,9 @@ from backend.app.services.evm import (
     classify_health,
     classify_schedule_status,
     compute_cpi_ev,
-    compute_ev_capped,
+    compute_spi,
     cpi_color,
+    freeze_spi_boundary,
     resolve_effective_budget,
     spi_color,
 )
@@ -34,7 +35,7 @@ from backend.app.services.evm import (
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/runway", summary="Runway do portfólio: ciclos restantes por PEP (v2 — custo frozen)")
+@router.get("/runway", summary="Runway do portfólio: ciclos restantes por PEP (v2 — custo frozen)", response_model=list)
 def get_runway(
     db: DbSession,
     current_user=Depends(get_current_user),
@@ -228,27 +229,14 @@ def get_runway(
         if proj and budget_hours and budget_cost:
             proj_plans_sorted = sorted(plans_by_project.get(proj.id, []), key=lambda x: x[0])
             if proj_plans_sorted:
-                pep_cids_sorted = sorted(
-                    data["cycle_ids"],
-                    key=lambda cid: cycle_start_by_id.get(cid, __import__('datetime').date.min),
-                )
-                running_h = 0.0
-                prev_cum_ph = 0.0
-                last_plan_ev: Optional[float] = None
-                last_plan_pv: Optional[float] = None
-                for cid in pep_cids_sorted:
-                    c_start = cycle_start_by_id.get(cid)
-                    if c_start is None:
-                        continue
-                    running_h += pep_cycle_hours.get(key, {}).get(cid, 0.0)
-                    cum_ph = sum(h for s, h in proj_plans_sorted if s <= c_start)
-                    if cum_ph > prev_cum_ph:
-                        last_plan_ev = compute_ev_capped(running_h, budget_hours, budget_cost)
-                        last_plan_pv = compute_ev_capped(cum_ph, budget_hours, budget_cost)
-                        prev_cum_ph = cum_ph
-
-                if last_plan_pv and last_plan_pv > 0 and last_plan_ev is not None:
-                    spi = round(last_plan_ev / last_plan_pv, 3)
+                actual_s = [
+                    (cycle_start_by_id[cid], pep_cycle_hours.get(key, {}).get(cid, 0.0))
+                    for cid in data["cycle_ids"]
+                    if cid in cycle_start_by_id
+                ]
+                last_actual_h, last_planned_h = freeze_spi_boundary(actual_s, proj_plans_sorted)
+                if last_planned_h and last_planned_h > 0 and last_actual_h is not None:
+                    spi = compute_spi(last_planned_h, last_actual_h)
                     schedule_status = classify_schedule_status(spi)
 
         pct_consumed_cost = (

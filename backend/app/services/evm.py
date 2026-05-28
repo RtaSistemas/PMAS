@@ -234,6 +234,40 @@ def compute_ev_capped(
     return round(min(consumed_hours / budget_hours, 1.0) * budget_cost, 2)
 
 
+# ── Freeze SPI at last plan boundary ─────────────────────────────────────────
+
+def freeze_spi_boundary(
+    actual_series: list,
+    plan_series: list,
+) -> tuple:
+    """Return (last_actual_h, last_planned_h) frozen at the last plan-advance boundary.
+
+    actual_series: [(cycle_start, period_hours), ...] — sorted internally, accumulated.
+    plan_series:   [(cycle_start, period_planned_hours), ...] — cumulative built inside.
+
+    Walks actual cycles in chronological order and tracks the last cycle where
+    cumulative planned hours increased.  The returned pair is used to compute
+    a frozen SPI/SV that does not drift after the last planned cycle ends.
+
+    Returns (None, None) when the plan never advances past zero.
+    """
+    plan_sorted = sorted(plan_series)
+    cum_actual = 0.0
+    prev_cum_ph = 0.0
+    last_actual_h: Optional[float] = None
+    last_planned_h: Optional[float] = None
+
+    for c_start, period_h in sorted(actual_series):
+        cum_actual += period_h
+        cum_ph = sum(h for s, h in plan_sorted if s <= c_start)
+        if cum_ph > prev_cum_ph:
+            last_actual_h = cum_actual
+            last_planned_h = cum_ph
+            prev_cum_ph = cum_ph
+
+    return last_actual_h, last_planned_h
+
+
 # ── Color / label classifiers ─────────────────────────────────────────────────
 
 def cpi_color(cpi: Optional[float]) -> Optional[str]:

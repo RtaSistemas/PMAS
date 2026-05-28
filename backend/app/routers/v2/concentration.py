@@ -22,7 +22,7 @@ from backend.app.services.evm import classify_concentration_risk
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/concentration", summary="Concentração de horas por colaborador por PEP (v2 — custo frozen)")
+@router.get("/concentration", summary="Concentração de horas por colaborador por PEP (v2 — custo frozen)", response_model=list)
 def get_concentration(
     db: DbSession,
     current_user=Depends(get_current_user),
@@ -150,7 +150,9 @@ def get_concentration(
             others_cost  = sum(contributors_cost.get(n, 0.0) for n, _ in sorted_contribs[3:])
             others_count = len(sorted_contribs) - 3
             top_contributors.append({
-                "name": f"Outros ({others_count})",
+                "name": None,
+                "is_other": True,
+                "others_count": others_count,
                 "hours": round(others_hours, 2),
                 "cost": round(others_cost, 2),
                 "pct": round(others_hours / total_hours * 100, 1),

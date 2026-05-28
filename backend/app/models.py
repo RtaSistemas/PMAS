@@ -340,3 +340,13 @@ class CollaboratorCycleSummary(Base):
     __table_args__ = (
         UniqueConstraint("collaborator_id", "cycle_id", name="uq_collab_cycle_summary"),
     )
+
+
+class ThemePreset(Base):
+    __tablename__ = "theme_presets"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    name       = Column(String, nullable=False, unique=True)
+    is_builtin = Column(Boolean, default=False, nullable=False)
+    config     = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

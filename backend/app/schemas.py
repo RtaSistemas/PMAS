@@ -358,3 +358,18 @@ class UIThemeOut(UIThemeIn):
     logo_url: Optional[str] = None
 
 
+# ── Theme presets ─────────────────────────────────────────────────────────────
+
+class ThemePresetOut(BaseModel):
+    id: int
+    name: str
+    is_builtin: bool
+    config: dict
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ThemePresetIn(BaseModel):
+    name: str
+    config: dict
+
+

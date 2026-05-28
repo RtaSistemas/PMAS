@@ -348,7 +348,7 @@ async function loadDashboardCycles() {
     refreshPepDescriptions();
 
     collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (e) { notify(`Erro ao carregar filtros: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_load_filters')}: ${e.message}`, 'error'); }
 }
 
 async function refreshPeps() {
@@ -359,7 +359,7 @@ async function refreshPeps() {
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (e) { console.warn('refreshPeps:', e); notify(`Erro ao atualizar filtro de PEPs: ${e.message}`, 'warning'); }
+  } catch (e) { console.warn('refreshPeps:', e); notify(`${_t('msg.err_update_pep_filter')}: ${e.message}`, 'warning'); }
 }
 
 function refreshPepDescriptions() {
@@ -372,7 +372,7 @@ async function refreshCollaborators() {
   try {
     const filters = await apiFetch('/api/v2/filters');
     collaboratorMs.setItems(filters.collaborators.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (e) { console.warn('refreshCollaborators:', e); notify(`Erro ao atualizar filtro de colaboradores: ${e.message}`, 'warning'); }
+  } catch (e) { console.warn('refreshCollaborators:', e); notify(`${_t('msg.err_update_collab_filter')}: ${e.message}`, 'warning'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -615,7 +615,7 @@ async function _renderEffortTab() {
 
   } catch (err) {
     _setChartLoading(['effortChart'], false);
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -778,8 +778,11 @@ function _renderConcentrationPanel(concentration) {
     const barsHtml = contribs.map(c => {
       const pct      = _evmMode ? c.pct_cost : c.pct;
       const barWidth = top1val > 0 ? Math.round(pct / top1val * 100) : 0;
+      const cName    = c.is_other
+        ? `${_t('concentration.others')} (${c.others_count})`
+        : c.name;
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
-        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
+        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(cName)}">${escHtml(cName)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
@@ -906,7 +909,7 @@ async function _renderPortfolioTab() {
 
   } catch (err) {
     _setChartLoading(['treemapChart'], false);
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -1204,11 +1207,11 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       pcc.setOption(_buildPepCpiOption(peps, allCycleNames, spiMapByPep), true);
       pcc.resize();
     } catch (err) {
-      notify(`CPI por PEP — erro: ${err.message}`, 'error');
+      notify(`${_t('msg.err_cpi_pep')}: ${err.message}`, 'error');
     }
   } catch (err) {
     _setChartLoading(['trendsChart'], false);
-    notify(`Erro ao carregar tendências: ${err.message}`, 'error');
+    notify(`${_t('msg.err_load_trends')}: ${err.message}`, 'error');
   }
 }
 
@@ -1246,7 +1249,7 @@ async function _renderAllocationTab() {
     _allocSortDir  = -1;
     _drawAllocMatrix();
   } catch (err) {
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   }
@@ -1543,7 +1546,7 @@ async function _renderForecastTab() {
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
-    if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
+    if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -1694,7 +1697,7 @@ async function _renderPlanTable(pep_wbs) {
         </td>
       </tr>`;
     }).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function deletePlan(cycle_id) {
@@ -1704,7 +1707,7 @@ function deletePlan(cycle_id) {
       await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
       await _renderPlanTable(_currentForecastPep);
       _renderForecastTab();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -1736,7 +1739,7 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
     closeModal('editPlanModal');
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
 let _addPlanAvailableCycles = [];
@@ -1790,7 +1793,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     document.getElementById('addPlanError').textContent = '';
     _addPlanRow(_addPlanAvailableCycles);
     openModal('addPlanModal');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
@@ -1833,7 +1836,7 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
     _closeAddPlanModal();
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
 document.getElementById('exportPlanBtn').addEventListener('click', async () => {
@@ -1850,7 +1853,7 @@ document.getElementById('exportPlanBtn').addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     Object.assign(document.createElement('a'), { href: url, download: fname }).click();
     URL.revokeObjectURL(url);
-  } catch (e) { notify(`Erro ao exportar: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_export')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('importPlanFile').addEventListener('change', async function () {
@@ -2210,12 +2213,13 @@ function _buildStatsRow(data, budgetData = []) {
   data.forEach(r => { normal += r.normal_hours; extra += r.extra_hours; standby += r.standby_hours; });
   const total = normal + extra + standby;
   const row   = document.createElement('div'); row.className = 'stats-row';
+  const pal   = _getPalette();
   const cards = [
-    { val: fmt(normal)  + 'h', lbl: _t('stat.normal_h'),  cls: 'blue'    },
-    { val: fmt(extra)   + 'h', lbl: _t('stat.extra_h'),   cls: 'amber'   },
-    { val: fmt(standby) + 'h', lbl: _t('stat.standby_h'), cls: 'violet'  },
-    { val: fmt(total)   + 'h', lbl: _t('stat.total'),     cls: 'green'   },
-    { val: data.length,        lbl: _t('stat.collabs'),   cls: 'neutral' },
+    { val: fmt(normal)  + 'h', lbl: _t('stat.normal_h'),  cls: 'blue',    color: pal[0] },
+    { val: fmt(extra)   + 'h', lbl: _t('stat.extra_h'),   cls: 'amber',   color: pal[1] },
+    { val: fmt(standby) + 'h', lbl: _t('stat.standby_h'), cls: 'violet',  color: pal[2] },
+    { val: fmt(total)   + 'h', lbl: _t('stat.total'),     cls: 'green'    },
+    { val: data.length,        lbl: _t('stat.collabs'),   cls: 'neutral'  },
   ];
   if (budgetData.length > 0) {
     const totalBudget = budgetData.reduce((s, d) => s + d.budget_hours, 0);
@@ -2224,12 +2228,13 @@ function _buildStatsRow(data, budgetData = []) {
     const over = totalBudget > 0 && totalActual > totalBudget;
     cards.push(
       { val: fmt(totalBudget) + 'h', lbl: _t('stat.budgeted'),   cls: 'neutral' },
-      { val: `${pct}%`,        lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
+      { val: `${pct}%`,              lbl: _t('stat.vs_budget'),  cls: over ? 'red' : 'green' },
     );
   }
-  cards.forEach(({ val, lbl, cls }) => {
+  cards.forEach(({ val, lbl, cls, color }) => {
     const card = document.createElement('div'); card.className = `stat-card ${cls}`;
-    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    const style = color ? ` style="color:${color}"` : '';
+    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
@@ -2256,6 +2261,7 @@ function _buildPortfolioStatsRow(health, trends) {
     return '';
   };
 
+  const pal = _getPalette();
   let cards;
 
   if (!_evmMode) {
@@ -2275,9 +2281,9 @@ function _buildPortfolioStatsRow(health, trends) {
     const totalHoursVal = `${fmt(totalHours)}h${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct, lastTrend.hours_delta) : ''}`;
 
     cards = [
-      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue'    },
-      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber'   },
-      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet'  },
+      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
+      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
+      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
       { val: totalHoursVal,                                                          lbl: _t('stat.total'),       cls: 'green'   },
       { val: pepsActive,                                                              lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
@@ -2304,9 +2310,9 @@ function _buildPortfolioStatsRow(health, trends) {
     const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct, lastTrend.cost_delta) : ''}`;
 
     cards = [
-      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue'    },
-      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber'   },
-      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet'  },
+      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
+      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
+      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
       { val: costTotalVal,                                                                lbl: _t('stat.cost_total'),   cls: 'green'   },
       { val: pepsActive,                                                                  lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
@@ -2320,10 +2326,11 @@ function _buildPortfolioStatsRow(health, trends) {
 
   const row = document.createElement('div');
   row.className = 'stats-row';
-  cards.forEach(({ val, lbl, cls }) => {
+  cards.forEach(({ val, lbl, cls, color }) => {
     const card = document.createElement('div');
     card.className = `stat-card ${cls}`;
-    card.innerHTML = `<div class="val">${val}</div><div class="lbl">${lbl}</div>`;
+    const style = color ? ` style="color:${color}"` : '';
+    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
@@ -2371,7 +2378,7 @@ function toggleCycleLock(id, isClosed) {
     try {
       await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
       loadCyclesTable();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2381,7 +2388,7 @@ function toggleCycleArchive(id, isActive) {
       await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
       loadCyclesTable();
       loadDashboardCycles();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2443,10 +2450,10 @@ document.getElementById('cycleSearch').addEventListener('input', e => {
 });
 
 function deleteCycle(id, name, count) {
-  if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
+  if (count > 0) { notify(_t('msg.cycle_has_records').replace('{name}', name).replace('{count}', count), 'error'); return; }
   confirmDialog(_t('confirm.delete_cycle'), async () => {
     try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2477,7 +2484,7 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
     notify(msg, data.errors.length ? 'error' : 'success');
     loadCyclesTable();
     loadDashboardCycles();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -2512,7 +2519,7 @@ async function loadProjectsTable() {
     });
 
     _renderProjectsTable(_applySort('projectsTable', projects));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function _buildBudgetCell(p) {
@@ -2652,7 +2659,7 @@ document.getElementById('projectSearch').addEventListener('input', e => {
 function deleteProject(id, pep) {
   confirmDialog(_t('confirm.delete_project'), async () => {
     try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2750,7 +2757,7 @@ async function _createBaseline(projectId) {
     notify(_t('baseline.created'), 'success');
     await _refreshBaselineModal(projectId);
     loadProjectsTable();
-  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _activateBaseline(projectId, baselineId) {
@@ -2758,7 +2765,7 @@ async function _activateBaseline(projectId, baselineId) {
     await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}/activate`, 'POST', {});
     await _refreshBaselineModal(projectId);
     loadProjectsTable();
-  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _deleteBaseline(projectId, baselineId) {
@@ -2768,7 +2775,7 @@ async function _deleteBaseline(projectId, baselineId) {
       notify(_t('baseline.deleted'), 'success');
       await _refreshBaselineModal(projectId);
       loadProjectsTable();
-    } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2803,7 +2810,7 @@ async function _loadAclEntries() {
           <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">${_t('btn.revoke')}</button>
         </td>
       </tr>`).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _populateAclUserSelect() {
@@ -2835,7 +2842,7 @@ function _revokeAccess(userId) {
     try {
       await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
       await _loadAclEntries();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2869,7 +2876,7 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadProjectsTable();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -3010,14 +3017,14 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
 function deleteSeniorityLevel(id, name) {
   confirmDialog(_t('confirm.delete_level'), async () => {
     try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3093,14 +3100,14 @@ document.getElementById('importRateCardInput').addEventListener('change', async 
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
 function deleteRateCard(id) {
   confirmDialog(_t('confirm.delete_rate'), async () => {
     try { await apiFetchJSON(`/api/rate-cards/${id}`, 'DELETE'); await loadRateCards(); await loadTeamTable(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3141,8 +3148,8 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', () => {
       const body = { seniority_level_id: val ? parseInt(val) : null };
       await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
       await loadTeamTable();
-      notify(`Senioridade "${label}" atribuída a todos.`, 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.seniority_assigned_all').replace('{label}', label), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 });
 
@@ -3434,7 +3441,7 @@ function deleteUser(id, username) {
     try {
       await apiFetchJSON(`/api/users/${id}`, 'DELETE');
       loadUsersTable();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3783,8 +3790,8 @@ document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => 
   try {
     _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order, panel_order: panelOrder } });
     _applyLayoutPreferences();
-    notify('Layout salvo.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    notify(_t('msg.layout_saved'), 'success');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 // My Area — change password
@@ -3847,7 +3854,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     loadMyHistory();
     loadMyQr();
   } catch (e) {
-    resultEl.textContent = `Erro: ${e.message}`;
+    resultEl.textContent = `${_t('msg.err_generic')}: ${e.message}`;
     notify(e.message, 'error');
   }
   e.target.value = '';
@@ -3977,7 +3984,7 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
     const a    = Object.assign(document.createElement('a'), { href: url, download: name });
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 
@@ -4116,7 +4123,7 @@ async function toggleRule(id) {
   try {
     await apiFetchJSON(`/api/validation-rules/${id}/toggle`, 'PATCH');
     loadRulesList();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function deleteRule(id) {
@@ -4124,8 +4131,8 @@ function deleteRule(id) {
     try {
       await apiFetchJSON(`/api/validation-rules/${id}`, 'DELETE');
       loadRulesList();
-      notify('Regra excluída.', 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.rule_deleted'), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -4177,7 +4184,7 @@ async function _doQRAction(id, action) {
     notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
     _refreshTabBadges();
     loadMyQr();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 document.getElementById('qrModalClose')?.addEventListener('click',    () => closeModal('qrDetailModal'));
@@ -4257,7 +4264,7 @@ async function _openSessionDetail(sessionId) {
     }
 
     openModal('sessionDetailModal');
-  } catch (e) { notify(`Erro ao carregar detalhes: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_load_details')}: ${e.message}`, 'error'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -4281,11 +4288,17 @@ async function _loadThemeEditor() {
   try {
     _currentTheme = await fetch('/api/theme').then(r => r.json());
     _renderThemeEditor();
-  } catch (e) { notify(`Erro ao carregar tema: ${e.message}`, 'error'); }
+    _renderCustomPresets();
+  } catch (e) { notify(`${_t('msg.err_load_theme')}: ${e.message}`, 'error'); }
 }
 
 function _applyThemePreset(key) {
   const preset = _THEME_PRESETS[key];
+  if (!preset) return;
+  _applyThemePresetConfig(preset);
+}
+
+function _applyThemePresetConfig(preset) {
   if (!preset) return;
   _THEME_FIELDS.forEach(f => {
     if (preset[f.key]) {
@@ -4313,6 +4326,148 @@ function _applyThemePreset(key) {
   }
 }
 
+async function _renderCustomPresets() {
+  const sel = document.getElementById('presetSelect');
+  if (!sel) return;
+  try {
+    const presets = await fetch('/api/theme/presets').then(r => r.json());
+    const builtin = presets.filter(p => p.is_builtin);
+    const custom  = presets.filter(p => !p.is_builtin);
+    const prev = sel.value;
+    sel.innerHTML = `<option value="">${_t('appearance.preset_select_placeholder')}</option>`;
+    if (builtin.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = _t('appearance.presets');
+      builtin.forEach(p => {
+        const opt = new Option(p.name, `builtin:${p.id}`);
+        opt.dataset.config = JSON.stringify(p.config);
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+    if (custom.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = _t('appearance.my_presets');
+      custom.forEach(p => {
+        const opt = new Option(p.name, `custom:${p.id}`);
+        opt.dataset.config = JSON.stringify(p.config);
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+    if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+    _updatePresetDeleteBtn();
+  } catch (e) { /* ignore */ }
+}
+
+function _updatePresetDeleteBtn() {
+  const sel = document.getElementById('presetSelect');
+  const btn = document.getElementById('presetDeleteBtn');
+  if (!sel || !btn) return;
+  const isCustom = sel.value.startsWith('custom:');
+  btn.disabled = !isCustom;
+  btn.style.opacity = isCustom ? '1' : '0.4';
+}
+
+function _loadSelectedPreset() {
+  const sel = document.getElementById('presetSelect');
+  const opt = sel?.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.config) return;
+  try { _applyThemePresetConfig(JSON.parse(opt.dataset.config)); } catch (e) { /* ignore */ }
+}
+
+async function _deleteSelectedPreset() {
+  const sel = document.getElementById('presetSelect');
+  if (!sel?.value.startsWith('custom:')) return;
+  const id   = parseInt(sel.value.split(':')[1], 10);
+  const name = sel.options[sel.selectedIndex]?.text || '';
+  confirmDialog(_t('confirm.delete_preset').replace('{name}', name), async () => {
+    try {
+      const resp = await fetch(`/api/theme/presets/${id}`, { method: 'DELETE', headers: _authHeaders() });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        notify(err.detail || _t('msg.err_delete_preset'), 'error');
+        return;
+      }
+      notify(_t('appearance.preset_deleted'), 'success');
+      _renderCustomPresets();
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+  });
+}
+
+async function _deleteCustomPreset(id, name) {
+  try {
+    const resp = await fetch(`/api/theme/presets/${id}`, { method: 'DELETE', headers: _authHeaders() });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      notify(err.detail || _t('msg.err_delete_preset'), 'error');
+      return;
+    }
+    notify(_t('appearance.preset_deleted'), 'success');
+    _renderCustomPresets();
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+}
+
+async function _saveCurrentAsPreset() {
+  const nameInput = document.getElementById('presetNameInput');
+  const name = (nameInput?.value || '').trim();
+  if (!name) { notify(_t('msg.name_required'), 'error'); return; }
+  const payload = { ..._currentTheme };
+  _THEME_FIELDS.forEach(f => {
+    const txt = document.getElementById(`themeColorTxt_${f.key}`);
+    if (txt) payload[f.key] = txt.value;
+  });
+  const appNameEl = document.getElementById('themeAppName');
+  if (appNameEl) payload.app_name = appNameEl.value.trim() || 'PMAS';
+  const activeBtn = document.querySelector('.theme-density-btn.active');
+  if (activeBtn) payload.density = activeBtn.dataset.density;
+  payload.chart_palette = Array.from({ length: 6 }, (_, i) => {
+    return document.getElementById(`themePalTxt_${i}`)?.value || _THEME_PRESETS.pmas.chart_palette[i];
+  });
+  try {
+    await apiFetchJSON('/api/theme/presets', 'POST', { name, config: payload });
+    notify(_t('appearance.preset_saved'), 'success');
+    if (nameInput) nameInput.value = '';
+    _renderCustomPresets();
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+}
+
+async function _exportPresetsCSV() {
+  try {
+    const resp = await fetch('/api/theme/presets/export', { headers: _authHeaders() });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'theme_presets.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+}
+
+async function _importPresetsCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/theme/presets/import', {
+      method: 'POST',
+      headers: _authHeaders(),
+      body: fd,
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      notify(err.detail || `${_t('msg.err_import')}.`, 'error');
+      return;
+    }
+    const data = await resp.json();
+    const n = (data.created || 0) + (data.updated || 0);
+    notify(_t('appearance.preset_imported').replace('{n}', n), 'success');
+    _renderCustomPresets();
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+  input.value = '';
+}
+
 function _renderThemeEditor() {
   const grid = document.getElementById('themeColorGrid');
   if (!grid) return;
@@ -4336,15 +4491,26 @@ function _renderThemeEditor() {
       </div>
     </div>`;
 
-  // Section: presets
+  // Section: profile (load + save presets in one row)
   const presetsSection = `
-    <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.presets')}</label>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem">
-        ${Object.keys(_THEME_PRESETS).map(k => `
-          <button class="btn btn-secondary btn-sm" type="button"
-            onclick="_applyThemePreset('${k}')">${_t('appearance.preset.'+k)}</button>
-        `).join('')}
+    <div class="form-group full" style="margin-bottom:.75rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.profile')}</label>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.35rem">
+        <select id="presetSelect" onchange="_updatePresetDeleteBtn()"
+          style="flex:2;min-width:180px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+          <option value="">${_t('appearance.preset_select_placeholder')}</option>
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_loadSelectedPreset()">${_t('appearance.preset_load')}</button>
+        <button type="button" id="presetDeleteBtn" class="btn btn-sm" disabled
+          style="padding:.3rem .6rem;background:transparent;color:#c56d76;border:1px solid #c56d76;border-radius:6px;opacity:.4"
+          onclick="_deleteSelectedPreset()">${_t('appearance.preset_delete')}</button>
+        <div style="width:1px;height:1.5rem;background:var(--border);margin:0 .25rem"></div>
+        <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
+          style="flex:2;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+        <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()">${_t('appearance.save_preset')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()">${_t('appearance.preset_export')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()">${_t('appearance.preset_import')}</button>
+        <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
       </div>
     </div>`;
 
@@ -4381,6 +4547,7 @@ function _renderThemeEditor() {
     `).join('')}`;
 
   grid.innerHTML = densitySection + presetsSection + colorSection + paletteSection;
+  _renderCustomPresets();
 
   // Wire color pickers ↔ text inputs
   _THEME_FIELDS.forEach(f => {
@@ -4425,7 +4592,7 @@ document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
     _currentTheme = await apiFetchJSON('/api/theme', 'PUT', payload);
     _loadTheme();
     notify(_t('appearance.saved'), 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('restoreDefaultThemeBtn')?.addEventListener('click', () => {
@@ -4446,8 +4613,8 @@ document.getElementById('logoUploadInput')?.addEventListener('change', async (e)
     if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
     _currentTheme = await resp.json();
     _loadTheme();
-    notify('Logo atualizado.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    notify(_t('msg.logo_updated'), 'success');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -4456,8 +4623,8 @@ document.getElementById('deleteLogoBtn')?.addEventListener('click', () => {
     try {
       _currentTheme = await apiFetchJSON('/api/theme/logo', 'DELETE');
       _loadTheme();
-      notify('Logo removido.', 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.logo_removed'), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 });
 

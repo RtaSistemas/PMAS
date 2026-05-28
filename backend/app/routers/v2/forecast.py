@@ -39,6 +39,7 @@ from backend.app.services.evm import (
     cpi_label,
     cv_color,
     cv_label,
+    freeze_spi_boundary,
     resolve_effective_budget,
     spi_color,
     spi_label,
@@ -109,9 +110,6 @@ def get_forecast(
     cum_h   = 0.0
     cum_c   = 0.0
     cum_pc  = 0.0
-    prev_cum_ph = 0.0
-    last_plan_ev: Optional[float] = None
-    last_plan_pv: Optional[float] = None
     prev_period_h: Optional[float] = None
     prev_period_c: Optional[float] = None
 
@@ -126,17 +124,9 @@ def get_forecast(
 
         ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
 
-        # BUG-A fix: freeze EV/PV at the last cycle where the plan advanced
-        if has_plan and cum_ph > prev_cum_ph:
-            last_plan_ev = compute_ev_capped(cum_h, budget_hours, budget_cost)
-            last_plan_pv = compute_ev_capped(cum_ph, budget_hours, budget_cost)
-            prev_cum_ph = cum_ph
-
         spi_cum = None
         if has_plan and cum_ph > 0:
-            ev_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
-            pv_cum = compute_ev_capped(cum_ph, budget_hours, budget_cost)
-            spi_cum = compute_spi(pv_cum, ev_cum)
+            spi_cum = compute_spi(cum_ph, cum_h)
 
         sv_period = compute_sv(cum_h, cum_ph if has_plan else None)
         cv_period = compute_cv(ev_cost_cum, cum_c)
@@ -176,6 +166,11 @@ def get_forecast(
     consumed_hours = cum_h
     actual_cost    = cum_c
 
+    last_actual_h, last_planned_h = (
+        freeze_spi_boundary([(s, h) for _, s, h, _ in cycle_data], sorted_plans)
+        if has_plan else (None, None)
+    )
+
     recent_h = [h for _, _, h, _ in cycle_data[-3:]]
     avg_hours = sum(recent_h) / len(recent_h) if recent_h else 0.0
 
@@ -190,9 +185,9 @@ def get_forecast(
             cv   = compute_cv(ev_val, actual_cost)
             tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
         vac = compute_vac(budget_cost, eac)
-        if has_plan and last_plan_pv and last_plan_pv > 0:
-            spi = compute_spi(last_plan_pv, last_plan_ev) if last_plan_ev is not None else None
-            sv  = compute_sv(last_plan_ev or 0, last_plan_pv)
+        if has_plan and last_planned_h and last_planned_h > 0:
+            spi = compute_spi(last_planned_h, last_actual_h) if last_actual_h is not None else None
+            sv  = compute_sv(last_actual_h or 0, last_planned_h)
 
     is_closed = (
         project is not None

@@ -239,7 +239,7 @@ class TestCpiIntegrity_PartialCompletion:
 
 class TestSvIntegrity:
     """
-    SV = EV − PV (positive = ahead, negative = behind schedule).
+    SV = actual_hours − planned_hours (positive = ahead, negative = behind schedule).
 
     Scenario:
       budget_hours=100, budget_cost=10_000
@@ -247,8 +247,8 @@ class TestSvIntegrity:
       consumed (C1+C2)=60h, cost_per_hour=100 → AC=6_000
       EV  = (60/100)×10_000 = 6_000
       PV  = (80/100)×10_000 = 8_000
-      SV  = 6_000 − 8_000   = −2_000  (behind)
-      SPI = EV/PV            = 6_000/8_000 = 0.750
+      SV  = 60h − 80h = −20h  (behind schedule)
+      SPI = actual_hours / planned_hours = 60/80 = 0.750
     """
 
     PEP  = "60IT-777-01"
@@ -262,8 +262,8 @@ class TestSvIntegrity:
     _EV  = (_consumed / BH) * BC    # 6_000
     _AC  = _consumed * CPH           # 6_000
     _PV  = (_cum_plan  / BH) * BC   # 8_000
-    _SV  = _EV - _PV                 # −2_000 (behind)
-    _SPI = _EV / _PV                 # 0.750
+    _SV  = _consumed - _cum_plan     # −20h (behind schedule)
+    _SPI = _consumed / _cum_plan     # 0.750
 
     def _seed(self, db):
         _global_config(db, em=1.0, sm=1.0)
@@ -511,4 +511,69 @@ class TestRunwayNegativeCyclesToComplete:
         assert item["risk"] == "overrun"
         assert item["cycles_to_complete"] is None, (
             f"cycles_to_complete={item['cycles_to_complete']} should be null for overrun project"
+        )
+
+
+class TestRunwaySpiScenarios:
+    """SPI scenarios for /api/v2/runway, focusing on freeze_spi_boundary correctness."""
+
+    PEP  = "60IT-SPX-01"
+    DESC = "SPI Test"
+
+    def test_no_budget_risk_is_no_budget(self, client, db_session):
+        """PEP with no budget → risk='no_budget', cpi=None, spi=None."""
+        _global_config(db_session)
+        cy = _cycle(db_session, "Jan/2026", 2026, 1)
+        co = _collab(db_session, "Ana")
+        p = Project(pep_wbs=self.PEP, name="NoBudget")
+        db_session.add(p)
+        db_session.flush()
+        _rec(db_session, cy, co, self.PEP, self.DESC, normal=10.0, cph=50.0)
+
+        resp = client.get("/api/v2/runway")
+        item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
+        assert item is not None
+        assert item["risk"] == "no_budget"
+        assert item["cpi"] is None
+        assert item["spi"] is None
+
+    def test_spi_present_when_plan_exists(self, client, db_session):
+        """SPI must be non-None when a ProjectCyclePlan row exists for the project."""
+        _global_config(db_session)
+        cy = _cycle(db_session, "Feb/2026", 2026, 2)
+        co = _collab(db_session, "Bob")
+        p = _project(db_session, self.PEP, budget_hours=100.0, budget_cost=10_000.0)
+        _rec(db_session, cy, co, self.PEP, self.DESC, normal=60.0, cph=100.0)
+        _plan(db_session, p.id, cy.id, planned_hours=80.0)
+
+        resp = client.get("/api/v2/runway")
+        item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
+        assert item is not None
+        assert item["spi"] is not None, "SPI should be present when a ProjectCyclePlan exists"
+        assert item["schedule_status"] != "no_baseline"
+
+    def test_spi_overrun_hours_uses_actual_ratio(self, client, db_session):
+        """SPI uses raw hours ratio when consumed > budget_hours.
+
+        Old bug: compute_ev_capped capped EV at BAC, so the ratio diverged from
+        actual_h/planned_h when running_h > budget_hours.
+        freeze_spi_boundary works in hours throughout, so the ratio is correct.
+
+        Setup: budget=100h, planned=50h, consumed=120h
+          hours-based SPI = 120 / 50 = 2.40
+          old R$-capped   = min(120/100,1.0)×10000 / (50/100×10000) = 10000/5000 = 2.00
+        """
+        _global_config(db_session)
+        cy = _cycle(db_session, "Mar/2026", 2026, 3)
+        co = _collab(db_session, "Carol")
+        p = _project(db_session, self.PEP, budget_hours=100.0, budget_cost=10_000.0)
+        _rec(db_session, cy, co, self.PEP, self.DESC, normal=120.0, cph=100.0)
+        _plan(db_session, p.id, cy.id, planned_hours=50.0)
+
+        resp = client.get("/api/v2/runway")
+        item = next((i for i in resp.json() if i["pep_wbs"] == self.PEP), None)
+        assert item is not None
+        assert item["spi"] == pytest.approx(2.4, abs=0.01), (
+            f"Expected hours-based SPI=2.4, got {item['spi']} "
+            "(old R$-capped code would give 2.0)"
         )
