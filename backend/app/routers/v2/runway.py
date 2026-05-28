@@ -35,7 +35,7 @@ from backend.app.services.evm import (
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/runway", summary="Runway do portfólio: ciclos restantes por PEP (v2 — custo frozen)")
+@router.get("/runway", summary="Runway do portfólio: ciclos restantes por PEP (v2 — custo frozen)", response_model=list)
 def get_runway(
     db: DbSession,
     current_user=Depends(get_current_user),

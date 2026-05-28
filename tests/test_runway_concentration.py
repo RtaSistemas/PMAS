@@ -303,10 +303,12 @@ class TestPortfolioConcentration:
         data = result.json()
         item = next((x for x in data if x["pep_wbs"] == "P-MANY"), None)
         assert item is not None
-        # Should have 3 named contributors + 1 "Outros" entry
+        # Should have 3 named contributors + 1 "others" entry
         assert len(item["top_contributors"]) == 4
-        others_entry = next((c for c in item["top_contributors"] if c["name"].startswith("Outros")), None)
+        others_entry = next((c for c in item["top_contributors"] if c.get("is_other")), None)
         assert others_entry is not None
+        assert others_entry["name"] is None
+        assert others_entry["others_count"] == 2
 
     def test_up_to_3_contributors_no_others_entry(self, client, db_session):
         cy = _cycle(db_session, "CON6", 2026, 6)
@@ -321,7 +323,7 @@ class TestPortfolioConcentration:
         item = next((x for x in data if x["pep_wbs"] == "P-FEW"), None)
         assert item is not None
         assert len(item["top_contributors"]) == 2
-        assert not any(c["name"].startswith("Outros") for c in item["top_contributors"])
+        assert not any(c.get("is_other") for c in item["top_contributors"])
 
     def test_percentages_sum_to_100(self, client, db_session):
         cy = _cycle(db_session, "CON7", 2026, 7)

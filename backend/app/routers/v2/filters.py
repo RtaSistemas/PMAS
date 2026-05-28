@@ -16,7 +16,7 @@ from backend.app.models import Collaborator, Cycle, TimesheetRecord
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/filters", summary="Filtros disponíveis: colaboradores, PEPs e ciclos")
+@router.get("/filters", summary="Filtros disponíveis: colaboradores, PEPs e ciclos", response_model=dict)
 def get_filters(db: DbSession, _=Depends(get_current_user)):
     collaborators = (
         db.query(Collaborator.id, Collaborator.name)

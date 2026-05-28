@@ -19,7 +19,7 @@ from backend.app.services.evm import compute_period_delta, compute_period_delta_
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/trends", summary="Tendências por ciclo com delta período-a-período")
+@router.get("/trends", summary="Tendências por ciclo com delta período-a-período", response_model=list)
 def get_trends(
     db: DbSession,
     _=Depends(get_current_user),

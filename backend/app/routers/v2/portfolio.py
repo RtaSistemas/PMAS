@@ -46,7 +46,7 @@ def _allowed_peps(db, user) -> list[str] | None:
     return [p.pep_wbs for p in projects]
 
 
-@router.get("/portfolio", summary="Saúde do portfólio — render-ready com CPI e health por PEP")
+@router.get("/portfolio", summary="Saúde do portfólio — render-ready com CPI e health por PEP", response_model=list)
 def get_portfolio(
     db: DbSession,
     current_user=Depends(get_current_user),

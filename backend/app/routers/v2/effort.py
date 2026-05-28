@@ -22,7 +22,7 @@ from backend.app.models import (
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
-@router.get("/effort", summary="Esforço da equipe por colaborador — render-ready")
+@router.get("/effort", summary="Esforço da equipe por colaborador — render-ready", response_model=list)
 def get_effort(
     db: DbSession,
     current_user=Depends(get_current_user),

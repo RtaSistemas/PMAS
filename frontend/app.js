@@ -348,7 +348,7 @@ async function loadDashboardCycles() {
     refreshPepDescriptions();
 
     collaboratorMs.setItems(collabs.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (e) { notify(`Erro ao carregar filtros: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_load_filters')}: ${e.message}`, 'error'); }
 }
 
 async function refreshPeps() {
@@ -359,7 +359,7 @@ async function refreshPeps() {
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (e) { console.warn('refreshPeps:', e); notify(`Erro ao atualizar filtro de PEPs: ${e.message}`, 'warning'); }
+  } catch (e) { console.warn('refreshPeps:', e); notify(`${_t('msg.err_update_pep_filter')}: ${e.message}`, 'warning'); }
 }
 
 function refreshPepDescriptions() {
@@ -372,7 +372,7 @@ async function refreshCollaborators() {
   try {
     const filters = await apiFetch('/api/v2/filters');
     collaboratorMs.setItems(filters.collaborators.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (e) { console.warn('refreshCollaborators:', e); notify(`Erro ao atualizar filtro de colaboradores: ${e.message}`, 'warning'); }
+  } catch (e) { console.warn('refreshCollaborators:', e); notify(`${_t('msg.err_update_collab_filter')}: ${e.message}`, 'warning'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -615,7 +615,7 @@ async function _renderEffortTab() {
 
   } catch (err) {
     _setChartLoading(['effortChart'], false);
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -778,8 +778,11 @@ function _renderConcentrationPanel(concentration) {
     const barsHtml = contribs.map(c => {
       const pct      = _evmMode ? c.pct_cost : c.pct;
       const barWidth = top1val > 0 ? Math.round(pct / top1val * 100) : 0;
+      const cName    = c.is_other
+        ? `${_t('concentration.others')} (${c.others_count})`
+        : c.name;
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
-        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(c.name)}">${escHtml(c.name)}</span>` +
+        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(cName)}">${escHtml(cName)}</span>` +
         `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
@@ -906,7 +909,7 @@ async function _renderPortfolioTab() {
 
   } catch (err) {
     _setChartLoading(['treemapChart'], false);
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -1204,11 +1207,11 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       pcc.setOption(_buildPepCpiOption(peps, allCycleNames, spiMapByPep), true);
       pcc.resize();
     } catch (err) {
-      notify(`CPI por PEP — erro: ${err.message}`, 'error');
+      notify(`${_t('msg.err_cpi_pep')}: ${err.message}`, 'error');
     }
   } catch (err) {
     _setChartLoading(['trendsChart'], false);
-    notify(`Erro ao carregar tendências: ${err.message}`, 'error');
+    notify(`${_t('msg.err_load_trends')}: ${err.message}`, 'error');
   }
 }
 
@@ -1246,7 +1249,7 @@ async function _renderAllocationTab() {
     _allocSortDir  = -1;
     _drawAllocMatrix();
   } catch (err) {
-    notify(`Erro: ${err.message}`, 'error');
+    notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   }
@@ -1543,7 +1546,7 @@ async function _renderForecastTab() {
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
-    if (!err.message?.includes('404')) notify(`Erro: ${err.message}`, 'error');
+    if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
 }
 
@@ -1694,7 +1697,7 @@ async function _renderPlanTable(pep_wbs) {
         </td>
       </tr>`;
     }).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function deletePlan(cycle_id) {
@@ -1704,7 +1707,7 @@ function deletePlan(cycle_id) {
       await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
       await _renderPlanTable(_currentForecastPep);
       _renderForecastTab();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -1736,7 +1739,7 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
     closeModal('editPlanModal');
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
 let _addPlanAvailableCycles = [];
@@ -1790,7 +1793,7 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     document.getElementById('addPlanError').textContent = '';
     _addPlanRow(_addPlanAvailableCycles);
     openModal('addPlanModal');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
@@ -1833,7 +1836,7 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
     _closeAddPlanModal();
     await _renderPlanTable(_currentForecastPep);
     _renderForecastTab();
-  } catch (e) { errEl.textContent = `Erro: ${e.message}`; }
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
 document.getElementById('exportPlanBtn').addEventListener('click', async () => {
@@ -1850,7 +1853,7 @@ document.getElementById('exportPlanBtn').addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     Object.assign(document.createElement('a'), { href: url, download: fname }).click();
     URL.revokeObjectURL(url);
-  } catch (e) { notify(`Erro ao exportar: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_export')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('importPlanFile').addEventListener('change', async function () {
@@ -2375,7 +2378,7 @@ function toggleCycleLock(id, isClosed) {
     try {
       await apiFetchJSON(`/api/cycles/${id}/toggle-status`, 'PATCH');
       loadCyclesTable();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2385,7 +2388,7 @@ function toggleCycleArchive(id, isActive) {
       await apiFetchJSON(`/api/cycles/${id}/toggle-archive`, 'PATCH');
       loadCyclesTable();
       loadDashboardCycles();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2447,10 +2450,10 @@ document.getElementById('cycleSearch').addEventListener('input', e => {
 });
 
 function deleteCycle(id, name, count) {
-  if (count > 0) { notify(`Ciclo "${name}" possui ${count} registro(s) e não pode ser excluído.`, 'error'); return; }
+  if (count > 0) { notify(_t('msg.cycle_has_records').replace('{name}', name).replace('{count}', count), 'error'); return; }
   confirmDialog(_t('confirm.delete_cycle'), async () => {
     try { await apiFetchJSON(`/api/cycles/${id}`, 'DELETE'); loadCyclesTable(); loadDashboardCycles(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2481,7 +2484,7 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
     notify(msg, data.errors.length ? 'error' : 'success');
     loadCyclesTable();
     loadDashboardCycles();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -2516,7 +2519,7 @@ async function loadProjectsTable() {
     });
 
     _renderProjectsTable(_applySort('projectsTable', projects));
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function _buildBudgetCell(p) {
@@ -2656,7 +2659,7 @@ document.getElementById('projectSearch').addEventListener('input', e => {
 function deleteProject(id, pep) {
   confirmDialog(_t('confirm.delete_project'), async () => {
     try { await apiFetchJSON(`/api/projects/${id}`, 'DELETE'); loadProjectsTable(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2754,7 +2757,7 @@ async function _createBaseline(projectId) {
     notify(_t('baseline.created'), 'success');
     await _refreshBaselineModal(projectId);
     loadProjectsTable();
-  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _activateBaseline(projectId, baselineId) {
@@ -2762,7 +2765,7 @@ async function _activateBaseline(projectId, baselineId) {
     await apiFetchJSON(`/api/projects/${projectId}/baselines/${baselineId}/activate`, 'POST', {});
     await _refreshBaselineModal(projectId);
     loadProjectsTable();
-  } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _deleteBaseline(projectId, baselineId) {
@@ -2772,7 +2775,7 @@ async function _deleteBaseline(projectId, baselineId) {
       notify(_t('baseline.deleted'), 'success');
       await _refreshBaselineModal(projectId);
       loadProjectsTable();
-    } catch(e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch(e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2807,7 +2810,7 @@ async function _loadAclEntries() {
           <button class="btn btn-danger btn-sm" onclick="_revokeAccess(${e.user_id})">${_t('btn.revoke')}</button>
         </td>
       </tr>`).join('');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _populateAclUserSelect() {
@@ -2839,7 +2842,7 @@ function _revokeAccess(userId) {
     try {
       await apiFetchJSON(`/api/projects/${_aclProjectId}/access/${userId}`, 'DELETE');
       await _loadAclEntries();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -2873,7 +2876,7 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0,3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     loadProjectsTable();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -3014,14 +3017,14 @@ document.getElementById('importSeniorityInput').addEventListener('change', async
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
 function deleteSeniorityLevel(id, name) {
   confirmDialog(_t('confirm.delete_level'), async () => {
     try { await apiFetchJSON(`/api/seniority-levels/${id}`, 'DELETE'); await loadSeniorityLevels(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3097,14 +3100,14 @@ document.getElementById('importRateCardInput').addEventListener('change', async 
       (data.errors.length ? `; ${data.errors.length} ${_t('msg.errors_n')}: ${data.errors.slice(0, 3).join('; ')}` : '');
     notify(msg, data.errors.length ? 'error' : 'success');
     await loadTeamTab();
-  } catch (err) { notify(`Erro na importação: ${err.message}`, 'error'); }
+  } catch (err) { notify(`${_t('msg.err_import')}: ${err.message}`, 'error'); }
   e.target.value = '';
 });
 
 function deleteRateCard(id) {
   confirmDialog(_t('confirm.delete_rate'), async () => {
     try { await apiFetchJSON(`/api/rate-cards/${id}`, 'DELETE'); await loadRateCards(); await loadTeamTable(); }
-    catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3145,8 +3148,8 @@ document.getElementById('bulkSeniorityBtn').addEventListener('click', () => {
       const body = { seniority_level_id: val ? parseInt(val) : null };
       await apiFetchJSON('/api/team/bulk-seniority', 'PUT', body);
       await loadTeamTable();
-      notify(`Senioridade "${label}" atribuída a todos.`, 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.seniority_assigned_all').replace('{label}', label), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 });
 
@@ -3438,7 +3441,7 @@ function deleteUser(id, username) {
     try {
       await apiFetchJSON(`/api/users/${id}`, 'DELETE');
       loadUsersTable();
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -3787,8 +3790,8 @@ document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => 
   try {
     _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order, panel_order: panelOrder } });
     _applyLayoutPreferences();
-    notify('Layout salvo.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    notify(_t('msg.layout_saved'), 'success');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 // My Area — change password
@@ -3851,7 +3854,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     loadMyHistory();
     loadMyQr();
   } catch (e) {
-    resultEl.textContent = `Erro: ${e.message}`;
+    resultEl.textContent = `${_t('msg.err_generic')}: ${e.message}`;
     notify(e.message, 'error');
   }
   e.target.value = '';
@@ -3981,7 +3984,7 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
     const a    = Object.assign(document.createElement('a'), { href: url, download: name });
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 
@@ -4120,7 +4123,7 @@ async function toggleRule(id) {
   try {
     await apiFetchJSON(`/api/validation-rules/${id}/toggle`, 'PATCH');
     loadRulesList();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 function deleteRule(id) {
@@ -4128,8 +4131,8 @@ function deleteRule(id) {
     try {
       await apiFetchJSON(`/api/validation-rules/${id}`, 'DELETE');
       loadRulesList();
-      notify('Regra excluída.', 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.rule_deleted'), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
 
@@ -4181,7 +4184,7 @@ async function _doQRAction(id, action) {
     notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
     _refreshTabBadges();
     loadMyQr();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 document.getElementById('qrModalClose')?.addEventListener('click',    () => closeModal('qrDetailModal'));
@@ -4261,7 +4264,7 @@ async function _openSessionDetail(sessionId) {
     }
 
     openModal('sessionDetailModal');
-  } catch (e) { notify(`Erro ao carregar detalhes: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_load_details')}: ${e.message}`, 'error'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -4286,7 +4289,7 @@ async function _loadThemeEditor() {
     _currentTheme = await fetch('/api/theme').then(r => r.json());
     _renderThemeEditor();
     _renderCustomPresets();
-  } catch (e) { notify(`Erro ao carregar tema: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_load_theme')}: ${e.message}`, 'error'); }
 }
 
 function _applyThemePreset(key) {
@@ -4359,12 +4362,12 @@ async function _deleteCustomPreset(id, name) {
     });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      notify(err.detail || 'Erro ao excluir preset.', 'error');
+      notify(err.detail || _t('msg.err_delete_preset'), 'error');
       return;
     }
     notify(_t('appearance.preset_deleted'), 'success');
     _renderCustomPresets();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _saveCurrentAsPreset() {
@@ -4388,7 +4391,7 @@ async function _saveCurrentAsPreset() {
     notify(_t('appearance.preset_saved'), 'success');
     if (nameInput) nameInput.value = '';
     _renderCustomPresets();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _exportPresetsCSV() {
@@ -4400,7 +4403,7 @@ async function _exportPresetsCSV() {
     const a    = document.createElement('a');
     a.href = url; a.download = 'theme_presets.csv'; a.click();
     URL.revokeObjectURL(url);
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 async function _importPresetsCSV(input) {
@@ -4416,14 +4419,14 @@ async function _importPresetsCSV(input) {
     });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      notify(err.detail || 'Erro ao importar.', 'error');
+      notify(err.detail || `${_t('msg.err_import')}.`, 'error');
       return;
     }
     const data = await resp.json();
     const n = (data.created || 0) + (data.updated || 0);
     notify(_t('appearance.preset_imported').replace('{n}', n), 'success');
     _renderCustomPresets();
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   input.value = '';
 }
 
@@ -4566,7 +4569,7 @@ document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
     _currentTheme = await apiFetchJSON('/api/theme', 'PUT', payload);
     _loadTheme();
     notify(_t('appearance.saved'), 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
 document.getElementById('restoreDefaultThemeBtn')?.addEventListener('click', () => {
@@ -4587,8 +4590,8 @@ document.getElementById('logoUploadInput')?.addEventListener('change', async (e)
     if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
     _currentTheme = await resp.json();
     _loadTheme();
-    notify('Logo atualizado.', 'success');
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+    notify(_t('msg.logo_updated'), 'success');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   e.target.value = '';
 });
 
@@ -4597,8 +4600,8 @@ document.getElementById('deleteLogoBtn')?.addEventListener('click', () => {
     try {
       _currentTheme = await apiFetchJSON('/api/theme/logo', 'DELETE');
       _loadTheme();
-      notify('Logo removido.', 'success');
-    } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+      notify(_t('msg.logo_removed'), 'success');
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 });
 
