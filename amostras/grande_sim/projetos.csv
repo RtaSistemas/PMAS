@@ -1,0 +1,18 @@
+﻿pep_wbs,name,client,manager,budget_hours,budget_cost,status
+60IT-INF-01,Plataforma Core Enterprise,Banco Meridional,Rodrigo Andrade,24300,3727000,ativo
+60IT-TRF-01,Transformação Digital 360°,GrupoVarejo S.A.,Beatriz Nunes,23600,4314000,ativo
+60IT-ERP-01,Implantação ERP Global,IndustriaMax,Marcos Tavares,22600,3216000,encerrado
+60IT-PLT-01,Migração de Plataforma,TechlogicBR,Juliana Ramos,19700,2781000,ativo
+60IT-SEG-01,Programa de Cibersegurança,FinanceSeguro,Thiago Campos,8400,1052000,encerrado
+60IT-CRM-01,CRM Enterprise,RetailPlus,João Silva,8000,768000,encerrado
+60IT-GOV-01,Governança & Compliance,Holding Alfa,Maria Santos,4300,634000,encerrado
+60IT-SUP-01,Sustentação & Operações,MultiCliente,Roberto Costa,11400,1148000,ativo
+60IT-DAT-01,Data Lakehouse,AnaliticosBR,Beatriz Nunes,14100,2372000,ativo
+60IT-RH-01,RH Digital,Capital Humano,Carlos Oliveira,5800,610000,encerrado
+60IT-API-01,Gateway de APIs,EcossistemaTech,Ana Ferreira,7900,896000,ativo
+60IT-INO-01,Lab de Inovação,Interno,Rodrigo Andrade,7000,1303000,ativo
+60IT-MOB-01,App Mobile B2C,ConsumerApp,Gabriel Souza,7400,647000,encerrado
+60IT-MKT-01,Plataforma de Marketing,MídiaDigital,Camila Barbosa,6400,629000,ativo
+60IT-BI-01,BI & Analytics,DataDriven,Thiago Campos,4500,587000,encerrado
+60IT-IOT-01,IoT Industrial,FábricaSmart,Lucas Pereira,7700,730000,ativo
+60IT-CLD-01,Cloud Migration,TechlogicBR,Juliana Ramos,5300,781000,ativo
