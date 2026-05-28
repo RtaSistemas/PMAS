@@ -4327,39 +4327,77 @@ function _applyThemePresetConfig(preset) {
 }
 
 async function _renderCustomPresets() {
-  const container = document.getElementById('customPresetsList');
-  if (!container) return;
+  const sel = document.getElementById('presetSelect');
+  if (!sel) return;
   try {
     const presets = await fetch('/api/theme/presets').then(r => r.json());
-    container.innerHTML = presets.map(p => {
-      if (p.is_builtin) {
-        return `<button class="btn btn-secondary btn-sm" type="button"
-          onclick="_applyThemePresetConfig(${JSON.stringify(p.config)})"
-          title="${_t('appearance.preset_builtin')}">
-          ${escHtml(p.name)}
-        </button>`;
+    const builtin = presets.filter(p => p.is_builtin);
+    const custom  = presets.filter(p => !p.is_builtin);
+    const prev = sel.value;
+    sel.innerHTML = `<option value="">${_t('appearance.preset_select_placeholder')}</option>`;
+    if (builtin.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = _t('appearance.presets');
+      builtin.forEach(p => {
+        const opt = new Option(p.name, `builtin:${p.id}`);
+        opt.dataset.config = JSON.stringify(p.config);
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+    if (custom.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = _t('appearance.my_presets');
+      custom.forEach(p => {
+        const opt = new Option(p.name, `custom:${p.id}`);
+        opt.dataset.config = JSON.stringify(p.config);
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+    if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+    _updatePresetDeleteBtn();
+  } catch (e) { /* ignore */ }
+}
+
+function _updatePresetDeleteBtn() {
+  const sel = document.getElementById('presetSelect');
+  const btn = document.getElementById('presetDeleteBtn');
+  if (!sel || !btn) return;
+  const isCustom = sel.value.startsWith('custom:');
+  btn.disabled = !isCustom;
+  btn.style.opacity = isCustom ? '1' : '0.4';
+}
+
+function _loadSelectedPreset() {
+  const sel = document.getElementById('presetSelect');
+  const opt = sel?.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.config) return;
+  try { _applyThemePresetConfig(JSON.parse(opt.dataset.config)); } catch (e) { /* ignore */ }
+}
+
+async function _deleteSelectedPreset() {
+  const sel = document.getElementById('presetSelect');
+  if (!sel?.value.startsWith('custom:')) return;
+  const id   = parseInt(sel.value.split(':')[1], 10);
+  const name = sel.options[sel.selectedIndex]?.text || '';
+  confirmDialog(_t('confirm.delete_preset').replace('{name}', name), async () => {
+    try {
+      const resp = await fetch(`/api/theme/presets/${id}`, { method: 'DELETE', headers: _authHeaders() });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        notify(err.detail || _t('msg.err_delete_preset'), 'error');
+        return;
       }
-      return `<span style="display:inline-flex;align-items:center;gap:.25rem">
-        <button class="btn btn-secondary btn-sm" type="button"
-          onclick="_applyThemePresetConfig(${JSON.stringify(p.config)})">
-          ${escHtml(p.name)}
-        </button>
-        <button class="btn btn-sm" type="button"
-          style="padding:.2rem .4rem;background:transparent;color:#c56d76;border:1px solid #c56d76"
-          onclick="_deleteCustomPreset(${p.id},'${escHtml(p.name).replace(/'/g,"\\'")}')">
-          🗑
-        </button>
-      </span>`;
-    }).join('');
-  } catch (e) { container.innerHTML = ''; }
+      notify(_t('appearance.preset_deleted'), 'success');
+      _renderCustomPresets();
+    } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+  });
 }
 
 async function _deleteCustomPreset(id, name) {
   try {
-    const resp = await fetch(`/api/theme/presets/${id}`, {
-      method: 'DELETE',
-      headers: _authHeaders(),
-    });
+    const resp = await fetch(`/api/theme/presets/${id}`, { method: 'DELETE', headers: _authHeaders() });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       notify(err.detail || _t('msg.err_delete_preset'), 'error');
@@ -4453,26 +4491,25 @@ function _renderThemeEditor() {
       </div>
     </div>`;
 
-  // Section: presets
+  // Section: profile (load + save presets in one row)
   const presetsSection = `
-    <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.presets')}</label>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem">
-        ${Object.keys(_THEME_PRESETS).map(k => `
-          <button class="btn btn-secondary btn-sm" type="button"
-            onclick="_applyThemePreset('${k}')">${_t('appearance.preset.'+k)}</button>
-        `).join('')}
-      </div>
-    </div>
-    <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.my_presets')}</label>
-      <div id="customPresetsList" style="display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0"></div>
-      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+    <div class="form-group full" style="margin-bottom:.75rem">
+      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.profile')}</label>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.35rem">
+        <select id="presetSelect" onchange="_updatePresetDeleteBtn()"
+          style="flex:2;min-width:180px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+          <option value="">${_t('appearance.preset_select_placeholder')}</option>
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_loadSelectedPreset()">${_t('appearance.preset_load')}</button>
+        <button type="button" id="presetDeleteBtn" class="btn btn-sm" disabled
+          style="padding:.3rem .6rem;background:transparent;color:#c56d76;border:1px solid #c56d76;border-radius:6px;opacity:.4"
+          onclick="_deleteSelectedPreset()">${_t('appearance.preset_delete')}</button>
+        <div style="width:1px;height:1.5rem;background:var(--border);margin:0 .25rem"></div>
         <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
-               style="flex:1;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
-        <button onclick="_saveCurrentAsPreset()" class="btn btn-primary btn-sm" type="button">${_t('appearance.save_preset')}</button>
-        <button onclick="_exportPresetsCSV()" class="btn btn-secondary btn-sm" type="button">${_t('appearance.preset_export')}</button>
-        <button onclick="document.getElementById('presetImportInput').click()" class="btn btn-secondary btn-sm" type="button">${_t('appearance.preset_import')}</button>
+          style="flex:2;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+        <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()">${_t('appearance.save_preset')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()">${_t('appearance.preset_export')}</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()">${_t('appearance.preset_import')}</button>
         <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
       </div>
     </div>`;
@@ -4509,21 +4546,7 @@ function _renderThemeEditor() {
       </div>
     `).join('')}`;
 
-  const myPresetsSection = `
-    <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.my_presets')}</label>
-      <div id="customPresetsList" style="display:flex;flex-wrap:wrap;gap:.5rem;margin:.35rem 0 .5rem"></div>
-      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-        <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
-          style="flex:1;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
-        <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()">${_t('appearance.save_preset')}</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()">${_t('appearance.preset_export')}</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()">${_t('appearance.preset_import')}</button>
-        <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
-      </div>
-    </div>`;
-
-  grid.innerHTML = densitySection + presetsSection + myPresetsSection + colorSection + paletteSection;
+  grid.innerHTML = densitySection + presetsSection + colorSection + paletteSection;
   _renderCustomPresets();
 
   // Wire color pickers ↔ text inputs
