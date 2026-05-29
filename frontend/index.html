@@ -752,6 +752,16 @@
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
+          <div class="flex-center gap-sm">
+            <select id="myHistoryFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
+              <option value="" data-i18n="history.filter.all">Todos os registros</option>
+              <option value="ok" data-i18n="history.status.ok">✅ OK</option>
+              <option value="warnings" data-i18n="history.status.warnings">⚠️ Com avisos</option>
+              <option value="quarantine" data-i18n="history.status.quarantine">🔒 Com quarentena</option>
+              <option value="rejected" data-i18n="history.status.rejected">❌ Rejeitado</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="myHistoryExportBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          </div>
         </div>
         <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">

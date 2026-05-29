@@ -3923,10 +3923,12 @@ async function loadMyHistory() {
 }
 
 function _renderMyHistory(rows) {
-  _historyRows = rows;
-  const totalPages = Math.max(1, Math.ceil(rows.length / _historyPageSize));
+  const filter = document.getElementById('myHistoryFilter')?.value || '';
+  const filtered = filter ? rows.filter(r => r.status === filter) : rows;
+  _historyRows = filtered;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / _historyPageSize));
   _historyPage = Math.max(0, Math.min(_historyPage, totalPages - 1));
-  const pageRows = rows.slice(_historyPage * _historyPageSize, (_historyPage + 1) * _historyPageSize);
+  const pageRows = filtered.slice(_historyPage * _historyPageSize, (_historyPage + 1) * _historyPageSize);
   _renderTable('myHistoryBody', pageRows, {
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
@@ -3960,9 +3962,25 @@ function _renderMyHistory(rows) {
   }
 }
 
-document.getElementById('myHistoryPrevBtn')?.addEventListener('click', () => { _historyPage--; _renderMyHistory(_historyRows); });
-document.getElementById('myHistoryNextBtn')?.addEventListener('click', () => { _historyPage++; _renderMyHistory(_historyRows); });
-document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { _historyPageSize = +e.target.value; _historyPage = 0; _renderMyHistory(_historyRows); });
+document.getElementById('myHistoryFilter')?.addEventListener('change', () => { _historyPage = 0; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
+document.getElementById('myHistoryPrevBtn')?.addEventListener('click', () => { _historyPage--; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
+document.getElementById('myHistoryNextBtn')?.addEventListener('click', () => { _historyPage++; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
+document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { _historyPageSize = +e.target.value; _historyPage = 0; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
+document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
+  if (!_historyRows.length) { notify(_t('msg.no_import_sessions'), 'info'); return; }
+  const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const header = ['Quando','Arquivo','Enviado por','Inseridos','Ignorados','Quarentena','Avisos','Infos','Status'];
+  const lines = _historyRows.map(r => {
+    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    return [esc(when), esc(r.source_file), esc(r.uploaded_by_username),
+      r.records_inserted, r.records_skipped, r.quarantine_added,
+      r.warning_count, r.info_count, esc(r.status)].join(',');
+  });
+  const blob = new Blob(['﻿' + [header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: 'historico_importacoes.csv' }).click();
+  URL.revokeObjectURL(url);
+});
 
 // ---------------------------------------------------------------------------
 // My Area — Quarentena sub-tab

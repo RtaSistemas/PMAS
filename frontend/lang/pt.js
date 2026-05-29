@@ -352,6 +352,7 @@ window._LANG_PT = {
     'confirm.archive_cycle':'Arquivar este ciclo?','confirm.restore_cycle':'Restaurar este ciclo?',
     'page.prev':'‹ Anterior','page.next':'Próximo ›',
     'qr.filter.all':'Todos os registros','qr.filter.pending_opt':'⏳ Pendentes','qr.filter.approved_opt':'✅ Aprovados','qr.filter.rejected_opt':'❌ Rejeitados',
+    'history.filter.all':'Todos os registros',
     'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.panel.forecast_alloc':'Alocação por Colaborador','layout.tab.forecast':'Previsão (EVM)',
     'scatter.axis_spi':'SPI — Desempenho de Prazo','scatter.axis_cpi':'CPI — Desempenho de Custo',
     'risk.warning':'Atenção','risk.critical':'Crítico',
