@@ -169,20 +169,25 @@
   <section id="tab-dashboard" class="tab-section" role="tabpanel" aria-labelledby="tab-btn-dashboard" tabindex="0">
 
     <div class="card">
-      <h2 data-i18n="filters.title">Filtros</h2>
-      <div class="filter-grid">
-        <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
-        <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
-        <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
-        <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
-        <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
-        <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
-        <div class="field btn-group">
-          <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
-          <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
-          <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
-          <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
-          <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
+      <div class="section-header" id="filterToggle" style="cursor:pointer;user-select:none">
+        <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
+        <span id="filterChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+      </div>
+      <div id="filterBody">
+        <div class="filter-grid">
+          <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+          <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+          <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+          <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+          <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
+          <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
+          <div class="field btn-group">
+            <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
+            <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
+            <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
+            <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
+            <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
+          </div>
         </div>
       </div>
     </div>

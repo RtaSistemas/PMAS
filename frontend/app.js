@@ -1584,8 +1584,14 @@ function _renderBurnUpChart(fc) {
 // Forecast allocation table (hours heatmap per collaborator, single PEP)
 // ---------------------------------------------------------------------------
 
-let _forecastAllocExpanded = true;
+let _filterExpanded = true;
+document.getElementById('filterToggle').addEventListener('click', () => {
+  _filterExpanded = !_filterExpanded;
+  document.getElementById('filterBody').style.display = _filterExpanded ? '' : 'none';
+  document.getElementById('filterChevron').style.transform = _filterExpanded ? '' : 'rotate(-90deg)';
+});
 
+let _forecastAllocExpanded = true;
 document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   _forecastAllocExpanded = !_forecastAllocExpanded;
   document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
