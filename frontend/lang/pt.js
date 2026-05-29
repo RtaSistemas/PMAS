@@ -388,6 +388,5 @@ window._LANG_PT = {
     'onboard.step2':'Cadastre seus Projetos com código PEP e orçamento',
     'onboard.step3':'Importe um timesheet em Minha Área → Upload',
     'onboard.cta':'Ir para Ciclos',
-    'velocity.mavg':'Média Móvel (3 ciclos)',
-    'burnup.eac':'EAC (Estimativa no Término)',
+'burnup.eac':'EAC (Estimativa no Término)',
 };
