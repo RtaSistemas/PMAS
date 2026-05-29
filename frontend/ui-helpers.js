@@ -110,3 +110,53 @@ function _renderTable(tbodyId, data, { colspan, emptyKey, rowFn }) {
   }
   tbody.innerHTML = data.map(rowFn).join('');
 }
+
+// ---------------------------------------------------------------------------
+// C9 — Pagination factory
+// ---------------------------------------------------------------------------
+// Creates a paginator for a table. `ids` maps logical roles to element IDs;
+// `onPage(pageRows)` is called with the current page slice on every render.
+// Returns { render(allRows), reset(), getRows() }.
+//
+// Usage:
+//   const _myPag = _makePaginator(
+//     { container:'myPagination', prev:'myPrevBtn', next:'myNextBtn',
+//       pageSize:'myPageSize', label:'myPageLabel' },
+//     rows => _renderTable('myBody', rows, { ... })
+//   );
+//   function _renderMyTable(rows) { _myPag.render(rows); }
+//   async function loadMyTable() { _myPag.reset(); await ...; }
+// ---------------------------------------------------------------------------
+function _makePaginator(ids, onPage) {
+  let _page = 0, _pageSize = 25, _rows = [];
+
+  function _updateControls(total) {
+    const pg = document.getElementById(ids.container);
+    if (!pg) return;
+    pg.hidden = total <= 1;
+    document.getElementById(ids.label).textContent =
+      `${_t('page.label')} ${_page + 1} ${_t('page.of')} ${total}`;
+    document.getElementById(ids.prev).disabled  = _page === 0;
+    document.getElementById(ids.next).disabled  = _page >= total - 1;
+  }
+
+  function render(rows) {
+    if (rows !== undefined) _rows = rows;
+    const total = Math.max(1, Math.ceil(_rows.length / _pageSize));
+    _page = Math.max(0, Math.min(_page, total - 1));
+    onPage(_rows.slice(_page * _pageSize, (_page + 1) * _pageSize));
+    _updateControls(total);
+  }
+
+  document.getElementById(ids.prev)?.addEventListener('click', () => { _page--; render(); });
+  document.getElementById(ids.next)?.addEventListener('click', () => { _page++; render(); });
+  document.getElementById(ids.pageSize)?.addEventListener('change', e => {
+    _pageSize = +e.target.value; _page = 0; render();
+  });
+
+  return {
+    render,
+    reset()    { _page = 0; },
+    getRows()  { return _rows; },
+  };
+}

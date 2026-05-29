@@ -169,20 +169,25 @@
   <section id="tab-dashboard" class="tab-section" role="tabpanel" aria-labelledby="tab-btn-dashboard" tabindex="0">
 
     <div class="card">
-      <h2 data-i18n="filters.title">Filtros</h2>
-      <div class="filter-grid">
-        <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
-        <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
-        <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
-        <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
-        <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
-        <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
-        <div class="field btn-group">
-          <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
-          <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
-          <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
-          <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
-          <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
+      <div class="section-header" id="filterToggle" style="cursor:pointer;user-select:none">
+        <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
+        <span id="filterChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+      </div>
+      <div id="filterBody">
+        <div class="filter-grid">
+          <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+          <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+          <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+          <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+          <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
+          <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
+          <div class="field btn-group">
+            <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
+            <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
+            <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
+            <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
+            <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
+          </div>
         </div>
       </div>
     </div>
@@ -464,6 +469,12 @@
         </thead>
         <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="projectsPageLabel" class="hint"></span>
+        <button type="button" id="projectsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
     <div class="card">
       <div class="section-header">
@@ -497,6 +508,12 @@
         </thead>
         <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="cyclesPageLabel" class="hint"></span>
+        <button type="button" id="cyclesNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
   </section>
 
@@ -752,6 +769,16 @@
       <div class="card">
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
+          <div class="flex-center gap-sm">
+            <select id="myHistoryFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
+              <option value="" data-i18n="history.filter.all">Todos os registros</option>
+              <option value="ok" data-i18n="history.status.ok">✅ OK</option>
+              <option value="warnings" data-i18n="history.status.warnings">⚠️ Com avisos</option>
+              <option value="quarantine" data-i18n="history.status.quarantine">🔒 Com quarentena</option>
+              <option value="rejected" data-i18n="history.status.rejected">❌ Rejeitado</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="myHistoryExportBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
+          </div>
         </div>
         <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <table class="data-table" id="myHistoryTable">
@@ -804,6 +831,7 @@
           <tbody id="myQrBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myQrPageLabel" class="hint"></span>
           <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -832,6 +860,12 @@
         </thead>
         <tbody id="usersBody"><tr><td colspan="3" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="usersPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="usersPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="usersPageLabel" class="hint"></span>
+        <button type="button" id="usersNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
 
     <!-- Validation Rules -->
@@ -914,6 +948,12 @@
         </thead>
         <tbody id="auditBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="auditPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="auditPageLabel" class="hint"></span>
+        <button type="button" id="auditNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
   </section>
 
@@ -1404,7 +1444,7 @@
 </div>
 
 <div class="modal-backdrop" id="baselineModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="baselineModalTitle" style="max-width:560px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="baselineModalTitle" style="max-width:620px">
     <div class="modal-header">
       <h3 id="baselineModalTitle">Baseline do Projeto</h3>
       <button type="button" class="modal-close" id="baselineModalClose">×</button>

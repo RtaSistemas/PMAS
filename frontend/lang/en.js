@@ -352,6 +352,7 @@ window._LANG_EN = {
     'confirm.archive_cycle':'Archive this cycle?','confirm.restore_cycle':'Restore this cycle?',
     'page.prev':'‹ Previous','page.next':'Next ›',
     'qr.filter.all':'All records','qr.filter.pending_opt':'⏳ Pending','qr.filter.approved_opt':'✅ Approved','qr.filter.rejected_opt':'❌ Rejected',
+    'history.filter.all':'All records',
     'layout.panel.pepcpi':'CPI by PEP','layout.panel.cost_comp':'Cost Composition','layout.panel.bullet':'Budget vs. Actual','layout.panel.quadrant':'EVM Quadrant','layout.panel.concentration':'Concentration Risk','layout.panel.plan':'Planning Baseline','layout.panel.forecast_alloc':'Allocation by Collaborator','layout.tab.forecast':'Forecast (EVM)',
     'scatter.axis_spi':'SPI — Schedule Performance','scatter.axis_cpi':'CPI — Cost Performance',
     'risk.warning':'Warning','risk.critical':'Critical',
