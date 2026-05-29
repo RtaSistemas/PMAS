@@ -2574,8 +2574,8 @@ function _renderProjectsTable(projects) {
       <td>${escHtml(p.client || '—')}</td>
       <td>${escHtml(p.manager || '—')}</td>
       <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
-      <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td>${_buildDatesCell(p)}</td>
+      <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
@@ -2894,7 +2894,13 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
 // Team / RateCard management
 // ---------------------------------------------------------------------------
 let _allSeniorityLevels = [];
+let _seniorityPage     = 0;
+let _seniorityPageSize = 25;
+let _seniorityRows     = [];
 let _allRateCards       = [];
+let _rateCardPage      = 0;
+let _rateCardPageSize  = 25;
+let _rateCardRows      = [];
 let _allTeam            = [];
 let _seniorityEditId    = null;
 let _rateCardEditId     = null;
@@ -2906,7 +2912,11 @@ async function loadTeamTab() {
 }
 
 function _renderSeniorityTable(rows) {
-  _renderTable('seniorityBody', rows, {
+  _seniorityRows = rows;
+  const totalPages = Math.max(1, Math.ceil(rows.length / _seniorityPageSize));
+  _seniorityPage = Math.max(0, Math.min(_seniorityPage, totalPages - 1));
+  const pageRows = rows.slice(_seniorityPage * _seniorityPageSize, (_seniorityPage + 1) * _seniorityPageSize);
+  _renderTable('seniorityBody', pageRows, {
     colspan: 2,
     emptyKey: 'no_seniority',
     rowFn: l => `
@@ -2918,9 +2928,17 @@ function _renderSeniorityTable(rows) {
       </div></td>
     </tr>`,
   });
+  const pg = document.getElementById('seniorityPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('seniorityPageLabel').textContent = `${_t('page.label')} ${_seniorityPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('seniorityPrevBtn').disabled = _seniorityPage === 0;
+    document.getElementById('seniorityNextBtn').disabled = _seniorityPage >= totalPages - 1;
+  }
 }
 
 async function loadSeniorityLevels() {
+  _seniorityPage = 0;
   await _loadTable('/api/seniority-levels', data => {
     _allSeniorityLevels = data;
     _renderSeniorityTable(_applySort('seniorityTable', _allSeniorityLevels));
@@ -2928,7 +2946,11 @@ async function loadSeniorityLevels() {
 }
 
 function _renderRateCardsTable(rows) {
-  _renderTable('rateCardBody', rows, {
+  _rateCardRows = rows;
+  const totalPages = Math.max(1, Math.ceil(rows.length / _rateCardPageSize));
+  _rateCardPage = Math.max(0, Math.min(_rateCardPage, totalPages - 1));
+  const pageRows = rows.slice(_rateCardPage * _rateCardPageSize, (_rateCardPage + 1) * _rateCardPageSize);
+  _renderTable('rateCardBody', pageRows, {
     colspan: 5,
     emptyKey: 'no_rates',
     rowFn: c => `
@@ -2943,9 +2965,17 @@ function _renderRateCardsTable(rows) {
       </div></td>
     </tr>`,
   });
+  const pg = document.getElementById('rateCardPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('rateCardPageLabel').textContent = `${_t('page.label')} ${_rateCardPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('rateCardPrevBtn').disabled = _rateCardPage === 0;
+    document.getElementById('rateCardNextBtn').disabled = _rateCardPage >= totalPages - 1;
+  }
 }
 
 async function loadRateCards() {
+  _rateCardPage = 0;
   await _loadTable('/api/rate-cards', data => {
     _allRateCards = data;
     _renderRateCardsTable(_applySort('rateCardTable', _allRateCards));
@@ -3004,6 +3034,9 @@ document.getElementById('senioritySaveBtn').addEventListener('click', async () =
 document.getElementById('seniorityCancelBtn').addEventListener('click', closeSeniorityModal);
 document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
+document.getElementById('seniorityPrevBtn')?.addEventListener('click', () => { _seniorityPage--; _renderSeniorityTable(_seniorityRows); });
+document.getElementById('seniorityNextBtn')?.addEventListener('click', () => { _seniorityPage++; _renderSeniorityTable(_seniorityRows); });
+document.getElementById('seniorityPageSize')?.addEventListener('change', e => { _seniorityPageSize = +e.target.value; _seniorityPage = 0; _renderSeniorityTable(_seniorityRows); });
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
   if (!_allSeniorityLevels.length) { notify(_t('msg.no_levels_export'), 'info'); return; }
@@ -3084,6 +3117,9 @@ document.getElementById('rateCardSaveBtn').addEventListener('click', async () =>
 document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
 document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
+document.getElementById('rateCardPrevBtn')?.addEventListener('click', () => { _rateCardPage--; _renderRateCardsTable(_rateCardRows); });
+document.getElementById('rateCardNextBtn')?.addEventListener('click', () => { _rateCardPage++; _renderRateCardsTable(_rateCardRows); });
+document.getElementById('rateCardPageSize')?.addEventListener('change', e => { _rateCardPageSize = +e.target.value; _rateCardPage = 0; _renderRateCardsTable(_rateCardRows); });
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
   if (!_allRateCards.length) { notify(_t('msg.no_rates_export'), 'info'); return; }
@@ -3874,8 +3910,12 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 // My Area — Histórico sub-tab
 // ---------------------------------------------------------------------------
 let _myHistoryCache = [];
+let _historyPage     = 0;
+let _historyPageSize = 25;
+let _historyRows     = [];
 
 async function loadMyHistory() {
+  _historyPage = 0;
   await _loadTable('/api/upload-history', data => {
     _myHistoryCache = data;
     _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
@@ -3883,7 +3923,11 @@ async function loadMyHistory() {
 }
 
 function _renderMyHistory(rows) {
-  _renderTable('myHistoryBody', rows, {
+  _historyRows = rows;
+  const totalPages = Math.max(1, Math.ceil(rows.length / _historyPageSize));
+  _historyPage = Math.max(0, Math.min(_historyPage, totalPages - 1));
+  const pageRows = rows.slice(_historyPage * _historyPageSize, (_historyPage + 1) * _historyPageSize);
+  _renderTable('myHistoryBody', pageRows, {
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
     rowFn: r => {
@@ -3907,9 +3951,18 @@ function _renderMyHistory(rows) {
     </tr>`;
     },
   });
+  const pg = document.getElementById('myHistoryPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('myHistoryPageLabel').textContent = `${_t('page.label')} ${_historyPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('myHistoryPrevBtn').disabled = _historyPage === 0;
+    document.getElementById('myHistoryNextBtn').disabled = _historyPage >= totalPages - 1;
+  }
 }
 
-document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMyHistory);
+document.getElementById('myHistoryPrevBtn')?.addEventListener('click', () => { _historyPage--; _renderMyHistory(_historyRows); });
+document.getElementById('myHistoryNextBtn')?.addEventListener('click', () => { _historyPage++; _renderMyHistory(_historyRows); });
+document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { _historyPageSize = +e.target.value; _historyPage = 0; _renderMyHistory(_historyRows); });
 
 // ---------------------------------------------------------------------------
 // My Area — Quarentena sub-tab
@@ -3970,7 +4023,6 @@ function _renderMyQrTable(rows) {
   }
 }
 
-document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
 document.getElementById('myQrPrevBtn')?.addEventListener('click', () => {
   if (_qrPage > 0) { _qrPage--; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }

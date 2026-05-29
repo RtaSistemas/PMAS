@@ -394,6 +394,11 @@ def ingest_file(
 
             key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
             if key in seen_keys:
+                pep_label = f" | PEP {pep_code}" if pep_code else ""
+                ingest_infos.append(
+                    f"Linha {row_idx}: duplicata ignorada — {collab.name} em {record_date}{pep_label} "
+                    f"({hour_type}, {total_h:.2f}h)"
+                )
                 skipped += 1
                 continue
             seen_keys.add(key)
