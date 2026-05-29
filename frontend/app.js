@@ -3444,9 +3444,13 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 // ---------------------------------------------------------------------------
 // Users management (Admin tab)
 // ---------------------------------------------------------------------------
-let _allUsers = [];
+let _allUsers     = [];
+let _usersPage    = 0;
+let _usersPageSize = 25;
+let _usersRows    = [];
 
 async function loadUsersTable() {
+  _usersPage = 0;
   await _loadTable('/api/users', data => {
     _allUsers = data;
     _renderUsersTable(_applySort('usersTable', _allUsers));
@@ -3454,9 +3458,13 @@ async function loadUsersTable() {
 }
 
 function _renderUsersTable(users) {
+  _usersRows = users;
   const payload = _getTokenPayload();
   const selfId  = payload ? payload.sub : null;
-  _renderTable('usersBody', users, {
+  const totalPages = Math.max(1, Math.ceil(users.length / _usersPageSize));
+  _usersPage = Math.max(0, Math.min(_usersPage, totalPages - 1));
+  const pageRows = users.slice(_usersPage * _usersPageSize, (_usersPage + 1) * _usersPageSize);
+  _renderTable('usersBody', pageRows, {
     colspan: 3,
     emptyKey: 'no_users',
     rowFn: u => `
@@ -3469,6 +3477,13 @@ function _renderUsersTable(users) {
       </div></td>
     </tr>`,
   });
+  const pg = document.getElementById('usersPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('usersPageLabel').textContent = `${_t('page.label')} ${_usersPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('usersPrevBtn').disabled = _usersPage === 0;
+    document.getElementById('usersNextBtn').disabled = _usersPage >= totalPages - 1;
+  }
 }
 
 document.getElementById('newUserBtn').addEventListener('click', () => {
@@ -3534,8 +3549,12 @@ function deleteUser(id, username) {
 // ---------------------------------------------------------------------------
 
 let _auditLogCache = [];
+let _auditPage     = 0;
+let _auditPageSize = 25;
+let _auditRows     = [];
 
 async function loadAuditLog() {
+  _auditPage = 0;
   const entity = document.getElementById('auditEntityFilter').value;
   const action = document.getElementById('auditActionFilter').value;
   const params = new URLSearchParams({ limit: 200 });
@@ -3548,7 +3567,11 @@ async function loadAuditLog() {
 }
 
 function _renderAuditLog(rows) {
-  _renderTable('auditBody', rows, {
+  _auditRows = rows;
+  const totalPages = Math.max(1, Math.ceil(rows.length / _auditPageSize));
+  _auditPage = Math.max(0, Math.min(_auditPage, totalPages - 1));
+  const pageRows = rows.slice(_auditPage * _auditPageSize, (_auditPage + 1) * _auditPageSize);
+  _renderTable('auditBody', pageRows, {
     colspan: 6,
     emptyKey: 'no_audit',
     rowFn: r => {
@@ -3570,11 +3593,24 @@ function _renderAuditLog(rows) {
     </tr>`;
     },
   });
+  const pg = document.getElementById('auditPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('auditPageLabel').textContent = `${_t('page.label')} ${_auditPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('auditPrevBtn').disabled = _auditPage === 0;
+    document.getElementById('auditNextBtn').disabled = _auditPage >= totalPages - 1;
+  }
 }
 
 document.getElementById('auditRefreshBtn').addEventListener('click', loadAuditLog);
 document.getElementById('auditEntityFilter').addEventListener('change', loadAuditLog);
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
+document.getElementById('auditPrevBtn')?.addEventListener('click', () => { _auditPage--; _renderAuditLog(_auditRows); });
+document.getElementById('auditNextBtn')?.addEventListener('click', () => { _auditPage++; _renderAuditLog(_auditRows); });
+document.getElementById('auditPageSize')?.addEventListener('change', e => { _auditPageSize = +e.target.value; _auditPage = 0; _renderAuditLog(_auditRows); });
+document.getElementById('usersPrevBtn')?.addEventListener('click', () => { _usersPage--; _renderUsersTable(_usersRows); });
+document.getElementById('usersNextBtn')?.addEventListener('click', () => { _usersPage++; _renderUsersTable(_usersRows); });
+document.getElementById('usersPageSize')?.addEventListener('change', e => { _usersPageSize = +e.target.value; _usersPage = 0; _renderUsersTable(_usersRows); });
 
 // ---------------------------------------------------------------------------
 // Chart series names (for color picker UI)
