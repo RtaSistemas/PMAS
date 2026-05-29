@@ -3960,7 +3960,6 @@ function _renderMyHistory(rows) {
   }
 }
 
-document.getElementById('myHistoryRefreshBtn')?.addEventListener('click', loadMyHistory);
 document.getElementById('myHistoryPrevBtn')?.addEventListener('click', () => { _historyPage--; _renderMyHistory(_historyRows); });
 document.getElementById('myHistoryNextBtn')?.addEventListener('click', () => { _historyPage++; _renderMyHistory(_historyRows); });
 document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { _historyPageSize = +e.target.value; _historyPage = 0; _renderMyHistory(_historyRows); });
@@ -4024,7 +4023,6 @@ function _renderMyQrTable(rows) {
   }
 }
 
-document.getElementById('myQrRefreshBtn')?.addEventListener('click', loadMyQr);
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
 document.getElementById('myQrPrevBtn')?.addEventListener('click', () => {
   if (_qrPage > 0) { _qrPage--; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
