@@ -27,6 +27,7 @@ from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_eac_schedule,
     compute_ev_capped,
     compute_period_delta,
     compute_period_delta_pct,
@@ -118,6 +119,9 @@ def get_forecast(
 
         cum_ph = sum(h for s, h in sorted_plans if s <= cyc_start) if sorted_plans else 0.0
         pc_period = plan_cost_by_cycle_start.get(cyc_start) if has_plan else None
+        # Derive planned cost from blended rate when no explicit cost baseline exists
+        if pc_period is None and blended_rate is not None and cyc_start in plan_by_cycle_start:
+            pc_period = round(plan_by_cycle_start[cyc_start] * blended_rate, 2)
         if pc_period is not None:
             cum_pc += pc_period
 
@@ -175,18 +179,21 @@ def get_forecast(
 
     # Final EVM indicators
     ev_val = None
-    cpi = spi = eac = cv = tcpi = vac = sv = None
+    cpi = spi = eac = eac_schedule = cv = tcpi = vac = sv = None
     if budget_hours and budget_cost and consumed_hours > 0:
         ev_val = compute_ev_capped(consumed_hours, budget_hours, budget_cost)
-        if actual_cost > 0 and ev_val is not None:
-            cpi  = compute_cpi(ev_val, actual_cost)
-            eac  = compute_eac(budget_cost, cpi)
-            cv   = compute_cv(ev_val, actual_cost)
-            tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
-        vac = compute_vac(budget_cost, eac)
+        # SPI computed first so schedule-sensitive EAC variant can use it
         if has_plan and last_planned_h and last_planned_h > 0:
             spi = compute_spi(last_planned_h, last_actual_h) if last_actual_h is not None else None
             sv  = compute_sv(last_actual_h or 0, last_planned_h)
+        if actual_cost > 0 and ev_val is not None:
+            cpi  = compute_cpi(ev_val, actual_cost)
+            cv   = compute_cv(ev_val, actual_cost)
+            tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
+        # EAC defaults to BAC when no performance data yet (R-14)
+        eac          = compute_eac(budget_cost, cpi, default_to_bac=True)
+        eac_schedule = compute_eac_schedule(budget_cost, actual_cost, ev_val, cpi, spi)
+        vac = compute_vac(budget_cost, eac)
 
     is_closed = (
         project is not None
@@ -200,7 +207,8 @@ def get_forecast(
     est_cycles = None
     est_completion = None
     if not is_closed and remaining_hours and remaining_hours > 0 and avg_hours > 0:
-        effective_velocity = avg_hours * spi if (spi and spi > 0) else avg_hours
+        # Use observed throughput only; SPI informs cost EAC, not cycle velocity
+        effective_velocity = avg_hours
         est_cycles = round(remaining_hours / effective_velocity, 1)
         n = math.ceil(est_cycles)
         last_start = cycle_data[-1][1]
@@ -219,6 +227,7 @@ def get_forecast(
         remaining_hours = 0.0
         remaining_cost  = 0.0
         tcpi            = None
+        eac_schedule    = None
         est_cycles      = None
         est_completion  = None
         # EAC = AC (actual final cost, not a projection)
@@ -244,6 +253,8 @@ def get_forecast(
         "spi_label":                  spi_label(spi),
         "spi_color":                  spi_color(spi),
         "eac":                        eac,
+        "eac_schedule":               eac_schedule,
+        "eac_method":                 "cpi_spi" if eac_schedule is not None else "cpi",
         "vac":                        vac,
         "cv":                         cv,
         "tcpi":                       tcpi,

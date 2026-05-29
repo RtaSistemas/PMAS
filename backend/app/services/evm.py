@@ -73,7 +73,11 @@ def compute_spi(
     cumulative_planned_hours: Optional[float],
     cumulative_actual_hours: float,
 ) -> Optional[float]:
-    """Schedule Performance Index = EV_hours / PV_hours.
+    """Schedule Performance Index — AgileEVM hours proxy: actual_h / planned_h.
+
+    This implementation uses hours rather than monetary EV/PV (AgileEVM proxy).
+    Both methods converge when work cost is uniformly distributed; the hours
+    proxy is preferable when only hours baselines are available.
 
     Returns None when planned hours are undefined or zero.
     > 1.0 → ahead of schedule;  < 1.0 → behind.
@@ -86,11 +90,38 @@ def compute_spi(
 def compute_eac(
     budget_cost: Optional[float],
     cpi: Optional[float],
+    *,
+    default_to_bac: bool = False,
 ) -> Optional[float]:
-    """Estimate at Completion = BAC / CPI."""
-    if not budget_cost or not cpi or cpi == 0:
+    """Estimate at Completion = BAC / CPI.
+
+    When cpi is None or 0 and default_to_bac is True, returns BAC as the
+    baseline projection (i.e. no performance divergence observed yet).
+    """
+    if not budget_cost:
         return None
+    if not cpi or cpi == 0:
+        return round(budget_cost, 2) if default_to_bac else None
     return round(budget_cost / cpi, 2)
+
+
+def compute_eac_schedule(
+    budget_cost: Optional[float],
+    actual_cost: float,
+    ev_cost: Optional[float],
+    cpi: Optional[float],
+    spi: Optional[float],
+) -> Optional[float]:
+    """Schedule-sensitive Estimate at Completion: AC + (BAC − EV) / (CPI × SPI).
+
+    Accounts for both cost and schedule performance when projecting total cost.
+    Useful when SPI < 1 (behind schedule), as it raises the cost forecast.
+    Returns None when any required input is missing or CPI×SPI ≤ 0.
+    """
+    if not budget_cost or ev_cost is None or not cpi or not spi or cpi <= 0 or spi <= 0:
+        return None
+    combined = cpi * spi
+    return round(actual_cost + (budget_cost - ev_cost) / combined, 2)
 
 
 def compute_tcpi(
@@ -206,7 +237,7 @@ def classify_health(
 ) -> str:
     """Classify consumption against budget.
 
-    Returns one of: 'ok' | 'warning' | 'critical' | 'overrun' | 'no_budget'.
+    Returns one of: 'ok' | 'warning' | 'overrun' | 'no_budget'.
     """
     if not budget or budget == 0:
         return "no_budget"

@@ -17,24 +17,24 @@ window._EVM_TERMS = {
     pt: {
       name: 'IDP — Índice de Desempenho de Prazo',
       desc: 'Mede a eficiência do cronograma. > 1,0 = adiantado; < 1,0 = atrasado.',
-      formula: 'IDP = VA ÷ VP\n  VA = Valor Agregado\n  VP = Valor Planejado acumulado',
+      formula: 'IDP = Horas Realizadas ÷ Horas Planejadas (acum.)\n  Proxy AgileEVM em horas — equivale a VA÷VP quando o custo é uniforme',
     },
     en: {
       name: 'SPI — Schedule Performance Index',
       desc: 'Measures schedule efficiency. > 1.0 = ahead of schedule; < 1.0 = behind.',
-      formula: 'SPI = EV ÷ PV\n  EV = Earned Value\n  PV = Planned Value (cumulative)',
+      formula: 'SPI = Actual Hours ÷ Planned Hours (cumulative)\n  AgileEVM hours proxy — equivalent to EV÷PV when cost is uniformly distributed',
     },
   },
   EAC: {
     pt: {
       name: 'EPT — Estimativa no Término',
-      desc: 'Projeção do custo total do projeto ao término, com base no desempenho de custo atual.',
-      formula: 'EPT = OAT ÷ IDC\n  OAT = Orçamento ao Término (BAC)\n  IDC = Índice de Desempenho de Custo',
+      desc: 'Projeção do custo total do projeto ao término. Usa IDC×IDP quando há baseline de prazo, ou apenas IDC caso contrário.',
+      formula: 'EPT (IDC)     = OAT ÷ IDC\nEPT (IDC×IDP) = CR + (OAT − VA) ÷ (IDC × IDP)\n  OAT = Orçamento ao Término (BAC)\n  IDC = Índice de Desempenho de Custo\n  IDP = Índice de Desempenho de Prazo',
     },
     en: {
       name: 'EAC — Estimate at Completion',
-      desc: 'Projected total cost of the project at completion, based on current cost performance.',
-      formula: 'EAC = BAC ÷ CPI\n  BAC = Budget at Completion\n  CPI = Cost Performance Index',
+      desc: 'Projected total cost at completion. Uses CPI×SPI when a schedule baseline exists, otherwise CPI only.',
+      formula: 'EAC (CPI)     = BAC ÷ CPI\nEAC (CPI×SPI) = AC + (BAC − EV) ÷ (CPI × SPI)\n  BAC = Budget at Completion\n  CPI = Cost Performance Index\n  SPI = Schedule Performance Index',
     },
   },
   AC: {
@@ -63,14 +63,14 @@ window._EVM_TERMS = {
   },
   PV: {
     pt: {
-      name: 'VP — Valor Planejado',
-      desc: 'Custo orçado acumulado do trabalho que deveria ter sido realizado até o momento (baseline). Expresso em R$.',
-      formula: 'VP = min(Σ horas planejadas / horas orçadas, 1,0) × OAT\n  OAT = Orçamento ao Término (BAC)\n  Nota: o gráfico de curva S plota horas; VP e VS são calculados em R$',
+      name: 'VP — Valor Planejado (horas)',
+      desc: 'Horas planejadas acumuladas que deveriam ter sido realizadas até o momento (baseline S-curve).',
+      formula: 'VP = Σ horas planejadas acumuladas até o ciclo atual\n  O IDP e VS são calculados em horas (proxy AgileEVM)',
     },
     en: {
-      name: 'PV — Planned Value',
-      desc: 'Cumulative budgeted cost of work that should have been completed by now (baseline). Expressed in R$.',
-      formula: 'PV = min(Σ planned_h / budget_h, 1.0) × BAC\n  BAC = Budget at Completion\n  Note: the S-curve chart plots hours; PV and SV are computed in R$',
+      name: 'PV — Planned Value (hours)',
+      desc: 'Cumulative planned hours that should have been completed by now (baseline S-curve).',
+      formula: 'PV = Σ planned hours up to current cycle\n  SPI and SV are computed in hours (AgileEVM proxy)',
     },
   },
   CV: {
