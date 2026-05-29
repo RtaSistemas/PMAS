@@ -57,24 +57,37 @@ class TestFreezeCosts:
 
 
 # ── compute_cpi ───────────────────────────────────────────────────────────────
+# compute_cpi(ev_cost, actual_cost): first arg is true Earned Value, NOT BAC.
+# Use compute_ev_capped() to obtain the correct ev_cost.
 
 class TestComputeCpi:
     def test_on_budget(self):
+        # EV == AC → CPI = 1.0
         assert compute_cpi(10_000.0, 10_000.0) == pytest.approx(1.0)
 
     def test_under_budget(self):
+        # EV=10k, AC=8k → earned more than spent → CPI > 1
         assert compute_cpi(10_000.0, 8_000.0) == pytest.approx(1.25)
 
     def test_over_budget(self):
+        # EV=10k, AC=12k → spent more than earned → CPI < 1
         assert compute_cpi(10_000.0, 12_000.0) == pytest.approx(0.8333, abs=1e-3)
+
+    def test_in_progress_project_uses_ev_not_bac(self):
+        # Project: BAC=10_000, consumed=50% of hours, AC=5_500
+        # EV = min(0.5, 1.0) × 10_000 = 5_000
+        # CPI = EV/AC = 5_000/5_500 ≈ 0.909  (over budget)
+        # (passing BAC=10_000 instead of EV=5_000 would give 10_000/5_500≈1.818 — wrong)
+        ev = 5_000.0   # from compute_ev_capped(consumed_h=50, budget_h=100, budget_c=10_000)
+        assert compute_cpi(ev, 5_500.0) == pytest.approx(0.9091, abs=1e-3)
 
     def test_zero_actual_returns_none(self):
         assert compute_cpi(10_000.0, 0.0) is None
 
-    def test_none_budget_returns_none(self):
+    def test_none_ev_returns_none(self):
         assert compute_cpi(None, 5_000.0) is None
 
-    def test_zero_budget_returns_none(self):
+    def test_zero_ev_returns_none(self):
         assert compute_cpi(0.0, 5_000.0) is None
 
 
@@ -254,9 +267,9 @@ class TestClassifyHealth:
     def test_warning_just_below_critical(self):
         assert classify_health(99.9, 100.0) == "warning"
 
-    def test_critical_at_100pct(self):
-        # exactly at critical_threshold (1.0) → critical
-        assert classify_health(100.0, 100.0) == "critical"
+    def test_overrun_at_100pct(self):
+        # exactly at critical_threshold (1.0) → overrun (no dead "critical" state)
+        assert classify_health(100.0, 100.0) == "overrun"
 
     def test_overrun_above_critical(self):
         assert classify_health(101.0, 100.0) == "overrun"
@@ -270,8 +283,8 @@ class TestClassifyHealth:
     def test_custom_thresholds(self):
         # With thresholds 80%/90%:
         # 85% → warning (≥0.8, <0.9)
-        # 90% → critical (== critical_threshold)
+        # 90% → overrun (≥ critical_threshold)
         # 95% → overrun (> critical_threshold)
         assert classify_health(85.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "warning"
-        assert classify_health(90.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "critical"
+        assert classify_health(90.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"
         assert classify_health(95.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"

@@ -32,17 +32,19 @@ def freeze_costs(
 # ── Core EVM metrics ─────────────────────────────────────────────────────────
 
 def compute_cpi(
-    budget_cost: Optional[float],
+    ev_cost: Optional[float],
     actual_cost: float,
 ) -> Optional[float]:
-    """Cost Performance Index = EV / AC.  Proxy: EV = budget_cost (BAC).
+    """Cost Performance Index = EV / AC.
 
-    Returns None when actual_cost == 0 or budget is undefined.
+    Pass true Earned Value (e.g. from compute_ev_capped), not BAC.
+    Using BAC as EV is only valid for a 100% complete project.
+    Returns None when actual_cost == 0 or ev_cost is undefined.
     > 1.0 → under budget;  < 1.0 → over budget.
     """
-    if not budget_cost or actual_cost == 0:
+    if not ev_cost or actual_cost == 0:
         return None
-    return round(budget_cost / actual_cost, 4)
+    return round(ev_cost / actual_cost, 4)
 
 
 def compute_cpi_ev(
@@ -139,11 +141,13 @@ def compute_ev_cost(
     budget_cost: Optional[float],
     budget_hours: Optional[float],
 ) -> Optional[float]:
-    """Earned Value in R$ using the blended planned rate.
+    """Earned Value in R$ using the blended planned rate (uncapped).
 
     EV = cumulative_hours × (budget_cost / budget_hours)
 
-    Used for the burn-up chart's EV series and for SPI cost-based calculation.
+    NOTE: this function does NOT cap EV at BAC.  For the burn-up chart and
+    for CPI/EAC calculations use compute_ev_capped, which limits EV to BAC.
+    This function is kept for diagnostic/raw-series use only.
     Returns None when budget is undefined.
     """
     if not budget_cost or not budget_hours or budget_hours == 0:
@@ -207,10 +211,8 @@ def classify_health(
     if not budget or budget == 0:
         return "no_budget"
     ratio = consumed / budget
-    if ratio > critical_threshold:
-        return "overrun"
     if ratio >= critical_threshold:
-        return "critical"
+        return "overrun"
     if ratio >= warning_threshold:
         return "warning"
     return "ok"

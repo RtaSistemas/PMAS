@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Query
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
-from backend.app.models import Cycle, GlobalConfig, PepCycleSummary, Project, TimesheetRecord
+from backend.app.models import Cycle, PepCycleSummary, TimesheetRecord
 from backend.app.services.evm import compute_period_delta, compute_period_delta_pct
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -148,10 +148,6 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
     """Raw aggregation from TimesheetRecord when summary tables are empty."""
     from sqlalchemy import func
 
-    cfg = db.get(GlobalConfig, 1)
-    em = cfg.extra_hours_multiplier   if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 0.33
-
     q = (
         db.query(
             Cycle.id.label("cycle_id"),
@@ -166,12 +162,13 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
             func.sum(
-                TimesheetRecord.cost_per_hour * (
-                    TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours * em
-                    + TimesheetRecord.standby_hours * sm
-                )
+                func.coalesce(TimesheetRecord.normal_cost,  0.0)
+                + func.coalesce(TimesheetRecord.extra_cost,   0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("actual_cost"),
+            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(Cycle.is_active == True)  # noqa: E712
@@ -213,9 +210,9 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
             "standby_hours":            sh,
             "total_hours":              th,
             "actual_cost":              tc,
-            "normal_cost":              0.0,
-            "extra_cost":               0.0,
-            "standby_cost":             0.0,
+            "normal_cost":              round(r.normal_cost  or 0.0, 2),
+            "extra_cost":               round(r.extra_cost   or 0.0, 2),
+            "standby_cost":             round(r.standby_cost or 0.0, 2),
             "hours_delta":              compute_period_delta(th, prev_hours),
             "hours_delta_pct":          compute_period_delta_pct(th, prev_hours),
             "cost_delta":               compute_period_delta(tc, prev_cost),

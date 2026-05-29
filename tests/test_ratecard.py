@@ -349,26 +349,26 @@ class TestGlobalConfig:
             r = c.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
         assert r.status_code == 403
 
-    def test_multipliers_applied_to_actual_cost(self, client, db_session):
-        """extra_hours at 2x should double the extra-hours cost component."""
-        # Set multipliers
-        client.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
-        # Create cycle, seniority, rate card, collaborator
+    def test_multipliers_frozen_at_ingestion(self, client, db_session):
+        """EVM freeze: extra_cost frozen at upload time; post-ingest multiplier changes must NOT affect total_cost."""
         cycle = Cycle(name="TestMult", start_date=date(2026, 3, 1), end_date=date(2026, 3, 31))
         db_session.add(cycle); db_session.commit(); db_session.refresh(cycle)
         sl = _level(db_session, "MultLevel")
         _rate(db_session, sl, 100.0, date(2026, 1, 1))
         collab = Collaborator(name="MultCollab", seniority_level_id=sl.id)
         db_session.add(collab); db_session.commit(); db_session.refresh(collab)
-        # Insert record with 4h extra at R$100/h — with 2x multiplier, cost = 4 * 100 * 2 = 800
+        # Simulate ingestion with em=2.0: extra_cost = 4h × R$100 × 2.0 = R$800 (frozen)
         rec = TimesheetRecord(
             collaborator_id=collab.id, cycle_id=cycle.id,
             record_date=date(2026, 3, 10),
             pep_wbs="60OP-MULT", pep_description="Mult Test",
             normal_hours=0.0, extra_hours=4.0, standby_hours=0.0,
             cost_per_hour=100.0,
+            normal_cost=0.0, extra_cost=800.0, standby_cost=0.0,
         )
         db_session.add(rec); db_session.commit()
+        # Changing multiplier to 3x after ingestion must NOT change frozen cost
+        client.put("/api/config", json={"extra_hours_multiplier": 3.0, "standby_hours_multiplier": 1.0})
         r = client.get("/api/v2/portfolio")
         item = next((x for x in r.json() if x["pep_wbs"] == "60OP-MULT"), None)
         assert item is not None

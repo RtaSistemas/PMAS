@@ -98,7 +98,8 @@ def _mk_project(db, pep, name="Proj", budget_h=None, budget_cost=None, status="a
 
 
 def _mk_record(db, cycle, collab, pep, desc="D", normal=8.0, extra=0.0, standby=0.0,
-               day=10, cost_per_hour=0.0):
+               day=10, cost_per_hour=0.0,
+               normal_cost=None, extra_cost=None, standby_cost=None):
     r = TimesheetRecord(
         collaborator_id=collab.id,
         cycle_id=cycle.id,
@@ -109,6 +110,9 @@ def _mk_record(db, cycle, collab, pep, desc="D", normal=8.0, extra=0.0, standby=
         extra_hours=extra,
         standby_hours=standby,
         cost_per_hour=cost_per_hour,
+        normal_cost=normal_cost,
+        extra_cost=extra_cost,
+        standby_cost=standby_cost,
     )
     db.add(r); db.commit()
     return r
@@ -767,14 +771,18 @@ class TestGlobalConfig:
             r = c.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
         assert r.status_code == 403
 
-    def test_multipliers_affect_actual_cost(self, client, db_session):
-        client.put("/api/config", json={"extra_hours_multiplier": 2.0, "standby_hours_multiplier": 1.0})
+    def test_multipliers_frozen_at_ingestion(self, client, db_session):
+        # EVM freeze: extra_cost is frozen at upload time (em=2.0 → 4h × R$100 × 2.0 = R$800).
+        # Changing the multiplier afterwards must NOT alter total_cost.
         cy = _mk_cycle(db_session, "Config-Cy", 2026, 3)
         sl = _mk_level(db_session, "CFG-Level")
         _mk_rate(db_session, sl, 100.0, date(2026, 1, 1))
         co = _mk_collab(db_session, "cfg_collab", seniority_level=sl)
-        # 4h extra × R$100 × 2.0 multiplier = R$800  (normal=0.0 to override default 8h)
-        _mk_record(db_session, cy, co, "CFG-001", normal=0.0, extra=4.0, cost_per_hour=100.0)
+        # extra_cost frozen at ingestion: 4h × R$100 × em=2.0 = R$800
+        _mk_record(db_session, cy, co, "CFG-001", normal=0.0, extra=4.0, cost_per_hour=100.0,
+                   extra_cost=800.0)
+        # Even after changing the global multiplier, frozen cost must stay 800
+        client.put("/api/config", json={"extra_hours_multiplier": 3.0, "standby_hours_multiplier": 1.0})
         item = next(x for x in client.get("/api/v2/portfolio").json() if x["pep_wbs"] == "CFG-001")
         assert item["total_cost"] == pytest.approx(800.0)
 

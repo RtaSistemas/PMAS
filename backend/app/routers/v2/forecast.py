@@ -28,7 +28,6 @@ from backend.app.services.evm import (
     compute_cv,
     compute_eac,
     compute_ev_capped,
-    compute_ev_cost,
     compute_period_delta,
     compute_period_delta_pct,
     compute_spi,
@@ -122,7 +121,7 @@ def get_forecast(
         if pc_period is not None:
             cum_pc += pc_period
 
-        ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
+        ev_cost_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
 
         spi_cum = None
         if has_plan and cum_ph > 0:
@@ -294,11 +293,8 @@ def _load_cycle_data(
             by_cycle[s.cycle_id] = (n, st, h + (s.total_hours or 0.0), c + (s.total_cost or 0.0))
         return sorted(by_cycle.values(), key=lambda x: x[1])
 
-    # Fallback to raw records
+    # Fallback to raw records — use frozen cost columns to respect the EVM freeze pattern
     from sqlalchemy import func
-    cfg = db.get(GlobalConfig, 1)
-    em = cfg.extra_hours_multiplier   if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -310,11 +306,9 @@ def _load_cycle_data(
                 + TimesheetRecord.standby_hours
             ).label("period_hours"),
             func.sum(
-                TimesheetRecord.cost_per_hour * (
-                    TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours * em
-                    + TimesheetRecord.standby_hours * sm
-                )
+                func.coalesce(TimesheetRecord.normal_cost,  0.0)
+                + func.coalesce(TimesheetRecord.extra_cost,   0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("period_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
