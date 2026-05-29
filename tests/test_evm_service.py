@@ -12,6 +12,7 @@ from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_eac_schedule,
     compute_ev_cost,
     compute_period_delta,
     compute_period_delta_pct,
@@ -19,7 +20,11 @@ from backend.app.services.evm import (
     compute_sv,
     compute_tcpi,
     compute_vac,
+    cv_label,
     freeze_costs,
+    tcpi_label,
+    vac_color,
+    vac_label,
 )
 
 
@@ -57,24 +62,37 @@ class TestFreezeCosts:
 
 
 # ── compute_cpi ───────────────────────────────────────────────────────────────
+# compute_cpi(ev_cost, actual_cost): first arg is true Earned Value, NOT BAC.
+# Use compute_ev_capped() to obtain the correct ev_cost.
 
 class TestComputeCpi:
     def test_on_budget(self):
+        # EV == AC → CPI = 1.0
         assert compute_cpi(10_000.0, 10_000.0) == pytest.approx(1.0)
 
     def test_under_budget(self):
+        # EV=10k, AC=8k → earned more than spent → CPI > 1
         assert compute_cpi(10_000.0, 8_000.0) == pytest.approx(1.25)
 
     def test_over_budget(self):
+        # EV=10k, AC=12k → spent more than earned → CPI < 1
         assert compute_cpi(10_000.0, 12_000.0) == pytest.approx(0.8333, abs=1e-3)
+
+    def test_in_progress_project_uses_ev_not_bac(self):
+        # Project: BAC=10_000, consumed=50% of hours, AC=5_500
+        # EV = min(0.5, 1.0) × 10_000 = 5_000
+        # CPI = EV/AC = 5_000/5_500 ≈ 0.909  (over budget)
+        # (passing BAC=10_000 instead of EV=5_000 would give 10_000/5_500≈1.818 — wrong)
+        ev = 5_000.0   # from compute_ev_capped(consumed_h=50, budget_h=100, budget_c=10_000)
+        assert compute_cpi(ev, 5_500.0) == pytest.approx(0.9091, abs=1e-3)
 
     def test_zero_actual_returns_none(self):
         assert compute_cpi(10_000.0, 0.0) is None
 
-    def test_none_budget_returns_none(self):
+    def test_none_ev_returns_none(self):
         assert compute_cpi(None, 5_000.0) is None
 
-    def test_zero_budget_returns_none(self):
+    def test_zero_ev_returns_none(self):
         assert compute_cpi(0.0, 5_000.0) is None
 
 
@@ -113,8 +131,44 @@ class TestComputeEac:
     def test_none_cpi_returns_none(self):
         assert compute_eac(10_000.0, None) is None
 
+    def test_none_cpi_default_to_bac(self):
+        # When no performance data yet, EAC should default to BAC
+        assert compute_eac(10_000.0, None, default_to_bac=True) == pytest.approx(10_000.0)
+
     def test_zero_cpi_returns_none(self):
         assert compute_eac(10_000.0, 0.0) is None
+
+
+# ── compute_eac_schedule ─────────────────────────────────────────────────────
+
+class TestComputeEacSchedule:
+    def test_behind_schedule_raises_eac(self):
+        # BAC=10_000, AC=4_000, EV=4_000, CPI=1.0, SPI=0.8
+        # EAC = 4_000 + (10_000 − 4_000) / (1.0 × 0.8) = 4_000 + 7_500 = 11_500
+        result = compute_eac_schedule(10_000.0, 4_000.0, 4_000.0, 1.0, 0.8)
+        assert result == pytest.approx(11_500.0)
+
+    def test_on_schedule_equals_cpi_eac(self):
+        # SPI=1.0 → EAC_schedule == EAC_cpi = BAC/CPI
+        # BAC=10_000, AC=4_400, EV=4_000, CPI≈0.909, SPI=1.0
+        # EAC = 4_400 + (10_000 − 4_000) / (0.909×1.0) ≈ 10_999.9... ≈ 11_000
+        result = compute_eac_schedule(10_000.0, 4_400.0, 4_000.0, 4_000/4_400, 1.0)
+        assert result == pytest.approx(10_000.0 / (4_000/4_400), abs=1.0)
+
+    def test_none_budget_returns_none(self):
+        assert compute_eac_schedule(None, 4_000.0, 4_000.0, 1.0, 1.0) is None
+
+    def test_none_ev_returns_none(self):
+        assert compute_eac_schedule(10_000.0, 4_000.0, None, 1.0, 1.0) is None
+
+    def test_none_cpi_returns_none(self):
+        assert compute_eac_schedule(10_000.0, 4_000.0, 4_000.0, None, 1.0) is None
+
+    def test_none_spi_returns_none(self):
+        assert compute_eac_schedule(10_000.0, 4_000.0, 4_000.0, 1.0, None) is None
+
+    def test_zero_spi_returns_none(self):
+        assert compute_eac_schedule(10_000.0, 4_000.0, 4_000.0, 1.0, 0.0) is None
 
 
 # ── compute_tcpi ──────────────────────────────────────────────────────────────
@@ -254,9 +308,9 @@ class TestClassifyHealth:
     def test_warning_just_below_critical(self):
         assert classify_health(99.9, 100.0) == "warning"
 
-    def test_critical_at_100pct(self):
-        # exactly at critical_threshold (1.0) → critical
-        assert classify_health(100.0, 100.0) == "critical"
+    def test_overrun_at_100pct(self):
+        # exactly at critical_threshold (1.0) → overrun (no dead "critical" state)
+        assert classify_health(100.0, 100.0) == "overrun"
 
     def test_overrun_above_critical(self):
         assert classify_health(101.0, 100.0) == "overrun"
@@ -270,8 +324,74 @@ class TestClassifyHealth:
     def test_custom_thresholds(self):
         # With thresholds 80%/90%:
         # 85% → warning (≥0.8, <0.9)
-        # 90% → critical (== critical_threshold)
+        # 90% → overrun (≥ critical_threshold)
         # 95% → overrun (> critical_threshold)
         assert classify_health(85.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "warning"
-        assert classify_health(90.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "critical"
+        assert classify_health(90.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"
         assert classify_health(95.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"
+
+
+# ── tcpi_label ────────────────────────────────────────────────────────────────
+
+class TestTcpiLabel:
+    def test_achievable(self):
+        assert tcpi_label(0.95) == "Meta alcançável"
+
+    def test_exactly_1(self):
+        assert tcpi_label(1.0) == "Meta alcançável"
+
+    def test_tight(self):
+        assert tcpi_label(1.05) == "Meta apertada"
+
+    def test_exactly_1_1(self):
+        assert tcpi_label(1.1) == "Meta apertada"
+
+    def test_unachievable(self):
+        assert tcpi_label(1.25) == "Meta inviável no ritmo atual"
+
+    def test_none_returns_none(self):
+        assert tcpi_label(None) is None
+
+
+# ── cv_label(0) fix ───────────────────────────────────────────────────────────
+
+class TestCvLabelFix:
+    def test_zero_cv_is_no_orcamento(self):
+        assert cv_label(0) == "No orçamento"
+
+    def test_zero_cv_not_no_prazo(self):
+        assert cv_label(0) != "No prazo"
+
+    def test_positive_cv(self):
+        assert "Economia" in cv_label(1000.0)
+
+    def test_negative_cv(self):
+        assert "Estouro" in cv_label(-500.0)
+
+
+# ── vac_label / vac_color ─────────────────────────────────────────────────────
+
+class TestVacLabelColor:
+    def test_positive_vac_label(self):
+        assert vac_label(5000.0) == "Economia projetada"
+
+    def test_negative_vac_label(self):
+        assert vac_label(-3000.0) == "Estouro projetado"
+
+    def test_zero_vac_label(self):
+        assert vac_label(0) == "No orçamento"
+
+    def test_none_label(self):
+        assert vac_label(None) is None
+
+    def test_positive_vac_color_success(self):
+        assert vac_color(5000.0) == "success"
+
+    def test_negative_vac_color_danger(self):
+        assert vac_color(-3000.0) == "danger"
+
+    def test_zero_vac_color_success(self):
+        assert vac_color(0) == "success"
+
+    def test_none_color(self):
+        assert vac_color(None) is None

@@ -148,10 +148,6 @@ def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, da
     from sqlalchemy import func
     from backend.app.models import Collaborator
 
-    cfg = db.get(GlobalConfig, 1)
-    em = cfg.extra_hours_multiplier   if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 0.33
-
     q = (
         db.query(
             TimesheetRecord.pep_wbs,
@@ -162,11 +158,9 @@ def _portfolio_fallback(db, current_user, allowed, pep_wbs_filter, date_from, da
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
             func.sum(
-                TimesheetRecord.cost_per_hour * (
-                    TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours * em
-                    + TimesheetRecord.standby_hours * sm
-                )
+                func.coalesce(TimesheetRecord.normal_cost,  0.0)
+                + func.coalesce(TimesheetRecord.extra_cost,   0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("total_cost"),
             func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
             func.sum(TimesheetRecord.extra_cost).label("extra_cost"),

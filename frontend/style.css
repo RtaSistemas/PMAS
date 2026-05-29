@@ -510,6 +510,10 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .stat-card.green  .val { color: var(--green); }
 .stat-card.neutral .val{ color: var(--text); }
 .stat-card.red    .val { color: var(--red); }
+.stat-card .sublbl {
+  font-size: 0.6rem; color: var(--text-3); margin-top: 0.18rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* ── Tables ──────────────────────────────────────────────────── */
 .table-search-input {

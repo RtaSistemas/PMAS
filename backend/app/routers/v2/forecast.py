@@ -27,8 +27,8 @@ from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_eac_schedule,
     compute_ev_capped,
-    compute_ev_cost,
     compute_period_delta,
     compute_period_delta_pct,
     compute_spi,
@@ -46,6 +46,9 @@ from backend.app.services.evm import (
     sv_color,
     sv_label,
     tcpi_color,
+    tcpi_label,
+    vac_color,
+    vac_label,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -119,10 +122,13 @@ def get_forecast(
 
         cum_ph = sum(h for s, h in sorted_plans if s <= cyc_start) if sorted_plans else 0.0
         pc_period = plan_cost_by_cycle_start.get(cyc_start) if has_plan else None
+        # Derive planned cost from blended rate when no explicit cost baseline exists
+        if pc_period is None and blended_rate is not None and cyc_start in plan_by_cycle_start:
+            pc_period = round(plan_by_cycle_start[cyc_start] * blended_rate, 2)
         if pc_period is not None:
             cum_pc += pc_period
 
-        ev_cost_cum = compute_ev_cost(cum_h, budget_cost, budget_hours)
+        ev_cost_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
 
         spi_cum = None
         if has_plan and cum_ph > 0:
@@ -176,18 +182,21 @@ def get_forecast(
 
     # Final EVM indicators
     ev_val = None
-    cpi = spi = eac = cv = tcpi = vac = sv = None
+    cpi = spi = eac = eac_schedule = cv = tcpi = vac = sv = None
     if budget_hours and budget_cost and consumed_hours > 0:
         ev_val = compute_ev_capped(consumed_hours, budget_hours, budget_cost)
-        if actual_cost > 0 and ev_val is not None:
-            cpi  = compute_cpi(ev_val, actual_cost)
-            eac  = compute_eac(budget_cost, cpi)
-            cv   = compute_cv(ev_val, actual_cost)
-            tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
-        vac = compute_vac(budget_cost, eac)
+        # SPI computed first so schedule-sensitive EAC variant can use it
         if has_plan and last_planned_h and last_planned_h > 0:
             spi = compute_spi(last_planned_h, last_actual_h) if last_actual_h is not None else None
             sv  = compute_sv(last_actual_h or 0, last_planned_h)
+        if actual_cost > 0 and ev_val is not None:
+            cpi  = compute_cpi(ev_val, actual_cost)
+            cv   = compute_cv(ev_val, actual_cost)
+            tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
+        # EAC defaults to BAC when no performance data yet (R-14)
+        eac          = compute_eac(budget_cost, cpi, default_to_bac=True)
+        eac_schedule = compute_eac_schedule(budget_cost, actual_cost, ev_val, cpi, spi)
+        vac = compute_vac(budget_cost, eac)
 
     is_closed = (
         project is not None
@@ -201,7 +210,8 @@ def get_forecast(
     est_cycles = None
     est_completion = None
     if not is_closed and remaining_hours and remaining_hours > 0 and avg_hours > 0:
-        effective_velocity = avg_hours * spi if (spi and spi > 0) else avg_hours
+        # Use observed throughput only; SPI informs cost EAC, not cycle velocity
+        effective_velocity = avg_hours
         est_cycles = round(remaining_hours / effective_velocity, 1)
         n = math.ceil(est_cycles)
         last_start = cycle_data[-1][1]
@@ -215,13 +225,31 @@ def get_forecast(
         if len(future) >= n:
             est_completion = future[n - 1].name
 
+    # Uncertainty band from 3-cycle min/max throughput and cost rate (R-12)
+    eac_low = eac_high = None
+    est_cycles_optimistic = est_cycles_pessimistic = None
+    if est_cycles is not None and remaining_hours and remaining_hours > 0:
+        recent_data = cycle_data[-3:]
+        h_vals = [h for _, _, h, _ in recent_data if h > 0]
+        rates  = [c / h for _, _, h, c in recent_data if h > 0]
+        if len(h_vals) >= 2:
+            est_cycles_optimistic  = round(remaining_hours / max(h_vals), 1)
+            est_cycles_pessimistic = round(remaining_hours / min(h_vals), 1)
+        if len(rates) >= 2 and actual_cost > 0:
+            eac_low  = round(actual_cost + remaining_hours * min(rates), 2)
+            eac_high = round(actual_cost + remaining_hours * max(rates), 2)
+
     # For closed projects: freeze metrics at final state
     if is_closed:
         remaining_hours = 0.0
         remaining_cost  = 0.0
         tcpi            = None
-        est_cycles      = None
-        est_completion  = None
+        eac_schedule           = None
+        est_cycles             = None
+        est_completion         = None
+        eac_low = eac_high     = None
+        est_cycles_optimistic  = None
+        est_cycles_pessimistic = None
         # EAC = AC (actual final cost, not a projection)
         if actual_cost > 0:
             eac = round(actual_cost, 2)
@@ -245,13 +273,22 @@ def get_forecast(
         "spi_label":                  spi_label(spi),
         "spi_color":                  spi_color(spi),
         "eac":                        eac,
+        "eac_low":                    eac_low,
+        "eac_high":                   eac_high,
+        "eac_schedule":               eac_schedule,
+        "eac_method":                 "cpi_spi" if eac_schedule is not None else "cpi",
         "vac":                        vac,
+        "vac_label":                  vac_label(vac),
+        "vac_color":                  vac_color(vac),
         "cv":                         cv,
         "tcpi":                       tcpi,
         "tcpi_color":                 tcpi_color(tcpi),
+        "tcpi_label":                 tcpi_label(tcpi),
         "sv":                         sv,
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
+        "est_cycles_optimistic":      est_cycles_optimistic,
+        "est_cycles_pessimistic":     est_cycles_pessimistic,
         "estimated_completion_cycle": est_completion,
         "is_closed":                  is_closed,
         "start_date":                 str(project.start_date)       if (project and project.start_date)       else None,
@@ -294,11 +331,8 @@ def _load_cycle_data(
             by_cycle[s.cycle_id] = (n, st, h + (s.total_hours or 0.0), c + (s.total_cost or 0.0))
         return sorted(by_cycle.values(), key=lambda x: x[1])
 
-    # Fallback to raw records
+    # Fallback to raw records — use frozen cost columns to respect the EVM freeze pattern
     from sqlalchemy import func
-    cfg = db.get(GlobalConfig, 1)
-    em = cfg.extra_hours_multiplier   if cfg else 1.5
-    sm = cfg.standby_hours_multiplier if cfg else 0.33
 
     q = (
         db.query(
@@ -310,11 +344,9 @@ def _load_cycle_data(
                 + TimesheetRecord.standby_hours
             ).label("period_hours"),
             func.sum(
-                TimesheetRecord.cost_per_hour * (
-                    TimesheetRecord.normal_hours
-                    + TimesheetRecord.extra_hours * em
-                    + TimesheetRecord.standby_hours * sm
-                )
+                func.coalesce(TimesheetRecord.normal_cost,  0.0)
+                + func.coalesce(TimesheetRecord.extra_cost,   0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("period_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)

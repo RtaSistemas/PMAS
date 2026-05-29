@@ -32,17 +32,19 @@ def freeze_costs(
 # ── Core EVM metrics ─────────────────────────────────────────────────────────
 
 def compute_cpi(
-    budget_cost: Optional[float],
+    ev_cost: Optional[float],
     actual_cost: float,
 ) -> Optional[float]:
-    """Cost Performance Index = EV / AC.  Proxy: EV = budget_cost (BAC).
+    """Cost Performance Index = EV / AC.
 
-    Returns None when actual_cost == 0 or budget is undefined.
+    Pass true Earned Value (e.g. from compute_ev_capped), not BAC.
+    Using BAC as EV is only valid for a 100% complete project.
+    Returns None when actual_cost == 0 or ev_cost is undefined.
     > 1.0 → under budget;  < 1.0 → over budget.
     """
-    if not budget_cost or actual_cost == 0:
+    if not ev_cost or actual_cost == 0:
         return None
-    return round(budget_cost / actual_cost, 4)
+    return round(ev_cost / actual_cost, 4)
 
 
 def compute_cpi_ev(
@@ -71,7 +73,11 @@ def compute_spi(
     cumulative_planned_hours: Optional[float],
     cumulative_actual_hours: float,
 ) -> Optional[float]:
-    """Schedule Performance Index = EV_hours / PV_hours.
+    """Schedule Performance Index — AgileEVM hours proxy: actual_h / planned_h.
+
+    This implementation uses hours rather than monetary EV/PV (AgileEVM proxy).
+    Both methods converge when work cost is uniformly distributed; the hours
+    proxy is preferable when only hours baselines are available.
 
     Returns None when planned hours are undefined or zero.
     > 1.0 → ahead of schedule;  < 1.0 → behind.
@@ -84,11 +90,38 @@ def compute_spi(
 def compute_eac(
     budget_cost: Optional[float],
     cpi: Optional[float],
+    *,
+    default_to_bac: bool = False,
 ) -> Optional[float]:
-    """Estimate at Completion = BAC / CPI."""
-    if not budget_cost or not cpi or cpi == 0:
+    """Estimate at Completion = BAC / CPI.
+
+    When cpi is None or 0 and default_to_bac is True, returns BAC as the
+    baseline projection (i.e. no performance divergence observed yet).
+    """
+    if not budget_cost:
         return None
+    if not cpi or cpi == 0:
+        return round(budget_cost, 2) if default_to_bac else None
     return round(budget_cost / cpi, 2)
+
+
+def compute_eac_schedule(
+    budget_cost: Optional[float],
+    actual_cost: float,
+    ev_cost: Optional[float],
+    cpi: Optional[float],
+    spi: Optional[float],
+) -> Optional[float]:
+    """Schedule-sensitive Estimate at Completion: AC + (BAC − EV) / (CPI × SPI).
+
+    Accounts for both cost and schedule performance when projecting total cost.
+    Useful when SPI < 1 (behind schedule), as it raises the cost forecast.
+    Returns None when any required input is missing or CPI×SPI ≤ 0.
+    """
+    if not budget_cost or ev_cost is None or not cpi or not spi or cpi <= 0 or spi <= 0:
+        return None
+    combined = cpi * spi
+    return round(actual_cost + (budget_cost - ev_cost) / combined, 2)
 
 
 def compute_tcpi(
@@ -139,11 +172,13 @@ def compute_ev_cost(
     budget_cost: Optional[float],
     budget_hours: Optional[float],
 ) -> Optional[float]:
-    """Earned Value in R$ using the blended planned rate.
+    """Earned Value in R$ using the blended planned rate (uncapped).
 
     EV = cumulative_hours × (budget_cost / budget_hours)
 
-    Used for the burn-up chart's EV series and for SPI cost-based calculation.
+    NOTE: this function does NOT cap EV at BAC.  For the burn-up chart and
+    for CPI/EAC calculations use compute_ev_capped, which limits EV to BAC.
+    This function is kept for diagnostic/raw-series use only.
     Returns None when budget is undefined.
     """
     if not budget_cost or not budget_hours or budget_hours == 0:
@@ -202,15 +237,13 @@ def classify_health(
 ) -> str:
     """Classify consumption against budget.
 
-    Returns one of: 'ok' | 'warning' | 'critical' | 'overrun' | 'no_budget'.
+    Returns one of: 'ok' | 'warning' | 'overrun' | 'no_budget'.
     """
     if not budget or budget == 0:
         return "no_budget"
     ratio = consumed / budget
-    if ratio > critical_threshold:
-        return "overrun"
     if ratio >= critical_threshold:
-        return "critical"
+        return "overrun"
     if ratio >= warning_threshold:
         return "warning"
     return "ok"
@@ -324,6 +357,17 @@ def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
     return "danger"
 
 
+def tcpi_label(tcpi: Optional[float]) -> Optional[str]:
+    """Human-readable TCPI label in pt-BR."""
+    if tcpi is None:
+        return None
+    if tcpi <= 1.0:
+        return "Meta alcançável"
+    if tcpi <= 1.1:
+        return "Meta apertada"
+    return "Meta inviável no ritmo atual"
+
+
 # ── Schedule status ───────────────────────────────────────────────────────────
 
 def classify_schedule_status(
@@ -387,7 +431,7 @@ def cv_label(cv: Optional[float]) -> Optional[str]:
         return f"Economia de R$ {abs(cv):,.2f}"
     if cv < 0:
         return f"Estouro de R$ {abs(cv):,.2f}"
-    return "No prazo"
+    return "No orçamento"
 
 
 def cv_color(cv: Optional[float]) -> Optional[str]:
@@ -395,6 +439,24 @@ def cv_color(cv: Optional[float]) -> Optional[str]:
     if cv is None:
         return None
     return "success" if cv >= 0 else "danger"
+
+
+def vac_label(vac: Optional[float]) -> Optional[str]:
+    """Human-readable VAC label in pt-BR."""
+    if vac is None:
+        return None
+    if vac > 0:
+        return "Economia projetada"
+    if vac < 0:
+        return "Estouro projetado"
+    return "No orçamento"
+
+
+def vac_color(vac: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'danger' for Variance at Completion, or None."""
+    if vac is None:
+        return None
+    return "success" if vac >= 0 else "danger"
 
 
 # ── Budget resolution ─────────────────────────────────────────────────────────

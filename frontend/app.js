@@ -1401,7 +1401,17 @@ function _buildForecastKpis(fc) {
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
   const tcpiCls = _EVM_COLOR_CARD[fc.tcpi_color] || 'neutral';
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
-  const vacCls  = fc.vac  == null ? 'neutral' : fc.vac  >= 0 ? 'green' : 'red';
+  const vacCls  = _EVM_COLOR_CARD[fc.vac_color]  || (fc.vac  == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red');
+
+  // EAC uncertainty range sublabel (R-12)
+  const eacSublbl = (fc.eac_low != null && fc.eac_high != null)
+    ? `${fmtR(fc.eac_low)} — ${fmtR(fc.eac_high)}`
+    : null;
+
+  // Completion cycle range sublabel (R-12)
+  const completionRangeSublbl = (fc.est_cycles_optimistic != null && fc.est_cycles_pessimistic != null)
+    ? `+${fc.est_cycles_optimistic} a +${fc.est_cycles_pessimistic} ciclos`
+    : null;
 
   const completionVal = fc.is_closed && fc.completed_on
     ? _fmtDateBR(fc.completed_on)
@@ -1413,20 +1423,20 @@ function _buildForecastKpis(fc) {
     { val: fmtH(fc.consumed_hours),                                                    lbl: _t('forecast.consumed'),          cls: 'blue'                    },
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
-    { val: spiVal,                                                                      lbl: 'SPI',                            cls: spiCls,  evm: 'SPI'       },
-    { val: svFmt,                                                                       lbl: 'SV',                             cls: svCls,   evm: 'SV'        },
-    { val: escHtml(String(completionVal)),                                              lbl: completionLbl,                    cls: 'violet'                  },
-    { val: tcpiVal,                                                                     lbl: 'TCPI',                           cls: tcpiCls, evm: 'TCPI'      },
+    { val: spiVal,                                                                      lbl: 'SPI',  cls: spiCls,  evm: 'SPI',  sublbl: fc.spi_label  || null },
+    { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV'                                 },
+    { val: escHtml(String(completionVal)),                                              lbl: completionLbl, cls: 'violet', sublbl: completionRangeSublbl      },
+    { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
 
   const row2 = [
     { val: fc.actual_cost != null ? fmtR(fc.actual_cost) : '—',                        lbl: 'AC',                            cls: 'blue',    evm: 'AC'      },
     { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: 'ETC',                           cls: 'neutral', evm: 'ETC'     },
     { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
-    { val: cpiVal,                                                                      lbl: 'CPI',                           cls: cpiCls,  evm: 'CPI'       },
-    { val: cvFmt,                                                                       lbl: 'CV',                            cls: cvCls,   evm: 'CV'        },
-    { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',                           cls: 'neutral', evm: 'EAC'     },
-    { val: vacFmt,                                                                      lbl: 'VAC',                           cls: vacCls,  evm: 'VAC'       },
+    { val: cpiVal,                                                                      lbl: 'CPI',  cls: cpiCls,  evm: 'CPI',  sublbl: fc.cpi_label  || null },
+    { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV'                                 },
+    { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',  cls: 'neutral', evm: 'EAC', sublbl: eacSublbl           },
+    { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
   ].map(_mkStatCard).join('');
 
   return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;

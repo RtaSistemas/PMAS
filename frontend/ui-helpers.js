@@ -20,11 +20,12 @@ const _HCSS = { success: '--primary', warning: '--amber', danger: '--red', muted
 // ---------------------------------------------------------------------------
 // C1 — Stat card builder
 // ---------------------------------------------------------------------------
-function _mkStatCard({ val, lbl, cls, evm }) {
+function _mkStatCard({ val, lbl, cls, evm, sublbl }) {
   const lblHtml = evm
     ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
     : escHtml(lbl);
-  return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div></div>`;
+  const sublblHtml = sublbl ? `<div class="sublbl">${escHtml(sublbl)}</div>` : '';
+  return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
 }
 
 // ---------------------------------------------------------------------------
