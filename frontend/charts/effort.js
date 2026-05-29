@@ -168,13 +168,12 @@ function _buildHoursBarOption({
     label: {
       show:       true,
       position:   isHoriz ? 'right' : 'top',
-      fontSize:   10,
-      fontWeight: 600,
+      fontSize:   11,
       color:      _cssVar('--green'),
       formatter:  p => p.value === maxTotal
         ? `{peak|${p.value.toFixed(1)}h}`
         : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 10 } },
+      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 11 } },
     },
     z: 10,
   }] : [];

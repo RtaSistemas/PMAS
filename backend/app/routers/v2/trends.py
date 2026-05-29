@@ -88,8 +88,6 @@ def _trends_from_summary(db, pep_wbs_filter, date_from, date_to):
     prev_normal_c: float | None = None
     prev_extra_c:  float | None = None
     prev_standby_c: float | None = None
-    hours_window: list[float] = []
-    cost_window:  list[float] = []
     for cid in sorted_ids:
         agg  = cycle_map[cid]
         cyc  = agg["_cycle"]
@@ -101,12 +99,6 @@ def _trends_from_summary(db, pep_wbs_filter, date_from, date_to):
         nc   = round(agg["normal_cost"],   2)
         ec   = round(agg["extra_cost"],    2)
         sc   = round(agg["standby_cost"],  2)
-        hours_window.append(th)
-        cost_window.append(tc)
-        if len(hours_window) > 3:
-            hours_window.pop(0)
-        if len(cost_window) > 3:
-            cost_window.pop(0)
         result.append({
             "cycle_name":               cyc.name,
             "cycle_start":              str(cyc.start_date),
@@ -134,8 +126,6 @@ def _trends_from_summary(db, pep_wbs_filter, date_from, date_to):
             "normal_cost_delta_pct":    compute_period_delta_pct(nc, prev_normal_c),
             "extra_cost_delta_pct":     compute_period_delta_pct(ec, prev_extra_c),
             "standby_cost_delta_pct":   compute_period_delta_pct(sc, prev_standby_c),
-            "moving_avg_3_hours":       round(sum(hours_window) / len(hours_window), 2),
-            "moving_avg_3_cost":        round(sum(cost_window)  / len(cost_window),  2),
         })
         prev_hours = th;    prev_cost = tc
         prev_normal_h = nh; prev_extra_h = eh;  prev_standby_h = sh
@@ -188,20 +178,12 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
     prev_normal_h: float | None = None
     prev_extra_h:  float | None = None
     prev_standby_h: float | None = None
-    hours_window: list[float] = []
-    cost_window:  list[float] = []
     for r in rows:
         th = round(r.total_hours  or 0.0, 2)
         tc = round(r.actual_cost  or 0.0, 2)
         nh = round(r.normal_hours  or 0.0, 2)
         eh = round(r.extra_hours   or 0.0, 2)
         sh = round(r.standby_hours or 0.0, 2)
-        hours_window.append(th)
-        cost_window.append(tc)
-        if len(hours_window) > 3:
-            hours_window.pop(0)
-        if len(cost_window) > 3:
-            cost_window.pop(0)
         result.append({
             "cycle_name":               r.cycle_name,
             "cycle_start":              str(r.cycle_start),
@@ -229,8 +211,6 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
             "normal_cost_delta_pct":    None,
             "extra_cost_delta_pct":     None,
             "standby_cost_delta_pct":   None,
-            "moving_avg_3_hours":       round(sum(hours_window) / len(hours_window), 2),
-            "moving_avg_3_cost":        round(sum(cost_window)  / len(cost_window),  2),
         })
         prev_hours = th;    prev_cost = tc
         prev_normal_h = nh; prev_extra_h = eh; prev_standby_h = sh

@@ -388,6 +388,5 @@ window._LANG_EN = {
     'onboard.step2':'Register your Projects with PEP code and budget',
     'onboard.step3':'Import a timesheet in My Area → Upload',
     'onboard.cta':'Go to Cycles',
-    'velocity.mavg':'3-Cycle Moving Avg',
-    'burnup.eac':'EAC (Estimate at Completion)',
+'burnup.eac':'EAC (Estimate at Completion)',
 };

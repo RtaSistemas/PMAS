@@ -1081,22 +1081,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       maxItems:    40,
       toolboxName: 'PMAS-Queima',
     });
-    const mavg = trends.map(d => d.moving_avg_3_hours ?? null);
-    if (mavg.some(v => v != null)) {
-      const avgClr = _cssVar('--amber') || '#f59e0b';
-      trendsOpt.series.push({
-        name: _t('velocity.mavg'),
-        type: 'line',
-        data: mavg,
-        smooth: true,
-        symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: avgClr, width: 2 },
-        itemStyle: { color: avgClr },
-        connectNulls: false,
-        z: 10,
-      });
-      if (Array.isArray(trendsOpt.legend?.data)) trendsOpt.legend.data.push(_t('velocity.mavg'));
-    }
     const tc = _getOrCreateChart('trendsChart');
     tc.setOption(trendsOpt, true);
     tc.resize();
