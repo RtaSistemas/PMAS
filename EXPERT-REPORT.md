@@ -3,7 +3,8 @@
 
 > **Perfil do avaliador:** Especialista sênior atuando simultaneamente em (1) EVM Ágil e Gestão de Projetos, (2) Engenharia de UX e Usabilidade, e (3) Qualidade de Implementação. Avaliação conduzida sob a ótica de um gerente de projetos que precisa tomar decisões reais (replanejar, escalar, congelar escopo) a partir dos números exibidos.
 > **Referências:** ANSI/PMI 19-006-2019 (Practice Standard for Earned Value Management), AgileEVM (Sulaiman, Barton & Blackburn, 2006), PMBOK 7ª ed.; Nielsen — 10 Heurísticas; WCAG 2.2; Fitts/Hick/Miller; Norman (affordances).
-> **Data:** 2026-05-29
+> **Data inicial:** 2026-05-29  
+> **Última atualização:** 2026-05-29 — Semanas 1 e 2 concluídas · 10/17 apontamentos resolvidos · 518 testes passando
 > **Escopo avaliado:**
 > - `backend/app/services/evm.py` (fonte única das fórmulas EVM)
 > - `backend/app/routers/v2/portfolio.py`, `forecast.py`, `trends.py`, `runway.py`
@@ -26,31 +27,31 @@
 
 **Parágrafo 3 — Estado da qualidade de implementação.** Há inconsistências entre o que o sistema promete e o que entrega, todas confirmadas por leitura e compilação dos módulos. `classify_health` (`evm.py:197-216`) tem um ramo **inalcançável**: testa `ratio > critical_threshold → "overrun"` e logo em seguida `ratio >= critical_threshold → "critical"`; como o caso `>` já foi capturado, "critical" só ocorre em `ratio == critical_threshold` (empate exato de ponto flutuante), tornando o estado "critical" praticamente morto — e o próprio `test_evm_service.py:257-259` confirma que só o empate `100.0/100.0` cai em "critical", colapsando a granularidade que a UI promete com badge `.badge-budget.critical` distinto de overrun. O endpoint de portfólio mistura, no fallback de dados crus (`portfolio.py:159-170`), custo recalculado por multiplicador **atual** (`extra_hours * em`) com o caminho principal que usa custo **congelado** (`total_cost` da summary, e colunas `normal_cost/extra_cost/standby_cost` em `models.py:86-88`) — duas rotas para a mesma métrica divergem após mudança de multiplicador, ferindo a premissa de freeze (os endpoints `effort.py:121-125`, `runway.py:72-76` e `concentration.py:54-58` já fazem certo somando colunas congeladas; só os fallbacks de portfolio/forecast/trends recalculam). Finalmente, a série EV do Burn-up usa `compute_ev_cost` não plafonado (`evm.py:137-151`), permitindo EV > BAC, e o EAC adota exclusivamente `BAC/CPI` (`evm.py:84-91`), insensível ao atraso de cronograma.
 
-**Parágrafo 4 — Posição de maturidade.** **3,5/5.** O alicerce conceitual existe e é raro de ver: fonte única de fórmulas (`services/evm.py`), freeze de custo em colunas dedicadas, baseline com precedência explícita (`resolve_effective_budget`), SPI congelado em fronteira de plano (`freeze_spi_boundary`), separação correta de unidades nos gráficos e suíte de testes unitários cobrindo cada fórmula. O que impede a nota subir são (a) a duplicidade de definição de EV que torna a função pública `compute_cpi` semanticamente perigosa, (b) divergência entre métrica calculada e documentada (SPI em horas vs. glossário que afirma EV/PV em R$), (c) o ramo `"critical"` inalcançável que apaga uma faixa de risco, (d) o fallback de custo que recalcula por multiplicador atual em vez de usar colunas congeladas, e (e) EV não plafonado no Burn-up. São correções cirúrgicas, não reescrita. Tratados os itens de fórmula e o fallback de custo, o produto chega a 4,5/5.
+**Parágrafo 4 — Posição de maturidade.** **3,5/5 → 4,1/5** *(atualizado após Semanas 1 e 2)*.  O alicerce conceitual existe e é raro de ver: fonte única de fórmulas (`services/evm.py`), freeze de custo em colunas dedicadas, baseline com precedência explícita (`resolve_effective_budget`), SPI congelado em fronteira de plano (`freeze_spi_boundary`), separação correta de unidades nos gráficos e suíte de testes unitários cobrindo cada fórmula. O que impedia a nota subir eram (a) a duplicidade de definição de EV — **resolvido**: `compute_cpi` agora recebe `ev_cost` explícito e o docstring alerta sobre `compute_ev_capped`; (b) divergência glossário↔implementação no SPI — **resolvido**: `evm-glossary.js` e docstring declaram o proxy AgileEVM em horas; (c) o ramo `"critical"` inalcançável — **resolvido**: `classify_health` colapsado em três faixas sem ramo morto; (d) o fallback de custo recalculando por multiplicador corrente — **resolvido**: os três fallbacks (portfolio/forecast/trends) agora somam colunas congeladas com `COALESCE`; (e) EV não plafonado no Burn-up — **resolvido**: `forecast.py` emite `cumulative_ev_cost` via `compute_ev_capped`. Adicionalmente, `blended_rate` ativada (R-07), variante de EAC sensível ao cronograma `eac_schedule` introduzida (R-09), `compute_eac` com `default_to_bac=True` (R-14) e velocidade de ciclos desacoplada do SPI (R-21). Os 7 apontamentos restantes (R-06, R-12, R-13, R-16, R-18, R-19, R-20) são UX/nomenclatura — tratados em Semanas 3 e 4, levam o produto a 4,5/5.
 
 ---
 
 ## SUMÁRIO DE APONTAMENTOS
 
-| ID | Eixo | Título | Severidade | Esforço |
-|----|------|--------|-----------|---------|
-| R-01 | EVM | `compute_cpi` assume EV = BAC (CPI inflado para projeto em andamento) | 🔴 | P |
-| R-02 | EVM | EV do Burn-up não plafonado em BAC (`compute_ev_cost` pode exceder o orçado) | 🟠 | P |
-| R-04 | EVM/UX | SPI calculado em horas, mas glossário documenta EV/PV em R$ | 🟠 | M |
-| R-05 | Implementação | `classify_health`: ramo `"critical"` inalcançável | 🟠 | P |
-| R-06 | Implementação/UX | Treemap: tooltip de utilização (cru) e rótulo (×`_currencyFactor`) inconsistentes | 🟠 | P |
-| R-07 | Implementação | `blended_rate` morto; PV-em-R$ ausente quando só horas são planejadas | 🟡 | M |
-| R-08 | EVM | Duas rotas de custo (summary congelado vs. recálculo por multiplicador) divergem | 🟠 | M |
-| R-09 | EVM | EAC usa apenas fórmula BAC/CPI; sem variante de cronograma (CPI×SPI) | 🟡 | M |
-| R-11 | EVM | `compute_ev_cost` ↔ documentação: EV uncapped vs. glossário PV plafonado | 🟡 | P |
-| R-12 | UX | Ausência de contexto de incerteza no EAC/conclusão estimada | 🟡 | M |
-| R-13 | UX | Cards de CPI/SPI exibem só valor+cor; `spi_label`/`cpi_label` do backend descartados | 🟡 | P |
-| R-14 | EVM | `compute_eac` retorna None quando CPI None — esconde EAC≈BAC em projeto sem AC | 🟡 | P |
-| R-16 | EVM/UX | TCPI sem rótulo textual pt-BR (só cor) — gestor não interpreta | 🟡 | P |
-| R-18 | Implementação | `dashboard.py` parseia data de quarentena com `dayfirst=True` fixo (ambiguidade) | 🟡 | P |
-| R-19 | EVM | `cv_label(0)` retorna "No prazo" (vocabulário de prazo em métrica de custo) | 🔵 | P |
-| R-20 | UX | Sinal de VAC positivo=bom sem `vac_color`/`vac_label` (só CV tem) | 🔵 | P |
-| R-21 | EVM | `est_cycles` usa `avg_hours × spi` como velocidade efetiva — mistura prazo e vazão | 🟡 | M |
+| ID | Eixo | Título | Severidade | Esforço | Status |
+|----|------|--------|-----------|---------|--------|
+| R-01 | EVM | `compute_cpi` assume EV = BAC (CPI inflado para projeto em andamento) | 🔴 | P | ✅ S1 |
+| R-02 | EVM | EV do Burn-up não plafonado em BAC (`compute_ev_cost` pode exceder o orçado) | 🟠 | P | ✅ S1 |
+| R-04 | EVM/UX | SPI calculado em horas, mas glossário documenta EV/PV em R$ | 🟠 | M | ✅ S2 ¹ |
+| R-05 | Implementação | `classify_health`: ramo `"critical"` inalcançável | 🟠 | P | ✅ S1 |
+| R-06 | Implementação/UX | Treemap: tooltip de utilização (cru) e rótulo (×`_currencyFactor`) inconsistentes | 🟠 | P | ⏳ S4 |
+| R-07 | Implementação | `blended_rate` morto; PV-em-R$ ausente quando só horas são planejadas | 🟡 | M | ✅ S2 |
+| R-08 | EVM | Duas rotas de custo (summary congelado vs. recálculo por multiplicador) divergem | 🟠 | M | ✅ S1 |
+| R-09 | EVM | EAC usa apenas fórmula BAC/CPI; sem variante de cronograma (CPI×SPI) | 🟡 | M | ✅ S2 ² |
+| R-11 | EVM | `compute_ev_cost` ↔ documentação: EV uncapped vs. glossário PV plafonado | 🟡 | P | ✅ S1 |
+| R-12 | UX | Ausência de contexto de incerteza no EAC/conclusão estimada | 🟡 | M | ⏳ S4 |
+| R-13 | UX | Cards de CPI/SPI exibem só valor+cor; `spi_label`/`cpi_label` do backend descartados | 🟡 | P | ⏳ S3 |
+| R-14 | EVM | `compute_eac` retorna None quando CPI None — esconde EAC≈BAC em projeto sem AC | 🟡 | P | ✅ S2 |
+| R-16 | EVM/UX | TCPI sem rótulo textual pt-BR (só cor) — gestor não interpreta | 🟡 | P | ⏳ S3 |
+| R-18 | Implementação | `dashboard.py` parseia data de quarentena com `dayfirst=True` fixo (ambiguidade) | 🟡 | P | ⏳ S4 |
+| R-19 | EVM | `cv_label(0)` retorna "No prazo" (vocabulário de prazo em métrica de custo) | 🔵 | P | ⏳ S3 |
+| R-20 | UX | Sinal de VAC positivo=bom sem `vac_color`/`vac_label` (só CV tem) | 🔵 | P | ⏳ S3 |
+| R-21 | EVM | `est_cycles` usa `avg_hours × spi` como velocidade efetiva — mistura prazo e vazão | 🟡 | M | ✅ S2 |
 
 > P = < 2h · M = 2–8h · G = > 8h
 
@@ -604,12 +605,12 @@ flowchart TD
     S3D --> S4A
 ```
 
-| Semana | Apontamentos | Critério de conclusão |
-|--------|--------------|------------------------|
-| 1 — Base matemática | R-01, R-05, R-08, R-02, R-11 | CPI reflete EV real; "overrun/warning/ok" sem faixa morta; custo idêntico com/sem summary; EV satura em BAC |
-| 2 — Coerência de métrica | R-04, R-07, R-09, R-21, R-14 | SPI bate com glossário; PV em R$ derivável; EAC sensível a prazo; EAC default = BAC |
-| 3 — Nomenclatura e rótulos | R-16, R-19, R-20, R-13 | `tcpi_label`/`vac_label` presentes; `cv_label(0)`="No orçamento"; cards mostram causa |
-| 4 — UX e polimento | R-12, R-06, R-18 | EAC/conclusão com faixa; Treemap com conversão única; data de quarentena canônica |
+| Semana | Apontamentos | Critério de conclusão | Execução |
+|--------|--------------|------------------------|----------|
+| 1 — Base matemática | R-01, R-05, R-08, R-02, R-11 | CPI reflete EV real; "overrun/warning/ok" sem faixa morta; custo idêntico com/sem summary; EV satura em BAC | ✅ **Concluída** — commit `1c02079` |
+| 2 — Coerência de métrica | R-04, R-07, R-09, R-21, R-14 | SPI bate com glossário; PV em R$ derivável; EAC sensível a prazo; EAC default = BAC | ✅ **Concluída** — commit `ddab6d3` |
+| 3 — Nomenclatura e rótulos | R-16, R-19, R-20, R-13 | `tcpi_label`/`vac_label` presentes; `cv_label(0)`="No orçamento"; cards mostram causa | ⏳ Pendente |
+| 4 — UX e polimento | R-12, R-06, R-18 | EAC/conclusão com faixa; Treemap com conversão única; data de quarentena canônica | ⏳ Pendente |
 
 ---
 
@@ -629,6 +630,77 @@ flowchart TD
 | ETC | Estimate to Complete | Estimativa para Completar (EPC) | `EAC − AC` (`remaining_cost`) | R$ | menor = melhor |
 | VAC | Variance at Completion | Variação no Término (VNT) | `BAC − EAC` | R$ | > 0 = sob orçamento |
 | TCPI | To-Complete Performance Index | Índice de Desempenho para Término | `(BAC − EV)/(BAC − AC)` | adimensional | ≤ 1 = meta alcançável |
+
+---
+
+---
+
+## HISTÓRICO DE EXECUÇÃO
+
+### Semana 1 — Base matemática (commit `1c02079`)
+
+**Arquivos modificados:** `backend/app/services/evm.py`, `backend/app/routers/v2/portfolio.py`, `forecast.py`, `trends.py`, `tests/test_evm_service.py`, `tests/test_full_sample.py`, `tests/test_ratecard.py`
+
+| ID | Ação executada | Verificação |
+|----|---------------|-------------|
+| R-01 | `compute_cpi(budget_cost, AC)` → `compute_cpi(ev_cost, AC)` — parâmetro renomeado, docstring instrui uso de `compute_ev_capped`. Novo teste `test_in_progress_project_uses_ev_not_bac`. | `grep "budget_cost / actual_cost" evm.py` = vazio ✅ |
+| R-05 | `classify_health`: ramo `> critical → "overrun"` + `>= critical → "critical"` colapsados em um único `>= critical → "overrun"`. | `test_overrun_at_100pct`, `test_custom_thresholds` passam ✅ |
+| R-08 | Todos os três fallbacks (portfolio, forecast, trends) trocam `cost_per_hour × horas × multiplicador_atual` por `func.coalesce(normal_cost, 0.0) + func.coalesce(extra_cost, 0.0) + func.coalesce(standby_cost, 0.0)`. | `grep "extra_hours \* em" backend/app/routers/v2/*.py` = vazio ✅ |
+| R-02 + R-11 | `forecast.py` linha 128 emite `cumulative_ev_cost` via `compute_ev_capped` (cap em BAC); `compute_ev_cost` docstring atualizado como "uncapped, diagnóstico interno". | `grep "compute_ev_cost" forecast.py` = não há mais chamadas de produção ✅ |
+
+**Suite:** 406 → 418 testes após as adições. Todos passam.
+
+---
+
+### Semana 2 — Coerência de métrica (commit `ddab6d3`)
+
+**Arquivos modificados:** `backend/app/services/evm.py`, `backend/app/routers/v2/forecast.py`, `frontend/evm-glossary.js`, `tests/test_evm_service.py`
+
+| ID | Ação executada | Verificação |
+|----|---------------|-------------|
+| R-04 | `compute_spi` docstring reescrito: "AgileEVM hours proxy: actual_h / planned_h … Both methods converge when work cost is uniformly distributed". `evm-glossary.js` SPI, PV e EAC alinhados: unidade declarada como horas, nota "equivale a VA÷VP quando custo uniforme". | Glossário verifica: `grep "Proxy AgileEVM" evm-glossary.js` ✅ |
+| R-07 | Ativada a `blended_rate` já calculada: `if pc_period is None and blended_rate is not None and cyc_start in plan_by_cycle_start: pc_period = round(plan_by_cycle_start[cyc_start] * blended_rate, 2)`. Projeto com plano só em horas + `budget_cost` passa a emitir `cumulative_planned_cost`. | `grep -n "blended_rate" forecast.py` → 2 linhas (cálculo + uso) ✅ |
+| R-09 | Nova função `compute_eac_schedule(BAC, AC, EV, CPI, SPI)` em `evm.py`. `forecast.py` restruturado: SPI calculado **antes** de EAC. Resposta expõe `eac_schedule` e `eac_method` ("cpi" \| "cpi_spi"). Bloco `is_closed` zera `eac_schedule`. | `TestComputeEacSchedule` (7 testes) passam ✅ |
+| R-14 | `compute_eac(budget_cost, cpi, *, default_to_bac=False)` — quando `default_to_bac=True` e `cpi` é None, retorna BAC. `forecast.py` usa `default_to_bac=True`. | `test_none_cpi_default_to_bac` passa ✅; projeto sem AC retorna `eac == budget_cost` |
+| R-21 | `effective_velocity = avg_hours` (removido `* spi`). Comentário inline: "vazão real já incorpora o ritmo; SPI informa o SV separadamente". | `grep "effective_velocity" forecast.py` → linha sem `spi` ✅ |
+
+**Suite:** 518 testes. Todos passam.
+
+---
+
+## DESVIOS E JUSTIFICATIVAS
+
+### Desvio 1 — R-04: numerador do SPI não alterado para horas plafonadas
+
+**Recomendação original:** `SPI = min(horas_reais, horas_planej_total_cum) / horas_planej_cum` (numera­dor plafonado pelas horas planejadas totais acumuladas).
+
+**O que foi feito:** mantida a fórmula `actual_h / planned_h` sem cap no numerador. Apenas a documentação (glossário e docstring) foi alinhada.
+
+**Justificativa:** `freeze_spi_boundary` (`evm.py:262-270`) já trata o problema de fundo que o cap resolve — evitar que o SPI continue subindo após o fim do plano, congelando o último par `(actual_h, planned_h)` de ciclo onde o plano avançou. Alterar o numerador para `min(actual_h, planned_h)` mudaria a semântica de `freeze_spi_boundary` e exigiria retestar a função com os seus 3 casos de borda específicos, introduzindo risco sem ganho marginal. O resultado prático é idêntico: o gestor não observa SPI crescendo além de 1,0 após o plano encerrar, porque o endpoint usa o par congelado.
+
+**Consequência aceitável:** a função `compute_spi` permanece ligeiramente mais otimista que o PMBoK puro para projetos que avançam acima do ritmo planejado, mas isso é um comportamento esperado do proxy AgileEVM e está documentado.
+
+---
+
+### Desvio 2 — R-09: `eac_schedule` como campo adicional, não substituto de `eac`
+
+**Recomendação original:** substituir `eac` pela fórmula `AC + (BAC−EV)/(CPI×SPI)` quando SPI disponível, deixando `BAC/CPI` como fallback.
+
+**O que foi feito:** `eac` mantido como `BAC/CPI` (com `default_to_bac=True` como novo comportamento de R-14). `eac_schedule` adicionado como **campo paralelo** independente; `eac_method` indica qual variante está ativa.
+
+**Justificativa:** substituir o valor de `eac` quebraria consumidores existentes da API que tomam decisões com base nele (ex.: `remaining_cost = eac - actual_cost`). A abordagem de campo adicional é backward-compatible: consumidores novos (ex.: frontend de Semana 3) podem exibir `eac_schedule` quando `eac_method == "cpi_spi"` sem alterar os consumidores existentes. A transparência pelo `eac_method` atende o critério "campo que indica qual método foi usado".
+
+**Critério técnico satisfeito:** com SPI=0,8 e CPI=1,0, `eac_schedule = AC + (BAC−EV)/(1,0×0,8)` > BAC — o campo adicional satisfaz o critério de aceitação de R-09 conforme verificado no `TestComputeEacSchedule::test_behind_schedule_raises_eac`.
+
+---
+
+### Desvio 3 — R-02: correção aplicada no backend, não no frontend
+
+**Recomendação original:** duas alternativas — fix em `forecast.py` **ou** cap em `frontend/charts/forecast.js`.
+
+**O que foi feito:** apenas a correção no backend (`forecast.py:128`). `frontend/charts/forecast.js` não foi modificado.
+
+**Justificativa:** a correção no backend é preferível: mantém o princípio de "lógica EVM em `services/evm.py`", elimina o risco de divergência futura entre backend e frontend para o mesmo campo, e não exige manutenção duplicada. O cap no frontend seria uma solução de contorno que deixaria o valor incorreto no JSON (acessível por outros consumidores da API).
 
 ---
 
