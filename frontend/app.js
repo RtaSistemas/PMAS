@@ -3968,8 +3968,9 @@ document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { 
 // My Area — Quarentena sub-tab
 // ---------------------------------------------------------------------------
 let _myQrCache = [];
-let _qrPage = 0;
-const _QR_PAGE_SIZE = 50;
+let _qrPage     = 0;
+let _qrPageSize = 25;
+let _qrRows     = [];
 
 async function loadMyQr() {
   _qrPage = 0;
@@ -3986,6 +3987,7 @@ async function loadMyQr() {
 }
 
 function _renderMyQrTable(rows) {
+  _qrRows = rows;
   const tbody = document.getElementById('myQrBody');
   if (!tbody) return;
   if (!rows.length) {
@@ -3994,9 +3996,9 @@ function _renderMyQrTable(rows) {
     if (pg) pg.hidden = true;
     return;
   }
-  const totalPages = Math.ceil(rows.length / _QR_PAGE_SIZE);
-  _qrPage = Math.min(_qrPage, totalPages - 1);
-  const pageRows = rows.slice(_qrPage * _QR_PAGE_SIZE, (_qrPage + 1) * _QR_PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(rows.length / _qrPageSize));
+  _qrPage = Math.max(0, Math.min(_qrPage, totalPages - 1));
+  const pageRows = rows.slice(_qrPage * _qrPageSize, (_qrPage + 1) * _qrPageSize);
   tbody.innerHTML = pageRows.map(r => {
     const raw  = r.raw_data || {};
     const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
@@ -4014,23 +4016,16 @@ function _renderMyQrTable(rows) {
   const pg = document.getElementById('myQrPagination');
   if (pg) {
     pg.hidden = totalPages <= 1;
-    if (!pg.hidden) {
-      pg.style.display = 'flex';
-      document.getElementById('myQrPageLabel').textContent = `${_t('page.label')} ${_qrPage + 1} ${_t('page.of')} ${totalPages}`;
-      document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
-      document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
-    }
+    document.getElementById('myQrPageLabel').textContent = `${_t('page.label')} ${_qrPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
+    document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
   }
 }
 
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
-document.getElementById('myQrPrevBtn')?.addEventListener('click', () => {
-  if (_qrPage > 0) { _qrPage--; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
-});
-document.getElementById('myQrNextBtn')?.addEventListener('click', () => {
-  const totalPages = Math.ceil(_myQrCache.length / _QR_PAGE_SIZE);
-  if (_qrPage < totalPages - 1) { _qrPage++; _renderMyQrTable(_applySort('myQrTable', _myQrCache)); }
-});
+document.getElementById('myQrPrevBtn')?.addEventListener('click', () => { _qrPage--; _renderMyQrTable(_qrRows); });
+document.getElementById('myQrNextBtn')?.addEventListener('click', () => { _qrPage++; _renderMyQrTable(_qrRows); });
+document.getElementById('myQrPageSize')?.addEventListener('change', e => { _qrPageSize = +e.target.value; _qrPage = 0; _renderMyQrTable(_qrRows); });
 
 // ---------------------------------------------------------------------------
 // My Area — Exportar quarentena (item 5)
