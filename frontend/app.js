@@ -2350,31 +2350,16 @@ function _buildPortfolioStatsRow(health, trends) {
 // Cycles management
 // ---------------------------------------------------------------------------
 let _cycleEditId = null;
-let _allCycles    = [];
-let _cyclesPage   = 0;
-let _cyclesPageSize = 25;
-let _cyclesRows   = [];
+let _allCycles = [];
 
-async function loadCyclesTable() {
-  _cyclesPage = 0;
-  const showArchived = document.getElementById('showArchivedCycles')?.checked;
-  const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
-  await _loadTable(url, data => {
-    _allCycles = data;
-    _renderCyclesTable(_applySort('cyclesTable', _allCycles));
-  });
-}
-
-function _renderCyclesTable(cycles) {
-  _cyclesRows = cycles;
-  const admin = _isAdmin();
-  const totalPages = Math.max(1, Math.ceil(cycles.length / _cyclesPageSize));
-  _cyclesPage = Math.max(0, Math.min(_cyclesPage, totalPages - 1));
-  const pageRows = cycles.slice(_cyclesPage * _cyclesPageSize, (_cyclesPage + 1) * _cyclesPageSize);
-  _renderTable('cyclesBody', pageRows, {
-    colspan: 6,
-    emptyKey: 'no_cycles',
-    rowFn: c => `
+const _cyclesPag = _makePaginator(
+  { container: 'cyclesPagination', prev: 'cyclesPrevBtn', next: 'cyclesNextBtn', pageSize: 'cyclesPageSize', label: 'cyclesPageLabel' },
+  rows => {
+    const admin = _isAdmin();
+    _renderTable('cyclesBody', rows, {
+      colspan: 6,
+      emptyKey: 'no_cycles',
+      rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
       <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
       <td>${c.start_date}</td>
@@ -2388,15 +2373,21 @@ function _renderCyclesTable(cycles) {
         <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`,
-  });
-  const pg = document.getElementById('cyclesPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('cyclesPageLabel').textContent = `${_t('page.label')} ${_cyclesPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('cyclesPrevBtn').disabled = _cyclesPage === 0;
-    document.getElementById('cyclesNextBtn').disabled = _cyclesPage >= totalPages - 1;
+    });
   }
+);
+
+async function loadCyclesTable() {
+  _cyclesPag.reset();
+  const showArchived = document.getElementById('showArchivedCycles')?.checked;
+  const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
+  await _loadTable(url, data => {
+    _allCycles = data;
+    _renderCyclesTable(_applySort('cyclesTable', _allCycles));
+  });
 }
+
+function _renderCyclesTable(cycles) { _cyclesPag.render(cycles); }
 
 function toggleCycleLock(id, isClosed) {
   confirmDialog(_t(isClosed ? 'confirm.unlock_cycle' : 'confirm.lock_cycle'), async () => {
@@ -2469,14 +2460,11 @@ document.getElementById('cycleModalClose').addEventListener('click', closeCycleM
 document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
 
 document.getElementById('cycleSearch').addEventListener('input', e => {
-  _cyclesPage = 0;
+  _cyclesPag.reset();
   const q = e.target.value.toLowerCase();
   const filtered = q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles;
   _renderCyclesTable(_applySort('cyclesTable', filtered));
 });
-document.getElementById('cyclesPrevBtn')?.addEventListener('click', () => { _cyclesPage--; _renderCyclesTable(_cyclesRows); });
-document.getElementById('cyclesNextBtn')?.addEventListener('click', () => { _cyclesPage++; _renderCyclesTable(_cyclesRows); });
-document.getElementById('cyclesPageSize')?.addEventListener('change', e => { _cyclesPageSize = +e.target.value; _cyclesPage = 0; _renderCyclesTable(_cyclesRows); });
 
 function deleteCycle(id, name, count) {
   if (count > 0) { notify(_t('msg.cycle_has_records').replace('{name}', name).replace('{count}', count), 'error'); return; }
@@ -2522,15 +2510,42 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
 // ---------------------------------------------------------------------------
 let _projectEditId  = null;
 let _allProjects    = [];
-let _projectsPage   = 0;
-let _projectsPageSize = 25;
-let _projectsRows   = [];
 let _consumedByPep  = {};
 
 let _baselineByProject = {};   // project_id → active ProjectBaselineOut | null
 
+const _projectsPag = _makePaginator(
+  { container: 'projectsPagination', prev: 'projectsPrevBtn', next: 'projectsNextBtn', pageSize: 'projectsPageSize', label: 'projectsPageLabel' },
+  rows => _renderTable('projectsBody', rows, {
+    colspan: 8,
+    emptyKey: 'no_projects',
+    rowFn: p => {
+      const bl = _baselineByProject[p.id];
+      const blBadge = bl
+        ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
+        : '';
+      return `
+    <tr>
+      <td><code>${escHtml(p.pep_wbs)}</code></td>
+      <td>${escHtml(p.name || '—')}</td>
+      <td>${escHtml(p.client || '—')}</td>
+      <td>${escHtml(p.manager || '—')}</td>
+      <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
+      <td>${_buildDatesCell(p)}</td>
+      <td><span class="badge-status ${p.status}">${p.status}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
+        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
+      </div></td>
+    </tr>`;
+    },
+  })
+);
+
 async function loadProjectsTable() {
-  _projectsPage = 0;
+  _projectsPag.reset();
   try {
     const [projects, health] = await Promise.all([
       apiFetch('/api/projects'),
@@ -2581,45 +2596,7 @@ function _buildDatesCell(p) {
   return parts.length ? `<span style="font-size:.8rem;color:#94a3b8">${parts.join(' ')}</span>` : '—';
 }
 
-function _renderProjectsTable(projects) {
-  _projectsRows = projects;
-  const totalPages = Math.max(1, Math.ceil(projects.length / _projectsPageSize));
-  _projectsPage = Math.max(0, Math.min(_projectsPage, totalPages - 1));
-  const pageRows = projects.slice(_projectsPage * _projectsPageSize, (_projectsPage + 1) * _projectsPageSize);
-  _renderTable('projectsBody', pageRows, {
-    colspan: 8,
-    emptyKey: 'no_projects',
-    rowFn: p => {
-      const bl = _baselineByProject[p.id];
-      const blBadge = bl
-        ? `<span class="badge-baseline active" title="${_t('baseline.locked_at')} ${_fmtDateShort(bl.locked_at)} ${_t('baseline.locked_by')} ${escHtml(bl.locked_by || '?')}${bl.label ? ' — ' + escHtml(bl.label) : ''}">${_t('baseline.badge')}</span>`
-        : '';
-      return `
-    <tr>
-      <td><code>${escHtml(p.pep_wbs)}</code></td>
-      <td>${escHtml(p.name || '—')}</td>
-      <td>${escHtml(p.client || '—')}</td>
-      <td>${escHtml(p.manager || '—')}</td>
-      <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
-      <td>${_buildDatesCell(p)}</td>
-      <td><span class="badge-status ${p.status}">${p.status}</span></td>
-      <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
-        <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
-        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
-      </div></td>
-    </tr>`;
-    },
-  });
-  const pg = document.getElementById('projectsPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('projectsPageLabel').textContent = `${_t('page.label')} ${_projectsPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('projectsPrevBtn').disabled = _projectsPage === 0;
-    document.getElementById('projectsNextBtn').disabled = _projectsPage >= totalPages - 1;
-  }
-}
+function _renderProjectsTable(projects) { _projectsPag.render(projects); }
 
 function openProjectModal(id = null) {
   _projectEditId = id;
@@ -2691,7 +2668,7 @@ document.getElementById('projectModalClose').addEventListener('click', closeProj
 document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
 
 document.getElementById('projectSearch').addEventListener('input', e => {
-  _projectsPage = 0;
+  _projectsPag.reset();
   const q = e.target.value.toLowerCase();
   const filtered = q ? _allProjects.filter(p =>
     (p.pep_wbs || '').toLowerCase().includes(q) ||
@@ -2700,9 +2677,6 @@ document.getElementById('projectSearch').addEventListener('input', e => {
   ) : _allProjects;
   _renderProjectsTable(_applySort('projectsTable', filtered));
 });
-document.getElementById('projectsPrevBtn')?.addEventListener('click', () => { _projectsPage--; _renderProjectsTable(_projectsRows); });
-document.getElementById('projectsNextBtn')?.addEventListener('click', () => { _projectsPage++; _renderProjectsTable(_projectsRows); });
-document.getElementById('projectsPageSize')?.addEventListener('change', e => { _projectsPageSize = +e.target.value; _projectsPage = 0; _renderProjectsTable(_projectsRows); });
 
 function deleteProject(id, pep) {
   confirmDialog(_t('confirm.delete_project'), async () => {
@@ -2932,13 +2906,7 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
 // Team / RateCard management
 // ---------------------------------------------------------------------------
 let _allSeniorityLevels = [];
-let _seniorityPage     = 0;
-let _seniorityPageSize = 25;
-let _seniorityRows     = [];
 let _allRateCards       = [];
-let _rateCardPage      = 0;
-let _rateCardPageSize  = 25;
-let _rateCardRows      = [];
 let _allTeam            = [];
 let _seniorityEditId    = null;
 let _rateCardEditId     = null;
@@ -2949,12 +2917,9 @@ async function loadTeamTab() {
   await loadTeamTable();
 }
 
-function _renderSeniorityTable(rows) {
-  _seniorityRows = rows;
-  const totalPages = Math.max(1, Math.ceil(rows.length / _seniorityPageSize));
-  _seniorityPage = Math.max(0, Math.min(_seniorityPage, totalPages - 1));
-  const pageRows = rows.slice(_seniorityPage * _seniorityPageSize, (_seniorityPage + 1) * _seniorityPageSize);
-  _renderTable('seniorityBody', pageRows, {
+const _seniorityPag = _makePaginator(
+  { container: 'seniorityPagination', prev: 'seniorityPrevBtn', next: 'seniorityNextBtn', pageSize: 'seniorityPageSize', label: 'seniorityPageLabel' },
+  rows => _renderTable('seniorityBody', rows, {
     colspan: 2,
     emptyKey: 'no_seniority',
     rowFn: l => `
@@ -2965,30 +2930,22 @@ function _renderSeniorityTable(rows) {
         <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`,
-  });
-  const pg = document.getElementById('seniorityPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('seniorityPageLabel').textContent = `${_t('page.label')} ${_seniorityPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('seniorityPrevBtn').disabled = _seniorityPage === 0;
-    document.getElementById('seniorityNextBtn').disabled = _seniorityPage >= totalPages - 1;
-  }
-}
+  })
+);
+
+function _renderSeniorityTable(rows) { _seniorityPag.render(rows); }
 
 async function loadSeniorityLevels() {
-  _seniorityPage = 0;
+  _seniorityPag.reset();
   await _loadTable('/api/seniority-levels', data => {
     _allSeniorityLevels = data;
     _renderSeniorityTable(_applySort('seniorityTable', _allSeniorityLevels));
   });
 }
 
-function _renderRateCardsTable(rows) {
-  _rateCardRows = rows;
-  const totalPages = Math.max(1, Math.ceil(rows.length / _rateCardPageSize));
-  _rateCardPage = Math.max(0, Math.min(_rateCardPage, totalPages - 1));
-  const pageRows = rows.slice(_rateCardPage * _rateCardPageSize, (_rateCardPage + 1) * _rateCardPageSize);
-  _renderTable('rateCardBody', pageRows, {
+const _rateCardPag = _makePaginator(
+  { container: 'rateCardPagination', prev: 'rateCardPrevBtn', next: 'rateCardNextBtn', pageSize: 'rateCardPageSize', label: 'rateCardPageLabel' },
+  rows => _renderTable('rateCardBody', rows, {
     colspan: 5,
     emptyKey: 'no_rates',
     rowFn: c => `
@@ -3002,18 +2959,13 @@ function _renderRateCardsTable(rows) {
         <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
       </div></td>
     </tr>`,
-  });
-  const pg = document.getElementById('rateCardPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('rateCardPageLabel').textContent = `${_t('page.label')} ${_rateCardPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('rateCardPrevBtn').disabled = _rateCardPage === 0;
-    document.getElementById('rateCardNextBtn').disabled = _rateCardPage >= totalPages - 1;
-  }
-}
+  })
+);
+
+function _renderRateCardsTable(rows) { _rateCardPag.render(rows); }
 
 async function loadRateCards() {
-  _rateCardPage = 0;
+  _rateCardPag.reset();
   await _loadTable('/api/rate-cards', data => {
     _allRateCards = data;
     _renderRateCardsTable(_applySort('rateCardTable', _allRateCards));
@@ -3072,9 +3024,6 @@ document.getElementById('senioritySaveBtn').addEventListener('click', async () =
 document.getElementById('seniorityCancelBtn').addEventListener('click', closeSeniorityModal);
 document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
-document.getElementById('seniorityPrevBtn')?.addEventListener('click', () => { _seniorityPage--; _renderSeniorityTable(_seniorityRows); });
-document.getElementById('seniorityNextBtn')?.addEventListener('click', () => { _seniorityPage++; _renderSeniorityTable(_seniorityRows); });
-document.getElementById('seniorityPageSize')?.addEventListener('change', e => { _seniorityPageSize = +e.target.value; _seniorityPage = 0; _renderSeniorityTable(_seniorityRows); });
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
   if (!_allSeniorityLevels.length) { notify(_t('msg.no_levels_export'), 'info'); return; }
@@ -3155,9 +3104,6 @@ document.getElementById('rateCardSaveBtn').addEventListener('click', async () =>
 document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
 document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
-document.getElementById('rateCardPrevBtn')?.addEventListener('click', () => { _rateCardPage--; _renderRateCardsTable(_rateCardRows); });
-document.getElementById('rateCardNextBtn')?.addEventListener('click', () => { _rateCardPage++; _renderRateCardsTable(_rateCardRows); });
-document.getElementById('rateCardPageSize')?.addEventListener('change', e => { _rateCardPageSize = +e.target.value; _rateCardPage = 0; _renderRateCardsTable(_rateCardRows); });
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
   if (!_allRateCards.length) { notify(_t('msg.no_rates_export'), 'info'); return; }
@@ -3444,30 +3390,16 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 // ---------------------------------------------------------------------------
 // Users management (Admin tab)
 // ---------------------------------------------------------------------------
-let _allUsers     = [];
-let _usersPage    = 0;
-let _usersPageSize = 25;
-let _usersRows    = [];
+let _allUsers = [];
 
-async function loadUsersTable() {
-  _usersPage = 0;
-  await _loadTable('/api/users', data => {
-    _allUsers = data;
-    _renderUsersTable(_applySort('usersTable', _allUsers));
-  });
-}
-
-function _renderUsersTable(users) {
-  _usersRows = users;
-  const payload = _getTokenPayload();
-  const selfId  = payload ? payload.sub : null;
-  const totalPages = Math.max(1, Math.ceil(users.length / _usersPageSize));
-  _usersPage = Math.max(0, Math.min(_usersPage, totalPages - 1));
-  const pageRows = users.slice(_usersPage * _usersPageSize, (_usersPage + 1) * _usersPageSize);
-  _renderTable('usersBody', pageRows, {
-    colspan: 3,
-    emptyKey: 'no_users',
-    rowFn: u => `
+const _usersPag = _makePaginator(
+  { container: 'usersPagination', prev: 'usersPrevBtn', next: 'usersNextBtn', pageSize: 'usersPageSize', label: 'usersPageLabel' },
+  rows => {
+    const selfId = _getTokenPayload()?.sub ?? null;
+    _renderTable('usersBody', rows, {
+      colspan: 3,
+      emptyKey: 'no_users',
+      rowFn: u => `
     <tr>
       <td>${escHtml(u.username)}</td>
       <td><span class="badge-status ${u.role === 'admin' ? 'ativo' : 'quarantine'}">${u.role === 'admin' ? _t('lbl.admin') : _t('lbl.user')}</span></td>
@@ -3476,15 +3408,19 @@ function _renderUsersTable(users) {
         ${u.username !== selfId ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, ${escHtml(JSON.stringify(u.username))})">${_t('btn.delete')}</button>` : ''}
       </div></td>
     </tr>`,
-  });
-  const pg = document.getElementById('usersPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('usersPageLabel').textContent = `${_t('page.label')} ${_usersPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('usersPrevBtn').disabled = _usersPage === 0;
-    document.getElementById('usersNextBtn').disabled = _usersPage >= totalPages - 1;
+    });
   }
+);
+
+async function loadUsersTable() {
+  _usersPag.reset();
+  await _loadTable('/api/users', data => {
+    _allUsers = data;
+    _renderUsersTable(_applySort('usersTable', _allUsers));
+  });
 }
+
+function _renderUsersTable(users) { _usersPag.render(users); }
 
 document.getElementById('newUserBtn').addEventListener('click', () => {
   document.getElementById('userUsernameInput').value = '';
@@ -3549,29 +3485,10 @@ function deleteUser(id, username) {
 // ---------------------------------------------------------------------------
 
 let _auditLogCache = [];
-let _auditPage     = 0;
-let _auditPageSize = 25;
-let _auditRows     = [];
 
-async function loadAuditLog() {
-  _auditPage = 0;
-  const entity = document.getElementById('auditEntityFilter').value;
-  const action = document.getElementById('auditActionFilter').value;
-  const params = new URLSearchParams({ limit: 200 });
-  if (entity) params.set('entity', entity);
-  if (action) params.set('action', action);
-  await _loadTable(`/api/audit-log?${params}`, data => {
-    _auditLogCache = data;
-    _renderAuditLog(_applySort('auditTable', _auditLogCache));
-  });
-}
-
-function _renderAuditLog(rows) {
-  _auditRows = rows;
-  const totalPages = Math.max(1, Math.ceil(rows.length / _auditPageSize));
-  _auditPage = Math.max(0, Math.min(_auditPage, totalPages - 1));
-  const pageRows = rows.slice(_auditPage * _auditPageSize, (_auditPage + 1) * _auditPageSize);
-  _renderTable('auditBody', pageRows, {
+const _auditPag = _makePaginator(
+  { container: 'auditPagination', prev: 'auditPrevBtn', next: 'auditNextBtn', pageSize: 'auditPageSize', label: 'auditPageLabel' },
+  rows => _renderTable('auditBody', rows, {
     colspan: 6,
     emptyKey: 'no_audit',
     rowFn: r => {
@@ -3592,25 +3509,27 @@ function _renderAuditLog(rows) {
       <td style="font-size:.78rem;color:#94a3b8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
     </tr>`;
     },
+  })
+);
+
+async function loadAuditLog() {
+  _auditPag.reset();
+  const entity = document.getElementById('auditEntityFilter').value;
+  const action = document.getElementById('auditActionFilter').value;
+  const params = new URLSearchParams({ limit: 200 });
+  if (entity) params.set('entity', entity);
+  if (action) params.set('action', action);
+  await _loadTable(`/api/audit-log?${params}`, data => {
+    _auditLogCache = data;
+    _renderAuditLog(_applySort('auditTable', _auditLogCache));
   });
-  const pg = document.getElementById('auditPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('auditPageLabel').textContent = `${_t('page.label')} ${_auditPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('auditPrevBtn').disabled = _auditPage === 0;
-    document.getElementById('auditNextBtn').disabled = _auditPage >= totalPages - 1;
-  }
 }
+
+function _renderAuditLog(rows) { _auditPag.render(rows); }
 
 document.getElementById('auditRefreshBtn').addEventListener('click', loadAuditLog);
 document.getElementById('auditEntityFilter').addEventListener('change', loadAuditLog);
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
-document.getElementById('auditPrevBtn')?.addEventListener('click', () => { _auditPage--; _renderAuditLog(_auditRows); });
-document.getElementById('auditNextBtn')?.addEventListener('click', () => { _auditPage++; _renderAuditLog(_auditRows); });
-document.getElementById('auditPageSize')?.addEventListener('change', e => { _auditPageSize = +e.target.value; _auditPage = 0; _renderAuditLog(_auditRows); });
-document.getElementById('usersPrevBtn')?.addEventListener('click', () => { _usersPage--; _renderUsersTable(_usersRows); });
-document.getElementById('usersNextBtn')?.addEventListener('click', () => { _usersPage++; _renderUsersTable(_usersRows); });
-document.getElementById('usersPageSize')?.addEventListener('change', e => { _usersPageSize = +e.target.value; _usersPage = 0; _renderUsersTable(_usersRows); });
 
 // ---------------------------------------------------------------------------
 // Chart series names (for color picker UI)
@@ -3984,26 +3903,10 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 // My Area — Histórico sub-tab
 // ---------------------------------------------------------------------------
 let _myHistoryCache = [];
-let _historyPage     = 0;
-let _historyPageSize = 25;
-let _historyRows     = [];
 
-async function loadMyHistory() {
-  _historyPage = 0;
-  await _loadTable('/api/upload-history', data => {
-    _myHistoryCache = data;
-    _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
-  });
-}
-
-function _renderMyHistory(rows) {
-  const filter = document.getElementById('myHistoryFilter')?.value || '';
-  const filtered = filter ? rows.filter(r => r.status === filter) : rows;
-  _historyRows = filtered;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / _historyPageSize));
-  _historyPage = Math.max(0, Math.min(_historyPage, totalPages - 1));
-  const pageRows = filtered.slice(_historyPage * _historyPageSize, (_historyPage + 1) * _historyPageSize);
-  _renderTable('myHistoryBody', pageRows, {
+const _historyPag = _makePaginator(
+  { container: 'myHistoryPagination', prev: 'myHistoryPrevBtn', next: 'myHistoryNextBtn', pageSize: 'myHistoryPageSize', label: 'myHistoryPageLabel' },
+  rows => _renderTable('myHistoryBody', rows, {
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
     rowFn: r => {
@@ -4026,25 +3929,33 @@ function _renderMyHistory(rows) {
       <td>${escHtml(_t(statusKey))}</td>
     </tr>`;
     },
+  })
+);
+
+async function loadMyHistory() {
+  _historyPag.reset();
+  await _loadTable('/api/upload-history', data => {
+    _myHistoryCache = data;
+    _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
   });
-  const pg = document.getElementById('myHistoryPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('myHistoryPageLabel').textContent = `${_t('page.label')} ${_historyPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('myHistoryPrevBtn').disabled = _historyPage === 0;
-    document.getElementById('myHistoryNextBtn').disabled = _historyPage >= totalPages - 1;
-  }
 }
 
-document.getElementById('myHistoryFilter')?.addEventListener('change', () => { _historyPage = 0; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
-document.getElementById('myHistoryPrevBtn')?.addEventListener('click', () => { _historyPage--; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
-document.getElementById('myHistoryNextBtn')?.addEventListener('click', () => { _historyPage++; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
-document.getElementById('myHistoryPageSize')?.addEventListener('change', e => { _historyPageSize = +e.target.value; _historyPage = 0; _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache)); });
+function _renderMyHistory(rows) {
+  const filter = document.getElementById('myHistoryFilter')?.value || '';
+  const filtered = filter ? rows.filter(r => r.status === filter) : rows;
+  _historyPag.render(filtered);
+}
+
+document.getElementById('myHistoryFilter')?.addEventListener('change', () => {
+  _historyPag.reset();
+  _renderMyHistory(_applySort('myHistoryTable', _myHistoryCache));
+});
 document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
-  if (!_historyRows.length) { notify(_t('msg.no_import_sessions'), 'info'); return; }
+  const rows = _historyPag.getRows();
+  if (!rows.length) { notify(_t('msg.no_import_sessions'), 'info'); return; }
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
   const header = ['Quando','Arquivo','Enviado por','Inseridos','Ignorados','Quarentena','Avisos','Infos','Status'];
-  const lines = _historyRows.map(r => {
+  const lines = rows.map(r => {
     const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return [esc(when), esc(r.source_file), esc(r.uploaded_by_username),
       r.records_inserted, r.records_skipped, r.quarantine_added,
@@ -4060,12 +3971,9 @@ document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
 // My Area — Quarentena sub-tab
 // ---------------------------------------------------------------------------
 let _myQrCache = [];
-let _qrPage     = 0;
-let _qrPageSize = 25;
-let _qrRows     = [];
 
 async function loadMyQr() {
-  _qrPage = 0;
+  _myQrPag.reset();
   const filter = document.getElementById('myQrFilter')?.value;
   const params = new URLSearchParams({ limit: 500 });
   if (filter === 'pending')   params.set('review_status', 'pending');
@@ -4078,23 +3986,19 @@ async function loadMyQr() {
   });
 }
 
-function _renderMyQrTable(rows) {
-  _qrRows = rows;
-  const tbody = document.getElementById('myQrBody');
-  if (!tbody) return;
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
-    const pg = document.getElementById('myQrPagination');
-    if (pg) pg.hidden = true;
-    return;
-  }
-  const totalPages = Math.max(1, Math.ceil(rows.length / _qrPageSize));
-  _qrPage = Math.max(0, Math.min(_qrPage, totalPages - 1));
-  const pageRows = rows.slice(_qrPage * _qrPageSize, (_qrPage + 1) * _qrPageSize);
-  tbody.innerHTML = pageRows.map(r => {
-    const raw  = r.raw_data || {};
-    const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-    return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
+const _myQrPag = _makePaginator(
+  { container: 'myQrPagination', prev: 'myQrPrevBtn', next: 'myQrNextBtn', pageSize: 'myQrPageSize', label: 'myQrPageLabel' },
+  rows => {
+    const tbody = document.getElementById('myQrBody');
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const raw  = r.raw_data || {};
+      const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
       <td style="font-size:.78rem">${escHtml(raw['Data'] || '—')}</td>
@@ -4104,20 +4008,13 @@ function _renderMyQrTable(rows) {
           title="${escHtml(r.quarantine_reason)}">${escHtml(r.quarantine_reason)}</td>
       <td>${_qrStatusBadge(r.review_status)}</td>
     </tr>`;
-  }).join('');
-  const pg = document.getElementById('myQrPagination');
-  if (pg) {
-    pg.hidden = totalPages <= 1;
-    document.getElementById('myQrPageLabel').textContent = `${_t('page.label')} ${_qrPage + 1} ${_t('page.of')} ${totalPages}`;
-    document.getElementById('myQrPrevBtn').disabled = _qrPage === 0;
-    document.getElementById('myQrNextBtn').disabled = _qrPage >= totalPages - 1;
+    }).join('');
   }
-}
+);
+
+function _renderMyQrTable(rows) { _myQrPag.render(rows); }
 
 document.getElementById('myQrFilter')?.addEventListener('change', loadMyQr);
-document.getElementById('myQrPrevBtn')?.addEventListener('click', () => { _qrPage--; _renderMyQrTable(_qrRows); });
-document.getElementById('myQrNextBtn')?.addEventListener('click', () => { _qrPage++; _renderMyQrTable(_qrRows); });
-document.getElementById('myQrPageSize')?.addEventListener('change', e => { _qrPageSize = +e.target.value; _qrPage = 0; _renderMyQrTable(_qrRows); });
 
 // ---------------------------------------------------------------------------
 // My Area — Exportar quarentena (item 5)
