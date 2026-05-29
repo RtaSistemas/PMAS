@@ -521,6 +521,12 @@
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
         <tbody id="seniorityBody"><tr><td colspan="2" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="seniorityPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="seniorityPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="seniorityPageLabel" class="hint"></span>
+        <button type="button" id="seniorityNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
 
     <div class="card">
@@ -547,6 +553,12 @@
         </thead>
         <tbody id="rateCardBody"><tr><td colspan="5" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="rateCardPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="rateCardPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="rateCardPageLabel" class="hint"></span>
+        <button type="button" id="rateCardNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
 
     <div class="card">
@@ -757,6 +769,12 @@
           </tr></thead>
           <tbody id="myHistoryBody"><tr><td colspan="9" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        <div id="myHistoryPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+          <button type="button" id="myHistoryPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+          <span id="myHistoryPageLabel" class="hint"></span>
+          <button type="button" id="myHistoryNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+        </div>
       </div>
 
       <!-- Quarantine -->

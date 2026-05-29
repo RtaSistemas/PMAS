@@ -311,6 +311,7 @@ main {
 .btn-warning:hover { background: rgba(245,158,11,0.08); }
 .btn-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.75rem; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.input-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.4rem; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
 
 /* ── Filter grid ─────────────────────────────────────────────── */
 .filter-grid {
