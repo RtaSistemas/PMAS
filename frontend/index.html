@@ -464,6 +464,12 @@
         </thead>
         <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="projectsPageLabel" class="hint"></span>
+        <button type="button" id="projectsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
     <div class="card">
       <div class="section-header">
@@ -497,6 +503,12 @@
         </thead>
         <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="cyclesPageLabel" class="hint"></span>
+        <button type="button" id="cyclesNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
   </section>
 

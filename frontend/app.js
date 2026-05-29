@@ -2350,9 +2350,13 @@ function _buildPortfolioStatsRow(health, trends) {
 // Cycles management
 // ---------------------------------------------------------------------------
 let _cycleEditId = null;
-let _allCycles   = [];
+let _allCycles    = [];
+let _cyclesPage   = 0;
+let _cyclesPageSize = 25;
+let _cyclesRows   = [];
 
 async function loadCyclesTable() {
+  _cyclesPage = 0;
   const showArchived = document.getElementById('showArchivedCycles')?.checked;
   const url = showArchived ? '/api/cycles?include_archived=true' : '/api/cycles';
   await _loadTable(url, data => {
@@ -2362,8 +2366,12 @@ async function loadCyclesTable() {
 }
 
 function _renderCyclesTable(cycles) {
+  _cyclesRows = cycles;
   const admin = _isAdmin();
-  _renderTable('cyclesBody', cycles, {
+  const totalPages = Math.max(1, Math.ceil(cycles.length / _cyclesPageSize));
+  _cyclesPage = Math.max(0, Math.min(_cyclesPage, totalPages - 1));
+  const pageRows = cycles.slice(_cyclesPage * _cyclesPageSize, (_cyclesPage + 1) * _cyclesPageSize);
+  _renderTable('cyclesBody', pageRows, {
     colspan: 6,
     emptyKey: 'no_cycles',
     rowFn: c => `
@@ -2381,6 +2389,13 @@ function _renderCyclesTable(cycles) {
       </div></td>
     </tr>`,
   });
+  const pg = document.getElementById('cyclesPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('cyclesPageLabel').textContent = `${_t('page.label')} ${_cyclesPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('cyclesPrevBtn').disabled = _cyclesPage === 0;
+    document.getElementById('cyclesNextBtn').disabled = _cyclesPage >= totalPages - 1;
+  }
 }
 
 function toggleCycleLock(id, isClosed) {
@@ -2454,10 +2469,14 @@ document.getElementById('cycleModalClose').addEventListener('click', closeCycleM
 document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
 
 document.getElementById('cycleSearch').addEventListener('input', e => {
+  _cyclesPage = 0;
   const q = e.target.value.toLowerCase();
   const filtered = q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles;
   _renderCyclesTable(_applySort('cyclesTable', filtered));
 });
+document.getElementById('cyclesPrevBtn')?.addEventListener('click', () => { _cyclesPage--; _renderCyclesTable(_cyclesRows); });
+document.getElementById('cyclesNextBtn')?.addEventListener('click', () => { _cyclesPage++; _renderCyclesTable(_cyclesRows); });
+document.getElementById('cyclesPageSize')?.addEventListener('change', e => { _cyclesPageSize = +e.target.value; _cyclesPage = 0; _renderCyclesTable(_cyclesRows); });
 
 function deleteCycle(id, name, count) {
   if (count > 0) { notify(_t('msg.cycle_has_records').replace('{name}', name).replace('{count}', count), 'error'); return; }
@@ -2503,11 +2522,15 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
 // ---------------------------------------------------------------------------
 let _projectEditId  = null;
 let _allProjects    = [];
+let _projectsPage   = 0;
+let _projectsPageSize = 25;
+let _projectsRows   = [];
 let _consumedByPep  = {};
 
 let _baselineByProject = {};   // project_id → active ProjectBaselineOut | null
 
 async function loadProjectsTable() {
+  _projectsPage = 0;
   try {
     const [projects, health] = await Promise.all([
       apiFetch('/api/projects'),
@@ -2559,7 +2582,11 @@ function _buildDatesCell(p) {
 }
 
 function _renderProjectsTable(projects) {
-  _renderTable('projectsBody', projects, {
+  _projectsRows = projects;
+  const totalPages = Math.max(1, Math.ceil(projects.length / _projectsPageSize));
+  _projectsPage = Math.max(0, Math.min(_projectsPage, totalPages - 1));
+  const pageRows = projects.slice(_projectsPage * _projectsPageSize, (_projectsPage + 1) * _projectsPageSize);
+  _renderTable('projectsBody', pageRows, {
     colspan: 8,
     emptyKey: 'no_projects',
     rowFn: p => {
@@ -2585,6 +2612,13 @@ function _renderProjectsTable(projects) {
     </tr>`;
     },
   });
+  const pg = document.getElementById('projectsPagination');
+  if (pg) {
+    pg.hidden = totalPages <= 1;
+    document.getElementById('projectsPageLabel').textContent = `${_t('page.label')} ${_projectsPage + 1} ${_t('page.of')} ${totalPages}`;
+    document.getElementById('projectsPrevBtn').disabled = _projectsPage === 0;
+    document.getElementById('projectsNextBtn').disabled = _projectsPage >= totalPages - 1;
+  }
 }
 
 function openProjectModal(id = null) {
@@ -2657,6 +2691,7 @@ document.getElementById('projectModalClose').addEventListener('click', closeProj
 document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
 
 document.getElementById('projectSearch').addEventListener('input', e => {
+  _projectsPage = 0;
   const q = e.target.value.toLowerCase();
   const filtered = q ? _allProjects.filter(p =>
     (p.pep_wbs || '').toLowerCase().includes(q) ||
@@ -2665,6 +2700,9 @@ document.getElementById('projectSearch').addEventListener('input', e => {
   ) : _allProjects;
   _renderProjectsTable(_applySort('projectsTable', filtered));
 });
+document.getElementById('projectsPrevBtn')?.addEventListener('click', () => { _projectsPage--; _renderProjectsTable(_projectsRows); });
+document.getElementById('projectsNextBtn')?.addEventListener('click', () => { _projectsPage++; _renderProjectsTable(_projectsRows); });
+document.getElementById('projectsPageSize')?.addEventListener('change', e => { _projectsPageSize = +e.target.value; _projectsPage = 0; _renderProjectsTable(_projectsRows); });
 
 function deleteProject(id, pep) {
   confirmDialog(_t('confirm.delete_project'), async () => {
