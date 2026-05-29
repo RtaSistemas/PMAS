@@ -20,7 +20,11 @@ from backend.app.services.evm import (
     compute_sv,
     compute_tcpi,
     compute_vac,
+    cv_label,
     freeze_costs,
+    tcpi_label,
+    vac_color,
+    vac_label,
 )
 
 
@@ -325,3 +329,69 @@ class TestClassifyHealth:
         assert classify_health(85.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "warning"
         assert classify_health(90.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"
         assert classify_health(95.0, 100.0, warning_threshold=0.8, critical_threshold=0.9) == "overrun"
+
+
+# ── tcpi_label ────────────────────────────────────────────────────────────────
+
+class TestTcpiLabel:
+    def test_achievable(self):
+        assert tcpi_label(0.95) == "Meta alcançável"
+
+    def test_exactly_1(self):
+        assert tcpi_label(1.0) == "Meta alcançável"
+
+    def test_tight(self):
+        assert tcpi_label(1.05) == "Meta apertada"
+
+    def test_exactly_1_1(self):
+        assert tcpi_label(1.1) == "Meta apertada"
+
+    def test_unachievable(self):
+        assert tcpi_label(1.25) == "Meta inviável no ritmo atual"
+
+    def test_none_returns_none(self):
+        assert tcpi_label(None) is None
+
+
+# ── cv_label(0) fix ───────────────────────────────────────────────────────────
+
+class TestCvLabelFix:
+    def test_zero_cv_is_no_orcamento(self):
+        assert cv_label(0) == "No orçamento"
+
+    def test_zero_cv_not_no_prazo(self):
+        assert cv_label(0) != "No prazo"
+
+    def test_positive_cv(self):
+        assert "Economia" in cv_label(1000.0)
+
+    def test_negative_cv(self):
+        assert "Estouro" in cv_label(-500.0)
+
+
+# ── vac_label / vac_color ─────────────────────────────────────────────────────
+
+class TestVacLabelColor:
+    def test_positive_vac_label(self):
+        assert vac_label(5000.0) == "Economia projetada"
+
+    def test_negative_vac_label(self):
+        assert vac_label(-3000.0) == "Estouro projetado"
+
+    def test_zero_vac_label(self):
+        assert vac_label(0) == "No orçamento"
+
+    def test_none_label(self):
+        assert vac_label(None) is None
+
+    def test_positive_vac_color_success(self):
+        assert vac_color(5000.0) == "success"
+
+    def test_negative_vac_color_danger(self):
+        assert vac_color(-3000.0) == "danger"
+
+    def test_zero_vac_color_success(self):
+        assert vac_color(0) == "success"
+
+    def test_none_color(self):
+        assert vac_color(None) is None

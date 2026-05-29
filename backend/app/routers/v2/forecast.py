@@ -46,6 +46,9 @@ from backend.app.services.evm import (
     sv_color,
     sv_label,
     tcpi_color,
+    tcpi_label,
+    vac_color,
+    vac_label,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -222,14 +225,31 @@ def get_forecast(
         if len(future) >= n:
             est_completion = future[n - 1].name
 
+    # Uncertainty band from 3-cycle min/max throughput and cost rate (R-12)
+    eac_low = eac_high = None
+    est_cycles_optimistic = est_cycles_pessimistic = None
+    if est_cycles is not None and remaining_hours and remaining_hours > 0:
+        recent_data = cycle_data[-3:]
+        h_vals = [h for _, _, h, _ in recent_data if h > 0]
+        rates  = [c / h for _, _, h, c in recent_data if h > 0]
+        if len(h_vals) >= 2:
+            est_cycles_optimistic  = round(remaining_hours / max(h_vals), 1)
+            est_cycles_pessimistic = round(remaining_hours / min(h_vals), 1)
+        if len(rates) >= 2 and actual_cost > 0:
+            eac_low  = round(actual_cost + remaining_hours * min(rates), 2)
+            eac_high = round(actual_cost + remaining_hours * max(rates), 2)
+
     # For closed projects: freeze metrics at final state
     if is_closed:
         remaining_hours = 0.0
         remaining_cost  = 0.0
         tcpi            = None
-        eac_schedule    = None
-        est_cycles      = None
-        est_completion  = None
+        eac_schedule           = None
+        est_cycles             = None
+        est_completion         = None
+        eac_low = eac_high     = None
+        est_cycles_optimistic  = None
+        est_cycles_pessimistic = None
         # EAC = AC (actual final cost, not a projection)
         if actual_cost > 0:
             eac = round(actual_cost, 2)
@@ -253,15 +273,22 @@ def get_forecast(
         "spi_label":                  spi_label(spi),
         "spi_color":                  spi_color(spi),
         "eac":                        eac,
+        "eac_low":                    eac_low,
+        "eac_high":                   eac_high,
         "eac_schedule":               eac_schedule,
         "eac_method":                 "cpi_spi" if eac_schedule is not None else "cpi",
         "vac":                        vac,
+        "vac_label":                  vac_label(vac),
+        "vac_color":                  vac_color(vac),
         "cv":                         cv,
         "tcpi":                       tcpi,
         "tcpi_color":                 tcpi_color(tcpi),
+        "tcpi_label":                 tcpi_label(tcpi),
         "sv":                         sv,
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
+        "est_cycles_optimistic":      est_cycles_optimistic,
+        "est_cycles_pessimistic":     est_cycles_pessimistic,
         "estimated_completion_cycle": est_completion,
         "is_closed":                  is_closed,
         "start_date":                 str(project.start_date)       if (project and project.start_date)       else None,

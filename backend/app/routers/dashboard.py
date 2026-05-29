@@ -12,6 +12,7 @@ from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, QuarantineRecord, TimesheetRecord
 from backend.app.schemas import CollaboratorTimelineItem
+from backend.app.services.ingestion import _parse_date_safe as _canonical_parse_date
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
@@ -122,10 +123,8 @@ def get_collaborator_daily(
         raw_date = raw.get("Data")
         if raw_date is None:
             continue
-        try:
-            import pandas as _pd
-            parsed = _pd.to_datetime(raw_date, dayfirst=True).date()
-        except Exception:
+        parsed = _canonical_parse_date(raw_date)
+        if parsed is None:
             continue
         if date_from <= parsed <= date_to:
             quarantine_dates.add(parsed)

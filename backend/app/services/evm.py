@@ -357,6 +357,17 @@ def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
     return "danger"
 
 
+def tcpi_label(tcpi: Optional[float]) -> Optional[str]:
+    """Human-readable TCPI label in pt-BR."""
+    if tcpi is None:
+        return None
+    if tcpi <= 1.0:
+        return "Meta alcançável"
+    if tcpi <= 1.1:
+        return "Meta apertada"
+    return "Meta inviável no ritmo atual"
+
+
 # ── Schedule status ───────────────────────────────────────────────────────────
 
 def classify_schedule_status(
@@ -420,7 +431,7 @@ def cv_label(cv: Optional[float]) -> Optional[str]:
         return f"Economia de R$ {abs(cv):,.2f}"
     if cv < 0:
         return f"Estouro de R$ {abs(cv):,.2f}"
-    return "No prazo"
+    return "No orçamento"
 
 
 def cv_color(cv: Optional[float]) -> Optional[str]:
@@ -428,6 +439,24 @@ def cv_color(cv: Optional[float]) -> Optional[str]:
     if cv is None:
         return None
     return "success" if cv >= 0 else "danger"
+
+
+def vac_label(vac: Optional[float]) -> Optional[str]:
+    """Human-readable VAC label in pt-BR."""
+    if vac is None:
+        return None
+    if vac > 0:
+        return "Economia projetada"
+    if vac < 0:
+        return "Estouro projetado"
+    return "No orçamento"
+
+
+def vac_color(vac: Optional[float]) -> Optional[str]:
+    """Return 'success' / 'danger' for Variance at Completion, or None."""
+    if vac is None:
+        return None
+    return "success" if vac >= 0 else "danger"
 
 
 # ── Budget resolution ─────────────────────────────────────────────────────────

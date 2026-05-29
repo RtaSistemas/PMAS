@@ -120,9 +120,8 @@ function _buildEvmQuadrantOption(items) {
 // _buildTreemapOption — portfolio treemap
 // ---------------------------------------------------------------------------
 function _buildTreemapOption(health, evmMode = false) {
-  const fmtVal = (v, raw = false) => evmMode
-    ? (raw ? _fmtCost(v) : _fmtCost(v * _currencyFactor))
-    : v.toFixed(1) + 'h';
+  // fmtVal always receives raw R$ values; _fmtCost applies _currencyFactor once internally
+  const fmtVal = v => evmMode ? _fmtCost(v) : v.toFixed(1) + 'h';
   return {
     ..._chartDefaults(),
     toolbox: _toolbox({}, 'PMAS-Treemap'),
@@ -137,10 +136,10 @@ function _buildTreemapOption(health, evmMode = false) {
         if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
         const consumed = evmMode ? d.total_cost : d.total_hours;
         const budget   = evmMode ? d.budget_cost : d.budget_hours;
-        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed, true)}</b>`;
+        html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
         if (budget != null) {
           const pct = (consumed / budget * 100).toFixed(1);
-          html += `<br>${_t('ch.budget')}: ${fmtVal(budget, true)} (${pct}% ${_t('tt.utilized')})`;
+          html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
         }
         if (!d.is_registered) html += `<br><span style="color:${_cssVar('--amber')}">${_t('tt.pep_not_reg')}</span>`;
         return html;
@@ -156,10 +155,11 @@ function _buildTreemapOption(health, evmMode = false) {
         show: true, fontSize: 11, color: '#f1f5f9',
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
-          const val = d ? (evmMode ? d.total_cost * _currencyFactor : d.total_hours) : 0;
+          const raw = d ? (evmMode ? d.total_cost : d.total_hours) : 0;
+          const disp = evmMode ? raw * _currencyFactor : raw;
           const valStr = evmMode
-            ? _currencySymbol + (val / 1000 >= 1 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0))
-            : val.toFixed(0) + 'h';
+            ? _currencySymbol + (disp / 1000 >= 1 ? (disp / 1000).toFixed(0) + 'k' : disp.toFixed(0))
+            : disp.toFixed(0) + 'h';
           const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
@@ -170,7 +170,7 @@ function _buildTreemapOption(health, evmMode = false) {
         upperLabel: { show: false },
       }],
       data: health.map(d => {
-        const consumed = evmMode ? d.total_cost * _currencyFactor : d.total_hours;
+        const consumed = evmMode ? d.total_cost : d.total_hours;   // raw — proportions unaffected by _currencyFactor
         const hColor = evmMode ? d.health_cost_color : d.health_hours_color;
         return {
           name: d.pep_wbs,
