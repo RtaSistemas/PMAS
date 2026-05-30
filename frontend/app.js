@@ -2962,8 +2962,9 @@ async function loadRateCards() {
   });
 }
 
-function _renderTeamTable(rows) {
-  _renderTable('teamBody', rows, {
+const _teamPag = _makePaginator(
+  { container: 'teamPagination', prev: 'teamPrevBtn', next: 'teamNextBtn', pageSize: 'teamPageSize', label: 'teamPageLabel' },
+  rows => _renderTable('teamBody', rows, {
     colspan: 4,
     emptyKey: 'no_team',
     rowFn: m => `
@@ -2973,16 +2974,20 @@ function _renderTeamTable(rows) {
       <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
     </tr>`,
-  });
-}
+  })
+);
+
+function _renderTeamTable(rows) { _teamPag.render(rows); }
 
 document.getElementById('teamSearch').addEventListener('input', e => {
+  _teamPag.reset();
   const q = e.target.value.toLowerCase();
   const filtered = q ? _allTeam.filter(t => t.name.toLowerCase().includes(q)) : _allTeam;
   _renderTeamTable(_applySort('teamTable', filtered));
 });
 
 async function loadTeamTable() {
+  _teamPag.reset();
   await _loadTable('/api/team', data => {
     _allTeam = data;
     _renderTeamTable(_applySort('teamTable', _allTeam));
