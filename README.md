@@ -626,80 +626,84 @@ Positivo → adiantado. Negativo → atrasado.
 
 ```mermaid
 flowchart TD
-    A([GET /api/v2/forecast?pep_wbs=X]) --> LOAD
+    A(["GET /api/v2/forecast?pep_wbs=X"]) --> L1
 
     subgraph LOAD["1 — Carregamento"]
-        L1[Busca Project + pep_description]
-        L2[ProjectCyclePlan por ciclo\nplan_by_cycle_start · plan_cost_by_cycle_start]
-        L3[ProjectBaseline ativa\nresolve_effective_budget\nbaseline tem precedência sobre campos do projeto]
-        L4[blended_rate = budget_cost / budget_hours\nusado quando plan_cost não está explícito]
+        L1["Busca Project + pep_description"]
+        L2["ProjectCyclePlan por ciclo\nplan_by_cycle_start / plan_cost_by_cycle_start"]
+        L3["ProjectBaseline ativa\nresolve_effective_budget\nbaseline tem precedência sobre campos do projeto"]
+        L4["blended_rate = budget_cost / budget_hours\nusado quando plan_cost não está explícito"]
         L1 --> L2 --> L3 --> L4
     end
 
     L4 --> CD["_load_cycle_data\nPepCycleSummary se disponível\nsenão TimesheetRecord bruto agrupado por ciclo"]
-    CD -->|404 se vazio| ERR([HTTP 404])
-    CD --> LOOP
+    CD -->|"404 se vazio"| ERR(["HTTP 404"])
+    CD --> LL1
 
     subgraph LOOP["2 — Loop cronológico sobre os ciclos"]
         LL1["cum_h += period_h\ncum_c += period_c"]
-        LL2["cum_ph = soma planned_hours dos ciclos ≤ cyc_start\npc_period = plan_cost explícito\n  ou planned_h × blended_rate se ausente\ncum_pc += pc_period"]
-        LL3["ev_cost_cum = compute_ev_capped\n  = min(cum_h / budget_h, 1.0) × BAC"]
-        LL4["spi_cum = compute_spi(cum_ph, cum_h)\n  se has_plan e cum_ph > 0\nsv_period = compute_sv(cum_h, cum_ph)\ncv_period = compute_cv(ev_cost_cum, cum_c)"]
-        LL5["h_delta · h_delta_pct\nc_delta · c_delta_pct"]
-        LL6["Append history item\nperiod · cumulative · planned · EV\nspi_cum · sv · cv + labels/colors"]
-        LL1 --> LL2 --> LL3 --> LL4 --> LL5 --> LL6 -->|próximo ciclo| LL1
+        LL2["cum_ph = soma planned_hours dos ciclos ate cyc_start\npc_period = plan_cost explícito\n  ou planned_h x blended_rate se ausente\ncum_pc += pc_period"]
+        LL3["ev_cost_cum = compute_ev_capped\n  = min(cum_h / budget_h, 1.0) x BAC"]
+        LL4["spi_cum = compute_spi(cum_ph, cum_h) se has_plan\nsv_period = compute_sv(cum_h, cum_ph)\ncv_period = compute_cv(ev_cost_cum, cum_c)"]
+        LL5["h_delta / h_delta_pct\nc_delta / c_delta_pct"]
+        LL6["Append history item\nperiod / cumulative / planned / EV\nspi_cum / sv / cv + labels/colors"]
+        LL1 --> LL2 --> LL3 --> LL4 --> LL5 --> LL6
+        LL6 -->|"próximo ciclo"| LL1
     end
 
-    LL6 -->|fim dos ciclos| POST
+    LL6 -->|"fim dos ciclos"| P1
 
-    subgraph POST["3 — Pós-loop"]
+    subgraph POST["3 — Pos-loop"]
         P1["consumed_hours = cum_h\nactual_cost = cum_c"]
-        P2["freeze_spi_boundary\nWalk ciclos em ordem; rastreia último ciclo\nonde cum_planned_h avançou\n→ last_actual_h · last_planned_h"]
-        P3["avg_hours = média das horas\ndos últimos 3 ciclos com dados"]
+        P2["freeze_spi_boundary\nWalk ciclos em ordem — rastreia ultimo ciclo\nonde cum_planned_h avancou\n→ last_actual_h / last_planned_h"]
+        P3["avg_hours = media das horas\ndos ultimos 3 ciclos com dados"]
         P1 --> P2 --> P3
     end
 
-    P3 --> EVM
+    P3 --> E1
 
-    subgraph EVM["4 — Indicadores EVM finais\n(somente se budget_hours · budget_cost · consumed_hours > 0)"]
+    subgraph EVM["4 — Indicadores EVM finais"]
+        EV_COND(["somente se budget_hours / budget_cost / consumed_hours > 0"])
         E1["ev_val = compute_ev_capped(consumed_h, budget_h, budget_cost)\nEV capped em BAC"]
         E2["SPI: compute_spi(last_planned_h, last_actual_h) — boundary frozen\nSV: compute_sv(last_actual_h, last_planned_h)"]
-        E3["(somente se actual_cost > 0)\nCPI = compute_cpi(ev_val, actual_cost)\nCV  = compute_cv(ev_val, actual_cost)\nTCPI = compute_tcpi(budget_cost, actual_cost, ev_val)"]
-        E4["EAC = compute_eac(budget_cost, cpi)\n  default_to_bac=True → retorna BAC se CPI=null\nEAC_schedule = compute_eac_schedule\n  AC + (BAC−EV) / (CPI×SPI)\nVAC = compute_vac(budget_cost, eac)"]
-        E1 --> E2 --> E3 --> E4
+        E3["somente se actual_cost > 0\nCPI = compute_cpi(ev_val, actual_cost)\nCV  = compute_cv(ev_val, actual_cost)\nTCPI = compute_tcpi(budget_cost, actual_cost, ev_val)"]
+        E4["EAC = compute_eac(budget_cost, cpi)\n  default_to_bac=True → retorna BAC se CPI=null\nEAC_schedule = AC + (BAC-EV) / (CPI x SPI)\nVAC = compute_vac(budget_cost, eac)"]
+        EV_COND --> E1 --> E2 --> E3 --> E4
     end
 
-    EVM --> CLOSED_CHECK["is_closed = project.status == encerrado\n  AND project.completion_date IS NOT NULL"]
+    E4 --> CLOSED_CHECK["is_closed = project.status == encerrado\n  AND project.completion_date IS NOT NULL"]
 
-    CLOSED_CHECK --> REM["remaining_hours = max(budget_h − consumed_h, 0)\nremaining_cost  = eac − actual_cost"]
+    CLOSED_CHECK --> REM["remaining_hours = max(budget_h - consumed_h, 0)\nremaining_cost  = eac - actual_cost"]
 
-    REM --> EST
+    REM --> C1
 
-    subgraph EST["5 — Estimativa de conclusão\n(somente se NOT is_closed · remaining_h > 0 · avg_hours > 0)"]
+    subgraph EST["5 — Estimativa de conclusao"]
+        EST_COND(["somente se NOT is_closed / remaining_h > 0 / avg_hours > 0"])
         C1["est_cycles = remaining_hours / avg_hours"]
-        C2["Busca próximos N ciclos cadastrados\napós o último ciclo com dados\n(N = ceil(est_cycles))"]
-        C3["est_completion = nome do N-ésimo ciclo futuro"]
-        C1 --> C2 --> C3
+        C2["Busca proximos N ciclos cadastrados\napos o ultimo ciclo com dados\n(N = ceil(est_cycles))"]
+        C3["est_completion = nome do N-esimo ciclo futuro"]
+        EST_COND --> C1 --> C2 --> C3
     end
 
-    EST --> BAND
+    C3 --> B1
 
-    subgraph BAND["6 — Banda de incerteza\n(somente se est_cycles calculado · remaining_h > 0)"]
-        B1["Últimas 3 ciclos com dados:\nh_vals = horas por ciclo não-zero\nrates  = custo/hora por ciclo não-zero"]
+    subgraph BAND["6 — Banda de incerteza"]
+        BAND_COND(["somente se est_cycles calculado / remaining_h > 0"])
+        B1["Ultimas 3 ciclos com dados:\nh_vals = horas por ciclo nao-zero\nrates  = custo/hora por ciclo nao-zero"]
         B2["Se len(h_vals) >= 2:\nest_cycles_optimistic  = remaining / max(h_vals)\nest_cycles_pessimistic = remaining / min(h_vals)"]
-        B3["Se len(rates) >= 2:\neac_low  = AC + remaining × min(rate)\neac_high = AC + remaining × max(rate)"]
-        B1 --> B2 --> B3
+        B3["Se len(rates) >= 2:\neac_low  = AC + remaining x min(rate)\neac_high = AC + remaining x max(rate)"]
+        BAND_COND --> B1 --> B2 --> B3
     end
 
-    BAND --> FREEZE
+    B3 --> F1
 
-    subgraph FREEZE["7 — Congelamento para projeto encerrado (se is_closed)"]
-        F1["remaining_hours = 0 · remaining_cost = 0\ntcpi = null · eac_schedule = null\nest_cycles = null · est_completion = null\nbanda de incerteza = null"]
-        F2["Se actual_cost > 0:\neac = actual_cost  — custo real final, não projeção\nvac = compute_vac(budget_cost, eac)\ncv  = compute_cv(ev_val, actual_cost)"]
+    subgraph FREEZE["7 — Congelamento para projeto encerrado"]
+        F1["remaining_hours = 0 / remaining_cost = 0\ntcpi = null / eac_schedule = null\nest_cycles = null / est_completion = null\nbanda de incerteza = null"]
+        F2["Se actual_cost > 0:\neac = actual_cost — custo real final, nao projecao\nvac = compute_vac(budget_cost, eac)\ncv  = compute_cv(ev_val, actual_cost)"]
         F1 --> F2
     end
 
-    FREEZE --> OUT(["JSON render-ready\nCPI · SPI · EAC · eac_schedule · eac_method\nTCPI · VAC · CV · SV\neac_low · eac_high\nest_cycles · est_cycles_optimistic/pessimistic\nest_completion · avg_hours_per_cycle\nis_closed · using_baseline\nhealth_hours · health_cost\nhistory[] com EV · SV · CV por ciclo"])
+    F2 --> OUT(["JSON render-ready\nCPI / SPI / EAC / eac_schedule / eac_method\nTCPI / VAC / CV / SV\neac_low / eac_high\nest_cycles / est_cycles_optimistic/pessimistic\nest_completion / avg_hours_per_cycle\nis_closed / using_baseline\nhealth_hours / health_cost\nhistory com EV / SV / CV por ciclo"])
 ```
 
 ### Banda de incerteza (R-12)
