@@ -256,7 +256,7 @@ document.getElementById('cpiToggleBtn').addEventListener('click', () => {
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   if (!_lastEffortData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
+  const header = `${_t('allocation.collaborator')},${_t('ch.normal_h')},${_t('ch.extra_h')},${_t('ch.standby_h')},${_t('allocation.total')}`;
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
     return `"${d.collaborator.replace(/"/g, '""')}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
@@ -971,9 +971,9 @@ function _renderCostCompositionChart(trends) {
     xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
     yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
     series: [
-      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
-      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
-      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
+      { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
+      { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
+      { name: _t('trends.standby'), type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
     ],
   }, true);
   cc.resize();
@@ -2117,9 +2117,9 @@ async function _renderCollabCalendar(name, year, month) {
         const [d_date, , n, e, s] = p.value;
         const q = quarantineDates.has(d_date) ? ' ⚠' : '';
         let tip = `<b>${d_date}</b>${q}`;
-        if (n > 0) tip += `<br/>Normal: ${n.toFixed(1)}h`;
-        if (e > 0) tip += `<br/>Extra: ${e.toFixed(1)}h`;
-        if (s > 0) tip += `<br/>Sobreaviso: ${s.toFixed(1)}h`;
+        if (n > 0) tip += `<br/>${_t('trends.normal')}: ${n.toFixed(1)}h`;
+        if (e > 0) tip += `<br/>${_t('trends.extra')}: ${e.toFixed(1)}h`;
+        if (s > 0) tip += `<br/>${_t('trends.standby')}: ${s.toFixed(1)}h`;
         return tip;
       },
     },
@@ -2962,8 +2962,9 @@ async function loadRateCards() {
   });
 }
 
-function _renderTeamTable(rows) {
-  _renderTable('teamBody', rows, {
+const _teamPag = _makePaginator(
+  { container: 'teamPagination', prev: 'teamPrevBtn', next: 'teamNextBtn', pageSize: 'teamPageSize', label: 'teamPageLabel' },
+  rows => _renderTable('teamBody', rows, {
     colspan: 4,
     emptyKey: 'no_team',
     rowFn: m => `
@@ -2973,10 +2974,20 @@ function _renderTeamTable(rows) {
       <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
     </tr>`,
-  });
-}
+  })
+);
+
+function _renderTeamTable(rows) { _teamPag.render(rows); }
+
+document.getElementById('teamSearch').addEventListener('input', e => {
+  _teamPag.reset();
+  const q = e.target.value.toLowerCase();
+  const filtered = q ? _allTeam.filter(t => t.name.toLowerCase().includes(q)) : _allTeam;
+  _renderTeamTable(_applySort('teamTable', filtered));
+});
 
 async function loadTeamTable() {
+  _teamPag.reset();
   await _loadTable('/api/team', data => {
     _allTeam = data;
     _renderTeamTable(_applySort('teamTable', _allTeam));
@@ -3402,6 +3413,15 @@ const _usersPag = _makePaginator(
   }
 );
 
+document.getElementById('userSearch').addEventListener('input', e => {
+  _usersPag.reset();
+  const q = e.target.value.toLowerCase();
+  const filtered = q ? _allUsers.filter(u =>
+    u.username.toLowerCase().includes(q) || (u.role || '').toLowerCase().includes(q)
+  ) : _allUsers;
+  _renderUsersTable(_applySort('usersTable', filtered));
+});
+
 async function loadUsersTable() {
   _usersPag.reset();
   await _loadTable('/api/users', data => {
@@ -3522,16 +3542,20 @@ document.getElementById('auditEntityFilter').addEventListener('change', loadAudi
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
 
 // ---------------------------------------------------------------------------
-// Chart series names (for color picker UI)
+// Chart series names (for color picker UI) — evaluated lazily so _t() returns
+// the active locale at call time instead of the locale at module load.
 // ---------------------------------------------------------------------------
-const _CHART_SERIES_NAMES = {
-  effortChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
-  trendsChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
-  treemapChart:  [],
-  bulletChart:   ['Planejado', 'Realizado'],
-  scatterChart:  [],
-  forecastChart: ['Realizado', 'Previsto', 'Orçamento'],
-};
+function _chartSeriesNames(chartId) {
+  const map = {
+    effortChart:   [_t('ch.normal_h'),        _t('ch.extra_h'),          _t('ch.standby_h')],
+    trendsChart:   [_t('ch.normal_h'),        _t('ch.extra_h'),          _t('ch.standby_h')],
+    treemapChart:  [],
+    bulletChart:   [_t('bullet.planned'),     _t('bullet.realized')],
+    scatterChart:  [],
+    forecastChart: [_t('forecast.realized'),  _t('forecast.projection'), _t('forecast.budget_line')],
+  };
+  return map[chartId] ?? [];
+}
 
 // ---------------------------------------------------------------------------
 // Theme presets
@@ -4820,8 +4844,8 @@ _makeSortable('projectsTable',
 );
 _makeSortable('seniorityTable',   [{key:'name',type:'str'}, null], () => _allSeniorityLevels, _renderSeniorityTable);
 _makeSortable('rateCardTable',    [{key:'seniority_level_name',type:'str'}, {key:'hourly_rate',type:'num'}, {key:'valid_from',type:'date'}, {key:'valid_to',type:'date'}, null], () => _allRateCards, _renderRateCardsTable);
-_makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => _allTeam, _renderTeamTable);
-_makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
+_makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => { const q = document.getElementById('teamSearch')?.value?.toLowerCase(); return q ? _allTeam.filter(t => t.name.toLowerCase().includes(q)) : _allTeam; }, _renderTeamTable);
+_makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => { const q = document.getElementById('userSearch')?.value?.toLowerCase(); return q ? _allUsers.filter(u => u.username.toLowerCase().includes(q) || (u.role||'').toLowerCase().includes(q)) : _allUsers; }, _renderUsersTable);
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);

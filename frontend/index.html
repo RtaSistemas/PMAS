@@ -90,7 +90,7 @@
 
 <div id="notification" role="alert" aria-live="assertive" aria-atomic="true" hidden>
   <span id="notificationText"></span>
-  <button type="button" class="notif-close" id="notificationClose" aria-label="Fechar notificação">✕</button>
+  <button type="button" class="notif-close" id="notificationClose" data-i18n-aria="notif.close">✕</button>
 </div>
 
 <!-- Ingest result panel — shown after every upload -->
@@ -621,6 +621,7 @@
           <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
+      <input type="text" id="teamSearch" class="table-search-input" data-i18n-ph="team.search_ph" placeholder="Buscar colaborador…" />
       <table class="data-table" id="teamTable">
         <thead>
           <tr>
@@ -632,6 +633,12 @@
         </thead>
         <tbody id="teamBody"><tr><td colspan="4" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      <div id="teamPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="teamPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="teamPageLabel" class="hint"></span>
+        <button type="button" id="teamNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
 
   </section>
@@ -850,6 +857,7 @@
         <h2 class="card-title" data-i18n="admin.title">Gestão de Usuários</h2>
         <button type="button" class="btn btn-primary btn-sm" id="newUserBtn" data-i18n="btn.new_user">+ Novo usuário</button>
       </div>
+      <input type="text" id="userSearch" class="table-search-input" data-i18n-ph="users.search_ph" placeholder="Buscar usuário…" />
       <table class="data-table" id="usersTable">
         <thead>
           <tr>
