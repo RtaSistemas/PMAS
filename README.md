@@ -143,7 +143,7 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    actor PM as Gestor
+    participant PM as Gestor
     participant UI as Frontend
     participant API as FastAPI
     participant ING as ingestion.py
@@ -151,22 +151,22 @@ sequenceDiagram
     participant DB as SQLite
 
     PM->>UI: Upload CSV/XLSX
-    UI->>API: POST /api/upload-timesheet (multipart)
+    UI->>API: POST /api/upload-timesheet multipart
     API->>ING: ingest_file(bytes, db)
-    ING->>DB: Lê RateCard, GlobalConfig, ValidationRules
-    ING->>EVM: freeze_costs(hours, rate, multipliers)
-    EVM-->>ING: (normal_cost, extra_cost, standby_cost)
+    ING->>DB: Le RateCard, GlobalConfig, ValidationRules
+    ING->>EVM: freeze_costs - hours, rate, multipliers
+    EVM-->>ING: normal_cost, extra_cost, standby_cost
     ING->>DB: DELETE pep+cycle → INSERT TimesheetRecord
     ING->>DB: Upsert PepCycleSummary + CollaboratorCycleSummary
-    ING->>DB: INSERT UploadSession + QuarantineRecord*
-    ING-->>API: {inserted, skipped, quarantine, warnings}
+    ING->>DB: INSERT UploadSession + QuarantineRecord
+    ING-->>API: inserted, skipped, quarantine, warnings
     API-->>UI: UploadOut JSON
 
-    PM->>UI: Abre aba Previsão
+    PM->>UI: Abre aba Previsao
     UI->>API: GET /api/v2/forecast?pep_wbs=X
-    API->>EVM: compute_cpi, compute_spi, compute_eac…
-    EVM-->>API: métricas calculadas
-    API-->>UI: JSON render-ready (labels + colors incluídos)
+    API->>EVM: compute_cpi, compute_spi, compute_eac
+    EVM-->>API: metricas calculadas
+    API-->>UI: JSON render-ready com labels e colors
     UI->>UI: Renderiza curva-S + KPIs
 ```
 
