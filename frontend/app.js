@@ -2976,6 +2976,12 @@ function _renderTeamTable(rows) {
   });
 }
 
+document.getElementById('teamSearch').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  const filtered = q ? _allTeam.filter(t => t.name.toLowerCase().includes(q)) : _allTeam;
+  _renderTeamTable(_applySort('teamTable', filtered));
+});
+
 async function loadTeamTable() {
   await _loadTable('/api/team', data => {
     _allTeam = data;
@@ -3401,6 +3407,15 @@ const _usersPag = _makePaginator(
     });
   }
 );
+
+document.getElementById('userSearch').addEventListener('input', e => {
+  _usersPag.reset();
+  const q = e.target.value.toLowerCase();
+  const filtered = q ? _allUsers.filter(u =>
+    u.username.toLowerCase().includes(q) || (u.role || '').toLowerCase().includes(q)
+  ) : _allUsers;
+  _renderUsersTable(_applySort('usersTable', filtered));
+});
 
 async function loadUsersTable() {
   _usersPag.reset();
@@ -4820,8 +4835,8 @@ _makeSortable('projectsTable',
 );
 _makeSortable('seniorityTable',   [{key:'name',type:'str'}, null], () => _allSeniorityLevels, _renderSeniorityTable);
 _makeSortable('rateCardTable',    [{key:'seniority_level_name',type:'str'}, {key:'hourly_rate',type:'num'}, {key:'valid_from',type:'date'}, {key:'valid_to',type:'date'}, null], () => _allRateCards, _renderRateCardsTable);
-_makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => _allTeam, _renderTeamTable);
-_makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => _allUsers, _renderUsersTable);
+_makeSortable('teamTable',        [{key:'name',type:'str'}, {key:'seniority_level_name',type:'str'}, {key:'current_hourly_rate',type:'num'}, null], () => { const q = document.getElementById('teamSearch')?.value?.toLowerCase(); return q ? _allTeam.filter(t => t.name.toLowerCase().includes(q)) : _allTeam; }, _renderTeamTable);
+_makeSortable('usersTable',       [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => { const q = document.getElementById('userSearch')?.value?.toLowerCase(); return q ? _allUsers.filter(u => u.username.toLowerCase().includes(q) || (u.role||'').toLowerCase().includes(q)) : _allUsers; }, _renderUsersTable);
 _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);

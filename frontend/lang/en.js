@@ -58,6 +58,8 @@ window._LANG_EN = {
     'trends.empty':'No data found. Import timesheets and create cycles to view trends.',
     'cycles.title':'Registered Cycles','btn.new_cycle':'+ New cycle',
     'cycles.search_ph':'Search by cycle name…',
+    'team.search_ph':'Search collaborator…',
+    'users.search_ph':'Search by user or role…',
     'cycles.th.name':'Name','cycles.th.start':'Start','cycles.th.end':'End',
     'cycles.th.type':'Type','cycles.th.recs':'Records',
     'projects.title':'Projects / PEPs','btn.new_project':'+ New project',
