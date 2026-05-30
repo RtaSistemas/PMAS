@@ -85,9 +85,12 @@ graph TD
             JWT["POST /api/token\n(JWT Bearer)"]
         end
         subgraph V1["Routers v1"]
+            Auth2["auth.py"]
             Cycles["cycles.py"]
             Projects["projects.py"]
             Plans["plans.py"]
+            Baselines["baselines.py"]
+            Dashboard["dashboard.py"]
             Ratecard["ratecard.py"]
             Users["users.py"]
             Quarantine["quarantine.py"]
@@ -99,6 +102,7 @@ graph TD
             Audit["auditlog.py"]
         end
         subgraph V2["Routers v2 (analytics)"]
+            Filters["v2/filters.py"]
             Effort["v2/effort.py"]
             Portfolio["v2/portfolio.py"]
             Forecast["v2/forecast.py"]
@@ -387,43 +391,55 @@ flowchart TD
     G & H --> P1
 
     subgraph P1["Fase 1 — Validação estrutural por linha"]
-        I[Parse data · nome colaborador\nhoras · PEP code/desc]
-        J{Erro?}
-        I --> J
-        J -- Q1: data inválida --> QR
-        J -- Q2: data futura --> QR
-        J -- Q8: colaborador inválido --> QR
-        J -- ok --> K[Lookup ciclo ativo para a data]
+        I1[1a Q8: nome inválido ou vazio]
+        I2[1b Q1: data não parseável]
+        I3[1c Q2: data futura]
+        I4[1d: sem ciclo ativo para a data]
+        I5[1e: horas inválidas ou ausentes]
+        I1 -- inválido --> QR
+        I1 -- ok --> I2
+        I2 -- inválido --> QR
+        I2 -- ok --> I3
+        I3 -- futura --> QR
+        I3 -- ok --> I4
+        I4 -- sem ciclo --> QR
+        I4 -- ciclo ok --> I5
+        I5 -- inválido --> QR
+        I5 -- ok --> RBAC
+        RBAC[Verifica ciclo fechado\ne projeto suspenso/encerrado]
+        RBAC -- bloqueado --> ERR([HTTP 400 / ClosedCycleError\nLockedProjectError])
     end
 
     QR[(QuarantineRecord\nstatus=pending)]
 
-    K --> P2
+    RBAC -- ok --> P2
 
-    subgraph P2["Fase 2 — Motor de ValidationRules"]
-        L[Avalia regras ordenadas\npor campo e operador]
-        M{Ação da regra?}
+    subgraph P2["Fase 2 — Motor de ValidationRules (por linha)"]
+        L[Avalia regras ativas\nordenadas por order ASC]
+        M{Ação de maior rank?}
         L --> M
-        M -- quarantine --> QR
-        M -- warn --> N[Acumula warning]
-        M -- reject --> ERR2([HTTP 400 / linha ignorada])
-        M -- ok --> N
+        M -- quarentena --> QR
+        M -- descarte --> SKIP[Linha descartada\nskipped++]
+        M -- warning --> N[Acumula ingest_warnings]
+        M -- info --> NI[Acumula ingest_infos]
+        M -- nenhuma --> N
     end
 
-    N --> PN1
+    N & NI --> PN1
 
     subgraph PN1["Fase N1 — Colaboradores"]
-        O[Resolve/cria Collaborator\nauto-create se novo nome]
+        O[Resolve ou cria Collaborator\nauto-create se nome novo]
     end
 
     O --> P3
 
     subgraph P3["Fase 3 — Regras de agregação"]
-        P[Calcula soma_diaria\nsoma_semanal por colaborador]
-        Q{Viola limite?}
-        P --> Q
-        Q -- sim --> QR
-        Q -- não --> R[OK]
+        P[Calcula soma_diaria e soma_semanal\npor colaborador]
+        PA{Regra soma_diaria\nou soma_semanal viola?}
+        P --> PA
+        PA -- warning --> NW[Acumula ingest_warnings]
+        PA -- info --> NI2[Acumula ingest_infos]
+        PA -- não viola --> R[OK]
     end
 
     R --> P4
@@ -663,41 +679,79 @@ Os limiares (`budget_warning_threshold`, `budget_critical_threshold`) são confi
 ## Motor de Regras de Validação
 
 ```mermaid
-flowchart LR
-    subgraph RuleList["Regras ordenadas (ValidationRule)"]
-        R1["Ordem 1\nfield: horas_individuais\noperator: gt\nvalue: 12\naction: quarantine"]
-        R2["Ordem 2\nfield: soma_diaria\noperator: gt\nvalue: 24\naction: quarantine"]
-        R3["Ordem 3\nfield: hora_extra\noperator: eq\nvalue: Sim\naction: warn"]
-        RN["..."]
+flowchart TD
+    Row[Linha do CSV] --> EVAL
+
+    subgraph EVAL["evaluate_row_rules — regras por linha (order ASC)"]
+        R1["Regra N\nex: horas_individuais gt 12\naction: quarentena"]
+        R2["Regra N+1\nex: hora_extra eq Sim\naction: warning"]
+        RN["... próximas regras"]
+        R1 -->|falha| M1[RuleMatch: quarentena]
+        R1 -->|passa| R2
+        R2 -->|falha| M2[RuleMatch: warning]
+        R2 -->|passa| RN
+        RN --> END[Fim das regras]
     end
 
-    Row[Linha do CSV] --> R1
-    R1 -->|falha| QR[(Quarentena)]
-    R1 -->|passa| R2
-    R2 -->|falha| QR
-    R2 -->|passa| R3
-    R3 -->|falha| WARN[Warning acumulado]
-    R3 -->|passa| RN
-    RN --> OK[Aceito]
+    M1 & M2 --> RANK["Seleciona ação de maior rank\ninfo=0 · warning=1\nquarentena=2 · descarte=3"]
+    END --> RANK
+
+    RANK -->|quarentena| QR[(QuarantineRecord)]
+    RANK -->|descarte| SKIP[skipped++]
+    RANK -->|warning| WARN[ingest_warnings]
+    RANK -->|info| INFO[ingest_infos]
+    RANK -->|nenhuma| OK[Linha aceita]
+
+    subgraph AGG["evaluate_aggregate_rules — soma_diaria / soma_semanal (Fase 3)"]
+        AG1["soma_diaria gt 24 → warning"]
+        AG2["soma_semanal gt 60 → warning"]
+        AG3["Ação máxima: info ou warning\n(quarentena/descarte não permitidos)"]
+    end
 ```
 
-**Campos disponíveis:**
+**Campos disponíveis por linha (`row_fields`):**
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `horas_individuais` | float | Horas do lançamento individual |
-| `hora_extra` | string | `"Sim"` / `"Não"` |
-| `hora_sobreaviso` | string | `"Sim"` / `"Não"` |
-| `pep_wbs` | string | Código PEP do lançamento |
+| `horas_individuais` | float | Total de horas do lançamento |
+| `hora_extra` | string | `"Sim"` / `"Não"` — indicador da coluna CSV |
+| `hora_sobreaviso` | string | `"Sim"` / `"Não"` — indicador da coluna CSV |
+| `hora_extra_horas` | float | Horas numéricas se `hora_extra=Sim`, senão `0.0` |
+| `hora_sobreaviso_horas` | float | Horas numéricas se `hora_sobreaviso=Sim`, senão `0.0` |
+| `pep_wbs` | string | Código PEP do lançamento (pode ser `None`) |
 | `dia_semana` | int | 0=Segunda … 6=Domingo |
-| `soma_diaria` | float | Soma de horas do colaborador no dia (Fase 3) |
-| `soma_semanal` | float | Soma de horas do colaborador na semana (Fase 3) |
 
-**Operadores:** `gt`, `gte`, `lt`, `lte`, `eq`, `neq`, `in`, `not_in`, `regex`
+**Campos de agregação (`soma_diaria`/`soma_semanal` — Fase 3):**
 
-**Ações:** `quarantine` (linha vai para quarentena), `warn` (aceita com alerta), `reject` (rejeita o upload inteiro)
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `soma_diaria` | float | Total de horas do colaborador no dia |
+| `soma_semanal` | float | Total de horas do colaborador na semana ISO |
 
-Regras com `is_system=True` não podem ser excluídas, apenas desativadas.
+> Regras com `soma_diaria` ou `soma_semanal` só aceitam ações `info` ou `warning`. Tentativas de usar `quarentena` ou `descarte` são rebaixadas para `warning` automaticamente.
+
+**Operadores disponíveis:**
+
+| Operador | Tipo | Comportamento |
+|---|---|---|
+| `gt` / `gte` / `lt` / `lte` | numérico | Comparação maior/maior-igual/menor/menor-igual |
+| `eq` / `neq` | numérico ou string | Igualdade (tenta float primeiro, cai para string) |
+| `vazio` | qualquer | Campo é `None` ou string vazia |
+| `nao_vazio` | qualquer | Campo tem conteúdo |
+| `contem` | string | Subcadeia (case-insensitive) |
+| `nao_contem` | string | Ausência de subcadeia (case-insensitive) |
+| `in_lista` | string | Valor está na lista separada por vírgulas no `value` |
+
+**Ações e rank de prioridade:**
+
+| Ação | Rank | Efeito |
+|---|---|---|
+| `info` | 0 | Registra em `ingest_infos` (visível no histórico) |
+| `warning` | 1 | Registra em `ingest_warnings`; linha aceita |
+| `quarentena` | 2 | Linha vai para `QuarantineRecord` |
+| `descarte` | 3 | Linha ignorada silenciosamente (`skipped++`) |
+
+> Quando múltiplas regras atingem a mesma linha, a ação de **maior rank** prevalece. Regras com `is_system=True` não podem ser excluídas, apenas desativadas.
 
 ---
 
@@ -811,17 +865,24 @@ flowchart LR
 | `GET` | `/api/upload-history` | Histórico de uploads (admin) |
 | `GET` | `/api/upload-history/{id}` | Detalhes de um upload específico |
 
-### Dashboard (v2)
+### Dashboard e Analytics (v2)
 
-| Método | Rota | Filtros |
+| Método | Rota | Descrição | Filtros principais |
+|---|---|---|---|
+| `GET` | `/api/v2/filters` | Colaboradores, PEPs e ciclos em uma única chamada | — |
+| `GET` | `/api/v2/effort` | Esforço por colaborador (horas + custo) | `cycle_id` · `pep_wbs` · `pep_description` · `collaborator_id` · `date_from` · `date_to` |
+| `GET` | `/api/v2/portfolio` | Saúde do portfólio por PEP (EVM + hours) | idem |
+| `GET` | `/api/v2/forecast` | Previsão EVM completa por PEP (curva-S + CPI/SPI/EAC) | `pep_wbs` · `date_from` · `date_to` |
+| `GET` | `/api/v2/runway` | Runway e risco por PEP (ciclos restantes, cost_risk) | idem effort |
+| `GET` | `/api/v2/trends` | Queima de horas/custo por ciclo (cronológico) | `pep_wbs` · `date_from` · `date_to` |
+| `GET` | `/api/v2/allocation` | Alocação: horas e custo por colaborador × PEP | idem effort |
+| `GET` | `/api/v2/concentration` | Concentração: top contribuidores por PEP | idem effort |
+
+### Dashboard legado (v1)
+
+| Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/v2/effort` | `cycle_id` · `pep_wbs` · `pep_description` · `collaborator_id` · `date_from` · `date_to` |
-| `GET` | `/api/v2/portfolio` | idem |
-| `GET` | `/api/v2/forecast` | `pep_wbs` · `date_from` · `date_to` |
-| `GET` | `/api/v2/runway` | idem effort |
-| `GET` | `/api/v2/trends` | `pep_wbs` · `date_from` · `date_to` |
-| `GET` | `/api/v2/allocation` | idem effort |
-| `GET` | `/api/v2/concentration` | idem effort |
+| `GET` | `/api/dashboard/collaborator-timeline` | Evolução de horas por colaborador ao longo dos ciclos |
 
 ### Ciclos
 
@@ -843,7 +904,10 @@ flowchart LR
 | `PUT/DELETE` | `/api/projects/{id}/plans/{plan_id}` | Atualizar / excluir plano |
 | `GET/POST` | `/api/plans/export` · `/api/plans/import` | CSV de planos |
 | `GET/POST/DELETE` | `/api/projects/{id}/access` | ACL por usuário (admin) |
-| `GET/POST/DELETE` | `/api/projects/{id}/baselines` | Revisões de baseline |
+| `POST` | `/api/projects/{id}/baseline` | Cria nova revisão de baseline (congela budget atual) |
+| `GET` | `/api/projects/{id}/baselines` | Lista revisões de baseline do projeto |
+| `DELETE` | `/api/projects/{id}/baselines/{bl_id}` | Exclui uma revisão (admin) |
+| `POST` | `/api/projects/{id}/baselines/{bl_id}/activate` | Reativa um baseline histórico |
 
 ### Equipe e Rate Card
 
