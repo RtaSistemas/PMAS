@@ -1520,6 +1520,15 @@ async function _renderForecastTab() {
     kpisEl.hidden = false;
     kpisEl.innerHTML = _buildForecastKpis(fc);
     _renderForecastProjectInfo(fc, proj);
+    const badge = document.getElementById('forecastPhysicalBadge');
+    if (badge) {
+      badge.hidden = !fc.uses_physical_pct;
+      const span = badge.querySelector('span');
+      if (span && fc.last_physical_pct != null) {
+        span.title = _t('forecast.physical_badge_title');
+        span.textContent = `${_t('forecast.physical_badge')} — ${(fc.last_physical_pct * 100).toFixed(0)}%`;
+      }
+    }
     _currentForecastPep = pep;
     _planProjectId = proj ? proj.id : null;
     try {
@@ -1687,10 +1696,14 @@ async function _renderPlanTable(pep_wbs) {
       const costStr = pl.planned_cost != null
         ? pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
         : '<span style="color:var(--text-3)">—</span>';
+      const physStr = pl.physical_pct != null
+        ? `<span style="color:var(--color-accent);font-weight:600">${(pl.physical_pct * 100).toFixed(0)}%</span>`
+        : '<span style="color:var(--text-3)">—</span>';
       return `<tr>
         <td>${escHtml(pl.cycle_name)}</td>
         <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
         <td style="text-align:right">${costStr}</td>
+        <td style="text-align:right">${physStr}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${escHtml(JSON.stringify(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
           <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>
@@ -1794,6 +1807,85 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
     _addPlanRow(_addPlanAvailableCycles);
     openModal('addPlanModal');
   } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+});
+
+// ---------------------------------------------------------------------------
+// Physical Progress modal
+// ---------------------------------------------------------------------------
+document.getElementById('physicalProgressBtn').addEventListener('click', async () => {
+  if (!_planProjectId) { notify(_t('msg.err_generic'), 'info'); return; }
+  try {
+    const plans = await apiFetch(`/api/projects/${_planProjectId}/plans`);
+    if (!plans.length) { notify(_t('plan.no_plans'), 'info'); return; }
+    const tbody = document.getElementById('physicalProgressBody');
+    tbody.innerHTML = plans.map(pl => {
+      const pctVal = pl.physical_pct != null ? (pl.physical_pct * 100).toFixed(0) : '';
+      const noteVal = escHtml(pl.physical_note || '');
+      const hStr = (+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + 'h';
+      const cStr = pl.planned_cost != null
+        ? ' / R$ ' + pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2})
+        : '';
+      return `<tr data-cycle-id="${pl.cycle_id}">
+        <td>${escHtml(pl.cycle_name)}</td>
+        <td style="text-align:right;white-space:nowrap">${hStr}${cStr}</td>
+        <td style="text-align:right">
+          <input type="number" min="0" max="100" step="1" value="${pctVal}"
+            class="form-input input-sm" style="width:6rem;text-align:right"
+            placeholder="—" data-field="pct" />
+        </td>
+        <td>
+          <input type="text" value="${noteVal}" class="form-input input-sm"
+            style="width:100%" placeholder="..." data-field="note" />
+        </td>
+        <td>
+          <button type="button" class="btn btn-secondary btn-sm" data-clear="${pl.cycle_id}"
+            title="${_t('plan.physical.clear')}">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-clear]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('tr');
+        row.querySelector('[data-field="pct"]').value  = '';
+        row.querySelector('[data-field="note"]').value = '';
+      });
+    });
+    document.getElementById('physicalProgressError').textContent = '';
+    openModal('physicalProgressModal');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+});
+
+document.getElementById('physicalProgressModalClose').addEventListener('click', () => closeModal('physicalProgressModal'));
+document.getElementById('physicalProgressCancelBtn').addEventListener('click', () => closeModal('physicalProgressModal'));
+
+document.getElementById('physicalProgressSaveBtn').addEventListener('click', async () => {
+  if (!_planProjectId) return;
+  const errEl = document.getElementById('physicalProgressError');
+  errEl.textContent = '';
+  const rows = document.getElementById('physicalProgressBody').querySelectorAll('tr[data-cycle-id]');
+  const payload = [];
+  for (const row of rows) {
+    const cycleId = parseInt(row.dataset.cycleId);
+    const rawPct  = row.querySelector('[data-field="pct"]').value.trim();
+    const note    = row.querySelector('[data-field="note"]').value.trim() || null;
+    let pct = null;
+    if (rawPct !== '') {
+      pct = parseFloat(rawPct);
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        errEl.textContent = `% inválido na linha "${row.cells[0].textContent}". Use valores entre 0 e 100.`;
+        return;
+      }
+      pct = pct / 100;
+    }
+    payload.push({ cycle_id: cycleId, physical_pct: pct, physical_note: note });
+  }
+  try {
+    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/physical-progress`, 'PATCH', payload);
+    closeModal('physicalProgressModal');
+    await _renderPlanTable(_currentForecastPep);
+    _renderForecastTab();
+    notify(_t('msg.layout_saved'), 'success');
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
 document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {

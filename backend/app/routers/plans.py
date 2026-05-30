@@ -9,7 +9,7 @@ from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Cycle, Project, ProjectCyclePlan
-from backend.app.schemas import IdOut, ImportResultOut, ProjectCyclePlanIn, ProjectCyclePlanOut
+from backend.app.schemas import IdOut, ImportResultOut, PhysicalProgressItem, ProjectCyclePlanIn, ProjectCyclePlanOut
 
 router = APIRouter(
     prefix="/api/projects",
@@ -28,6 +28,8 @@ def _plan_to_dict(p: ProjectCyclePlan) -> dict:
         "cycle_name": p.cycle.name,
         "planned_hours": p.planned_hours,
         "planned_cost": p.planned_cost,
+        "physical_pct": p.physical_pct,
+        "physical_note": p.physical_note,
     }
 
 
@@ -172,8 +174,11 @@ def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: Db
         .first()
     )
     if plan is None:
-        plan = ProjectCyclePlan(project_id=project_id, cycle_id=cycle_id,
-                                planned_hours=body.planned_hours, planned_cost=body.planned_cost)
+        plan = ProjectCyclePlan(
+            project_id=project_id, cycle_id=cycle_id,
+            planned_hours=body.planned_hours, planned_cost=body.planned_cost,
+            physical_pct=body.physical_pct, physical_note=body.physical_note,
+        )
         db.add(plan)
         db.flush()
         log_audit(db, current_user, "create", "project_plan", plan.id,
@@ -182,11 +187,48 @@ def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: Db
     else:
         plan.planned_hours = body.planned_hours
         plan.planned_cost  = body.planned_cost
+        if body.physical_pct is not None or body.physical_note is not None:
+            plan.physical_pct  = body.physical_pct
+            plan.physical_note = body.physical_note
         log_audit(db, current_user, "update", "project_plan", plan.id,
                   {"planned_hours": body.planned_hours, "planned_cost": body.planned_cost})
     db.commit()
     db.refresh(plan)
     return _plan_to_dict(plan)
+
+
+@router.patch("/{project_id}/plans/physical-progress", response_model=list[ProjectCyclePlanOut])
+def update_physical_progress(
+    project_id: int,
+    body: list[PhysicalProgressItem],
+    db: DbSession,
+    current_user: AdminUser,
+):
+    """Bulk-update physical_pct and physical_note for one or more cycles of a project."""
+    if db.get(Project, project_id) is None:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    updated_plans = []
+    for item in body:
+        plan = (
+            db.query(ProjectCyclePlan)
+            .filter(ProjectCyclePlan.project_id == project_id, ProjectCyclePlan.cycle_id == item.cycle_id)
+            .first()
+        )
+        if plan is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Plano não encontrado para ciclo {item.cycle_id}.",
+            )
+        plan.physical_pct  = item.physical_pct
+        plan.physical_note = item.physical_note
+        updated_plans.append(plan)
+    if updated_plans:
+        log_audit(db, current_user, "update", "project_plan_physical", project_id,
+                  {"cycles": [i.cycle_id for i in body]})
+    db.commit()
+    for p in updated_plans:
+        db.refresh(p)
+    return [_plan_to_dict(p) for p in updated_plans]
 
 
 @router.delete("/{project_id}/plans/{cycle_id}", status_code=204)

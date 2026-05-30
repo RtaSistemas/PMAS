@@ -193,6 +193,10 @@ def _migrate_columns() -> None:
             pcp_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project_cycle_plan)"))}
             if "planned_cost" not in pcp_cols:
                 conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN planned_cost FLOAT"))
+            if "physical_pct" not in pcp_cols:
+                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN physical_pct FLOAT"))
+            if "physical_note" not in pcp_cols:
+                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN physical_note TEXT"))
             qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
             if "review_status" not in qr_cols:
                 conn.execute(text(

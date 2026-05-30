@@ -389,6 +389,10 @@
           Selecione um PEP para visualizar a previsão de conclusão.
         </div>
         <div id="forecastKpis" style="margin:.75rem 0" hidden></div>
+        <div id="forecastPhysicalBadge" hidden style="margin-bottom:.5rem">
+          <span class="badge" style="background:var(--color-accent);color:#fff;font-size:.78rem;padding:.2rem .6rem;border-radius:1rem"
+            data-i18n="forecast.physical_badge" data-i18n-title="forecast.physical_badge_title">Modo: % Físico</span>
+        </div>
         <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
       </div>
@@ -402,6 +406,7 @@
               <span data-i18n="plan.btn_import">↑ Importar CSV</span>
               <input type="file" id="importPlanFile" accept=".csv" hidden />
             </label>
+            <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
             <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
           </div>
         </div>
@@ -411,6 +416,7 @@
             <th data-i18n="plan.th.cycle">Ciclo</th>
             <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
             <th class="text-right" data-i18n="plan.th.cost">Custo Planejado (R$)</th>
+            <th class="text-right" data-i18n="plan.th.physical_pct">% Físico</th>
             <th></th>
           </tr></thead>
           <tbody id="planBody"></tbody>
@@ -1379,6 +1385,35 @@
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="aclModalCloseBtn" data-i18n="btn.close">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="physicalProgressModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="physicalProgressModalTitle" style="max-width:640px">
+    <div class="modal-header">
+      <h3 id="physicalProgressModalTitle" data-i18n="plan.physical.title">Atualizar Avanço Físico de Conclusão</h3>
+      <button type="button" class="modal-close" id="physicalProgressModalClose">×</button>
+    </div>
+    <div class="modal-body flex-col gap-sm">
+      <p class="hint" data-i18n="plan.physical.hint" style="margin:0 0 .5rem"></p>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="physicalProgressTable">
+          <thead><tr>
+            <th data-i18n="plan.physical.th_cycle">Ciclo</th>
+            <th class="text-right" data-i18n="plan.physical.th_planned">Planejado</th>
+            <th class="text-right" data-i18n="plan.physical.th_pct">% Físico (0-100)</th>
+            <th data-i18n="plan.physical.th_note">Observação</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="physicalProgressBody"></tbody>
+        </table>
+      </div>
+      <div id="physicalProgressError" class="error-msg"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="physicalProgressCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="physicalProgressSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>

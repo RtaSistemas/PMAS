@@ -79,9 +79,10 @@ def get_forecast(
     )
     pep_description = pep_desc_row[0] if pep_desc_row else None
 
-    # Load planned hours/cost per cycle
+    # Load planned hours/cost/physical_pct per cycle
     plan_by_cycle_start: dict[DateType, float]        = {}
     plan_cost_by_cycle_start: dict[DateType, Optional[float]] = {}
+    phys_pct_by_cycle_start: dict[DateType, float] = {}
     if project:
         plan_rows = (
             db.query(ProjectCyclePlan, Cycle.start_date)
@@ -91,6 +92,11 @@ def get_forecast(
         )
         plan_by_cycle_start      = {start: plan.planned_hours for plan, start in plan_rows}
         plan_cost_by_cycle_start = {start: plan.planned_cost  for plan, start in plan_rows}
+        phys_pct_by_cycle_start  = {
+            start: plan.physical_pct
+            for plan, start in plan_rows
+            if plan.physical_pct is not None
+        }
 
     active_baseline = (
         db.query(ProjectBaseline).filter_by(project_id=project.id, is_active=True).first()
@@ -128,7 +134,13 @@ def get_forecast(
         if pc_period is not None:
             cum_pc += pc_period
 
-        ev_cost_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
+        cycle_phys_pct = phys_pct_by_cycle_start.get(cyc_start)
+        if cycle_phys_pct is not None and budget_cost:
+            ev_cost_cum = round(cycle_phys_pct * budget_cost, 2)
+            ev_source   = "physical"
+        else:
+            ev_cost_cum = compute_ev_capped(cum_h, budget_hours, budget_cost)
+            ev_source   = "hours"
 
         spi_cum = None
         if has_plan and cum_ph > 0:
@@ -158,6 +170,8 @@ def get_forecast(
             "cumulative_planned_hours":  round(cum_ph, 2) if has_plan else None,
             "cumulative_planned_cost":   round(cum_pc, 2) if has_any_planned_cost else None,
             "cumulative_ev_cost":        ev_cost_cum,
+            "ev_source":                 ev_source,
+            "physical_pct":              cycle_phys_pct,
             "spi_cumulative":            spi_cum,
             "sv":                        sv_period,
             "sv_label":                  sv_label(sv_period),
@@ -172,6 +186,14 @@ def get_forecast(
     consumed_hours = cum_h
     actual_cost    = cum_c
 
+    # Most recent cycle with a physical_pct declaration (walk backwards)
+    last_physical_pct: Optional[float] = None
+    for _, cyc_start, _, _ in reversed(cycle_data):
+        if cyc_start in phys_pct_by_cycle_start:
+            last_physical_pct = phys_pct_by_cycle_start[cyc_start]
+            break
+    uses_physical_pct = last_physical_pct is not None and bool(budget_cost)
+
     last_actual_h, last_planned_h = (
         freeze_spi_boundary([(s, h) for _, s, h, _ in cycle_data], sorted_plans)
         if has_plan else (None, None)
@@ -184,7 +206,11 @@ def get_forecast(
     ev_val = None
     cpi = spi = eac = eac_schedule = cv = tcpi = vac = sv = None
     if budget_hours and budget_cost and consumed_hours > 0:
-        ev_val = compute_ev_capped(consumed_hours, budget_hours, budget_cost)
+        ev_val = (
+            round(last_physical_pct * budget_cost, 2)
+            if uses_physical_pct
+            else compute_ev_capped(consumed_hours, budget_hours, budget_cost)
+        )
         # SPI computed first so schedule-sensitive EAC variant can use it
         if has_plan and last_planned_h and last_planned_h > 0:
             spi = compute_spi(last_planned_h, last_actual_h) if last_actual_h is not None else None
@@ -204,7 +230,11 @@ def get_forecast(
         and project.completion_date is not None
     )
 
-    remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours else None
+    if uses_physical_pct and budget_hours:
+        # Physical mode: remaining scope = (1 - pct) * budget_hours
+        remaining_hours = round(max((1.0 - last_physical_pct) * budget_hours, 0.0), 2)
+    else:
+        remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours else None
     remaining_cost  = round(eac - actual_cost, 2) if eac is not None else None
 
     est_cycles = None
@@ -290,6 +320,8 @@ def get_forecast(
         "est_cycles_optimistic":      est_cycles_optimistic,
         "est_cycles_pessimistic":     est_cycles_pessimistic,
         "estimated_completion_cycle": est_completion,
+        "uses_physical_pct":          uses_physical_pct,
+        "last_physical_pct":          last_physical_pct,
         "is_closed":                  is_closed,
         "start_date":                 str(project.start_date)       if (project and project.start_date)       else None,
         "planned_end_date":           str(project.planned_end_date) if (project and project.planned_end_date) else None,
