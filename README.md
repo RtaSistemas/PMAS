@@ -156,7 +156,7 @@ sequenceDiagram
     ING->>DB: Le RateCard, GlobalConfig, ValidationRules
     ING->>EVM: freeze_costs - hours, rate, multipliers
     EVM-->>ING: normal_cost, extra_cost, standby_cost
-    ING->>DB: DELETE pep+cycle → INSERT TimesheetRecord
+    ING->>DB: DELETE pep+cycle e INSERT TimesheetRecord
     ING->>DB: Upsert PepCycleSummary + CollaboratorCycleSummary
     ING->>DB: INSERT UploadSession + QuarantineRecord
     ING-->>API: inserted, skipped, quarantine, warnings
@@ -496,22 +496,22 @@ O módulo `services/evm.py` é a **única fonte de verdade** para todas as fórm
 sequenceDiagram
     participant CSV as Arquivo CSV
     participant ING as ingestion.py
-    participant DB_RC as RateCard (DB)
-    participant DB_CFG as GlobalConfig (DB)
-    participant EVM as evm.freeze_costs()
-    participant DB_TR as TimesheetRecord (DB)
+    participant DB_RC as RateCard DB
+    participant DB_CFG as GlobalConfig DB
+    participant EVM as evm.freeze_costs
+    participant DB_TR as TimesheetRecord DB
 
     CSV->>ING: normal_hours=8, extra_hours=2, standby_hours=0
     ING->>DB_RC: _lookup_rate(collaborator, record_date)
-    Note over DB_RC: Busca RateCard onde<br/>valid_from ≤ record_date ≤ valid_to<br/>e seniority_level = colaborador
+    Note over DB_RC: Busca RateCard onde<br/>valid_from <= record_date <= valid_to<br/>e seniority_level = colaborador
     DB_RC-->>ING: cost_per_hour = R$ 120,00
     ING->>DB_CFG: extra_multiplier=1.5, standby_multiplier=0.33
     ING->>EVM: freeze_costs(8, 2, 0, 120.00, 1.5, 0.33)
-    Note over EVM: normal_cost  = 8 × 120,00 = R$ 960,00<br/>extra_cost   = 2 × 120,00 × 1,5 = R$ 360,00<br/>standby_cost = 0 × 120,00 × 0,33 = R$ 0,00
-    EVM-->>ING: (960.00, 360.00, 0.00)
-    ING->>DB_TR: INSERT com cost_per_hour=120, normal_cost=960,<br/>extra_cost=360, standby_cost=0
+    Note over EVM: normal_cost  = 8 x 120,00 = R$ 960,00<br/>extra_cost   = 2 x 120,00 x 1,5 = R$ 360,00<br/>standby_cost = 0 x 120,00 x 0,33 = R$ 0,00
+    EVM-->>ING: 960.00, 360.00, 0.00
+    ING->>DB_TR: INSERT cost_per_hour=120 normal_cost=960 extra_cost=360 standby=0
 
-    Note over DB_TR: ⚠ Imutável após commit.<br/>Reajustes futuros de Rate Card<br/>NÃO alteram registros históricos.
+    Note over DB_TR: IMUTAVEL apos commit.<br/>Reajustes futuros de Rate Card<br/>NAO alteram registros historicos.
 ```
 
 **Por que congelar?** Se a taxa de um colaborador sênior subir de R$ 120 para R$ 150 em março, os relatórios de janeiro e fevereiro devem continuar mostrando o custo original. O PMAS garante isso armazenando o custo calculado junto com cada `TimesheetRecord`.
@@ -655,7 +655,7 @@ flowchart TD
 
     subgraph POST["3 — Pos-loop"]
         P1["consumed_hours = cum_h\nactual_cost = cum_c"]
-        P2["freeze_spi_boundary\nWalk ciclos em ordem — rastreia ultimo ciclo\nonde cum_planned_h avancou\n→ last_actual_h / last_planned_h"]
+        P2["freeze_spi_boundary\nWalk ciclos em ordem, rastreia ultimo ciclo\nonde cum_planned_h avancou\nretorna last_actual_h e last_planned_h"]
         P3["avg_hours = media das horas\ndos ultimos 3 ciclos com dados"]
         P1 --> P2 --> P3
     end
@@ -667,7 +667,7 @@ flowchart TD
         E1["ev_val = compute_ev_capped(consumed_h, budget_h, budget_cost)\nEV capped em BAC"]
         E2["SPI: compute_spi(last_planned_h, last_actual_h) — boundary frozen\nSV: compute_sv(last_actual_h, last_planned_h)"]
         E3["somente se actual_cost > 0\nCPI = compute_cpi(ev_val, actual_cost)\nCV  = compute_cv(ev_val, actual_cost)\nTCPI = compute_tcpi(budget_cost, actual_cost, ev_val)"]
-        E4["EAC = compute_eac(budget_cost, cpi)\n  default_to_bac=True → retorna BAC se CPI=null\nEAC_schedule = AC + (BAC-EV) / (CPI x SPI)\nVAC = compute_vac(budget_cost, eac)"]
+        E4["EAC = compute_eac(budget_cost, cpi)\n  default_to_bac=True: retorna BAC se CPI=null\nEAC_schedule = AC + (BAC-EV) / (CPI x SPI)\nVAC = compute_vac(budget_cost, eac)"]
         EV_COND --> E1 --> E2 --> E3 --> E4
     end
 
@@ -738,19 +738,19 @@ Os limiares (`budget_warning_threshold`, `budget_critical_threshold`) são confi
 flowchart TD
     Row[Linha do CSV] --> EVAL
 
-    subgraph EVAL["evaluate_row_rules — regras por linha (order ASC)"]
+    subgraph EVAL["evaluate_row_rules - regras por linha (order ASC)"]
         R1["Regra N\nex: horas_individuais gt 12\naction: quarentena"]
         R2["Regra N+1\nex: hora_extra eq Sim\naction: warning"]
-        RN["... próximas regras"]
+        RN["proximas regras..."]
         R1 -->|falha| M1[RuleMatch: quarentena]
         R1 -->|passa| R2
         R2 -->|falha| M2[RuleMatch: warning]
         R2 -->|passa| RN
-        RN --> END[Fim das regras]
+        RN --> ENDR[Fim das regras]
     end
 
-    M1 & M2 --> RANK["Seleciona ação de maior rank\ninfo=0 · warning=1\nquarentena=2 · descarte=3"]
-    END --> RANK
+    M1 & M2 --> RANK["Seleciona acao de maior rank\ninfo=0, warning=1\nquarentena=2, descarte=3"]
+    ENDR --> RANK
 
     RANK -->|quarentena| QR[(QuarantineRecord)]
     RANK -->|descarte| SKIP[skipped++]
@@ -758,10 +758,10 @@ flowchart TD
     RANK -->|info| INFO[ingest_infos]
     RANK -->|nenhuma| OK[Linha aceita]
 
-    subgraph AGG["evaluate_aggregate_rules — soma_diaria / soma_semanal (Fase 3)"]
-        AG1["soma_diaria gt 24 → warning"]
-        AG2["soma_semanal gt 60 → warning"]
-        AG3["Ação máxima: info ou warning\n(quarentena/descarte não permitidos)"]
+    subgraph AGG["evaluate_aggregate_rules - soma_diaria e soma_semanal (Fase 3)"]
+        AG1["soma_diaria gt 24 -> warning"]
+        AG2["soma_semanal gt 60 -> warning"]
+        AG3["Acao maxima: info ou warning\nquarentena e descarte nao permitidos"]
     end
 ```
 
@@ -817,11 +817,11 @@ flowchart TD
 stateDiagram-v2
     direction LR
 
-    [*] --> pending : Linha falha validação\n(regra, data sem ciclo, Q1/Q2/Q8)
+    [*] --> pending : falha validacao (Q1/Q2/Q8 ou regra)
 
-    pending --> approved : Admin aprova\n→ re-ingestão executada\n(linha inserida em TimesheetRecord)
-    pending --> rejected : Admin rejeita\n(motivo registrado)
-    pending --> deleted : Admin exclui\n(registro removido)
+    pending --> approved : Admin aprova - re-ingestao automatica
+    pending --> rejected : Admin rejeita com motivo
+    pending --> deleted : Admin exclui registro
 
     approved --> [*]
     rejected --> [*]
@@ -843,18 +843,18 @@ O semáforo é uma barra macro no topo da página Dashboard, atualizada a cada c
 
 ```mermaid
 flowchart TD
-    A([GET /api/v2/portfolio]) --> B[Por PEP: consumed_hours\nbudget_hours · actual_cost · budget_cost]
-    B --> C{budget_hours\ndefinido?}
-    C -- não --> GREY[⚫ Cinza\nsem orçamento]
-    C -- sim --> D{consumed/budget\n≥ critical?}
-    D -- sim --> RED[🔴 Vermelho\n≥ 100%]
-    D -- não --> E{consumed/budget\n≥ warning?}
-    E -- sim --> YELLOW[🟡 Amarelo\n90–99%]
-    E -- não --> GREEN[🟢 Verde\n< 90%]
+    A([GET /api/v2/portfolio]) --> B["Por PEP: consumed_hours\nbudget_hours, actual_cost, budget_cost"]
+    B --> C{"budget_hours\ndefinido?"}
+    C -- nao --> GREY["Cinza - sem orcamento"]
+    C -- sim --> D{"consumed/budget\n>= critical?"}
+    D -- sim --> RED["Vermelho >= 100%"]
+    D -- nao --> E{"consumed/budget\n>= warning?"}
+    E -- sim --> YELLOW["Amarelo 90-99%"]
+    E -- nao --> GREEN["Verde < 90%"]
 
-    RED & YELLOW & GREEN & GREY --> F[Agrega contagens\npor cor]
-    F --> G[Renderiza barra\n● N  ● N  ● N  ● N]
-    G --> H[Pill por projeto com\nnome + cor]
+    RED & YELLOW & GREEN & GREY --> F["Agrega contagens por cor"]
+    F --> G["Renderiza barra com dot e contagem por status"]
+    G --> H["Pill por projeto com nome e cor"]
 ```
 
 ---
