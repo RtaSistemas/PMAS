@@ -256,7 +256,7 @@ document.getElementById('cpiToggleBtn').addEventListener('click', () => {
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   if (!_lastEffortData.length) { notify(_t('msg.load_before_export'), 'info'); return; }
-  const header = 'Colaborador,Horas Normais,Horas Extras,Sobreaviso,Total';
+  const header = `${_t('allocation.collaborator')},${_t('ch.normal_h')},${_t('ch.extra_h')},${_t('ch.standby_h')},${_t('allocation.total')}`;
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
     return `"${d.collaborator.replace(/"/g, '""')}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
@@ -971,9 +971,9 @@ function _renderCostCompositionChart(trends) {
     xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
     yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
     series: [
-      { name: _t('trends.normal') || 'Normal',      type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
-      { name: _t('trends.extra')  || 'Extra',       type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
-      { name: _t('trends.standby')|| 'Sobreaviso',  type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
+      { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
+      { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
+      { name: _t('trends.standby'), type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
     ],
   }, true);
   cc.resize();
@@ -2117,9 +2117,9 @@ async function _renderCollabCalendar(name, year, month) {
         const [d_date, , n, e, s] = p.value;
         const q = quarantineDates.has(d_date) ? ' ⚠' : '';
         let tip = `<b>${d_date}</b>${q}`;
-        if (n > 0) tip += `<br/>Normal: ${n.toFixed(1)}h`;
-        if (e > 0) tip += `<br/>Extra: ${e.toFixed(1)}h`;
-        if (s > 0) tip += `<br/>Sobreaviso: ${s.toFixed(1)}h`;
+        if (n > 0) tip += `<br/>${_t('trends.normal')}: ${n.toFixed(1)}h`;
+        if (e > 0) tip += `<br/>${_t('trends.extra')}: ${e.toFixed(1)}h`;
+        if (s > 0) tip += `<br/>${_t('trends.standby')}: ${s.toFixed(1)}h`;
         return tip;
       },
     },
@@ -3542,16 +3542,20 @@ document.getElementById('auditEntityFilter').addEventListener('change', loadAudi
 document.getElementById('auditActionFilter').addEventListener('change', loadAuditLog);
 
 // ---------------------------------------------------------------------------
-// Chart series names (for color picker UI)
+// Chart series names (for color picker UI) — evaluated lazily so _t() returns
+// the active locale at call time instead of the locale at module load.
 // ---------------------------------------------------------------------------
-const _CHART_SERIES_NAMES = {
-  effortChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
-  trendsChart:   ['Horas Normais', 'Hora Extra', 'Sobreaviso'],
-  treemapChart:  [],
-  bulletChart:   ['Planejado', 'Realizado'],
-  scatterChart:  [],
-  forecastChart: ['Realizado', 'Previsto', 'Orçamento'],
-};
+function _chartSeriesNames(chartId) {
+  const map = {
+    effortChart:   [_t('ch.normal_h'),        _t('ch.extra_h'),          _t('ch.standby_h')],
+    trendsChart:   [_t('ch.normal_h'),        _t('ch.extra_h'),          _t('ch.standby_h')],
+    treemapChart:  [],
+    bulletChart:   [_t('bullet.planned'),     _t('bullet.realized')],
+    scatterChart:  [],
+    forecastChart: [_t('forecast.realized'),  _t('forecast.projection'), _t('forecast.budget_line')],
+  };
+  return map[chartId] ?? [];
+}
 
 // ---------------------------------------------------------------------------
 // Theme presets
