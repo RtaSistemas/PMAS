@@ -402,4 +402,7 @@ window._LANG_EN = {
     'onboard.step3':'Import a timesheet in My Area → Upload',
     'onboard.cta':'Go to Cycles',
 'burnup.eac':'EAC (Estimate at Completion)',
+    'plan.btn.open':'Plan',
+    'plan.panel.close':'✕ Close',
+    'plan.panel.select_hint':'Click "Plan" on a project to manage its planning baseline.',
 };

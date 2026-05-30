@@ -397,31 +397,6 @@
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
       </div>
 
-      <div class="card" id="planCard" data-panel-id="forecast-plan" hidden>
-        <div class="section-header">
-          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas/Ciclo)</h2>
-          <div class="flex-center gap-sm">
-            <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
-            <label class="btn btn-secondary btn-sm cursor-pointer" id="importPlanLabel" style="margin:0">
-              <span data-i18n="plan.btn_import">↑ Importar CSV</span>
-              <input type="file" id="importPlanFile" accept=".csv" hidden />
-            </label>
-            <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
-            <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
-          </div>
-        </div>
-        <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
-        <table class="data-table" id="planTable">
-          <thead><tr>
-            <th data-i18n="plan.th.cycle">Ciclo</th>
-            <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
-            <th class="text-right" data-i18n="plan.th.cost">Custo Planejado (R$)</th>
-            <th class="text-right" data-i18n="plan.th.physical_pct">% Físico</th>
-            <th></th>
-          </tr></thead>
-          <tbody id="planBody"></tbody>
-        </table>
-      </div>
 
       <div class="card" id="burnUpCard" data-panel-id="forecast-burnup" hidden>
         <div class="section-header">
@@ -482,6 +457,39 @@
         <button type="button" id="projectsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
     </div>
+    <!-- Plan panel: inline below projects table, revealed per project -->
+    <div id="projectPlanPanel" hidden>
+      <div class="card" id="planCard">
+        <div class="section-header">
+          <div style="display:flex;flex-direction:column;gap:.15rem">
+            <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas e Custo/Ciclo)</h2>
+            <span id="planProjectName" style="font-size:.82rem;color:var(--color-accent);font-weight:600"></span>
+          </div>
+          <div class="flex-center gap-sm flex-wrap">
+            <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
+            <label class="btn btn-secondary btn-sm cursor-pointer" id="importPlanLabel" style="margin:0">
+              <span data-i18n="plan.btn_import">↑ Importar CSV</span>
+              <input type="file" id="importPlanFile" accept=".csv" hidden />
+            </label>
+            <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
+            <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="closePlanPanelBtn" data-i18n="plan.panel.close">✕ Fechar</button>
+          </div>
+        </div>
+        <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
+        <table class="data-table" id="planTable">
+          <thead><tr>
+            <th data-i18n="plan.th.cycle">Ciclo</th>
+            <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
+            <th class="text-right" data-i18n="plan.th.cost">Custo Planejado (R$)</th>
+            <th class="text-right" data-i18n="plan.th.physical_pct">% Físico</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="planBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>

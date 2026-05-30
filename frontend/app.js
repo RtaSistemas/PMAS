@@ -1530,7 +1530,6 @@ async function _renderForecastTab() {
       }
     }
     _currentForecastPep = pep;
-    _planProjectId = proj ? proj.id : null;
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
@@ -1538,14 +1537,11 @@ async function _renderForecastTab() {
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderBurnUpChart(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
-    await _renderPlanTable(pep);
-    document.getElementById('planCard').hidden = false;
   } catch (err) {
     _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
-    document.getElementById('planCard').hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
@@ -1673,17 +1669,10 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 let _currentForecastPep = null;
 let _planProjectId = null;
 
-async function _renderPlanTable(pep_wbs) {
-  // Resolve project_id from pep_wbs
-  try {
-    const projects = await apiFetch('/api/projects');
-    const proj = projects.find(p => p.pep_wbs === pep_wbs);
-    _planProjectId = proj ? proj.id : null;
-  } catch { _planProjectId = null; }
-
+async function _renderPlanTable() {
   const tbody = document.getElementById('planBody');
   if (!_planProjectId) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} ${_t('msg.pep_not_registered')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.panel.select_hint')}</td></tr>`;
     return;
   }
   try {
@@ -1718,8 +1707,7 @@ function deletePlan(cycle_id) {
   confirmDialog(_t('confirm.remove_baseline'), async () => {
     try {
       await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
-      await _renderPlanTable(_currentForecastPep);
-      _renderForecastTab();
+      await _renderPlanTable();
     } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
@@ -1750,8 +1738,7 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${_editPlanCycleId}`, 'PUT',
       { cycle_id: _editPlanCycleId, planned_hours: hours, planned_cost: cost });
     closeModal('editPlanModal');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
@@ -1882,8 +1869,7 @@ document.getElementById('physicalProgressSaveBtn').addEventListener('click', asy
   try {
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/physical-progress`, 'PATCH', payload);
     closeModal('physicalProgressModal');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
     notify(_t('msg.layout_saved'), 'success');
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
@@ -1926,8 +1912,7 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
         { cycle_id: e.cycle_id, planned_hours: e.planned_hours, planned_cost: e.planned_cost })
     ));
     _closeAddPlanModal();
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
@@ -1965,8 +1950,7 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     const msg = _t('msg.baseline_imported').replace('{n}', data.created).replace('{m}', data.updated) +
       (data.errors.length ? ` — ${data.errors.length} ${_t('msg.errors_n')}` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { notify(`Erro ao importar: ${e.message}`, 'error'); }
 });
 
@@ -2617,6 +2601,7 @@ const _projectsPag = _makePaginator(
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
@@ -2679,6 +2664,23 @@ function _buildDatesCell(p) {
 }
 
 function _renderProjectsTable(projects) { _projectsPag.render(projects); }
+
+function selectProjectPlan(projectId, pepWbs, projectName) {
+  _planProjectId = projectId;
+  const nameEl = document.getElementById('planProjectName');
+  if (nameEl) nameEl.textContent = projectName;
+  const panel = document.getElementById('projectPlanPanel');
+  panel.hidden = false;
+  _renderPlanTable();
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+function _closeProjectPlan() {
+  _planProjectId = null;
+  document.getElementById('projectPlanPanel').hidden = true;
+}
+
+document.getElementById('closePlanPanelBtn').addEventListener('click', _closeProjectPlan);
 
 function openProjectModal(id = null) {
   _projectEditId = id;

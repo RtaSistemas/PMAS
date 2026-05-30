@@ -402,4 +402,7 @@ window._LANG_PT = {
     'onboard.step3':'Importe um timesheet em Minha Área → Upload',
     'onboard.cta':'Ir para Ciclos',
 'burnup.eac':'EAC (Estimativa no Término)',
+    'plan.btn.open':'Plano',
+    'plan.panel.close':'✕ Fechar',
+    'plan.panel.select_hint':'Clique em "Plano" em um projeto para gerenciar o baseline de planejamento.',
 };
