@@ -28,11 +28,15 @@ from backend.app.services.evm import (
     compute_cv,
     compute_eac,
     compute_eac_schedule,
+    compute_earned_schedule,
     compute_ev_capped,
+    compute_ieac_t,
     compute_period_delta,
     compute_period_delta_pct,
     compute_spi,
+    compute_spi_t,
     compute_sv,
+    compute_sv_t,
     compute_tcpi,
     compute_vac,
     cpi_color,
@@ -183,6 +187,41 @@ def get_forecast(
         prev_period_h = period_h
         prev_period_c = period_c
 
+    # Earned Schedule — requires a PV cost curve
+    pv_cost_curve = [
+        h["cumulative_planned_cost"]
+        for h in history
+        if h.get("cumulative_planned_cost") is not None
+    ]
+    at = len(cycle_data)          # actual time in cycles
+    pd_cycles = len(sorted_plans) # planned duration
+
+    es = compute_earned_schedule(
+        history[-1]["cumulative_ev_cost"] if history else None,
+        pv_cost_curve,
+    ) if pv_cost_curve else None
+    spi_t  = compute_spi_t(es, at)
+    sv_t   = compute_sv_t(es, at)
+    ieac_t = compute_ieac_t(pd_cycles or None, spi_t)
+
+    # Annotate each history entry with its incremental ES
+    for i, entry in enumerate(history):
+        partial_pv = [
+            h["cumulative_planned_cost"]
+            for h in history[:i + 1]
+            if h.get("cumulative_planned_cost") is not None
+        ]
+        if partial_pv:
+            es_i    = compute_earned_schedule(entry.get("cumulative_ev_cost"), partial_pv)
+            at_i    = float(i + 1)
+            spi_t_i = compute_spi_t(es_i, at_i)
+            sv_t_i  = compute_sv_t(es_i, at_i)
+        else:
+            es_i = spi_t_i = sv_t_i = None
+        entry["es"]     = es_i
+        entry["spi_t"]  = spi_t_i
+        entry["sv_t"]   = sv_t_i
+
     consumed_hours = cum_h
     actual_cost    = cum_c
 
@@ -332,6 +371,12 @@ def get_forecast(
         "health_hours":               classify_health(consumed_hours, budget_hours, warning_threshold, critical_threshold),
         "health_cost":                classify_health(actual_cost,    budget_cost,  warning_threshold, critical_threshold),
         "history":                    history,
+        "es":                         es,
+        "spi_t":                      spi_t,
+        "sv_t":                       sv_t,
+        "ieac_t":                     ieac_t,
+        "planned_duration_cycles":    pd_cycles if sorted_plans else None,
+        "actual_time_cycles":         at,
     }
 
 

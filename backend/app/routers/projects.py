@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
-from backend.app.models import Project
-from backend.app.schemas import ImportResultOut, ProjectIn, ProjectOut
+from backend.app.models import BudgetRevision, Project
+from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
+from backend.app.utils import now_br
 
 router = APIRouter(prefix="/api/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
@@ -90,7 +91,7 @@ def create_project(body: ProjectIn, db: DbSession, current_user: AdminUser):
 
 
 @router.put("/{project_id}", summary="Atualizar projeto", response_model=ProjectOut)
-def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user: AdminUser):
+def update_project(project_id: int, body: ProjectUpdateIn, db: DbSession, current_user: AdminUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
@@ -99,14 +100,40 @@ def update_project(project_id: int, body: ProjectIn, db: DbSession, current_user
     ).first()
     if conflict:
         raise HTTPException(status_code=409, detail="Já existe outro projeto com esse código PEP.")
-    for field, value in body.model_dump().items():
+    old_budget_hours = project.budget_hours
+    old_budget_cost  = project.budget_cost
+    for field, value in body.model_dump(exclude={"budget_change_reason"}).items():
         setattr(project, field, value)
     if project.completion_date is not None:
         project.status = "encerrado"
-    log_audit(db, current_user, "update", "project", project_id, body.model_dump())
+    if old_budget_hours != project.budget_hours or old_budget_cost != project.budget_cost:
+        db.add(BudgetRevision(
+            project_id=project_id,
+            old_budget_hours=old_budget_hours,
+            old_budget_cost=old_budget_cost,
+            new_budget_hours=project.budget_hours,
+            new_budget_cost=project.budget_cost,
+            reason=body.budget_change_reason,
+            changed_by=current_user.username,
+            changed_at=now_br(),
+        ))
+    log_audit(db, current_user, "update", "project", project_id, body.model_dump(exclude={"budget_change_reason"}))
     db.commit()
     db.refresh(project)
     return _project_to_dict(project)
+
+
+@router.get("/{project_id}/budget-history", response_model=list[BudgetRevisionOut])
+def get_budget_history(project_id: int, db: DbSession):
+    project = db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    return (
+        db.query(BudgetRevision)
+        .filter(BudgetRevision.project_id == project_id)
+        .order_by(BudgetRevision.changed_at.desc())
+        .all()
+    )
 
 
 @router.post("/import", summary="Importar projetos via CSV", response_model=ImportResultOut)

@@ -28,6 +28,10 @@ class ProjectIn(BaseModel):
     completion_date:  Optional[DateType] = None
 
 
+class ProjectUpdateIn(ProjectIn):
+    budget_change_reason: Optional[str] = None
+
+
 class SeniorityLevelIn(BaseModel):
     name: str
 
@@ -159,6 +163,20 @@ class ProjectBaselineOut(BaseModel):
     budget_cost: Optional[float] = None
     label: Optional[str] = None
     is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BudgetRevisionOut(BaseModel):
+    id: int
+    project_id: int
+    old_budget_hours: Optional[float] = None
+    old_budget_cost: Optional[float] = None
+    new_budget_hours: Optional[float] = None
+    new_budget_cost: Optional[float] = None
+    reason: Optional[str] = None
+    changed_by: str
+    changed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
