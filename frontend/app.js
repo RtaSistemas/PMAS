@@ -1621,13 +1621,13 @@ async function _runWhatIf() {
     const el = document.getElementById('whatIfResult');
     const ctc = r.cycles_to_complete != null ? `${r.cycles_to_complete} ciclos` : '—';
     const eac = r.projected_eac_cost != null ? _fmtCost(r.projected_eac_cost) : '—';
-    el.innerHTML = `
-      <div class="stats-row" style="margin-top:.5rem">
-        <div class="stat-card neutral"><div class="stat-val">${r.avg_velocity.toFixed(1)}h</div><div class="stat-lbl">${_t('sim.avg_velocity')}</div></div>
-        <div class="stat-card blue"><div class="stat-val">${r.sim_velocity.toFixed(1)}h</div><div class="stat-lbl">${_t('sim.sim_velocity')}</div></div>
-        <div class="stat-card violet"><div class="stat-val">${ctc}</div><div class="stat-lbl">${_t('sim.cycles_to_complete')}</div></div>
-        <div class="stat-card neutral"><div class="stat-val">${eac}</div><div class="stat-lbl">${_t('sim.projected_eac')}</div></div>
-      </div>`;
+    const cards = [
+      { val: `${r.avg_velocity.toFixed(1)}h`, lbl: _t('sim.avg_velocity'),      cls: 'neutral', evm: 'SimAvgVel'  },
+      { val: `${r.sim_velocity.toFixed(1)}h`, lbl: _t('sim.sim_velocity'),      cls: 'blue',    evm: 'SimVelocity'},
+      { val: ctc,                              lbl: _t('sim.cycles_to_complete'), cls: 'violet',  evm: 'SimCycles'  },
+      { val: eac,                              lbl: _t('sim.projected_eac'),      cls: 'neutral', evm: 'SimEAC'     },
+    ].map(_mkStatCard).join('');
+    el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${cards}</div>`;
   } catch (e) {
     document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
   } finally {
@@ -1645,13 +1645,13 @@ async function _runMonteCarlo() {
       el.innerHTML = `<p class="hint">${_t('mc.insufficient_data')}</p>`;
       return;
     }
-    el.innerHTML = `
-      <div class="stats-row" style="margin-top:.5rem">
-        <div class="stat-card green"><div class="stat-val">${r.p10 ?? '—'} ciclos</div><div class="stat-lbl">P10 ${_t('mc.optimistic')}</div></div>
-        <div class="stat-card blue"><div class="stat-val">${r.p50 ?? '—'} ciclos</div><div class="stat-lbl">P50 ${_t('mc.median')}</div></div>
-        <div class="stat-card red"><div class="stat-val">${r.p90 ?? '—'} ciclos</div><div class="stat-lbl">P90 ${_t('mc.pessimistic')}</div></div>
-        <div class="stat-card neutral"><div class="stat-val">${r.mean_velocity?.toFixed(1) ?? '—'}h</div><div class="stat-lbl">${_t('mc.mean_velocity')}</div></div>
-      </div>`;
+    const mcCards = [
+      { val: `${r.p10 ?? '—'} ciclos`,                   lbl: `P10 ${_t('mc.optimistic')}`, cls: 'green',   evm: 'MCP10'     },
+      { val: `${r.p50 ?? '—'} ciclos`,                   lbl: `P50 ${_t('mc.median')}`,     cls: 'blue',    evm: 'MCP50'     },
+      { val: `${r.p90 ?? '—'} ciclos`,                   lbl: `P90 ${_t('mc.pessimistic')}`,cls: 'red',     evm: 'MCP90'     },
+      { val: `${r.mean_velocity?.toFixed(1) ?? '—'}h`,   lbl: _t('mc.mean_velocity'),        cls: 'neutral', evm: 'MCMeanVel' },
+    ].map(_mkStatCard).join('');
+    el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${mcCards}</div>`;
   } catch (e) {
     el.innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
   }
