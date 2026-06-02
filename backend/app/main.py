@@ -25,6 +25,7 @@ from backend.app.routers.v2 import (
     allocation as allocation_v2,
     concentration as concentration_v2,
     effort, filters, forecast, portfolio,
+    over_allocation as over_allocation_v2,
     runway as runway_v2,
     trends as trends_v2,
 )
@@ -127,6 +128,7 @@ app.include_router(forecast.router)
 app.include_router(allocation_v2.router)
 app.include_router(runway_v2.router)
 app.include_router(concentration_v2.router)
+app.include_router(over_allocation_v2.router)
 
 
 def _frontend_dir() -> str:
