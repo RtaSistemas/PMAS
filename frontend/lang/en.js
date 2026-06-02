@@ -405,4 +405,51 @@ window._LANG_EN = {
     'plan.btn.open':'Plan',
     'plan.panel.close':'✕ Close',
     'plan.panel.select_hint':'Click "Plan" on a project to manage its planning baseline.',
+
+    // Project modal — budget reason
+    'pm.budget_reason_lbl':'Budget revision reason',
+    'pm.budget_reason_ph':'E.g. Scope expansion',
+
+    // F3 — Earned Schedule
+    'forecast.es.at':'AT',
+    'forecast.pd':'PD',
+
+    // F7 — Budget Revision History
+    'budget.history.btn':'History',
+    'budget.history.title':'Budget Revision History',
+    'budget.history.empty':'No budget revisions recorded.',
+    'budget.history.th.when':'When',
+    'budget.history.th.by':'By',
+    'budget.history.th.hours':'Hours',
+    'budget.history.th.cost':'Cost',
+    'budget.history.th.reason':'Reason',
+
+    // F5 — Over-allocation Detection
+    'over_alloc.title':'Over-allocation Detection',
+    'over_alloc.hint':'Collaborators whose daily hours across all PEPs exceed the configured threshold.',
+    'over_alloc.empty':'No over-allocation detected.',
+    'over_alloc.th.collaborator':'Collaborator',
+    'over_alloc.th.date':'Date',
+    'over_alloc.th.hours':'Total (h)',
+    'over_alloc.th.peps':'PEPs',
+
+    // F11 — What-If Simulation
+    'sim.title':'What-If Simulation',
+    'sim.hint':'Adjust parameters to project different velocity scenarios.',
+    'sim.multiplier_lbl':'Velocity multiplier',
+    'sim.extra_lbl':'Extra hours/cycle',
+    'sim.btn_run':'Simulate',
+    'sim.avg_velocity':'Avg historical vel.',
+    'sim.sim_velocity':'Simulated vel.',
+    'sim.cycles_to_complete':'Cycles remaining',
+    'sim.projected_eac':'Projected EAC',
+
+    // F4 — Monte Carlo
+    'mc.title':'Monte Carlo — Probabilistic Forecast',
+    'mc.hint':'Completion estimates from 1,000 simulations using historical velocity.',
+    'mc.optimistic':'Optimistic',
+    'mc.median':'Median',
+    'mc.pessimistic':'Pessimistic',
+    'mc.mean_velocity':'Mean velocity',
+    'mc.insufficient_data':'Insufficient data for simulation (minimum 2 cycles required).',
 };

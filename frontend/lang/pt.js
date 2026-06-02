@@ -405,4 +405,51 @@ window._LANG_PT = {
     'plan.btn.open':'Plano',
     'plan.panel.close':'✕ Fechar',
     'plan.panel.select_hint':'Clique em "Plano" em um projeto para gerenciar o baseline de planejamento.',
+
+    // Project modal — budget reason
+    'pm.budget_reason_lbl':'Motivo da revisão de budget',
+    'pm.budget_reason_ph':'Ex: Escopo ampliado',
+
+    // F3 — Earned Schedule
+    'forecast.es.at':'AT',
+    'forecast.pd':'PD',
+
+    // F7 — Budget Revision History
+    'budget.history.btn':'Histórico',
+    'budget.history.title':'Histórico de Revisões de Budget',
+    'budget.history.empty':'Nenhuma revisão de budget registrada.',
+    'budget.history.th.when':'Quando',
+    'budget.history.th.by':'Por',
+    'budget.history.th.hours':'Horas',
+    'budget.history.th.cost':'Custo',
+    'budget.history.th.reason':'Motivo',
+
+    // F5 — Over-allocation Detection
+    'over_alloc.title':'Detecção de Sobre-alocação',
+    'over_alloc.hint':'Colaboradores com horas diárias totais acima do limite configurado.',
+    'over_alloc.empty':'Nenhuma sobre-alocação detectada.',
+    'over_alloc.th.collaborator':'Colaborador',
+    'over_alloc.th.date':'Data',
+    'over_alloc.th.hours':'Total (h)',
+    'over_alloc.th.peps':'PEPs',
+
+    // F11 — What-If Simulation
+    'sim.title':'Simulação What-If',
+    'sim.hint':'Ajuste os parâmetros para projetar diferentes cenários de velocidade.',
+    'sim.multiplier_lbl':'Multiplicador de velocidade',
+    'sim.extra_lbl':'Horas extras/ciclo',
+    'sim.btn_run':'Simular',
+    'sim.avg_velocity':'Vel. histórica média',
+    'sim.sim_velocity':'Vel. simulada',
+    'sim.cycles_to_complete':'Ciclos restantes',
+    'sim.projected_eac':'EAC projetado',
+
+    // F4 — Monte Carlo
+    'mc.title':'Monte Carlo — Previsão Probabilística',
+    'mc.hint':'Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica.',
+    'mc.optimistic':'Otimista',
+    'mc.median':'Mediana',
+    'mc.pessimistic':'Pessimista',
+    'mc.mean_velocity':'Vel. média',
+    'mc.insufficient_data':'Dados insuficientes para simulação (mínimo 2 ciclos com dados).',
 };

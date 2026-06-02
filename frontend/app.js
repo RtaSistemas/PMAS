@@ -1423,7 +1423,26 @@ function _buildForecastKpis(fc) {
     { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
   ].map(_mkStatCard).join('');
 
-  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
+  // F3 — Earned Schedule row (only when ES data is available)
+  const esRow = (fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null) ? (() => {
+    const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
+    const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
+    const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+    const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
+    const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
+    const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
+    const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
+    const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
+    const cards = [
+      { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
+      { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
+      { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
+      { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
+    ].map(_mkStatCard).join('');
+    return `<div class="stats-row">${cards}</div>`;
+  })() : '';
+
+  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>${esRow}`;
 }
 
 // _buildForecastOption — moved to charts/forecast.js
@@ -1530,6 +1549,8 @@ async function _renderForecastTab() {
       }
     }
     _currentForecastPep = pep;
+    if (proj) _loadForecastSimulation(proj.id);
+    else { document.getElementById('whatIfCard').hidden = true; document.getElementById('monteCarloCard').hidden = true; }
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
@@ -1567,6 +1588,73 @@ function _renderBurnUpChart(fc) {
     chart.setOption(_buildBurnUpOption(fc), true);
     chart.resize();
   } catch (_) {}
+}
+
+// ── F11: What-If + F4: Monte Carlo ───────────────────────────────────────────
+
+let _simProjectId = null;
+
+async function _loadForecastSimulation(projectId) {
+  _simProjectId = projectId;
+  const wiCard = document.getElementById('whatIfCard');
+  const mcCard = document.getElementById('monteCarloCard');
+  if (!wiCard || !mcCard) return;
+  wiCard.hidden = false;
+  mcCard.hidden = false;
+  // reset result areas
+  document.getElementById('whatIfResult').innerHTML = '';
+  document.getElementById('mcResult').innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  // auto-load monte carlo
+  _runMonteCarlo();
+}
+
+async function _runWhatIf() {
+  if (!_simProjectId) return;
+  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value)  || 1.0;
+  const extra = parseFloat(document.getElementById('whatIfExtraHours').value)   || 0.0;
+  const btn   = document.getElementById('whatIfRunBtn');
+  btn.disabled = true;
+  try {
+    const r = await apiFetchJSON(`/api/v2/projects/${_simProjectId}/simulate`, 'POST', {
+      velocity_multiplier: mult, extra_hours_per_cycle: extra,
+    });
+    const el = document.getElementById('whatIfResult');
+    const ctc = r.cycles_to_complete != null ? `${r.cycles_to_complete} ciclos` : '—';
+    const eac = r.projected_eac_cost != null ? _fmtCost(r.projected_eac_cost) : '—';
+    el.innerHTML = `
+      <div class="stats-row" style="margin-top:.5rem">
+        <div class="stat-card neutral"><div class="stat-val">${r.avg_velocity.toFixed(1)}h</div><div class="stat-lbl">${_t('sim.avg_velocity')}</div></div>
+        <div class="stat-card blue"><div class="stat-val">${r.sim_velocity.toFixed(1)}h</div><div class="stat-lbl">${_t('sim.sim_velocity')}</div></div>
+        <div class="stat-card violet"><div class="stat-val">${ctc}</div><div class="stat-lbl">${_t('sim.cycles_to_complete')}</div></div>
+        <div class="stat-card neutral"><div class="stat-val">${eac}</div><div class="stat-lbl">${_t('sim.projected_eac')}</div></div>
+      </div>`;
+  } catch (e) {
+    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function _runMonteCarlo() {
+  if (!_simProjectId) return;
+  const el = document.getElementById('mcResult');
+  el.innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  try {
+    const r = await apiFetch(`/api/v2/projects/${_simProjectId}/monte-carlo?iterations=1000`);
+    if (r.error === 'insufficient_data') {
+      el.innerHTML = `<p class="hint">${_t('mc.insufficient_data')}</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="stats-row" style="margin-top:.5rem">
+        <div class="stat-card green"><div class="stat-val">${r.p10 ?? '—'} ciclos</div><div class="stat-lbl">P10 ${_t('mc.optimistic')}</div></div>
+        <div class="stat-card blue"><div class="stat-val">${r.p50 ?? '—'} ciclos</div><div class="stat-lbl">P50 ${_t('mc.median')}</div></div>
+        <div class="stat-card red"><div class="stat-val">${r.p90 ?? '—'} ciclos</div><div class="stat-lbl">P90 ${_t('mc.pessimistic')}</div></div>
+        <div class="stat-card neutral"><div class="stat-val">${r.mean_velocity?.toFixed(1) ?? '—'}h</div><div class="stat-lbl">${_t('mc.mean_velocity')}</div></div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2602,6 +2690,7 @@ const _projectsPag = _makePaginator(
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-secondary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})" data-i18n-title="budget.history.btn">${_t('budget.history.btn')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
@@ -2682,6 +2771,37 @@ function _closeProjectPlan() {
 
 document.getElementById('closePlanPanelBtn').addEventListener('click', _closeProjectPlan);
 
+// ── F7: Budget Revision History ───────────────────────────────────────────────
+
+async function _openBudgetHistory(projectId, projectName) {
+  document.getElementById('budgetHistoryTitle').textContent =
+    `${_t('budget.history.title')} — ${projectName}`;
+  document.getElementById('budgetHistoryBody').innerHTML =
+    `<tr><td colspan="5" class="td-empty">${_t('loading')}</td></tr>`;
+  openModal('budgetHistoryModal');
+  try {
+    const rows = await apiFetch(`/api/projects/${projectId}/budget-history`);
+    if (!rows.length) {
+      document.getElementById('budgetHistoryBody').innerHTML =
+        `<tr><td colspan="5" class="td-empty">${_t('budget.history.empty')}</td></tr>`;
+      return;
+    }
+    document.getElementById('budgetHistoryBody').innerHTML = rows.map(r => `
+      <tr>
+        <td>${_fmtDateBR(r.changed_at?.split('T')[0]) || '—'}</td>
+        <td>${escHtml(r.changed_by)}</td>
+        <td class="text-right">${r.old_budget_hours != null ? r.old_budget_hours.toFixed(1) + 'h' : '—'}
+          → ${r.new_budget_hours != null ? r.new_budget_hours.toFixed(1) + 'h' : '—'}</td>
+        <td class="text-right">${r.old_budget_cost != null ? _fmtCost(r.old_budget_cost) : '—'}
+          → ${r.new_budget_cost != null ? _fmtCost(r.new_budget_cost) : '—'}</td>
+        <td>${escHtml(r.reason || '—')}</td>
+      </tr>`).join('');
+  } catch (e) {
+    document.getElementById('budgetHistoryBody').innerHTML =
+      `<tr><td colspan="5" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
+  }
+}
+
 function openProjectModal(id = null) {
   _projectEditId = id;
   document.getElementById('projectModalTitle').textContent = id ? _t('pm.title_edit') : _t('pm.title_new');
@@ -2707,6 +2827,9 @@ function openProjectModal(id = null) {
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
+  // show budget reason field only when editing (budget change may occur)
+  document.getElementById('budgetReasonGroup').hidden = !id;
+  document.getElementById('projectBudgetReasonInput').value = '';
   openModal('projectModal');
 }
 
@@ -2722,17 +2845,19 @@ document.getElementById('projectSaveBtn').addEventListener('click', async () => 
   if (completionDate && status !== 'encerrado') {
     if (confirm(_t('confirm.set_encerrado'))) status = 'encerrado';
   }
+  const budgetReason = document.getElementById('projectBudgetReasonInput')?.value.trim() || null;
   const body = {
-    pep_wbs:          pep,
-    name:             document.getElementById('projectNameInput').value.trim()    || null,
-    client:           document.getElementById('projectClientInput').value.trim()  || null,
-    manager:          document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours:     budget     !== '' ? parseFloat(budget)     : null,
-    budget_cost:      budgetCost !== '' ? parseFloat(budgetCost) : null,
+    pep_wbs:               pep,
+    name:                  document.getElementById('projectNameInput').value.trim()    || null,
+    client:                document.getElementById('projectClientInput').value.trim()  || null,
+    manager:               document.getElementById('projectManagerInput').value.trim() || null,
+    budget_hours:          budget     !== '' ? parseFloat(budget)     : null,
+    budget_cost:           budgetCost !== '' ? parseFloat(budgetCost) : null,
     status,
-    start_date:       document.getElementById('projectStartInput').value       || null,
-    planned_end_date: document.getElementById('projectPlannedEndInput').value  || null,
-    completion_date:  completionDate,
+    start_date:            document.getElementById('projectStartInput').value       || null,
+    planned_end_date:      document.getElementById('projectPlannedEndInput').value  || null,
+    completion_date:       completionDate,
+    budget_change_reason:  budgetReason,
   };
   try {
     if (_projectEditId) {
@@ -2999,6 +3124,33 @@ let _assignCollabId     = null;
 async function loadTeamTab() {
   await Promise.all([loadSeniorityLevels(), loadRateCards(), loadGlobalConfig()]);
   await loadTeamTable();
+  await _loadOverAllocation();
+}
+
+// ── F5: Over-allocation Detection ─────────────────────────────────────────────
+
+async function _loadOverAllocation() {
+  const card = document.getElementById('overAllocCard');
+  const body = document.getElementById('overAllocBody');
+  if (!card || !body) return;
+  body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('loading')}</td></tr>`;
+  card.hidden = false;
+  try {
+    const items = await apiFetch('/api/v2/over-allocation');
+    if (!items.length) {
+      body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
+      return;
+    }
+    body.innerHTML = items.map(it => `
+      <tr>
+        <td>${escHtml(it.collaborator)}</td>
+        <td>${_fmtDateBR(it.date)}</td>
+        <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
+        <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
+      </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
+  }
 }
 
 const _seniorityPag = _makePaginator(
