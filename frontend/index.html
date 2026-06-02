@@ -416,7 +416,7 @@
       </div>
 
       <!-- F11: What-If Simulation -->
-      <div class="card" id="whatIfCard" hidden>
+      <div class="card" id="whatIfCard" data-panel-id="forecast-whatsim" hidden>
         <div class="section-header">
           <h2 class="card-title" data-i18n="sim.title">Simulação What-If</h2>
         </div>
@@ -438,7 +438,7 @@
       </div>
 
       <!-- F4: Monte Carlo Simulation -->
-      <div class="card" id="monteCarloCard" hidden>
+      <div class="card" id="monteCarloCard" data-panel-id="forecast-montecarlo" hidden>
         <div class="section-header">
           <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
           <button type="button" class="btn btn-secondary btn-sm" onclick="_runMonteCarlo()" data-i18n="btn.refresh">↺ Recalcular</button>
@@ -829,6 +829,14 @@
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-whatsim">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_whatsim">Simulação What-If</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-montecarlo">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_montecarlo">Monte Carlo</span>
                 </li>
               </ul>
             </li>

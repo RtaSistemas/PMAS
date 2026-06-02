@@ -366,7 +366,7 @@ window._LANG_PT = {
     'page.prev':'‹ Anterior','page.next':'Próximo ›',
     'qr.filter.all':'Todos os registros','qr.filter.pending_opt':'⏳ Pendentes','qr.filter.approved_opt':'✅ Aprovados','qr.filter.rejected_opt':'❌ Rejeitados',
     'history.filter.all':'Todos os registros',
-    'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.panel.forecast_alloc':'Alocação por Colaborador','layout.tab.forecast':'Previsão (EVM)',
+    'layout.panel.pepcpi':'CPI por PEP','layout.panel.cost_comp':'Composição de Custo','layout.panel.bullet':'Orçado vs. Realizado','layout.panel.quadrant':'Quadrante EVM','layout.panel.concentration':'Concentração de Risco','layout.panel.plan':'Baseline de Planejamento','layout.panel.forecast_alloc':'Alocação por Colaborador','layout.panel.forecast_whatsim':'Simulação What-If','layout.panel.forecast_montecarlo':'Monte Carlo','layout.tab.forecast':'Previsão (EVM)',
     'scatter.axis_spi':'SPI — Desempenho de Prazo','scatter.axis_cpi':'CPI — Desempenho de Custo',
     'risk.warning':'Atenção','risk.critical':'Crítico',
     'lbl.plus_cycles':'+{n} ciclo(s)',
