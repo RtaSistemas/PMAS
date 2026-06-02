@@ -125,6 +125,8 @@ class ProjectCyclePlanIn(BaseModel):
     cycle_id: int
     planned_hours: float = Field(ge=0)
     planned_cost: float | None = Field(default=None, ge=0)
+    physical_pct: float | None = Field(default=None, ge=0, le=1)
+    physical_note: str | None = None
 
 
 class ProjectCyclePlanOut(BaseModel):
@@ -134,6 +136,14 @@ class ProjectCyclePlanOut(BaseModel):
     cycle_name: str
     planned_hours: float
     planned_cost: float | None = None
+    physical_pct: float | None = None
+    physical_note: str | None = None
+
+
+class PhysicalProgressItem(BaseModel):
+    cycle_id: int
+    physical_pct: float | None = Field(default=None, ge=0, le=1)
+    physical_note: str | None = None
 
 
 class ProjectBaselineIn(BaseModel):

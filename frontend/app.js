@@ -1520,8 +1520,16 @@ async function _renderForecastTab() {
     kpisEl.hidden = false;
     kpisEl.innerHTML = _buildForecastKpis(fc);
     _renderForecastProjectInfo(fc, proj);
+    const badge = document.getElementById('forecastPhysicalBadge');
+    if (badge) {
+      badge.hidden = !fc.uses_physical_pct;
+      const span = badge.querySelector('span');
+      if (span && fc.last_physical_pct != null) {
+        span.title = _t('forecast.physical_badge_title');
+        span.textContent = `${_t('forecast.physical_badge')} — ${(fc.last_physical_pct * 100).toFixed(0)}%`;
+      }
+    }
     _currentForecastPep = pep;
-    _planProjectId = proj ? proj.id : null;
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
@@ -1529,14 +1537,11 @@ async function _renderForecastTab() {
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderBurnUpChart(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
-    await _renderPlanTable(pep);
-    document.getElementById('planCard').hidden = false;
   } catch (err) {
     _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
-    document.getElementById('planCard').hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
     _disposeTabCharts('forecast');
@@ -1664,17 +1669,10 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 let _currentForecastPep = null;
 let _planProjectId = null;
 
-async function _renderPlanTable(pep_wbs) {
-  // Resolve project_id from pep_wbs
-  try {
-    const projects = await apiFetch('/api/projects');
-    const proj = projects.find(p => p.pep_wbs === pep_wbs);
-    _planProjectId = proj ? proj.id : null;
-  } catch { _planProjectId = null; }
-
+async function _renderPlanTable() {
   const tbody = document.getElementById('planBody');
   if (!_planProjectId) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')} ${_t('msg.pep_not_registered')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.panel.select_hint')}</td></tr>`;
     return;
   }
   try {
@@ -1687,10 +1685,14 @@ async function _renderPlanTable(pep_wbs) {
       const costStr = pl.planned_cost != null
         ? pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
         : '<span style="color:var(--text-3)">—</span>';
+      const physStr = pl.physical_pct != null
+        ? `<span style="color:var(--color-accent);font-weight:600">${(pl.physical_pct * 100).toFixed(0)}%</span>`
+        : '<span style="color:var(--text-3)">—</span>';
       return `<tr>
         <td>${escHtml(pl.cycle_name)}</td>
         <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
         <td style="text-align:right">${costStr}</td>
+        <td style="text-align:right">${physStr}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${escHtml(JSON.stringify(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
           <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>
@@ -1705,8 +1707,7 @@ function deletePlan(cycle_id) {
   confirmDialog(_t('confirm.remove_baseline'), async () => {
     try {
       await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${cycle_id}`, 'DELETE');
-      await _renderPlanTable(_currentForecastPep);
-      _renderForecastTab();
+      await _renderPlanTable();
     } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
   });
 }
@@ -1737,8 +1738,7 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${_editPlanCycleId}`, 'PUT',
       { cycle_id: _editPlanCycleId, planned_hours: hours, planned_cost: cost });
     closeModal('editPlanModal');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
@@ -1796,6 +1796,84 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
   } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 });
 
+// ---------------------------------------------------------------------------
+// Physical Progress modal
+// ---------------------------------------------------------------------------
+document.getElementById('physicalProgressBtn').addEventListener('click', async () => {
+  if (!_planProjectId) { notify(_t('msg.err_generic'), 'info'); return; }
+  try {
+    const plans = await apiFetch(`/api/projects/${_planProjectId}/plans`);
+    if (!plans.length) { notify(_t('plan.no_plans'), 'info'); return; }
+    const tbody = document.getElementById('physicalProgressBody');
+    tbody.innerHTML = plans.map(pl => {
+      const pctVal = pl.physical_pct != null ? (pl.physical_pct * 100).toFixed(0) : '';
+      const noteVal = escHtml(pl.physical_note || '');
+      const hStr = (+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + 'h';
+      const cStr = pl.planned_cost != null
+        ? ' / R$ ' + pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2})
+        : '';
+      return `<tr data-cycle-id="${pl.cycle_id}">
+        <td>${escHtml(pl.cycle_name)}</td>
+        <td style="text-align:right;white-space:nowrap">${hStr}${cStr}</td>
+        <td style="text-align:right">
+          <input type="number" min="0" max="100" step="1" value="${pctVal}"
+            class="form-input input-sm" style="width:6rem;text-align:right"
+            placeholder="—" data-field="pct" />
+        </td>
+        <td>
+          <input type="text" value="${noteVal}" class="form-input input-sm"
+            style="width:100%" placeholder="..." data-field="note" />
+        </td>
+        <td>
+          <button type="button" class="btn btn-secondary btn-sm" data-clear="${pl.cycle_id}"
+            title="${_t('plan.physical.clear')}">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-clear]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('tr');
+        row.querySelector('[data-field="pct"]').value  = '';
+        row.querySelector('[data-field="note"]').value = '';
+      });
+    });
+    document.getElementById('physicalProgressError').textContent = '';
+    openModal('physicalProgressModal');
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+});
+
+document.getElementById('physicalProgressModalClose').addEventListener('click', () => closeModal('physicalProgressModal'));
+document.getElementById('physicalProgressCancelBtn').addEventListener('click', () => closeModal('physicalProgressModal'));
+
+document.getElementById('physicalProgressSaveBtn').addEventListener('click', async () => {
+  if (!_planProjectId) return;
+  const errEl = document.getElementById('physicalProgressError');
+  errEl.textContent = '';
+  const rows = document.getElementById('physicalProgressBody').querySelectorAll('tr[data-cycle-id]');
+  const payload = [];
+  for (const row of rows) {
+    const cycleId = parseInt(row.dataset.cycleId);
+    const rawPct  = row.querySelector('[data-field="pct"]').value.trim();
+    const note    = row.querySelector('[data-field="note"]').value.trim() || null;
+    let pct = null;
+    if (rawPct !== '') {
+      pct = parseFloat(rawPct);
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        errEl.textContent = `% inválido na linha "${row.cells[0].textContent}". Use valores entre 0 e 100.`;
+        return;
+      }
+      pct = pct / 100;
+    }
+    payload.push({ cycle_id: cycleId, physical_pct: pct, physical_note: note });
+  }
+  try {
+    await apiFetchJSON(`/api/projects/${_planProjectId}/plans/physical-progress`, 'PATCH', payload);
+    closeModal('physicalProgressModal');
+    await _renderPlanTable();
+    notify(_t('msg.layout_saved'), 'success');
+  } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
+});
+
 document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
   _addPlanRow(_addPlanAvailableCycles);
 });
@@ -1834,8 +1912,7 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
         { cycle_id: e.cycle_id, planned_hours: e.planned_hours, planned_cost: e.planned_cost })
     ));
     _closeAddPlanModal();
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
@@ -1873,8 +1950,7 @@ document.getElementById('importPlanFile').addEventListener('change', async funct
     const msg = _t('msg.baseline_imported').replace('{n}', data.created).replace('{m}', data.updated) +
       (data.errors.length ? ` — ${data.errors.length} ${_t('msg.errors_n')}` : '');
     notify(msg, data.errors.length ? 'warning' : 'success');
-    await _renderPlanTable(_currentForecastPep);
-    _renderForecastTab();
+    await _renderPlanTable();
   } catch (e) { notify(`Erro ao importar: ${e.message}`, 'error'); }
 });
 
@@ -2525,6 +2601,7 @@ const _projectsPag = _makePaginator(
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
@@ -2587,6 +2664,23 @@ function _buildDatesCell(p) {
 }
 
 function _renderProjectsTable(projects) { _projectsPag.render(projects); }
+
+function selectProjectPlan(projectId, pepWbs, projectName) {
+  _planProjectId = projectId;
+  const nameEl = document.getElementById('planProjectName');
+  if (nameEl) nameEl.textContent = projectName;
+  const panel = document.getElementById('projectPlanPanel');
+  panel.hidden = false;
+  _renderPlanTable();
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+function _closeProjectPlan() {
+  _planProjectId = null;
+  document.getElementById('projectPlanPanel').hidden = true;
+}
+
+document.getElementById('closePlanPanelBtn').addEventListener('click', _closeProjectPlan);
 
 function openProjectModal(id = null) {
   _projectEditId = id;

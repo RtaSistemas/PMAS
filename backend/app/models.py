@@ -144,6 +144,8 @@ class ProjectCyclePlan(Base):
     cycle_id = Column(Integer, ForeignKey("cycle.id", ondelete="CASCADE"), nullable=False)
     planned_hours = Column(Float, nullable=False)
     planned_cost  = Column(Float, nullable=True)
+    physical_pct  = Column(Float, nullable=True)   # cumulative % 0.0–1.0 declared by PM
+    physical_note = Column(String, nullable=True)
 
     project = relationship("Project", back_populates="plans")
     cycle = relationship("Cycle", back_populates="project_plans")
