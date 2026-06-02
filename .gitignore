@@ -43,3 +43,7 @@ Thumbs.db
 
 # User-uploaded assets (created at runtime by the logo upload feature)
 static/assets/logos/
+
+# Node.js (frontend test dependencies)
+node_modules/
+package-lock.json
