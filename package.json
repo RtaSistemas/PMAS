@@ -1,0 +1,19 @@
+{
+  "name": "pmas-frontend-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test": "npm run test:unit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "jsdom": "^24.1.0",
+    "vitest": "^1.6.0"
+  }
+}

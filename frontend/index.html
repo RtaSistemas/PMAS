@@ -435,6 +435,7 @@
         </div>
       </div>
       <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
+      <div class="table-responsive">
       <table class="data-table" id="projectsTable">
         <thead>
           <tr>
@@ -450,6 +451,7 @@
         </thead>
         <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -477,6 +479,7 @@
           </div>
         </div>
         <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
+        <div class="table-responsive">
         <table class="data-table" id="planTable">
           <thead><tr>
             <th data-i18n="plan.th.cycle">Ciclo</th>
@@ -487,6 +490,7 @@
           </tr></thead>
           <tbody id="planBody"></tbody>
         </table>
+        </div><!-- /.table-responsive -->
       </div>
     </div>
 
@@ -509,6 +513,7 @@
           <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
         </label>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>
@@ -522,6 +527,7 @@
         </thead>
         <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -548,10 +554,12 @@
           <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="seniorityTable">
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
         <tbody id="seniorityBody"><tr><td colspan="2" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="seniorityPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="seniorityPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -572,6 +580,7 @@
           <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="rateCardTable">
         <thead>
           <tr>
@@ -584,6 +593,7 @@
         </thead>
         <tbody id="rateCardBody"><tr><td colspan="5" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="rateCardPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="rateCardPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -636,6 +646,7 @@
         </div>
       </div>
       <input type="text" id="teamSearch" class="table-search-input" data-i18n-ph="team.search_ph" placeholder="Buscar colaborador…" />
+      <div class="table-responsive">
       <table class="data-table" id="teamTable">
         <thead>
           <tr>
@@ -647,6 +658,7 @@
         </thead>
         <tbody id="teamBody"><tr><td colspan="4" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="teamPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="teamPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -802,6 +814,7 @@
           </div>
         </div>
         <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
+        <div class="table-responsive">
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
@@ -816,6 +829,7 @@
           </tr></thead>
           <tbody id="myHistoryBody"><tr><td colspan="9" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="myHistoryPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
           <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myHistoryPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -839,6 +853,7 @@
           </div>
         </div>
         <p style="font-size:.78rem;color:var(--text-hint);margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
+        <div class="table-responsive">
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
@@ -851,6 +866,7 @@
           </tr></thead>
           <tbody id="myQrBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
           <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -872,6 +888,7 @@
         <button type="button" class="btn btn-primary btn-sm" id="newUserBtn" data-i18n="btn.new_user">+ Novo usuário</button>
       </div>
       <input type="text" id="userSearch" class="table-search-input" data-i18n-ph="users.search_ph" placeholder="Buscar usuário…" />
+      <div class="table-responsive">
       <table class="data-table" id="usersTable">
         <thead>
           <tr>
@@ -882,6 +899,7 @@
         </thead>
         <tbody id="usersBody"><tr><td colspan="3" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="usersPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="usersPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -957,6 +975,7 @@
           <button type="button" class="btn btn-secondary btn-sm" id="auditRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="auditTable">
         <thead>
           <tr>
@@ -970,6 +989,7 @@
         </thead>
         <tbody id="auditBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="auditPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
