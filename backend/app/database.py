@@ -206,6 +206,25 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN extra_cost FLOAT"))
             if "standby_cost" not in tr_cols:
                 conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
+            # budget_revision table (F7)
+            tables = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
+            if "budget_revision" not in tables:
+                conn.execute(text("""
+                    CREATE TABLE budget_revision (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                        old_budget_hours FLOAT,
+                        old_budget_cost FLOAT,
+                        new_budget_hours FLOAT,
+                        new_budget_cost FLOAT,
+                        reason TEXT,
+                        changed_by VARCHAR NOT NULL,
+                        changed_at DATETIME NOT NULL
+                    )
+                """))
+                conn.execute(text(
+                    "CREATE INDEX ix_budget_revision_project ON budget_revision(project_id)"
+                ))
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 

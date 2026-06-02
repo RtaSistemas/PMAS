@@ -119,6 +119,7 @@ class Project(Base):
     user_access = relationship("UserProjectAccess", back_populates="project", cascade="all, delete-orphan")
     manager_user = relationship("User", foreign_keys=[manager_id], back_populates="managed_projects")
     baselines = relationship("ProjectBaseline", back_populates="project", cascade="all, delete-orphan", order_by="ProjectBaseline.locked_at.desc()")
+    budget_revisions = relationship("BudgetRevision", back_populates="project", cascade="all, delete-orphan", order_by="BudgetRevision.changed_at.desc()")
 
 
 class ProjectBaseline(Base):
@@ -134,6 +135,22 @@ class ProjectBaseline(Base):
     is_active  = Column(Boolean, default=True, nullable=False)
 
     project = relationship("Project", back_populates="baselines")
+
+
+class BudgetRevision(Base):
+    __tablename__ = "budget_revision"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    project_id       = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
+    old_budget_hours = Column(Float, nullable=True)
+    old_budget_cost  = Column(Float, nullable=True)
+    new_budget_hours = Column(Float, nullable=True)
+    new_budget_cost  = Column(Float, nullable=True)
+    reason           = Column(String, nullable=True)
+    changed_by       = Column(String, nullable=False)
+    changed_at       = Column(DateTime, nullable=False, default=now_br)
+
+    project = relationship("Project", back_populates="budget_revisions")
 
 
 class ProjectCyclePlan(Base):
