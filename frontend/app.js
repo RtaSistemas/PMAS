@@ -1519,6 +1519,7 @@ async function _renderForecastTab() {
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
+    document.getElementById('forecastAllocCostCard').hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -1558,6 +1559,7 @@ async function _renderForecastTab() {
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderBurnUpChart(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
+    await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
   } catch (err) {
     _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
@@ -1565,6 +1567,7 @@ async function _renderForecastTab() {
     if (infoEl) infoEl.hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
+    document.getElementById('forecastAllocCostCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
@@ -1676,6 +1679,14 @@ document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
 });
 
+let _forecastAllocCostExpanded = true;
+document.getElementById('forecastAllocCostToggle').addEventListener('click', () => {
+  _forecastAllocCostExpanded = !_forecastAllocCostExpanded;
+  document.getElementById('forecastAllocCostBody').style.display = _forecastAllocCostExpanded ? '' : 'none';
+  const ch = document.getElementById('forecastAllocCostChevron');
+  ch.style.transform = _forecastAllocCostExpanded ? '' : 'rotate(-90deg)';
+});
+
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
   const card = document.getElementById('forecastAllocCard');
   const tbl  = document.getElementById('forecastAllocTable');
@@ -1739,6 +1750,79 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 
     html += `<tr class="alloc-footer">
       <td>${_t('forecast.alloc.total')}</td>
+      <td>${fmt(totNormal)}</td>
+      <td>${fmt(totExtra)}</td>
+      <td>${fmt(totStandby)}</td>
+      <td class="alloc-total">${fmt(totTotal)}</td>
+    </tr></tbody></table>`;
+
+    tbl.innerHTML = html;
+  } catch (_) {
+    card.hidden = true;
+  }
+}
+
+async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
+  const card = document.getElementById('forecastAllocCostCard');
+  const tbl  = document.getElementById('forecastAllocCostTable');
+  if (!pep) { card.hidden = true; return; }
+
+  try {
+    const p = new URLSearchParams({ pep_wbs: pep });
+    if (dateFrom) p.set('date_from', dateFrom);
+    if (dateTo)   p.set('date_to',   dateTo);
+    const data = await apiFetch(`/api/v2/allocation?${p}`);
+
+    if (!data.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    const byCollab = {};
+    data.forEach(d => {
+      if (!byCollab[d.collaborator]) byCollab[d.collaborator] = { normal: 0, extra: 0, standby: 0, total: 0 };
+      byCollab[d.collaborator].normal  += d.normal_cost  || 0;
+      byCollab[d.collaborator].extra   += d.extra_cost   || 0;
+      byCollab[d.collaborator].standby += d.standby_cost || 0;
+      byCollab[d.collaborator].total   += d.total_cost   || 0;
+    });
+
+    const collabs = Object.entries(byCollab).sort((a, b) => b[1].total - a[1].total);
+
+    const maxNormal  = Math.max(...collabs.map(([, v]) => v.normal),  0.001);
+    const maxExtra   = Math.max(...collabs.map(([, v]) => v.extra),   0.001);
+    const maxStandby = Math.max(...collabs.map(([, v]) => v.standby), 0.001);
+
+    const heat = (v, max) => {
+      if (!v) return '';
+      const a = (0.08 + (v / max) * 0.72).toFixed(2);
+      return `style="background:rgba(14,165,233,${a})"`;
+    };
+    const fmt = v => v > 0 ? _fmtCost(v) : '—';
+
+    const totNormal  = collabs.reduce((s, [, v]) => s + v.normal,  0);
+    const totExtra   = collabs.reduce((s, [, v]) => s + v.extra,   0);
+    const totStandby = collabs.reduce((s, [, v]) => s + v.standby, 0);
+    const totTotal   = collabs.reduce((s, [, v]) => s + v.total,   0);
+
+    let html = `<table class="data-table alloc-matrix" style="width:100%"><thead><tr>
+      <th>${_t('forecast.alloc.collaborator')}</th>
+      <th>${_t('forecast.alloc_cost.normal')}</th>
+      <th>${_t('forecast.alloc_cost.extra')}</th>
+      <th>${_t('forecast.alloc_cost.standby')}</th>
+      <th class="alloc-total">${_t('forecast.alloc_cost.total')}</th>
+    </tr></thead><tbody>`;
+
+    collabs.forEach(([name, v]) => {
+      html += `<tr>
+        <td class="alloc-name">${escHtml(name)}</td>
+        <td ${heat(v.normal,  maxNormal)}>${fmt(v.normal)}</td>
+        <td ${heat(v.extra,   maxExtra)}>${fmt(v.extra)}</td>
+        <td ${heat(v.standby, maxStandby)}>${fmt(v.standby)}</td>
+        <td class="alloc-total">${fmt(v.total)}</td>
+      </tr>`;
+    });
+
+    html += `<tr class="alloc-footer">
+      <td>${_t('forecast.alloc_cost.total')}</td>
       <td>${fmt(totNormal)}</td>
       <td>${fmt(totExtra)}</td>
       <td>${fmt(totStandby)}</td>

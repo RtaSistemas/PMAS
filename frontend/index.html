@@ -407,11 +407,21 @@
 
       <div class="card" id="forecastAllocCard" data-panel-id="forecast-alloc" hidden>
         <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador</h2>
+          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador — Horas</h2>
           <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
         <div id="forecastAllocBody">
           <div id="forecastAllocTable"></div>
+        </div>
+      </div>
+
+      <div class="card" id="forecastAllocCostCard" data-panel-id="forecast-alloc-cost" hidden>
+        <div class="section-header" id="forecastAllocCostToggle" style="cursor:pointer;user-select:none">
+          <h2 class="card-title" data-i18n="forecast.alloc_cost.title">Alocação por Colaborador — Custo</h2>
+          <span id="forecastAllocCostChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        </div>
+        <div id="forecastAllocCostBody">
+          <div id="forecastAllocCostTable"></div>
         </div>
       </div>
 
@@ -828,7 +838,11 @@
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador — Horas</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc-cost">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc_cost">Alocação por Colaborador — Custo</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-whatsim">
                   <span class="sortable-handle panel-handle">⠿</span>
