@@ -121,6 +121,54 @@ window._EVM_TERMS = {
       formula: 'ETC = EAC − AC\n  EAC = Estimate at Completion\n  AC = Actual Cost',
     },
   },
+  ES: {
+    pt: {
+      name: 'PC — Prazo Conquistado (Earned Schedule)',
+      desc: 'Ponto na linha de base onde o VP acumulado iguala o VA atual. Mede progresso real de cronograma em unidades de tempo.',
+      formula: 'PC = ciclo onde VP(t) = VA\n  Interpolado na curva S de horas planejadas\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'ES — Earned Schedule',
+      desc: 'Point on the baseline where cumulative PV equals current EV. Measures real schedule progress in time units.',
+      formula: 'ES = period where PV(t) = EV\n  Interpolated on the planned hours S-curve\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  SPIt: {
+    pt: {
+      name: 'IDP(t) — Índice de Desempenho de Prazo (tempo)',
+      desc: 'Razão entre o prazo conquistado e o tempo real decorrido. > 1,0 = adiantado; < 1,0 = atrasado. Baseado em tempo, não em valor.',
+      formula: 'IDP(t) = PC ÷ AT\n  PC = Prazo Conquistado (Earned Schedule)\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'SPI(t) — Schedule Performance Index (time)',
+      desc: 'Ratio of earned schedule to actual time elapsed. > 1.0 = ahead; < 1.0 = behind. Time-based, not value-based.',
+      formula: 'SPI(t) = ES ÷ AT\n  ES = Earned Schedule\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  SVt: {
+    pt: {
+      name: 'VS(t) — Variação de Prazo (tempo)',
+      desc: 'Diferença entre prazo conquistado e tempo real, em ciclos. Positivo = adiantado; negativo = atrasado.',
+      formula: 'VS(t) = PC − AT\n  PC = Prazo Conquistado (ciclos)\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'SV(t) — Schedule Variance (time)',
+      desc: 'Difference between earned schedule and actual time, in cycles. Positive = ahead; negative = behind.',
+      formula: 'SV(t) = ES − AT\n  ES = Earned Schedule (cycles)\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  IEACt: {
+    pt: {
+      name: 'EPDT(t) — Estimativa de Prazo no Término (tempo)',
+      desc: 'Previsão da duração total do projeto baseada no desempenho de prazo atual (IDP(t)). Em unidades de ciclos.',
+      formula: 'EPDT(t) = DP ÷ IDP(t)\n  DP = Duração Planejada (ciclos)\n  IDP(t) = Índice de Desempenho de Prazo (tempo)',
+    },
+    en: {
+      name: 'IEAC(t) — Independent EAC (time)',
+      desc: 'Forecast of total project duration based on current time-based schedule performance.',
+      formula: 'IEAC(t) = PD ÷ SPI(t)\n  PD = Planned Duration (cycles)\n  SPI(t) = Schedule Performance Index (time)',
+    },
+  },
   EVM: {
     pt: {
       name: 'EVM — Gestão de Valor Agregado',
@@ -159,10 +207,14 @@ function _showEvmTip(anchor) {
 
   const rect = anchor.getBoundingClientRect();
   const tipW = 270;
+  const tipH = _evmTipEl.offsetHeight || 160;
   let left = rect.left;
   let top  = rect.bottom + 6;
+  // clamp horizontally so the tooltip never leaves the viewport
   if (left + tipW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tipW - 8);
-  if (top + 120 > window.innerHeight)      top  = rect.top - 8 - (_evmTipEl.offsetHeight || 120);
+  // flip above the anchor when there is not enough room below
+  if (top + tipH > window.innerHeight - 8) top = rect.top - tipH - 6;
+  top = Math.max(8, top);
   _evmTipEl.style.left = `${left}px`;
   _evmTipEl.style.top  = `${top}px`;
 }
