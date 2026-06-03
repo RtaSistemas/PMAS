@@ -454,6 +454,8 @@ window._LANG_PT = {
     'sim.burnup.consumed':'Realizado',
     'sim.burnup.projected':'Projeção',
     'sim.burnup.budget':'Orçamento',
+    'sim.velocity_base':'Base:',
+    'forecast.avg3':'Méd. 3 últ.',
 
     // F4 — Monte Carlo
     'mc.title':'Monte Carlo — Previsão Probabilística',

@@ -138,10 +138,6 @@ def _migrate_columns() -> None:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
                 ))
-            if "manager_id" not in p_cols:
-                conn.execute(text(
-                    "ALTER TABLE project ADD COLUMN manager_id INTEGER REFERENCES user(id)"
-                ))
             if "status" not in p_cols:
                 conn.execute(text(
                     "ALTER TABLE project ADD COLUMN status VARCHAR NOT NULL DEFAULT 'ativo'"

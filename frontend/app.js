@@ -181,7 +181,7 @@ const _charts = {};
 const CHARTS_PER_TAB = {
   effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
-  forecast:   ['forecastChart', 'burnUpChart', 'whatIfBurnUpChart', 'mcHistogramChart'],
+  forecast:   ['forecastChart', 'burnUpChart', 'whatIfBurnUpChart', 'mcHistogramChart', 'velocitySparklineChart'],
 };
 
 function _disposeTabCharts(tabId) {
@@ -1552,6 +1552,7 @@ async function _renderForecastTab() {
       }
     }
     _currentForecastPep = pep;
+    _fcAvgVelocity = fc.avg_hours_per_cycle || null;
     if (proj) _loadForecastSimulation(proj.id);
     else { document.getElementById('whatIfCard').hidden = true; document.getElementById('monteCarloCard').hidden = true; }
     try {
@@ -1559,6 +1560,7 @@ async function _renderForecastTab() {
       chart.setOption(_buildForecastOption(fc), true);
       chart.resize();
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
+    _renderVelocitySparkline(fc);
     _renderBurnUpChart(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
     await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
@@ -1573,6 +1575,40 @@ async function _renderForecastTab() {
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
+}
+
+function _renderVelocitySparkline(fc) {
+  const el = document.getElementById('velocitySparklineChart');
+  if (!el) return;
+  const history = (fc.history || []).filter(h => h.period_hours > 0);
+  if (history.length < 2) { el.hidden = true; return; }
+  el.hidden = false;
+
+  const labels = history.map(h => h.cycle_name);
+  const vals   = history.map(h => h.period_hours);
+  const last3  = vals.slice(-3);
+  const avg3   = last3.reduce((s, v) => s + v, 0) / last3.length;
+
+  const chart = _getOrCreateChart('velocitySparklineChart');
+  chart.setOption({
+    grid: { top: 18, bottom: 28, left: 40, right: 12 },
+    tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>${p[0].value.toFixed(1)} h` },
+    xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 9, interval: 'auto' } },
+    yAxis: { type: 'value', axisLabel: { fontSize: 9, formatter: v => v + 'h' } },
+    series: [
+      {
+        type: 'bar', data: vals, name: _t('sim.velocity_base'),
+        itemStyle: { color: 'var(--color-neutral, #6b7280)' },
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: 'var(--color-danger, #ef4444)', width: 1.5, type: 'dashed' },
+          label: { formatter: `${_t('forecast.avg3')}: {c}h`, fontSize: 9 },
+          data: [{ yAxis: +avg3.toFixed(1) }],
+        },
+      },
+    ],
+  }, true);
+  chart.resize();
 }
 
 function _renderBurnUpChart(fc) {
@@ -1598,6 +1634,7 @@ function _renderBurnUpChart(fc) {
 // ── F11: What-If + F4: Monte Carlo ───────────────────────────────────────────
 
 let _simProjectId = null;
+let _fcAvgVelocity = null;
 
 async function _loadForecastSimulation(projectId) {
   _simProjectId = projectId;
@@ -1609,6 +1646,13 @@ async function _loadForecastSimulation(projectId) {
   // reset result areas
   document.getElementById('whatIfResult').innerHTML = '';
   document.getElementById('mcResult').innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  // B4: show base velocity hint so user knows what 1× means
+  const hint = document.getElementById('whatIfVelocityHint');
+  if (hint) {
+    hint.textContent = _fcAvgVelocity != null
+      ? `${_t('sim.velocity_base')} ${_fcAvgVelocity.toFixed(1)} h/ciclo`
+      : '';
+  }
   // auto-load monte carlo
   _runMonteCarlo();
 }
