@@ -2732,18 +2732,11 @@ function _buildPortfolioStatsRow(health, trends) {
   const pepsActive = health.filter(d => d.total_hours > 0).length;
   const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
 
-  const _fmtDelta = (pct, abs) => {
-    if (pct != null) {
-      const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
-      const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
-      return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
-    }
-    if (abs != null && abs !== 0) {
-      const dir = abs > 0 ? '↑' : '↓';
-      const cls = abs > 0 ? 'delta-up' : 'delta-down';
-      return ` <span class="${cls}">${dir} ${abs > 0 ? '+' : ''}${abs.toFixed(1)}</span>`;
-    }
-    return '';
+  const _fmtDeltaBadge = pct => {
+    if (pct == null) return '';
+    const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
+    const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
+    return `<span class="stat-delta ${cls}">${dir}${Math.abs(pct).toFixed(1)}%</span>`;
   };
 
   const pal = _getPalette();
@@ -2763,14 +2756,12 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_hours, 0);
     const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
     const overH = budgetHours > 0 && totalHours > budgetHours;
-    const totalHoursVal = `${fmt(totalHours)}h${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct, lastTrend.hours_delta) : ''}`;
-
     cards = [
-      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
-      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
-      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
-      { val: totalHoursVal,                                                          lbl: _t('stat.total'),       cls: 'green'   },
-      { val: pepsActive,                                                              lbl: _t('stat.peps_active'), cls: 'neutral' },
+      { val: `${fmt(hNormal)}h`,   delta: _fmtDeltaBadge(lastTrend?.normal_hours_delta_pct),   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
+      { val: `${fmt(hExtra)}h`,    delta: _fmtDeltaBadge(lastTrend?.extra_hours_delta_pct),    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
+      { val: `${fmt(hStandby)}h`,  delta: _fmtDeltaBadge(lastTrend?.standby_hours_delta_pct),  lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
+      { val: `${fmt(totalHours)}h`, delta: _fmtDeltaBadge(lastTrend?.hours_delta_pct),         lbl: _t('stat.total'),       cls: 'green'   },
+      { val: pepsActive,                                                                         lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
     if (budgetHours > 0) {
       cards.push(
@@ -2792,14 +2783,12 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_cost, 0);
     const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
     const overC = budgetCost > 0 && totalCost > budgetCost;
-    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct, lastTrend.cost_delta) : ''}`;
-
     cards = [
-      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
-      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
-      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
-      { val: costTotalVal,                                                                lbl: _t('stat.cost_total'),   cls: 'green'   },
-      { val: pepsActive,                                                                  lbl: _t('stat.peps_active'),  cls: 'neutral' },
+      { val: _fmtCost(costNormal),  delta: _fmtDeltaBadge(lastTrend?.normal_cost_delta_pct),   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
+      { val: _fmtCost(costExtra),   delta: _fmtDeltaBadge(lastTrend?.extra_cost_delta_pct),    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
+      { val: _fmtCost(costStandby), delta: _fmtDeltaBadge(lastTrend?.standby_cost_delta_pct),  lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
+      { val: _fmtCost(totalCost),   delta: _fmtDeltaBadge(lastTrend?.cost_delta_pct),          lbl: _t('stat.cost_total'),   cls: 'green'   },
+      { val: pepsActive,                                                                         lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
     if (budgetCost > 0) {
       cards.push(
@@ -2811,11 +2800,11 @@ function _buildPortfolioStatsRow(health, trends) {
 
   const row = document.createElement('div');
   row.className = 'stats-row';
-  cards.forEach(({ val, lbl, cls, color }) => {
+  cards.forEach(({ val, lbl, cls, color, delta }) => {
     const card = document.createElement('div');
     card.className = `stat-card ${cls}`;
     const style = color ? ` style="color:${color}"` : '';
-    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
+    card.innerHTML = `${delta || ''}<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
