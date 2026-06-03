@@ -181,7 +181,7 @@ const _charts = {};
 const CHARTS_PER_TAB = {
   effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
-  forecast:   ['forecastChart', 'burnUpChart'],
+  forecast:   ['forecastChart', 'burnUpChart', 'whatIfBurnUpChart', 'mcHistogramChart'],
 };
 
 function _disposeTabCharts(tabId) {
@@ -1614,6 +1614,7 @@ async function _runWhatIf() {
   const extra = parseFloat(document.getElementById('whatIfExtraHours').value)   || 0.0;
   const btn   = document.getElementById('whatIfRunBtn');
   btn.disabled = true;
+  const burnEl = document.getElementById('whatIfBurnUpChart');
   try {
     const r = await apiFetchJSON(`/api/v2/projects/${_simProjectId}/simulate`, 'POST', {
       velocity_multiplier: mult, extra_hours_per_cycle: extra,
@@ -1628,8 +1629,57 @@ async function _runWhatIf() {
       { val: eac,                              lbl: _t('sim.projected_eac'),      cls: 'neutral', evm: 'SimEAC'     },
     ].map(_mkStatCard).join('');
     el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${cards}</div>`;
+
+    // Burn-up projection chart
+    if (burnEl && r.burn_up_projected?.length) {
+      const projected = [r.consumed_hours, ...r.burn_up_projected];
+      const cats = ['Atual', ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
+      const budget = r.budget_hours;
+      burnEl.hidden = false;
+      const wc = _getOrCreateChart('whatIfBurnUpChart');
+      wc.setOption({
+        ..._chartDefaults(),
+        grid: { top: 36, right: '4%', bottom: 32, left: '2%', containLabel: true },
+        legend: {
+          data: [_t('sim.burnup.projected'), ...(budget != null ? [_t('sim.burnup.budget')] : [])],
+          top: 4, left: 'center',
+          textStyle: { color: _cssVar('--text'), fontSize: 11 },
+          itemGap: 20, itemWidth: 14, itemHeight: 8,
+        },
+        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+          formatter: params => {
+            let html = `<b>${params[0]?.axisValue}</b><br>`;
+            params.forEach(p => p.value != null && (html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`));
+            return html;
+          },
+        },
+        xAxis: { type: 'category', data: cats,
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 }, axisTick: { show: false } },
+        yAxis: { type: 'value', name: 'h',
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10, formatter: v => `${v}h` },
+          splitLine: { lineStyle: { color: _cssVar('--surface') } } },
+        series: [
+          { name: _t('sim.burnup.projected'), type: 'line', data: projected,
+            lineStyle: { color: _cssVar('--primary'), width: 2.5 },
+            itemStyle: { color: _cssVar('--primary') },
+            symbol: 'circle', symbolSize: 5, connectNulls: true,
+            areaStyle: { color: (_cssVar('--primary') || '#6366f1') + '22' },
+          },
+          ...(budget != null ? [{
+            name: _t('sim.burnup.budget'), type: 'line', data: cats.map(() => budget),
+            symbol: 'none', lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
+            itemStyle: { color: _cssVar('--amber') },
+          }] : []),
+        ],
+      }, true);
+      wc.resize();
+    } else if (burnEl) {
+      burnEl.hidden = true;
+    }
   } catch (e) {
     document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+    if (burnEl) burnEl.hidden = true;
   } finally {
     btn.disabled = false;
   }
@@ -1637,8 +1687,10 @@ async function _runWhatIf() {
 
 async function _runMonteCarlo() {
   if (!_simProjectId) return;
-  const el = document.getElementById('mcResult');
+  const el    = document.getElementById('mcResult');
+  const histEl = document.getElementById('mcHistogram');
   el.innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  if (histEl) histEl.hidden = true;
   try {
     const r = await apiFetch(`/api/v2/projects/${_simProjectId}/monte-carlo?iterations=1000`);
     if (r.error === 'insufficient_data') {
@@ -1652,6 +1704,48 @@ async function _runMonteCarlo() {
       { val: `${r.mean_velocity?.toFixed(1) ?? '—'}h`,   lbl: _t('mc.mean_velocity'),        cls: 'neutral', evm: 'MCMeanVel' },
     ].map(_mkStatCard).join('');
     el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${mcCards}</div>`;
+
+    // Histogram
+    if (histEl && r.histogram?.length) {
+      histEl.hidden = false;
+      const hc = _getOrCreateChart('mcHistogramChart');
+      const cats  = r.histogram.map(b => String(b.cycle));
+      const freqs = r.histogram.map(b => b.count);
+      hc.setOption({
+        ..._chartDefaults(),
+        grid: { top: 36, right: '4%', bottom: 40, left: '2%', containLabel: true },
+        legend: { show: false },
+        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+          formatter: params => `<b>${params[0].axisValue} ${_t('sim.cycles_to_complete')}</b><br>${params[0].marker}${_t('mc.histogram.frequency')}: <b>${params[0].value}</b>`,
+        },
+        xAxis: { type: 'category', data: cats,
+          name: _t('sim.cycles_to_complete'), nameLocation: 'middle', nameGap: 28,
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisTick: { alignWithLabel: true },
+        },
+        yAxis: { type: 'value', name: _t('mc.histogram.frequency'),
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
+          splitLine: { lineStyle: { color: _cssVar('--surface') } },
+        },
+        series: [{
+          type: 'bar', data: freqs, barMaxWidth: 36,
+          itemStyle: { color: _cssVar('--primary') },
+          markLine: {
+            symbol: 'none',
+            lineStyle: { type: 'dashed', width: 1.5 },
+            label: { fontSize: 10 },
+            data: [
+              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green') }, label: { formatter: 'P10', color: _cssVar('--green') } }] : []),
+              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary') } }] : []),
+              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red') }, label: { formatter: 'P90', color: _cssVar('--red') } }] : []),
+            ],
+          },
+        }],
+      }, true);
+      hc.resize();
+    }
   } catch (e) {
     el.innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
   }

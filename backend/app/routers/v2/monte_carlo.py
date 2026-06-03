@@ -112,6 +112,24 @@ def monte_carlo(
     p50 = results[int(0.50 * n)]
     p90 = results[int(0.90 * n)]
 
+    # Build histogram buckets for frontend chart
+    min_r, max_r = results[0], results[-1]
+    if max_r - min_r <= 30:
+        from collections import Counter
+        counts = Counter(results)
+        histogram = [{"cycle": k, "count": counts[k]} for k in range(min_r, max_r + 1)]
+    else:
+        from collections import Counter
+        n_buckets = 20
+        width = math.ceil((max_r - min_r + 1) / n_buckets)
+        counts = Counter(results)
+        histogram = []
+        for i in range(n_buckets):
+            lo = min_r + i * width
+            hi = min_r + (i + 1) * width
+            cnt = sum(counts.get(k, 0) for k in range(lo, hi))
+            histogram.append({"cycle": lo, "count": cnt})
+
     return {
         "p10": p10,
         "p50": p50,
@@ -122,5 +140,6 @@ def monte_carlo(
         "remaining_hours": round(remaining, 2),
         "budget_hours": budget_hours,
         "iterations": iterations,
+        "histogram": histogram,
         "error": None,
     }

@@ -451,6 +451,9 @@ window._LANG_PT = {
     'sim.sim_velocity':'Vel. simulada',
     'sim.cycles_to_complete':'Ciclos restantes',
     'sim.projected_eac':'EAC projetado',
+    'sim.burnup.consumed':'Realizado',
+    'sim.burnup.projected':'Projeção',
+    'sim.burnup.budget':'Orçamento',
 
     // F4 — Monte Carlo
     'mc.title':'Monte Carlo — Previsão Probabilística',
@@ -460,4 +463,6 @@ window._LANG_PT = {
     'mc.pessimistic':'Pessimista',
     'mc.mean_velocity':'Vel. média',
     'mc.insufficient_data':'Dados insuficientes para simulação (mínimo 2 ciclos com dados).',
+    'mc.histogram.title':'Distribuição de Resultados — Frequência de Ciclos para Conclusão',
+    'mc.histogram.frequency':'Frequência',
 };
