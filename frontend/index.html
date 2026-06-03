@@ -458,11 +458,9 @@
 
       <!-- F4: Monte Carlo Simulation -->
       <div class="card" id="monteCarloCard" data-panel-id="forecast-montecarlo" hidden>
-        <div class="section-header">
-          <div id="mcToggle" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:.5rem;flex:1;min-width:0">
-            <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
-            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block;flex-shrink:0">▼</span>
-          </div>
+        <div class="section-header" id="mcToggle" style="cursor:pointer;user-select:none">
+          <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
+          <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
         <div id="mcBody">
           <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
@@ -473,8 +471,9 @@
 
       <!-- Baseline de Planejamento — read-only view, editable in Projetos tab -->
       <div class="card" id="forecastBaselineCard" data-panel-id="forecast-plan" hidden>
-        <div class="section-header">
+        <div class="section-header" id="baselineToggle" style="cursor:pointer;user-select:none">
           <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento</h2>
+          <span id="baselineChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
         <div id="forecastBaselineBody">
           <p class="hint" data-i18n="forecast.baseline.empty">Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.</p>

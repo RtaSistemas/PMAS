@@ -698,12 +698,12 @@ function _drawRunwayRows(data) {
 
     let spiCell = '—';
     if (item.spi != null) {
-      const spiColor = _EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.success;
+      const spiColor = item.spi_color === 'success' ? _getPalette()[0] : (_EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.warning);
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
     const statusMap = {
-      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: 'var(--primary,#4f8ef7)' },
+      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: _getPalette()[0] || 'var(--primary,#4f8ef7)' },
       at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
       behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
       no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: '#475569' },
@@ -713,7 +713,7 @@ function _drawRunwayRows(data) {
 
     let cpiCell = '—';
     if (item.cpi != null) {
-      const cpiColor = _EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.success;
+      const cpiColor = item.cpi_color === 'success' ? _getPalette()[0] : (_EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.warning);
       cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
     }
 
@@ -879,6 +879,10 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = false;
       document.getElementById('bulletChart').style.height =
         `${Math.max(220, withBudget.length * 60 + 80)}px`;
+      if (_charts['bulletChart'] && !_charts['bulletChart'].isDisposed()) {
+        _charts['bulletChart'].dispose();
+        delete _charts['bulletChart'];
+      }
       const bc = _getOrCreateChart('bulletChart');
       bc.setOption(_buildBulletOption(withBudget, _evmMode), true);
       bc.resize();
@@ -1595,10 +1599,15 @@ function _renderVelocitySparkline(fc) {
   const chart = _getOrCreateChart('velocitySparklineChart');
   chart.setOption({
     ..._chartDefaults(),
+    backgroundColor: _cssVar('--bg'),
     grid: { top: 18, bottom: 28, left: 44, right: 16, containLabel: false },
     tooltip: {
       trigger: 'axis', ..._chartDefaults().tooltip,
-      formatter: p => `<b>${p[0].name}</b><br/>${p[0].marker}${p[0].value.toFixed(1)} h`,
+      formatter: p => {
+        const bar = p[0];
+        return `<b>${bar.name}</b><br/>${bar.marker}${(+bar.value).toFixed(1)} h` +
+          `<br/><span style="color:${avgColor}">— — </span>${_t('forecast.avg3')}: <b style="color:${avgColor}">${avg3.toFixed(1)} h</b>`;
+      },
     },
     xAxis: {
       type: 'category', data: labels,
@@ -1902,6 +1911,13 @@ document.getElementById('mcToggle').addEventListener('click', () => {
   _mcExpanded = !_mcExpanded;
   document.getElementById('mcBody').style.display = _mcExpanded ? '' : 'none';
   document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
+});
+
+let _baselineExpanded = true;
+document.getElementById('baselineToggle').addEventListener('click', () => {
+  _baselineExpanded = !_baselineExpanded;
+  document.getElementById('forecastBaselineBody').style.display = _baselineExpanded ? '' : 'none';
+  document.getElementById('baselineChevron').style.transform = _baselineExpanded ? '' : 'rotate(-90deg)';
 });
 
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
