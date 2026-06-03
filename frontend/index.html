@@ -610,6 +610,41 @@
   <section id="tab-team" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-team" tabindex="0">
 
     <div class="card">
+      <h2 class="card-title" data-i18n="config.title">Fatores Globais de Custo</h2>
+      <div class="form-grid flex-bottom">
+        <div class="form-group">
+          <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
+          <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
+        </div>
+        <div class="form-group">
+          <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
+          <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
+        </div>
+        <div class="form-group">
+          <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
+          <input type="number" id="budgetWarningInput" min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
+        </div>
+        <div class="form-group">
+          <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
+          <input type="number" id="budgetCriticalInput" min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
+        </div>
+        <div class="form-group">
+          <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
+          <select id="timezoneSelect" class="form-select">
+            <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
+            <option value="America/Manaus">America/Manaus (UTC-4)</option>
+            <option value="America/Belem">America/Belem (UTC-3)</option>
+            <option value="America/Fortaleza">America/Fortaleza (UTC-3)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
+        </div>
+      </div>
+      <p id="configMsg" class="hint" style="margin-top:.5rem"></p>
+    </div>
+
+    <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
         <div class="flex-center gap-sm flex-wrap">
@@ -667,41 +702,6 @@
         <span id="rateCardPageLabel" class="hint"></span>
         <button type="button" id="rateCardNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
-    </div>
-
-    <div class="card">
-      <h2 class="card-title" data-i18n="config.title">Fatores Globais de Custo</h2>
-      <div class="form-grid flex-bottom">
-        <div class="form-group">
-          <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
-          <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
-        </div>
-        <div class="form-group">
-          <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
-          <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
-        </div>
-        <div class="form-group">
-          <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
-          <input type="number" id="budgetWarningInput" min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
-        </div>
-        <div class="form-group">
-          <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
-          <input type="number" id="budgetCriticalInput" min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
-        </div>
-        <div class="form-group">
-          <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
-          <select id="timezoneSelect" class="form-select">
-            <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
-            <option value="America/Manaus">America/Manaus (UTC-4)</option>
-            <option value="America/Belem">America/Belem (UTC-3)</option>
-            <option value="America/Fortaleza">America/Fortaleza (UTC-3)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
-        </div>
-      </div>
-      <p id="configMsg" class="hint" style="margin-top:.5rem"></p>
     </div>
 
     <div class="card">
