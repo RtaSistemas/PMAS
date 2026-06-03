@@ -472,4 +472,5 @@ window._LANG_PT = {
     'mc.error':'Não foi possível executar a simulação.',
     'mc.histogram.title':'Distribuição de Resultados — Frequência de Ciclos para Conclusão',
     'mc.histogram.frequency':'Frequência',
+    'mc.bell_curve':'Normal ref.',
 };
