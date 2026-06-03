@@ -594,7 +594,7 @@ async function _renderEffortTab() {
       orientation: 'horizontal',
       stacked:     _stackMode,
       showTotal:   true,
-      richLabel:   true,
+      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);

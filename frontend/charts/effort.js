@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 // calcHeight — dynamic chart height based on item count
 // ---------------------------------------------------------------------------
-function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
+function calcHeight(count) { return Math.max(360, Math.min(count, 40) * 40 + 100); }
 
 // ---------------------------------------------------------------------------
 // _buildEffortTitle — title string for the effort chart
