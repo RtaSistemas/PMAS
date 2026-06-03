@@ -594,7 +594,6 @@ async function _renderEffortTab() {
       orientation: 'horizontal',
       stacked:     _stackMode,
       showTotal:   true,
-      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);
@@ -1081,7 +1080,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       orientation: 'vertical',
       stacked:     true,
       showTotal:   true,
-      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Queima',
     });
@@ -2479,7 +2477,7 @@ async function _renderCollabTimeline(name) {
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
     orientation: 'vertical', stacked: true,
-    showTotal: true, richLabel: false,
+    showTotal: true,
     maxItems: 40, toolboxName: 'PMAS-CollabTimeline',
   }), true);
 
