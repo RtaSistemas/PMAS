@@ -121,6 +121,150 @@ window._EVM_TERMS = {
       formula: 'ETC = EAC − AC\n  EAC = Estimate at Completion\n  AC = Actual Cost',
     },
   },
+  ES: {
+    pt: {
+      name: 'PC — Prazo Conquistado (Earned Schedule)',
+      desc: 'Ponto na linha de base onde o VP acumulado iguala o VA atual. Mede progresso real de cronograma em unidades de tempo.',
+      formula: 'PC = ciclo onde VP(t) = VA\n  Interpolado na curva S de horas planejadas\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'ES — Earned Schedule',
+      desc: 'Point on the baseline where cumulative PV equals current EV. Measures real schedule progress in time units.',
+      formula: 'ES = period where PV(t) = EV\n  Interpolated on the planned hours S-curve\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  SPIt: {
+    pt: {
+      name: 'IDP(t) — Índice de Desempenho de Prazo (tempo)',
+      desc: 'Razão entre o prazo conquistado e o tempo real decorrido. > 1,0 = adiantado; < 1,0 = atrasado. Baseado em tempo, não em valor.',
+      formula: 'IDP(t) = PC ÷ AT\n  PC = Prazo Conquistado (Earned Schedule)\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'SPI(t) — Schedule Performance Index (time)',
+      desc: 'Ratio of earned schedule to actual time elapsed. > 1.0 = ahead; < 1.0 = behind. Time-based, not value-based.',
+      formula: 'SPI(t) = ES ÷ AT\n  ES = Earned Schedule\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  SVt: {
+    pt: {
+      name: 'VS(t) — Variação de Prazo (tempo)',
+      desc: 'Diferença entre prazo conquistado e tempo real, em ciclos. Positivo = adiantado; negativo = atrasado.',
+      formula: 'VS(t) = PC − AT\n  PC = Prazo Conquistado (ciclos)\n  AT = Tempo Real decorrido (ciclos)',
+    },
+    en: {
+      name: 'SV(t) — Schedule Variance (time)',
+      desc: 'Difference between earned schedule and actual time, in cycles. Positive = ahead; negative = behind.',
+      formula: 'SV(t) = ES − AT\n  ES = Earned Schedule (cycles)\n  AT = Actual Time elapsed (cycles)',
+    },
+  },
+  IEACt: {
+    pt: {
+      name: 'EPDT(t) — Estimativa de Prazo no Término (tempo)',
+      desc: 'Previsão da duração total do projeto baseada no desempenho de prazo atual (IDP(t)). Em unidades de ciclos.',
+      formula: 'EPDT(t) = DP ÷ IDP(t)\n  DP = Duração Planejada (ciclos)\n  IDP(t) = Índice de Desempenho de Prazo (tempo)',
+    },
+    en: {
+      name: 'IEAC(t) — Independent EAC (time)',
+      desc: 'Forecast of total project duration based on current time-based schedule performance.',
+      formula: 'IEAC(t) = PD ÷ SPI(t)\n  PD = Planned Duration (cycles)\n  SPI(t) = Schedule Performance Index (time)',
+    },
+  },
+  SimAvgVel: {
+    pt: {
+      name: 'Velocidade Média Histórica',
+      desc: 'Média de horas registradas por ciclo com base no histórico real do projeto. Serve como referência para a simulação.',
+      formula: 'vel_média = horas_consumidas ÷ nº ciclos\n  Calculada sobre todos os ciclos com registro',
+    },
+    en: {
+      name: 'Historical Average Velocity',
+      desc: 'Average hours logged per cycle based on the project\'s actual history. Used as the baseline for simulation.',
+      formula: 'avg_velocity = consumed_hours ÷ cycle_count\n  Computed over all cycles with records',
+    },
+  },
+  SimVelocity: {
+    pt: {
+      name: 'Velocidade Simulada',
+      desc: 'Projeção de horas por ciclo aplicando o multiplicador e as horas extras configurados pelo usuário.',
+      formula: 'vel_sim = vel_média × multiplicador + horas_extras\n  multiplicador: fator de aceleração/desaceleração\n  horas_extras: incremento fixo por ciclo',
+    },
+    en: {
+      name: 'Simulated Velocity',
+      desc: 'Projected hours per cycle applying the user-configured multiplier and extra hours.',
+      formula: 'sim_velocity = avg_velocity × multiplier + extra_hours\n  multiplier: speed-up / slow-down factor\n  extra_hours: fixed increment per cycle',
+    },
+  },
+  SimCycles: {
+    pt: {
+      name: 'Ciclos para Concluir',
+      desc: 'Número estimado de ciclos adicionais para esgotar as horas restantes do projeto à velocidade simulada.',
+      formula: 'ciclos = ceil(horas_restantes ÷ vel_sim)\n  null quando vel_sim = 0 ou projeto concluído',
+    },
+    en: {
+      name: 'Cycles to Complete',
+      desc: 'Estimated number of additional cycles to exhaust remaining project hours at the simulated velocity.',
+      formula: 'cycles = ceil(remaining_hours ÷ sim_velocity)\n  null when sim_velocity = 0 or project is done',
+    },
+  },
+  SimEAC: {
+    pt: {
+      name: 'EAC Projetado — Estimativa no Término (What-If)',
+      desc: 'Custo total estimado ao término do projeto considerando a velocidade simulada e a tarifa média atual da equipe.',
+      formula: 'EAC = custo_realizado + ciclos_restantes × custo_médio_ciclo\n  custo_médio_ciclo = vel_sim × tarifa_média',
+    },
+    en: {
+      name: 'Projected EAC — Estimate at Completion (What-If)',
+      desc: 'Estimated total project cost at completion using the simulated velocity and current team average rate.',
+      formula: 'EAC = actual_cost + remaining_cycles × avg_cycle_cost\n  avg_cycle_cost = sim_velocity × avg_rate',
+    },
+  },
+  MCP10: {
+    pt: {
+      name: 'P10 — Cenário Otimista (Monte Carlo)',
+      desc: '10% das simulações preveem conclusão em até este número de ciclos adicionais. Representa o cenário mais favorável com 90% de probabilidade de ser superado.',
+      formula: '1.000 simulações de caminhada aleatória\n  Velocidade: N(vel_média, desvio_padrão)\n  P10 = 10º percentil dos ciclos até conclusão',
+    },
+    en: {
+      name: 'P10 — Optimistic Scenario (Monte Carlo)',
+      desc: '10% of simulations forecast completion within this many additional cycles. Best-case scenario, 90% chance of being exceeded.',
+      formula: '1,000 random-walk simulations\n  Velocity: N(mean_velocity, stdev_velocity)\n  P10 = 10th percentile of cycles to completion',
+    },
+  },
+  MCP50: {
+    pt: {
+      name: 'P50 — Cenário Central (Monte Carlo)',
+      desc: '50% das simulações preveem conclusão em até este número de ciclos adicionais. Representa a estimativa mediana — tão provável de ser superada quanto de ser alcançada.',
+      formula: '1.000 simulações de caminhada aleatória\n  P50 = mediana dos ciclos até conclusão\n  Equivale à previsão "mais provável"',
+    },
+    en: {
+      name: 'P50 — Central Scenario (Monte Carlo)',
+      desc: '50% of simulations forecast completion within this many additional cycles. The median estimate — equally likely to be met or missed.',
+      formula: '1,000 random-walk simulations\n  P50 = median of cycles to completion\n  Equivalent to the "most likely" forecast',
+    },
+  },
+  MCP90: {
+    pt: {
+      name: 'P90 — Cenário Pessimista (Monte Carlo)',
+      desc: '90% das simulações preveem conclusão em até este número de ciclos adicionais. Represeta o pior cenário plausível; apenas 10% das simulações ultrapassam este valor.',
+      formula: '1.000 simulações de caminhada aleatória\n  P90 = 90º percentil dos ciclos até conclusão\n  Recomendado como buffer de planejamento',
+    },
+    en: {
+      name: 'P90 — Pessimistic Scenario (Monte Carlo)',
+      desc: '90% of simulations forecast completion within this many additional cycles. Worst plausible case; only 10% of simulations exceed this value.',
+      formula: '1,000 random-walk simulations\n  P90 = 90th percentile of cycles to completion\n  Recommended as the planning buffer target',
+    },
+  },
+  MCMeanVel: {
+    pt: {
+      name: 'Velocidade Média (Monte Carlo)',
+      desc: 'Média histórica de horas por ciclo utilizada como parâmetro central da distribuição gaussiana nas simulações. Quanto maior o desvio padrão, maior a incerteza do P90.',
+      formula: 'vel_média = Σ horas_ciclo ÷ nº ciclos\n  Distribuição amostrada: N(vel_média, σ)\n  σ = desvio padrão das velocidades históricas',
+    },
+    en: {
+      name: 'Mean Velocity (Monte Carlo)',
+      desc: 'Historical average hours per cycle used as the centre of the Gaussian distribution in simulations. Higher standard deviation means wider P10–P90 spread.',
+      formula: 'mean_velocity = Σ cycle_hours ÷ cycle_count\n  Sampled distribution: N(mean_velocity, σ)\n  σ = standard deviation of historical velocities',
+    },
+  },
   EVM: {
     pt: {
       name: 'EVM — Gestão de Valor Agregado',
@@ -159,10 +303,14 @@ function _showEvmTip(anchor) {
 
   const rect = anchor.getBoundingClientRect();
   const tipW = 270;
+  const tipH = _evmTipEl.offsetHeight || 160;
   let left = rect.left;
   let top  = rect.bottom + 6;
+  // clamp horizontally so the tooltip never leaves the viewport
   if (left + tipW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tipW - 8);
-  if (top + 120 > window.innerHeight)      top  = rect.top - 8 - (_evmTipEl.offsetHeight || 120);
+  // flip above the anchor when there is not enough room below
+  if (top + tipH > window.innerHeight - 8) top = rect.top - tipH - 6;
+  top = Math.max(8, top);
   _evmTipEl.style.left = `${left}px`;
   _evmTipEl.style.top  = `${top}px`;
 }

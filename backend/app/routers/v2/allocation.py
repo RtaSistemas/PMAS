@@ -46,6 +46,9 @@ def get_allocation(
                 + TimesheetRecord.extra_hours
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
+            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
             func.sum(
                 TimesheetRecord.normal_cost
                 + TimesheetRecord.extra_cost
@@ -91,6 +94,9 @@ def get_allocation(
             "extra_hours":      round(r.extra_hours   or 0.0, 2),
             "standby_hours":    round(r.standby_hours or 0.0, 2),
             "total_hours":      round(r.total_hours   or 0.0, 2),
+            "normal_cost":      round(r.normal_cost   or 0.0, 2),
+            "extra_cost":       round(r.extra_cost    or 0.0, 2),
+            "standby_cost":     round(r.standby_cost  or 0.0, 2),
             "total_cost":       round(r.total_cost    or 0.0, 2),
         }
         for r in rows

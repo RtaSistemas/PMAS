@@ -157,3 +157,79 @@ class TestDeleteProject:
         client.delete(f"/api/projects/{p['id']}")
         peps = [x["pep_wbs"] for x in client.get("/api/projects").json()]
         assert "DEL-002" not in peps
+
+
+class TestBudgetRevisionHistory:
+    def test_no_history_returns_empty(self, client):
+        p = _create(client, pep="BRH-001")
+        r = client.get(f"/api/projects/{p['id']}/budget-history")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_revision_created_on_budget_hours_change(self, client):
+        p = _create(client, pep="BRH-002", budget_hours=100.0)
+        r = client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-002", "status": "ativo", "budget_hours": 200.0,
+        })
+        assert r.status_code == 200
+        history = client.get(f"/api/projects/{p['id']}/budget-history").json()
+        assert len(history) == 1
+        rev = history[0]
+        assert rev["old_budget_hours"] == 100.0
+        assert rev["new_budget_hours"] == 200.0
+        assert rev["changed_by"] == "test_admin"
+
+    def test_revision_created_on_budget_cost_change(self, client):
+        p = _create(client, pep="BRH-003", budget_cost=5000.0)
+        r = client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-003", "status": "ativo", "budget_cost": 9000.0,
+        })
+        assert r.status_code == 200
+        history = client.get(f"/api/projects/{p['id']}/budget-history").json()
+        assert len(history) == 1
+        rev = history[0]
+        assert rev["old_budget_cost"] == 5000.0
+        assert rev["new_budget_cost"] == 9000.0
+        assert rev["changed_by"] == "test_admin"
+
+    def test_no_revision_when_budget_unchanged(self, client):
+        p = _create(client, pep="BRH-004", budget_hours=100.0, budget_cost=5000.0)
+        # Update only the name — budget unchanged
+        client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-004", "status": "ativo",
+            "budget_hours": 100.0, "budget_cost": 5000.0, "name": "Novo Nome",
+        })
+        history = client.get(f"/api/projects/{p['id']}/budget-history").json()
+        assert len(history) == 0
+
+    def test_reason_stored(self, client):
+        p = _create(client, pep="BRH-005", budget_hours=100.0)
+        client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-005", "status": "ativo", "budget_hours": 150.0,
+            "budget_change_reason": "Replanejamento Q2",
+        })
+        history = client.get(f"/api/projects/{p['id']}/budget-history").json()
+        assert len(history) == 1
+        assert history[0]["reason"] == "Replanejamento Q2"
+
+    def test_multiple_revisions_ordered_desc(self, client):
+        p = _create(client, pep="BRH-006", budget_hours=100.0)
+        client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-006", "status": "ativo", "budget_hours": 200.0,
+        })
+        client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-006", "status": "ativo", "budget_hours": 300.0,
+        })
+        client.put(f"/api/projects/{p['id']}", json={
+            "pep_wbs": "BRH-006", "status": "ativo", "budget_hours": 400.0,
+        })
+        history = client.get(f"/api/projects/{p['id']}/budget-history").json()
+        assert len(history) == 3
+        # Most recent first: 300→400, 200→300, 100→200
+        assert history[0]["new_budget_hours"] == 400.0
+        assert history[1]["new_budget_hours"] == 300.0
+        assert history[2]["new_budget_hours"] == 200.0
+
+    def test_404_on_unknown_project(self, client):
+        r = client.get("/api/projects/99999/budget-history")
+        assert r.status_code == 404

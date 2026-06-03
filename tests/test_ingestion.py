@@ -209,9 +209,9 @@ class TestAuthorizationFilter:
         db_session.flush()
         return u
 
-    def _make_project(self, db_session, pep_wbs, manager_id=None):
+    def _make_project(self, db_session, pep_wbs):
         from backend.app.models import Project
-        p = Project(pep_wbs=pep_wbs, name=pep_wbs, manager_id=manager_id)
+        p = Project(pep_wbs=pep_wbs, name=pep_wbs)
         db_session.add(p)
         db_session.flush()
         return p
@@ -236,18 +236,8 @@ class TestAuthorizationFilter:
         assert exc_info.value.status_code == 403
         assert "permissão" in exc_info.value.detail
 
-    def test_manager_id_grants_auto_access(self, db_session, sample_cycle):
-        """User registered as project manager gets automatic upload access."""
-        user = self._make_user(db_session, "pm_auto")
-        self._make_project(db_session, "60OP-001", manager_id=user.id)
-        db_session.commit()
-        summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session,
-                              user_role="user", user_id=user.id)
-        assert summary["records_inserted"] == 1
-        assert not any("permissão" in w for w in summary["warnings"])
-
     def test_acl_grant_gives_access(self, db_session, sample_cycle):
-        """Explicit UserProjectAccess entry grants access regardless of manager_id."""
+        """Explicit UserProjectAccess entry grants upload access."""
         from backend.app.models import UserProjectAccess
         user = self._make_user(db_session, "pm_acl")
         project = self._make_project(db_session, "60OP-001")
@@ -258,10 +248,12 @@ class TestAuthorizationFilter:
         assert summary["records_inserted"] == 1
 
     def test_partial_access_filters_unauthorized_keeps_authorized(self, db_session, sample_cycle):
-        """If file has PEP-A (authorized) and PEP-B (unauthorized), only PEP-A is inserted."""
+        """If file has PEP-A (authorized via ACL) and PEP-B (unauthorized), only PEP-A is inserted."""
+        from backend.app.models import UserProjectAccess
         user = self._make_user(db_session, "pm_partial")
-        self._make_project(db_session, "60OP-001", manager_id=user.id)
-        self._make_project(db_session, "60OP-002")  # user NOT manager
+        proj_a = self._make_project(db_session, "60OP-001")
+        db_session.add(UserProjectAccess(user_id=user.id, project_id=proj_a.id))
+        self._make_project(db_session, "60OP-002")  # user has no ACL entry
         db_session.commit()
         row_b = {**BASE_ROW, "Código PEP": "60OP-002", "PEP": "Projeto Beta"}
         summary = ingest_file(_csv(BASE_ROW, row_b), "t.csv", db_session,

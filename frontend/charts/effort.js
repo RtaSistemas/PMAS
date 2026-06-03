@@ -7,13 +7,13 @@
 // ---------------------------------------------------------------------------
 // calcHeight — dynamic chart height based on item count
 // ---------------------------------------------------------------------------
-function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120); }
+function calcHeight(count) { return Math.max(360, Math.min(count, 40) * 40 + 100); }
 
 // ---------------------------------------------------------------------------
 // _buildEffortTitle — title string for the effort chart
 // ---------------------------------------------------------------------------
 function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
-  if (!selectedCycleIds.length) return 'Todos os ciclos';
+  if (!selectedCycleIds.length) return _t('chart.all_cycles');
   const first = (_allCycles || []).find(c => String(c.id) === String(selectedCycleIds[0]));
   const name = first ? first.name : `Ciclo #${selectedCycleIds[0]}`;
   let t = selectedCycleIds.length > 1
@@ -80,7 +80,7 @@ function _buildHoursBarOption({
             );
           },
           rich: {
-            nm: { color: _cssVar('--text'), fontSize: 11, lineHeight: 18 },
+            nm: { color: _cssVar('--text'), fontSize: 10, lineHeight: 16 },
             hr: { color: _cssVar('--text-3'), fontSize: 9,  lineHeight: 14 },
           },
         }
@@ -95,10 +95,10 @@ function _buildHoursBarOption({
   const valueAxis = {
     type: 'value',
     name: 'h',
-    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
     axisLabel: {
       color:     _cssVar('--text-3'),
-      fontSize:  11,
+      fontSize:  10,
       formatter: v => `${v}h`,
     },
     splitLine: { lineStyle: { color: _cssVar('--surface') } },
@@ -168,12 +168,12 @@ function _buildHoursBarOption({
     label: {
       show:       true,
       position:   isHoriz ? 'right' : 'top',
-      fontSize:   11,
+      fontSize:   9,
       color:      _cssVar('--green'),
       formatter:  p => p.value === maxTotal
         ? `{peak|${p.value.toFixed(1)}h}`
         : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 11 } },
+      rich: { peak: { color: _cssVar('--red'), fontSize: 9 } },
     },
     z: 10,
   }] : [];
@@ -201,7 +201,7 @@ function _buildHoursBarOption({
     ..._chartDefaults(),
 
     title: truncated ? {
-      subtext:      `Exibindo os primeiros ${maxItems} itens`,
+      subtext:      _t('chart.truncated').replace('{n}', maxItems),
       left:         'center',
       top:          4,
       subtextStyle: { color: _cssVar('--text-3'), fontSize: 11 },

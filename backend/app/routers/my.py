@@ -74,6 +74,7 @@ def my_quarantine(
     db: DbSession,
     current_user: CurrentUser,
     reviewed: bool | None = None,
+    review_status: str | None = None,
     source_file: str | None = None,
     limit: int = Query(default=200, le=1000),
     offset: int = 0,
@@ -81,7 +82,9 @@ def my_quarantine(
     q = db.query(QuarantineRecord).order_by(QuarantineRecord.ingested_at.desc())
     if current_user.role != "admin":
         q = q.filter(QuarantineRecord.uploaded_by_user_id == current_user.id)
-    if reviewed is not None:
+    if review_status is not None:
+        q = q.filter(QuarantineRecord.review_status == review_status)
+    elif reviewed is not None:
         q = q.filter(QuarantineRecord.reviewed == reviewed)
     if source_file is not None:
         q = q.join(UploadSession, QuarantineRecord.upload_session_id == UploadSession.id).filter(

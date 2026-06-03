@@ -295,9 +295,11 @@ function _buildBulletOption(withBudget, evmMode = false) {
           overflow: 'truncate',
           formatter: params => {
             if (!params.value) return '';
-            return evmMode
-              ? _fmtCost(params.value / _currencyFactor)
-              : `${(+params.value).toFixed(1)}h`;
+            if (evmMode) {
+              const disp = params.value; // already in display units (raw * _currencyFactor)
+              return _currencySymbol + (disp >= 1000 ? (disp / 1000).toFixed(0) + 'k' : disp.toFixed(0));
+            }
+            return `${(+params.value).toFixed(1)}h`;
           },
         },
       },

@@ -89,15 +89,15 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 2.084 h        |
-| Custo estimado    | R$ 226.600   |
+| Horas registradas | 2.080 h        |
+| Custo estimado    | R$ 226.200   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-001-01  | Transformação Digital  |    1.235 h |        R$ 132.600 |    1.235 h |      27.6% |
-| 60IT-004-01  | Plataforma Analytics   |      845 h |         R$ 94.000 |      849 h |      17.8% |
+| 60IT-001-01  | Transformação Digital  |    1.235 h |        R$ 132.600 |    1.235 h |      38.6% |
+| 60IT-004-01  | Plataforma Analytics   |      845 h |         R$ 93.600 |      845 h |      17.6% |
 
 ### Apontamentos de Ingestão
 
@@ -124,7 +124,7 @@
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
 | 60IT-001-01  | Transformação Digital  |      845 h |        R$ 107.250 |    2.080 h |      65.0% |
 | 60IT-002-01  | App Mobile             |    1.170 h |        R$ 114.725 |    1.170 h |      73.1% |
-| 60IT-004-01  | Plataforma Analytics   |      390 h |         R$ 39.000 |    1.235 h |      25.8% |
+| 60IT-004-01  | Plataforma Analytics   |      390 h |         R$ 39.000 |    1.235 h |      25.7% |
 
 ### Apontamentos de Ingestão
 
@@ -141,8 +141,8 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 2.841 h        |
-| Custo estimado    | R$ 305.040   |
+| Horas registradas | 2.838 h        |
+| Custo estimado    | R$ 304.590   |
 
 ### Distribuição por PEP
 
@@ -150,8 +150,8 @@
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
 | 60IT-001-01  | Transformação Digital  |      462 h |         R$ 69.300 |    2.542 h |      79.4% |
 | 60IT-002-01  | App Mobile             |      792 h |         R$ 90.750 |    1.962 h |     122.6% |
-| 60IT-003-01  | Migração Cloud         |      795 h |         R$ 79.650 |      792 h |      33.1% |
-| 60IT-004-01  | Plataforma Analytics   |      792 h |         R$ 65.340 |    2.027 h |      42.3% |
+| 60IT-003-01  | Migração Cloud         |      792 h |         R$ 79.200 |      792 h |      33.0% |
+| 60IT-004-01  | Plataforma Analytics   |      792 h |         R$ 65.340 |    2.027 h |      42.2% |
 
 ### Apontamentos de Ingestão
 
@@ -168,17 +168,17 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 3.176 h        |
-| Custo estimado    | R$ 314.289   |
+| Horas registradas | 3.174 h        |
+| Custo estimado    | R$ 313.740   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-001-01  | Transformação Digital  |      858 h |         R$ 95.040 |    3.400 h |     106.3% |
-| 60IT-003-01  | Migração Cloud         |      792 h |         R$ 79.200 |    1.587 h |      66.1% |
-| 60IT-004-01  | Plataforma Analytics   |      726 h |         R$ 61.050 |    2.757 h |      57.4% |
-| 60IT-005-01  | Implantação ERP        |      800 h |         R$ 78.999 |      800 h |      14.3% |
+| 60IT-001-01  | Transformação Digital  |      858 h |         R$ 95.040 |    3.400 h |     106.2% |
+| 60IT-003-01  | Migração Cloud         |      792 h |         R$ 79.200 |    1.584 h |      66.0% |
+| 60IT-004-01  | Plataforma Analytics   |      726 h |         R$ 61.050 |    2.753 h |      57.4% |
+| 60IT-005-01  | Implantação ERP        |      798 h |         R$ 78.450 |      798 h |      14.2% |
 
 ### Apontamentos de Ingestão
 
@@ -196,16 +196,16 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 3.461 h        |
-| Custo estimado    | R$ 348.326   |
+| Horas registradas | 3.456 h        |
+| Custo estimado    | R$ 347.776   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-003-01  | Migração Cloud         |      384 h |         R$ 42.240 |    1.971 h |      82.1% |
-| 60IT-004-01  | Plataforma Analytics   |    1.088 h |         R$ 78.848 |    3.845 h |      80.1% |
-| 60IT-005-01  | Implantação ERP        |    1.157 h |        R$ 125.670 |    1.957 h |      34.9% |
+| 60IT-003-01  | Migração Cloud         |      384 h |         R$ 42.240 |    1.968 h |      82.0% |
+| 60IT-004-01  | Plataforma Analytics   |    1.088 h |         R$ 78.848 |    3.841 h |      80.0% |
+| 60IT-005-01  | Implantação ERP        |    1.152 h |        R$ 125.120 |    1.950 h |      34.8% |
 | 60IT-006-01  | Auditoria de Segurança |      832 h |        R$ 101.568 |      832 h |     104.0% |
 
 ### Apontamentos de Ingestão
@@ -224,16 +224,16 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 3.123 h        |
-| Custo estimado    | R$ 340.173   |
+| Horas registradas | 3.120 h        |
+| Custo estimado    | R$ 339.430   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-004-01  | Plataforma Analytics   |      780 h |         R$ 70.980 |    4.625 h |      96.4% |
-| 60IT-005-01  | Implantação ERP        |    1.170 h |        R$ 127.075 |    3.127 h |      55.8% |
-| 60IT-007-01  | Hub de Integrações API |    1.173 h |        R$ 142.117 |    1.173 h |      36.7% |
+| 60IT-004-01  | Plataforma Analytics   |      780 h |         R$ 70.980 |    4.621 h |      96.3% |
+| 60IT-005-01  | Implantação ERP        |    1.170 h |        R$ 127.075 |    3.120 h |      55.7% |
+| 60IT-007-01  | Hub de Integrações API |    1.170 h |        R$ 141.375 |    1.170 h |      36.6% |
 
 ### Apontamentos de Ingestão
 
@@ -250,15 +250,15 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 3.268 h        |
-| Custo estimado    | R$ 326.924   |
+| Horas registradas | 3.242 h        |
+| Custo estimado    | R$ 323.224   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-005-01  | Implantação ERP        |    1.676 h |        R$ 169.092 |    4.803 h |      85.8% |
-| 60IT-007-01  | Hub de Integrações API |    1.592 h |        R$ 157.832 |    2.765 h |      86.4% |
+| 60IT-005-01  | Implantação ERP        |    1.650 h |        R$ 164.802 |    4.770 h |      85.2% |
+| 60IT-007-01  | Hub de Integrações API |    1.592 h |        R$ 158.422 |    2.762 h |      86.3% |
 
 ### Apontamentos de Ingestão
 
@@ -275,15 +275,15 @@
 
 | Métrica           | Valor           |
 |-------------------|-----------------|
-| Horas registradas | 3.172 h        |
-| Custo estimado    | R$ 317.704   |
+| Horas registradas | 3.168 h        |
+| Custo estimado    | R$ 317.592   |
 
 ### Distribuição por PEP
 
 | PEP WBS      | Projeto               | Horas Q  | Custo Q          | Acum. H  | % Budget H |
 |--------------|------------------------|----------:|------------------:|----------:|-----------:|
-| 60IT-005-01  | Implantação ERP        |    1.588 h |        R$ 145.642 |    6.391 h |     114.1% |
-| 60IT-007-01  | Hub de Integrações API |    1.584 h |        R$ 172.062 |    4.349 h |     135.9% |
+| 60IT-005-01  | Implantação ERP        |    1.584 h |        R$ 145.530 |    6.354 h |     113.5% |
+| 60IT-007-01  | Hub de Integrações API |    1.584 h |        R$ 172.062 |    4.346 h |     135.8% |
 
 ### Apontamentos de Ingestão
 

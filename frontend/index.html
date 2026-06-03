@@ -394,6 +394,7 @@
             data-i18n="forecast.physical_badge" data-i18n-title="forecast.physical_badge_title">Modo: % Físico</span>
         </div>
         <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
+        <div id="velocitySparklineChart" style="height:110px;margin-top:.25rem" hidden></div>
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
       </div>
 
@@ -407,11 +408,77 @@
 
       <div class="card" id="forecastAllocCard" data-panel-id="forecast-alloc" hidden>
         <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador</h2>
+          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador — Horas</h2>
           <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
         <div id="forecastAllocBody">
           <div id="forecastAllocTable"></div>
+        </div>
+      </div>
+
+      <div class="card" id="forecastAllocCostCard" data-panel-id="forecast-alloc-cost" hidden>
+        <div class="section-header" id="forecastAllocCostToggle" style="cursor:pointer;user-select:none">
+          <h2 class="card-title" data-i18n="forecast.alloc_cost.title">Alocação por Colaborador — Custo</h2>
+          <span id="forecastAllocCostChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        </div>
+        <div id="forecastAllocCostBody">
+          <div id="forecastAllocCostTable"></div>
+        </div>
+      </div>
+
+      <!-- F11: What-If Simulation -->
+      <div class="card" id="whatIfCard" data-panel-id="forecast-whatsim" hidden>
+        <div class="section-header" id="whatIfToggle" style="cursor:pointer;user-select:none">
+          <h2 class="card-title" data-i18n="sim.title">Simulação What-If</h2>
+          <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        </div>
+        <div id="whatIfBody">
+          <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
+          <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
+            <div class="form-group" style="flex:0 0 180px">
+              <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
+              <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
+              <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
+            </div>
+            <div class="form-group" style="flex:0 0 150px">
+              <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
+              <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
+              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+            </div>
+            <div class="form-group" style="flex:0 0 auto">
+              <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
+              <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
+              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+            </div>
+          </div>
+          <div id="whatIfResult"></div>
+          <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
+        </div>
+      </div>
+
+      <!-- F4: Monte Carlo Simulation -->
+      <div class="card" id="monteCarloCard" data-panel-id="forecast-montecarlo" hidden>
+        <div class="section-header">
+          <div id="mcToggle" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:.5rem;flex:1;min-width:0">
+            <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
+            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block;flex-shrink:0">▼</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_runMonteCarlo()" data-i18n="btn.refresh">↺ Recalcular</button>
+        </div>
+        <div id="mcBody">
+          <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
+          <div id="mcResult"></div>
+          <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
+        </div>
+      </div>
+
+      <!-- Baseline de Planejamento — read-only view, editable in Projetos tab -->
+      <div class="card" id="forecastBaselineCard" data-panel-id="forecast-plan" hidden>
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento</h2>
+        </div>
+        <div id="forecastBaselineBody">
+          <p class="hint" data-i18n="forecast.baseline.empty">Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.</p>
         </div>
       </div>
     </div>
@@ -435,6 +502,7 @@
         </div>
       </div>
       <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
+      <div class="table-responsive">
       <table class="data-table" id="projectsTable">
         <thead>
           <tr>
@@ -450,6 +518,7 @@
         </thead>
         <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -477,6 +546,7 @@
           </div>
         </div>
         <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
+        <div class="table-responsive">
         <table class="data-table" id="planTable">
           <thead><tr>
             <th data-i18n="plan.th.cycle">Ciclo</th>
@@ -487,6 +557,7 @@
           </tr></thead>
           <tbody id="planBody"></tbody>
         </table>
+        </div><!-- /.table-responsive -->
       </div>
     </div>
 
@@ -509,6 +580,7 @@
           <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
         </label>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="cyclesTable">
         <thead>
           <tr>
@@ -522,6 +594,7 @@
         </thead>
         <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -548,10 +621,12 @@
           <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="seniorityTable">
         <thead><tr><th data-i18n="seniority.th.name">Nome</th><th></th></tr></thead>
         <tbody id="seniorityBody"><tr><td colspan="2" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="seniorityPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="seniorityPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -572,6 +647,7 @@
           <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="rateCardTable">
         <thead>
           <tr>
@@ -584,6 +660,7 @@
         </thead>
         <tbody id="rateCardBody"><tr><td colspan="5" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="rateCardPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="rateCardPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -636,6 +713,7 @@
         </div>
       </div>
       <input type="text" id="teamSearch" class="table-search-input" data-i18n-ph="team.search_ph" placeholder="Buscar colaborador…" />
+      <div class="table-responsive">
       <table class="data-table" id="teamTable">
         <thead>
           <tr>
@@ -647,12 +725,40 @@
         </thead>
         <tbody id="teamBody"><tr><td colspan="4" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="teamPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="teamPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="teamPageLabel" class="hint"></span>
         <button type="button" id="teamNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
+    </div>
+
+    <!-- F5: Over-allocation Detection -->
+    <div class="card" id="overAllocCard" hidden>
+      <div class="section-header">
+        <h2 class="card-title" data-i18n="over_alloc.title">Detecção de Sobre-alocação</h2>
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+          <input type="date" id="overAllocFrom" class="input-sm" title="Data início">
+          <input type="date" id="overAllocTo"   class="input-sm" title="Data fim">
+          <input type="number" id="overAllocThreshold" class="input-sm" min="0" step="0.5" style="width:80px"
+                 data-i18n-ph="over_alloc.filter.threshold">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_loadOverAllocation()" data-i18n="btn.load">Carregar</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_exportOverAllocCsv()" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
+        </div>
+      </div>
+      <p class="hint" style="margin-bottom:.5rem" data-i18n="over_alloc.hint">Colaboradores com horas diárias totais acima do limite configurado.</p>
+      <div class="table-responsive">
+      <table class="data-table" id="overAllocTable">
+        <thead><tr>
+          <th data-i18n="over_alloc.th.collaborator">Colaborador</th>
+          <th data-i18n="over_alloc.th.date">Data</th>
+          <th class="text-right" data-i18n="over_alloc.th.hours">Total (h)</th>
+          <th data-i18n="over_alloc.th.peps">PEPs</th>
+        </tr></thead>
+        <tbody id="overAllocBody"><tr><td colspan="4" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
+      </table>
+      </div><!-- /.table-responsive -->
     </div>
 
   </section>
@@ -726,6 +832,10 @@
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.bullet">Orçado vs. Realizado</span>
                 </li>
+                <li class="sortable-item sortable-item-sm" data-panel="portfolio-runway">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="runway.title">Runway do Portfólio</span>
+                </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-quadrant">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.quadrant">Quadrante EVM</span>
@@ -737,10 +847,6 @@
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-allocation">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="atab.allocation">Alocação</span>
-                </li>
-                <li class="sortable-item sortable-item-sm" data-panel="portfolio-runway">
-                  <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="runway.title">Runway do Portfólio</span>
                 </li>
               </ul>
             </li>
@@ -754,17 +860,29 @@
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="chart.forecastChart">Previsão de Conclusão</span>
                 </li>
-                <li class="sortable-item sortable-item-sm" data-panel="forecast-plan">
-                  <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.plan">Baseline de Planejamento</span>
-                </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-burnup">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="burnup.title">Burn-Up de Custo (R$)</span>
                 </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-montecarlo">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_montecarlo">Monte Carlo</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-whatsim">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_whatsim">Simulação What-If</span>
+                </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc">Alocação por Colaborador — Horas</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc-cost">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc_cost">Alocação por Colaborador — Custo</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-plan">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.plan">Baseline de Planejamento</span>
                 </li>
               </ul>
             </li>
@@ -802,6 +920,7 @@
           </div>
         </div>
         <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
+        <div class="table-responsive">
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
             <th data-i18n="history.th.when">Quando</th>
@@ -816,6 +935,7 @@
           </tr></thead>
           <tbody id="myHistoryBody"><tr><td colspan="9" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="myHistoryPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
           <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myHistoryPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -839,6 +959,7 @@
           </div>
         </div>
         <p style="font-size:.78rem;color:var(--text-hint);margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
+        <div class="table-responsive">
         <table class="data-table" id="myQrTable">
           <thead><tr>
             <th data-i18n="qr.th.date">Data</th>
@@ -851,6 +972,7 @@
           </tr></thead>
           <tbody id="myQrBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
           <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -872,6 +994,7 @@
         <button type="button" class="btn btn-primary btn-sm" id="newUserBtn" data-i18n="btn.new_user">+ Novo usuário</button>
       </div>
       <input type="text" id="userSearch" class="table-search-input" data-i18n-ph="users.search_ph" placeholder="Buscar usuário…" />
+      <div class="table-responsive">
       <table class="data-table" id="usersTable">
         <thead>
           <tr>
@@ -882,6 +1005,7 @@
         </thead>
         <tbody id="usersBody"><tr><td colspan="3" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="usersPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="usersPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -957,6 +1081,7 @@
           <button type="button" class="btn btn-secondary btn-sm" id="auditRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
       </div>
+      <div class="table-responsive">
       <table class="data-table" id="auditTable">
         <thead>
           <tr>
@@ -970,6 +1095,7 @@
         </thead>
         <tbody id="auditBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
+      </div><!-- /.table-responsive -->
       <div id="auditPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
         <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -980,6 +1106,34 @@
   </section>
 
 </main>
+
+<!-- ================================================================== -->
+<!-- Modal: Budget Revision History (F7)                                  -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="budgetHistoryModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="budgetHistoryTitle" style="max-width:720px">
+    <div class="modal-header">
+      <h3 id="budgetHistoryTitle" data-i18n="budget.history.title">Histórico de Revisões de Budget</h3>
+      <button type="button" class="modal-close" onclick="closeModal('budgetHistoryModal')">×</button>
+    </div>
+    <div id="budgetSparkline" style="height:120px;margin-bottom:.5rem" hidden></div>
+    <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+      <table class="data-table" id="budgetHistoryTable">
+        <thead><tr>
+          <th data-i18n="budget.history.th.when">Quando</th>
+          <th data-i18n="budget.history.th.by">Por</th>
+          <th class="text-right" data-i18n="budget.history.th.hours">Horas</th>
+          <th class="text-right" data-i18n="budget.history.th.cost">Custo (R$)</th>
+          <th data-i18n="budget.history.th.reason">Motivo</th>
+        </tr></thead>
+        <tbody id="budgetHistoryBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('budgetHistoryModal')" data-i18n="btn.close">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================================================================== -->
 <!-- Modal: Ciclo                                                         -->
@@ -1055,6 +1209,10 @@
       <div class="form-group">
         <label for="projectBudgetCostInput" data-i18n="pm.bc_lbl">Budget (R$)</label>
         <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group" id="budgetReasonGroup" hidden>
+        <label for="projectBudgetReasonInput" data-i18n="pm.budget_reason_lbl">Motivo da revisão de budget</label>
+        <input type="text" id="projectBudgetReasonInput" data-i18n-ph="pm.budget_reason_ph" placeholder="Ex: Escopo ampliado" />
       </div>
       <div class="form-group">
         <label for="projectStartInput" data-i18n="pm.start_lbl">Início</label>

@@ -525,13 +525,6 @@ def _authorized_peps(
     if user_id is None:
         return set()
 
-    managed: set[str] = {
-        p.pep_wbs
-        for p in db.query(Project)
-        .filter(Project.pep_wbs.in_(pep_codes), Project.manager_id == user_id)
-        .all()
-    }
-
     delegated: set[str] = {
         p.pep_wbs
         for p in db.query(Project)
@@ -543,7 +536,7 @@ def _authorized_peps(
         .all()
     }
 
-    return managed | delegated
+    return delegated
 
 
 # ---------------------------------------------------------------------------

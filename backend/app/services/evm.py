@@ -5,7 +5,7 @@ a function defined here.  No other file may re-implement these formulas.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Tuple
 
 
 # ── Cost freezing ────────────────────────────────────────────────────────────
@@ -473,3 +473,73 @@ def resolve_effective_budget(project, baseline=None) -> tuple[Optional[float], O
     bh = (baseline.budget_hours if baseline else None) or (project.budget_hours if project else None)
     bc = (baseline.budget_cost  if baseline else None) or (project.budget_cost  if project else None)
     return bh, bc
+
+
+# ── Earned Schedule (F3) ──────────────────────────────────────────────────────
+
+def compute_earned_schedule(
+    cumulative_ev_cost: Optional[float],
+    pv_cost_curve: list[float],
+) -> Optional[float]:
+    """Interpolate ES: the fractional time-unit at which EV == cumulative PV.
+
+    pv_cost_curve is a list of cumulative PV values ordered by cycle (0-based).
+    Returns None if inputs are insufficient.
+    """
+    if not pv_cost_curve or cumulative_ev_cost is None or cumulative_ev_cost <= 0:
+        return None
+    if cumulative_ev_cost >= pv_cost_curve[-1]:
+        return float(len(pv_cost_curve))
+    for i in range(len(pv_cost_curve)):
+        pv_at_t = pv_cost_curve[i]
+        pv_prev = pv_cost_curve[i - 1] if i > 0 else 0.0
+        if cumulative_ev_cost <= pv_at_t:
+            if pv_at_t == pv_prev:
+                return float(i)
+            frac = (cumulative_ev_cost - pv_prev) / (pv_at_t - pv_prev)
+            return round(i + frac, 4)
+    return float(len(pv_cost_curve))
+
+
+def compute_spi_t(
+    earned_schedule: Optional[float],
+    actual_time: float,
+) -> Optional[float]:
+    """SPI(t) = ES / AT.  Returns None if inputs are missing or AT is zero."""
+    if earned_schedule is None or actual_time <= 0:
+        return None
+    return round(earned_schedule / actual_time, 4)
+
+
+def compute_sv_t(
+    earned_schedule: Optional[float],
+    actual_time: float,
+) -> Optional[float]:
+    """SV(t) = ES - AT.  Negative means behind schedule (in cycle units)."""
+    if earned_schedule is None:
+        return None
+    return round(earned_schedule - actual_time, 2)
+
+
+def compute_ieac_t(
+    planned_duration: Optional[float],
+    spi_t: Optional[float],
+) -> Optional[float]:
+    """IEAC(t) = PD / SPI(t).  Independent EAC in time units."""
+    if planned_duration is None or spi_t is None or spi_t == 0:
+        return None
+    return round(planned_duration / spi_t, 2)
+
+
+# ── GlobalConfig threshold helper ────────────────────────────────────────────
+
+def get_thresholds(cfg) -> Tuple[float, float]:
+    """Return (warning_threshold, critical_threshold) from a GlobalConfig row.
+
+    Falls back to 0.9 / 1.0 when cfg is None or the columns are absent.
+    This is the single source of truth for budget threshold defaults.
+    """
+    warning  = getattr(cfg, 'budget_warning_threshold',  None) if cfg else None
+    critical = getattr(cfg, 'budget_critical_threshold', None) if cfg else None
+    return (warning if warning is not None else 0.9,
+            critical if critical is not None else 1.0)

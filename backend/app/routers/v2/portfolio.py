@@ -17,7 +17,7 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline,
     TimesheetRecord, UserProjectAccess,
 )
-from backend.app.services.evm import classify_health, compute_cpi_ev, cpi_color, cpi_label, resolve_effective_budget
+from backend.app.services.evm import classify_health, compute_cpi_ev, cpi_color, cpi_label, get_thresholds, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -55,8 +55,7 @@ def get_portfolio(
     date_to: Optional[DateType] = None,
 ):
     cfg = db.get(GlobalConfig, 1)
-    warning_threshold  = cfg.budget_warning_threshold  if cfg else 0.9
-    critical_threshold = cfg.budget_critical_threshold if cfg else 1.0
+    warning_threshold, critical_threshold = get_thresholds(cfg)
 
     allowed = _allowed_peps(db, current_user)
 

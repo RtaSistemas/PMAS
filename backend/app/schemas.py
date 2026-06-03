@@ -19,13 +19,16 @@ class ProjectIn(BaseModel):
     name: Optional[str] = None
     client: Optional[str] = None
     manager: Optional[str] = None
-    manager_id: Optional[int] = None
     budget_hours: Optional[float] = Field(default=None, ge=0)
     budget_cost: Optional[float] = Field(default=None, ge=0)
     status: Literal["ativo", "suspenso", "encerrado"] = "ativo"
     start_date:       Optional[DateType] = None
     planned_end_date: Optional[DateType] = None
     completion_date:  Optional[DateType] = None
+
+
+class ProjectUpdateIn(ProjectIn):
+    budget_change_reason: Optional[str] = None
 
 
 class SeniorityLevelIn(BaseModel):
@@ -100,7 +103,6 @@ class ProjectOut(BaseModel):
     name: Optional[str] = None
     client: Optional[str] = None
     manager: Optional[str] = None
-    manager_id: Optional[int] = None
     budget_hours: Optional[float] = None
     budget_cost: Optional[float] = None
     status: str
@@ -159,6 +161,20 @@ class ProjectBaselineOut(BaseModel):
     budget_cost: Optional[float] = None
     label: Optional[str] = None
     is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BudgetRevisionOut(BaseModel):
+    id: int
+    project_id: int
+    old_budget_hours: Optional[float] = None
+    old_budget_cost: Optional[float] = None
+    new_budget_hours: Optional[float] = None
+    new_budget_cost: Optional[float] = None
+    reason: Optional[str] = None
+    changed_by: str
+    changed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

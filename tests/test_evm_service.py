@@ -1,4 +1,4 @@
-"""Unit tests for services/evm.py — single source of truth for all EVM metrics.
+"""Unit tests for EVM service functions — pure math, no DB.
 
 Every function in evm.py is exercised here: happy path, boundary conditions,
 and None-guard cases.  These tests run without a database or HTTP client.
@@ -6,6 +6,74 @@ and None-guard cases.  These tests run without a database or HTTP client.
 from __future__ import annotations
 
 import pytest
+
+from backend.app.services.evm import (
+    compute_earned_schedule, compute_spi_t, compute_sv_t, compute_ieac_t,
+)
+
+
+class TestEarnedSchedule:
+    def test_midpoint(self):
+        assert compute_earned_schedule(150.0, [100.0, 200.0, 300.0]) == pytest.approx(1.5)
+
+    def test_exact_boundary(self):
+        assert compute_earned_schedule(200.0, [100.0, 200.0, 300.0]) == pytest.approx(2.0)
+
+    def test_capped_at_max(self):
+        assert compute_earned_schedule(350.0, [100.0, 200.0, 300.0]) == pytest.approx(3.0)
+
+    def test_zero_ev_returns_none(self):
+        assert compute_earned_schedule(0.0, [100.0, 200.0]) is None
+
+    def test_none_ev_returns_none(self):
+        assert compute_earned_schedule(None, [100.0, 200.0]) is None
+
+    def test_empty_curve_returns_none(self):
+        assert compute_earned_schedule(50.0, []) is None
+
+    def test_first_period(self):
+        # EV = 50, PV at t=1 is 100 → ES = 0.5
+        assert compute_earned_schedule(50.0, [100.0, 200.0]) == pytest.approx(0.5)
+
+
+class TestSpiT:
+    def test_normal(self):
+        assert compute_spi_t(1.5, 2.0) == pytest.approx(0.75)
+
+    def test_on_schedule(self):
+        assert compute_spi_t(3.0, 3.0) == pytest.approx(1.0)
+
+    def test_zero_at_returns_none(self):
+        assert compute_spi_t(1.5, 0.0) is None
+
+    def test_none_es_returns_none(self):
+        assert compute_spi_t(None, 2.0) is None
+
+
+class TestSvT:
+    def test_behind(self):
+        assert compute_sv_t(1.5, 2.0) == pytest.approx(-0.5)
+
+    def test_ahead(self):
+        assert compute_sv_t(2.5, 2.0) == pytest.approx(0.5)
+
+    def test_none_es_returns_none(self):
+        assert compute_sv_t(None, 2.0) is None
+
+
+class TestIeacT:
+    def test_normal(self):
+        assert compute_ieac_t(4.0, 0.75) == pytest.approx(5.33, rel=0.01)
+
+    def test_zero_spi_returns_none(self):
+        assert compute_ieac_t(4.0, 0.0) is None
+
+    def test_none_spi_returns_none(self):
+        assert compute_ieac_t(4.0, None) is None
+
+    def test_none_pd_returns_none(self):
+        assert compute_ieac_t(None, 0.8) is None
+
 
 from backend.app.services.evm import (
     classify_health,

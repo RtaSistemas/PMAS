@@ -181,7 +181,7 @@ const _charts = {};
 const CHARTS_PER_TAB = {
   effort:     ['effortChart', 'trendsChart', 'pepCpiChart', 'costCompositionChart', 'collabInlineTimelineChart', 'collabCalendarChart'],
   portfolio:  ['treemapChart', 'bulletChart', 'scatterChart'],
-  forecast:   ['forecastChart', 'burnUpChart'],
+  forecast:   ['forecastChart', 'burnUpChart', 'whatIfBurnUpChart', 'mcHistogramChart', 'velocitySparklineChart'],
 };
 
 function _disposeTabCharts(tabId) {
@@ -594,7 +594,7 @@ async function _renderEffortTab() {
       orientation: 'horizontal',
       stacked:     _stackMode,
       showTotal:   true,
-      richLabel:   true,
+      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);
@@ -625,7 +625,7 @@ async function _renderEffortTab() {
 // ---------------------------------------------------------------------------
 function _riskColor(risk) {
   const colors = {
-    ok:       'var(--primary, #4f8ef7)',
+    ok:       'var(--green,   #10d98a)',
     warning:  'var(--amber,   #d9b273)',
     critical: 'var(--red,     #c56d76)',
     overrun:  'var(--red,     #c56d76)',
@@ -1376,21 +1376,26 @@ function _buildForecastKpis(fc) {
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
   const spiCls  = _EVM_COLOR_CARD[fc.spi_color]  || 'neutral';
   const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
-  const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
+  const svCls   = _EVM_COLOR_CARD[fc.sv_color] || 'neutral';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
   const cpiCls  = _EVM_COLOR_CARD[fc.cpi_color]  || 'neutral';
   const cvFmt   = fc.cv   != null ? (fc.cv  >= 0 ? '+' : '') + fmtR(fc.cv)  : '—';
-  const cvCls   = fc.cv   == null ? 'neutral' : fc.cv   >= 0 ? 'green' : 'red';
+  const cvCls   = _EVM_COLOR_CARD[fc.cv_color] || 'neutral';
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
   const tcpiCls = _EVM_COLOR_CARD[fc.tcpi_color] || 'neutral';
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = _EVM_COLOR_CARD[fc.vac_color]  || (fc.vac  == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red');
 
-  // EAC uncertainty range sublabel (R-12)
-  const eacSublbl = (fc.eac_low != null && fc.eac_high != null)
+  // EAC sublabel: method · schedule divergence (>5%) · uncertainty range
+  const eacMethodLabel = fc.eac_method === 'cpi_spi' ? 'CPI+SPI' : fc.eac_method === 'cpi' ? 'CPI' : null;
+  const eacSchedulePart = (fc.eac_schedule != null && fc.eac != null && Math.abs(fc.eac_schedule - fc.eac) / fc.eac > 0.05)
+    ? `agenda: ${fmtR(fc.eac_schedule)}`
+    : null;
+  const eacRangePart = (fc.eac_low != null && fc.eac_high != null)
     ? `${fmtR(fc.eac_low)} — ${fmtR(fc.eac_high)}`
     : null;
+  const eacSublbl = [eacMethodLabel, eacSchedulePart, eacRangePart].filter(Boolean).join(' · ') || null;
 
   // Completion cycle range sublabel (R-12)
   const completionRangeSublbl = (fc.est_cycles_optimistic != null && fc.est_cycles_pessimistic != null)
@@ -1408,7 +1413,7 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
     { val: spiVal,                                                                      lbl: 'SPI',  cls: spiCls,  evm: 'SPI',  sublbl: fc.spi_label  || null },
-    { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV'                                 },
+    { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV',   sublbl: fc.sv_label  || null },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl, cls: 'violet', sublbl: completionRangeSublbl      },
     { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
@@ -1418,12 +1423,31 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: 'ETC',                           cls: 'neutral', evm: 'ETC'     },
     { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
     { val: cpiVal,                                                                      lbl: 'CPI',  cls: cpiCls,  evm: 'CPI',  sublbl: fc.cpi_label  || null },
-    { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV'                                 },
+    { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV',   sublbl: fc.cv_label  || null },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',  cls: 'neutral', evm: 'EAC', sublbl: eacSublbl           },
     { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
   ].map(_mkStatCard).join('');
 
-  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
+  // F3 — Earned Schedule row (only when ES data is available)
+  const esRow = (fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null) ? (() => {
+    const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
+    const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
+    const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+    const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
+    const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
+    const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
+    const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
+    const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
+    const cards = [
+      { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
+      { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
+      { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
+      { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
+    ].map(_mkStatCard).join('');
+    return `<div class="stats-row">${cards}</div>`;
+  })() : '';
+
+  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>${esRow}`;
 }
 
 // _buildForecastOption — moved to charts/forecast.js
@@ -1439,12 +1463,9 @@ function _renderForecastProjectInfo(fc, proj) {
   const el = document.getElementById('forecastProjectInfo');
   if (!el) return;
 
-  const _HEALTH_PRIORITY = { overrun: 0, critical: 1, warning: 2, ok: 3, no_budget: 4 };
-  const _HEALTH_TO_SEM   = { ok: 'green', warning: 'yellow', critical: 'red', overrun: 'red', no_budget: 'grey' };
   const hh = fc.health_hours || 'no_budget';
   const hc = fc.health_cost  || 'no_budget';
-  const worstHealth = (_HEALTH_PRIORITY[hh] ?? 4) <= (_HEALTH_PRIORITY[hc] ?? 4) ? hh : hc;
-  const semColor = _HEALTH_TO_SEM[worstHealth] || 'grey';
+  const semColor = _healthToSemColor(hh, hc);
   const semLabel  = _t(`sem.${semColor}`);
 
   const budgetParts = [];
@@ -1500,6 +1521,7 @@ async function _renderForecastTab() {
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
+    document.getElementById('forecastAllocCostCard').hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -1530,13 +1552,19 @@ async function _renderForecastTab() {
       }
     }
     _currentForecastPep = pep;
+    _fcAvgVelocity = fc.avg_hours_per_cycle || null;
+    if (proj) _loadForecastSimulation(proj.id);
+    else { document.getElementById('whatIfCard').hidden = true; document.getElementById('monteCarloCard').hidden = true; }
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
       chart.resize();
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
+    _renderVelocitySparkline(fc);
     _renderBurnUpChart(fc);
+    _renderForecastBaseline(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
+    await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
   } catch (err) {
     _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
@@ -1544,9 +1572,105 @@ async function _renderForecastTab() {
     if (infoEl) infoEl.hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
+    document.getElementById('forecastAllocCostCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
+}
+
+function _renderVelocitySparkline(fc) {
+  const el = document.getElementById('velocitySparklineChart');
+  if (!el) return;
+  const history = (fc.history || []).filter(h => h.period_hours > 0);
+  if (history.length < 2) { el.hidden = true; return; }
+  el.hidden = false;
+
+  const labels   = history.map(h => h.cycle_name);
+  const vals     = history.map(h => h.period_hours);
+  const last3    = vals.slice(-3);
+  const avg3     = last3.reduce((s, v) => s + v, 0) / last3.length;
+  const barColor = _getPalette()[0] || _cssVar('--primary');
+  const avgColor = _cssVar('--amber');
+
+  const chart = _getOrCreateChart('velocitySparklineChart');
+  chart.setOption({
+    ..._chartDefaults(),
+    grid: { top: 18, bottom: 28, left: 44, right: 16, containLabel: false },
+    tooltip: {
+      trigger: 'axis', ..._chartDefaults().tooltip,
+      formatter: p => `<b>${p[0].name}</b><br/>${p[0].marker}${p[0].value.toFixed(1)} h`,
+    },
+    xAxis: {
+      type: 'category', data: labels,
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 9, interval: 'auto' },
+      axisTick: { show: false }, axisLine: { lineStyle: { color: _cssVar('--border') } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => v + 'h' },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
+    },
+    series: [{
+      type: 'bar', data: vals, name: _t('forecast.realized'),
+      barMaxWidth: 32,
+      itemStyle: { color: barColor, borderRadius: [2, 2, 0, 0] },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: avgColor, width: 1.5, type: 'dashed' },
+        label: {
+          formatter: `${_t('forecast.avg3')}: {c}h`,
+          fontSize: 9, color: avgColor, position: 'end',
+        },
+        data: [{ yAxis: +avg3.toFixed(1) }],
+      },
+    }],
+  }, true);
+  chart.resize();
+}
+
+function _renderForecastBaseline(fc) {
+  const card = document.getElementById('forecastBaselineCard');
+  const body = document.getElementById('forecastBaselineBody');
+  if (!card || !body) return;
+  const history = (fc.history || []).filter(h => h.planned_hours != null || h.planned_cost != null);
+  if (!history.length) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  const hasHours = history.some(h => h.planned_hours != null);
+  const hasCost  = history.some(h => h.planned_cost  != null);
+  const fmtH = v => v != null ? (+v).toFixed(1) + 'h' : '—';
+  const fmtC = v => v != null ? _fmtCost(v) : '—';
+  const delta = (plan, real) => {
+    if (plan == null || real == null) return '—';
+    const d = real - plan;
+    const cls = d > 0 ? 'red' : d < 0 ? 'green' : 'neutral';
+    return `<span style="color:var(--${cls})">${d >= 0 ? '+' : ''}${(+d).toFixed(1)}h</span>`;
+  };
+
+  let html = `<div class="table-responsive"><table class="data-table">
+    <thead><tr>
+      <th data-i18n="plan.th.cycle">${_t('plan.th.cycle')}</th>
+      ${hasHours ? `<th class="text-right" data-i18n="plan.th.hours">${_t('plan.th.hours')}</th>
+      <th class="text-right" data-i18n="forecast.realized">${_t('forecast.realized')}</th>
+      <th class="text-right">Δ Horas</th>` : ''}
+      ${hasCost  ? `<th class="text-right" data-i18n="plan.th.cost">${_t('plan.th.cost')}</th>
+      <th class="text-right">AC</th>` : ''}
+    </tr></thead><tbody>`;
+  for (const h of history) {
+    html += `<tr>
+      <td>${escHtml(h.cycle_name)}</td>
+      ${hasHours ? `<td class="text-right">${fmtH(h.planned_hours)}</td>
+      <td class="text-right">${fmtH(h.period_hours)}</td>
+      <td class="text-right">${delta(h.planned_hours, h.period_hours)}</td>` : ''}
+      ${hasCost  ? `<td class="text-right">${fmtC(h.planned_cost)}</td>
+      <td class="text-right">${fmtC(h.period_cost)}</td>` : ''}
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
 }
 
 function _renderBurnUpChart(fc) {
@@ -1569,6 +1693,176 @@ function _renderBurnUpChart(fc) {
   } catch (_) {}
 }
 
+// ── F11: What-If + F4: Monte Carlo ───────────────────────────────────────────
+
+let _simProjectId = null;
+let _fcAvgVelocity = null;
+
+async function _loadForecastSimulation(projectId) {
+  _simProjectId = projectId;
+  const wiCard = document.getElementById('whatIfCard');
+  const mcCard = document.getElementById('monteCarloCard');
+  if (!wiCard || !mcCard) return;
+  wiCard.hidden = false;
+  mcCard.hidden = false;
+  // reset result areas
+  document.getElementById('whatIfResult').innerHTML = '';
+  document.getElementById('mcResult').innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  // B4: show base velocity hint so user knows what 1× means
+  const hint = document.getElementById('whatIfVelocityHint');
+  if (hint) {
+    hint.textContent = _fcAvgVelocity != null
+      ? `${_t('sim.velocity_base')} ${_fcAvgVelocity.toFixed(1)} h/ciclo`
+      : '';
+  }
+  // auto-load monte carlo
+  _runMonteCarlo();
+}
+
+async function _runWhatIf() {
+  if (!_simProjectId) return;
+  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value)  || 1.0;
+  const extra = parseFloat(document.getElementById('whatIfExtraHours').value)   || 0.0;
+  const btn   = document.getElementById('whatIfRunBtn');
+  btn.disabled = true;
+  const burnEl = document.getElementById('whatIfBurnUpChart');
+  try {
+    const r = await apiFetchJSON(`/api/v2/projects/${_simProjectId}/simulate`, 'POST', {
+      velocity_multiplier: mult, extra_hours_per_cycle: extra,
+    });
+    const el = document.getElementById('whatIfResult');
+    const ctc = r.cycles_to_complete != null ? `${r.cycles_to_complete} ciclos` : '—';
+    const eac = r.projected_eac_cost != null ? _fmtCost(r.projected_eac_cost) : '—';
+    const cards = [
+      { val: `${r.avg_velocity.toFixed(1)}h`, lbl: _t('sim.avg_velocity'),      cls: 'neutral', evm: 'SimAvgVel'  },
+      { val: `${r.sim_velocity.toFixed(1)}h`, lbl: _t('sim.sim_velocity'),      cls: 'blue',    evm: 'SimVelocity'},
+      { val: ctc,                              lbl: _t('sim.cycles_to_complete'), cls: 'violet',  evm: 'SimCycles'  },
+      { val: eac,                              lbl: _t('sim.projected_eac'),      cls: 'neutral', evm: 'SimEAC'     },
+    ].map(_mkStatCard).join('');
+    el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${cards}</div>`;
+
+    // Burn-up projection chart
+    if (burnEl && r.burn_up_projected?.length) {
+      const projected = [r.consumed_hours, ...r.burn_up_projected];
+      const cats = ['Atual', ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
+      const budget = r.budget_hours;
+      burnEl.hidden = false;
+      const wc = _getOrCreateChart('whatIfBurnUpChart');
+      wc.setOption({
+        ..._chartDefaults(),
+        grid: { top: 36, right: '4%', bottom: 32, left: '2%', containLabel: true },
+        legend: {
+          data: [_t('sim.burnup.projected'), ...(budget != null ? [_t('sim.burnup.budget')] : [])],
+          top: 4, left: 'center',
+          textStyle: { color: _cssVar('--text'), fontSize: 11 },
+          itemGap: 20, itemWidth: 14, itemHeight: 8,
+        },
+        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+          formatter: params => {
+            let html = `<b>${params[0]?.axisValue}</b><br>`;
+            params.forEach(p => p.value != null && (html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`));
+            return html;
+          },
+        },
+        xAxis: { type: 'category', data: cats,
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 }, axisTick: { show: false } },
+        yAxis: { type: 'value', name: 'h',
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10, formatter: v => `${v}h` },
+          splitLine: { lineStyle: { color: _cssVar('--surface') } } },
+        series: [
+          { name: _t('sim.burnup.projected'), type: 'line', data: projected,
+            lineStyle: { color: _cssVar('--primary'), width: 2.5 },
+            itemStyle: { color: _cssVar('--primary') },
+            symbol: 'circle', symbolSize: 5, connectNulls: true,
+            areaStyle: { color: (_cssVar('--primary') || '#6366f1') + '22' },
+          },
+          ...(budget != null ? [{
+            name: _t('sim.burnup.budget'), type: 'line', data: cats.map(() => budget),
+            symbol: 'none', lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
+            itemStyle: { color: _cssVar('--amber') },
+          }] : []),
+        ],
+      }, true);
+      wc.resize();
+    } else if (burnEl) {
+      burnEl.hidden = true;
+    }
+  } catch (e) {
+    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+    if (burnEl) burnEl.hidden = true;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function _runMonteCarlo() {
+  if (!_simProjectId) return;
+  const el     = document.getElementById('mcResult');
+  const histEl = document.getElementById('mcHistogramChart');
+  el.innerHTML = `<span class="hint">${_t('loading')}</span>`;
+  if (histEl) histEl.hidden = true;
+  try {
+    const r = await apiFetch(`/api/v2/projects/${_simProjectId}/monte-carlo?iterations=1000`);
+    if (r.error === 'insufficient_data') {
+      el.innerHTML = `<div class="chart-empty">${_t('mc.insufficient_data')}</div>`;
+      return;
+    }
+    const mcCards = [
+      { val: `${r.p10 ?? '—'} ciclos`,                   lbl: `P10 ${_t('mc.optimistic')}`, cls: 'green',   evm: 'MCP10'     },
+      { val: `${r.p50 ?? '—'} ciclos`,                   lbl: `P50 ${_t('mc.median')}`,     cls: 'blue',    evm: 'MCP50'     },
+      { val: `${r.p90 ?? '—'} ciclos`,                   lbl: `P90 ${_t('mc.pessimistic')}`,cls: 'red',     evm: 'MCP90'     },
+      { val: `${r.mean_velocity?.toFixed(1) ?? '—'}h`,   lbl: _t('mc.mean_velocity'),        cls: 'neutral', evm: 'MCMeanVel' },
+    ].map(_mkStatCard).join('');
+    el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${mcCards}</div>`;
+
+    // Histogram
+    if (histEl && r.histogram?.length) {
+      histEl.hidden = false;
+      const hc = _getOrCreateChart('mcHistogramChart');
+      const cats  = r.histogram.map(b => String(b.cycle));
+      const freqs = r.histogram.map(b => b.count);
+      hc.setOption({
+        ..._chartDefaults(),
+        grid: { top: 36, right: '4%', bottom: 40, left: '2%', containLabel: true },
+        legend: { show: false },
+        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+          formatter: params => `<b>${params[0].axisValue} ${_t('sim.cycles_to_complete')}</b><br>${params[0].marker}${_t('mc.histogram.frequency')}: <b>${params[0].value}</b>`,
+        },
+        xAxis: { type: 'category', data: cats,
+          name: _t('sim.cycles_to_complete'), nameLocation: 'middle', nameGap: 28,
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisTick: { alignWithLabel: true },
+        },
+        yAxis: { type: 'value', name: _t('mc.histogram.frequency'),
+          nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
+          splitLine: { lineStyle: { color: _cssVar('--surface') } },
+        },
+        series: [{
+          type: 'bar', data: freqs, barMaxWidth: 36,
+          itemStyle: { color: _cssVar('--primary') },
+          markLine: {
+            symbol: 'none',
+            lineStyle: { type: 'dashed', width: 1.5 },
+            label: { fontSize: 10 },
+            data: [
+              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green') }, label: { formatter: 'P10', color: _cssVar('--green') } }] : []),
+              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary') } }] : []),
+              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red') }, label: { formatter: 'P90', color: _cssVar('--red') } }] : []),
+            ],
+          },
+        }],
+      }, true);
+      hc.resize();
+    }
+  } catch (e) {
+    if (histEl) histEl.hidden = true;
+    el.innerHTML = `<div class="chart-empty" style="color:var(--red,#f04040)">${_t('mc.error')}</div>`;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Forecast allocation table (hours heatmap per collaborator, single PEP)
 // ---------------------------------------------------------------------------
@@ -1586,6 +1880,28 @@ document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
   const ch = document.getElementById('forecastAllocChevron');
   ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
+});
+
+let _forecastAllocCostExpanded = true;
+document.getElementById('forecastAllocCostToggle').addEventListener('click', () => {
+  _forecastAllocCostExpanded = !_forecastAllocCostExpanded;
+  document.getElementById('forecastAllocCostBody').style.display = _forecastAllocCostExpanded ? '' : 'none';
+  const ch = document.getElementById('forecastAllocCostChevron');
+  ch.style.transform = _forecastAllocCostExpanded ? '' : 'rotate(-90deg)';
+});
+
+let _whatIfExpanded = true;
+document.getElementById('whatIfToggle').addEventListener('click', () => {
+  _whatIfExpanded = !_whatIfExpanded;
+  document.getElementById('whatIfBody').style.display = _whatIfExpanded ? '' : 'none';
+  document.getElementById('whatIfChevron').style.transform = _whatIfExpanded ? '' : 'rotate(-90deg)';
+});
+
+let _mcExpanded = true;
+document.getElementById('mcToggle').addEventListener('click', () => {
+  _mcExpanded = !_mcExpanded;
+  document.getElementById('mcBody').style.display = _mcExpanded ? '' : 'none';
+  document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
 });
 
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
@@ -1651,6 +1967,79 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 
     html += `<tr class="alloc-footer">
       <td>${_t('forecast.alloc.total')}</td>
+      <td>${fmt(totNormal)}</td>
+      <td>${fmt(totExtra)}</td>
+      <td>${fmt(totStandby)}</td>
+      <td class="alloc-total">${fmt(totTotal)}</td>
+    </tr></tbody></table>`;
+
+    tbl.innerHTML = html;
+  } catch (_) {
+    card.hidden = true;
+  }
+}
+
+async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
+  const card = document.getElementById('forecastAllocCostCard');
+  const tbl  = document.getElementById('forecastAllocCostTable');
+  if (!pep) { card.hidden = true; return; }
+
+  try {
+    const p = new URLSearchParams({ pep_wbs: pep });
+    if (dateFrom) p.set('date_from', dateFrom);
+    if (dateTo)   p.set('date_to',   dateTo);
+    const data = await apiFetch(`/api/v2/allocation?${p}`);
+
+    if (!data.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    const byCollab = {};
+    data.forEach(d => {
+      if (!byCollab[d.collaborator]) byCollab[d.collaborator] = { normal: 0, extra: 0, standby: 0, total: 0 };
+      byCollab[d.collaborator].normal  += d.normal_cost  || 0;
+      byCollab[d.collaborator].extra   += d.extra_cost   || 0;
+      byCollab[d.collaborator].standby += d.standby_cost || 0;
+      byCollab[d.collaborator].total   += d.total_cost   || 0;
+    });
+
+    const collabs = Object.entries(byCollab).sort((a, b) => b[1].total - a[1].total);
+
+    const maxNormal  = Math.max(...collabs.map(([, v]) => v.normal),  0.001);
+    const maxExtra   = Math.max(...collabs.map(([, v]) => v.extra),   0.001);
+    const maxStandby = Math.max(...collabs.map(([, v]) => v.standby), 0.001);
+
+    const heat = (v, max) => {
+      if (!v) return '';
+      const a = (0.08 + (v / max) * 0.72).toFixed(2);
+      return `style="background:rgba(14,165,233,${a})"`;
+    };
+    const fmt = v => v > 0 ? _fmtCost(v) : '—';
+
+    const totNormal  = collabs.reduce((s, [, v]) => s + v.normal,  0);
+    const totExtra   = collabs.reduce((s, [, v]) => s + v.extra,   0);
+    const totStandby = collabs.reduce((s, [, v]) => s + v.standby, 0);
+    const totTotal   = collabs.reduce((s, [, v]) => s + v.total,   0);
+
+    let html = `<table class="data-table alloc-matrix" style="width:100%"><thead><tr>
+      <th>${_t('forecast.alloc.collaborator')}</th>
+      <th>${_t('forecast.alloc_cost.normal')}</th>
+      <th>${_t('forecast.alloc_cost.extra')}</th>
+      <th>${_t('forecast.alloc_cost.standby')}</th>
+      <th class="alloc-total">${_t('forecast.alloc_cost.total')}</th>
+    </tr></thead><tbody>`;
+
+    collabs.forEach(([name, v]) => {
+      html += `<tr>
+        <td class="alloc-name">${escHtml(name)}</td>
+        <td ${heat(v.normal,  maxNormal)}>${fmt(v.normal)}</td>
+        <td ${heat(v.extra,   maxExtra)}>${fmt(v.extra)}</td>
+        <td ${heat(v.standby, maxStandby)}>${fmt(v.standby)}</td>
+        <td class="alloc-total">${fmt(v.total)}</td>
+      </tr>`;
+    });
+
+    html += `<tr class="alloc-footer">
+      <td>${_t('forecast.alloc_cost.total')}</td>
       <td>${fmt(totNormal)}</td>
       <td>${fmt(totExtra)}</td>
       <td>${fmt(totStandby)}</td>
@@ -2602,6 +2991,7 @@ const _projectsPag = _makePaginator(
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-secondary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})" data-i18n-title="budget.history.btn">${_t('budget.history.btn')}</button>
         <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
@@ -2682,6 +3072,83 @@ function _closeProjectPlan() {
 
 document.getElementById('closePlanPanelBtn').addEventListener('click', _closeProjectPlan);
 
+// ── F7: Budget Revision History ───────────────────────────────────────────────
+
+let _budgetHistChart = null;
+
+async function _openBudgetHistory(projectId, projectName) {
+  document.getElementById('budgetHistoryTitle').textContent =
+    `${_t('budget.history.title')} — ${projectName}`;
+  document.getElementById('budgetHistoryBody').innerHTML =
+    `<tr><td colspan="5" class="td-empty">${_t('loading')}</td></tr>`;
+  const sparkEl = document.getElementById('budgetSparkline');
+  if (sparkEl) { sparkEl.hidden = true; }
+  openModal('budgetHistoryModal');
+  try {
+    const rows = await apiFetch(`/api/projects/${projectId}/budget-history`);
+    if (!rows.length) {
+      document.getElementById('budgetHistoryBody').innerHTML =
+        `<tr><td colspan="5" class="td-empty">${_t('budget.history.empty')}</td></tr>`;
+      return;
+    }
+    document.getElementById('budgetHistoryBody').innerHTML = rows.map(r => `
+      <tr>
+        <td>${_fmtDateBR(r.changed_at?.split('T')[0]) || '—'}</td>
+        <td>${escHtml(r.changed_by)}</td>
+        <td class="text-right">${r.old_budget_hours != null ? r.old_budget_hours.toFixed(1) + 'h' : '—'}
+          → ${r.new_budget_hours != null ? r.new_budget_hours.toFixed(1) + 'h' : '—'}</td>
+        <td class="text-right">${r.old_budget_cost != null ? _fmtCost(r.old_budget_cost) : '—'}
+          → ${r.new_budget_cost != null ? _fmtCost(r.new_budget_cost) : '—'}</td>
+        <td>${escHtml(r.reason || '—')}</td>
+      </tr>`).join('');
+
+    // Sparkline — chronological order (rows arrive newest-first)
+    if (sparkEl && rows.length >= 2) {
+      const sorted = [...rows].reverse();
+      const dates  = sorted.map(r => r.changed_at?.split('T')[0] || '');
+      const bHours = sorted.map(r => r.new_budget_hours ?? null);
+      const bCosts = sorted.map(r => r.new_budget_cost  ?? null);
+      if (_budgetHistChart) { _budgetHistChart.dispose(); _budgetHistChart = null; }
+      _budgetHistChart = echarts.init(sparkEl, 'dark', { renderer: 'svg' });
+      _budgetHistChart.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 28, right: 12, bottom: 24, left: 8, containLabel: true },
+        legend: {
+          data: [_t('budget.history.sparkline.hours'), _t('budget.history.sparkline.cost')],
+          top: 2, left: 'center',
+          textStyle: { color: _cssVar('--text'), fontSize: 10 },
+          itemGap: 16, itemWidth: 12, itemHeight: 8,
+        },
+        xAxis: { type: 'category', data: dates,
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 9 },
+          axisTick: { show: false },
+        },
+        yAxis: [
+          { type: 'value', name: 'h', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
+            axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${v}h` },
+            splitLine: { lineStyle: { color: _cssVar('--surface') } } },
+          { type: 'value', name: 'R$', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
+            axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${(v/1000).toFixed(0)}k` },
+            splitLine: { show: false } },
+        ],
+        tooltip: { trigger: 'axis', ...(_chartDefaults().tooltip) },
+        series: [
+          { name: _t('budget.history.sparkline.hours'), type: 'line', yAxisIndex: 0,
+            data: bHours, itemStyle: { color: _cssVar('--primary') },
+            lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 },
+          { name: _t('budget.history.sparkline.cost'), type: 'line', yAxisIndex: 1,
+            data: bCosts, itemStyle: { color: _cssVar('--amber') },
+            lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 },
+        ],
+      });
+      sparkEl.hidden = false;
+    }
+  } catch (e) {
+    document.getElementById('budgetHistoryBody').innerHTML =
+      `<tr><td colspan="5" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
+  }
+}
+
 function openProjectModal(id = null) {
   _projectEditId = id;
   document.getElementById('projectModalTitle').textContent = id ? _t('pm.title_edit') : _t('pm.title_new');
@@ -2707,6 +3174,9 @@ function openProjectModal(id = null) {
       .forEach(fid => { document.getElementById(fid).value = ''; });
     document.getElementById('projectStatusInput').value = 'ativo';
   }
+  // show budget reason field only when editing (budget change may occur)
+  document.getElementById('budgetReasonGroup').hidden = !id;
+  document.getElementById('projectBudgetReasonInput').value = '';
   openModal('projectModal');
 }
 
@@ -2722,17 +3192,19 @@ document.getElementById('projectSaveBtn').addEventListener('click', async () => 
   if (completionDate && status !== 'encerrado') {
     if (confirm(_t('confirm.set_encerrado'))) status = 'encerrado';
   }
+  const budgetReason = document.getElementById('projectBudgetReasonInput')?.value.trim() || null;
   const body = {
-    pep_wbs:          pep,
-    name:             document.getElementById('projectNameInput').value.trim()    || null,
-    client:           document.getElementById('projectClientInput').value.trim()  || null,
-    manager:          document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours:     budget     !== '' ? parseFloat(budget)     : null,
-    budget_cost:      budgetCost !== '' ? parseFloat(budgetCost) : null,
+    pep_wbs:               pep,
+    name:                  document.getElementById('projectNameInput').value.trim()    || null,
+    client:                document.getElementById('projectClientInput').value.trim()  || null,
+    manager:               document.getElementById('projectManagerInput').value.trim() || null,
+    budget_hours:          budget     !== '' ? parseFloat(budget)     : null,
+    budget_cost:           budgetCost !== '' ? parseFloat(budgetCost) : null,
     status,
-    start_date:       document.getElementById('projectStartInput').value       || null,
-    planned_end_date: document.getElementById('projectPlannedEndInput').value  || null,
-    completion_date:  completionDate,
+    start_date:            document.getElementById('projectStartInput').value       || null,
+    planned_end_date:      document.getElementById('projectPlannedEndInput').value  || null,
+    completion_date:       completionDate,
+    budget_change_reason:  budgetReason,
   };
   try {
     if (_projectEditId) {
@@ -2999,6 +3471,78 @@ let _assignCollabId     = null;
 async function loadTeamTab() {
   await Promise.all([loadSeniorityLevels(), loadRateCards(), loadGlobalConfig()]);
   await loadTeamTable();
+  await _loadOverAllocation();
+}
+
+// ── F5: Over-allocation Detection ─────────────────────────────────────────────
+
+let _overAllocData = [];
+
+function _renderOverAllocRows(items) {
+  const body = document.getElementById('overAllocBody');
+  if (!body) return;
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = items.map(it => `
+    <tr>
+      <td>${escHtml(it.collaborator)}</td>
+      <td>${_fmtDateBR(it.date)}</td>
+      <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
+      <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
+    </tr>`).join('');
+}
+
+async function _loadOverAllocation() {
+  const card = document.getElementById('overAllocCard');
+  const body = document.getElementById('overAllocBody');
+  if (!card || !body) return;
+  body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('loading')}</td></tr>`;
+  card.hidden = false;
+
+  const params = new URLSearchParams();
+  const from = document.getElementById('overAllocFrom')?.value;
+  const to   = document.getElementById('overAllocTo')?.value;
+  const thr  = document.getElementById('overAllocThreshold')?.value;
+  if (from) params.set('date_from', from);
+  if (to)   params.set('date_to',   to);
+  if (thr)  params.set('threshold', thr);
+  const qs = params.toString() ? `?${params}` : '';
+
+  try {
+    const items = await apiFetch(`/api/v2/over-allocation${qs}`);
+    _overAllocData = items;
+    _renderOverAllocRows(_applySort('overAllocTable', _overAllocData));
+  } catch (e) {
+    _overAllocData = [];
+    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
+  }
+}
+
+function _exportOverAllocCsv() {
+  if (!_overAllocData.length) return;
+  const header = [
+    _t('over_alloc.th.collaborator'),
+    _t('over_alloc.th.date'),
+    _t('over_alloc.th.hours'),
+    'Limite (h)',
+    _t('over_alloc.th.peps'),
+  ].join(',');
+  const rows = _overAllocData.map(it =>
+    [
+      `"${it.collaborator}"`,
+      it.date,
+      it.total_hours.toFixed(2),
+      it.threshold,
+      `"${it.pep_list.join('; ')}"`,
+    ].join(',')
+  );
+  const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'sobre-alocacao.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 const _seniorityPag = _makePaginator(
@@ -4333,9 +4877,18 @@ function _openQRDetail(id) {
 
 async function _doQRAction(id, action) {
   try {
-    await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
+    const rec = await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     closeModal('qrDetailModal');
-    notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
+    if (action === 'approve' && rec?.raw_data) {
+      const raw    = rec.raw_data;
+      const collab = raw['Colaborador']             || '—';
+      const date   = raw['Data']                    || '—';
+      const hours  = raw['Horas totais (decimal)']  || '—';
+      const pep    = raw['Código PEP'] || raw['PEP']|| '—';
+      notify(`${_t('msg.qr_approved')}: ${collab} · ${date} · ${hours}h · ${pep}`, 'success');
+    } else {
+      notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
+    }
     _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
@@ -4805,18 +5358,7 @@ async function loadSemaphore() {
     }
 
     // v2 returns health_hours and health_cost already classified by the server
-    const _semClass = p => {
-      if (p.health_hours === 'no_budget' && p.health_cost === 'no_budget') return 'grey';
-      const worseColor = (a, b) => {
-        const rank = { ok: 0, warning: 1, critical: 2, overrun: 2, no_budget: -1 };
-        return (rank[a] ?? 0) >= (rank[b] ?? 0) ? a : b;
-      };
-      const worst = worseColor(p.health_hours, p.health_cost);
-      if (worst === 'overrun' || worst === 'critical') return 'red';
-      if (worst === 'warning') return 'yellow';
-      if (worst === 'no_budget') return 'grey';
-      return 'green';
-    };
+    const _semClass = p => _healthToSemColor(p.health_hours || 'no_budget', p.health_cost || 'no_budget');
 
     const wPct = Math.round(_budgetWarning  * 100);
     const cPct = Math.round(_budgetCritical * 100);
@@ -4944,6 +5486,7 @@ _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 _makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
+_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, rows => _renderOverAllocRows(rows));
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');

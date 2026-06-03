@@ -6,7 +6,7 @@
 
 // Backend EVM color → CSS variable name (for charts and table cells)
 const _EVM_COLOR_CSS = {
-  success: 'var(--primary,#4f8ef7)',
+  success: 'var(--green,#10d98a)',
   warning: 'var(--amber,#d9b273)',
   danger:  'var(--red,#c56d76)',
 };
@@ -15,7 +15,21 @@ const _EVM_COLOR_CSS = {
 const _EVM_COLOR_CARD = { success: 'green', warning: 'amber', danger: 'red' };
 
 // Health-color → CSS variable name (used in Treemap and Bullet chart)
-const _HCSS = { success: '--primary', warning: '--amber', danger: '--red', muted: '--text-3' };
+const _HCSS = { success: '--green', warning: '--amber', danger: '--red', muted: '--text-3' };
+
+// ---------------------------------------------------------------------------
+// H1 — Health label → semaphore color (single source of truth)
+// Accepts two health strings (health_hours, health_cost) from the API and
+// returns the worst-case semaphore color: 'green' | 'yellow' | 'red' | 'grey'
+// ---------------------------------------------------------------------------
+const _HEALTH_RANK = { overrun: 3, critical: 2, warning: 1, ok: 0, no_budget: -1 };
+const _HEALTH_TO_SEM = { ok: 'green', warning: 'yellow', critical: 'red', overrun: 'red', no_budget: 'grey' };
+
+function _healthToSemColor(a, b) {
+  if (a === 'no_budget' && b === 'no_budget') return 'grey';
+  const worst = (_HEALTH_RANK[a] ?? 0) >= (_HEALTH_RANK[b] ?? 0) ? a : b;
+  return _HEALTH_TO_SEM[worst] || 'grey';
+}
 
 // ---------------------------------------------------------------------------
 // C1 — Stat card builder

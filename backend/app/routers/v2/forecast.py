@@ -28,11 +28,15 @@ from backend.app.services.evm import (
     compute_cv,
     compute_eac,
     compute_eac_schedule,
+    compute_earned_schedule,
     compute_ev_capped,
+    compute_ieac_t,
     compute_period_delta,
     compute_period_delta_pct,
     compute_spi,
+    compute_spi_t,
     compute_sv,
+    compute_sv_t,
     compute_tcpi,
     compute_vac,
     cpi_color,
@@ -49,6 +53,7 @@ from backend.app.services.evm import (
     tcpi_label,
     vac_color,
     vac_label,
+    get_thresholds,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -67,8 +72,7 @@ def get_forecast(
         raise HTTPException(status_code=403, detail="Acesso negado.")
 
     cfg = db.get(GlobalConfig, 1)
-    warning_threshold  = cfg.budget_warning_threshold  if cfg and hasattr(cfg, 'budget_warning_threshold')  else 0.9
-    critical_threshold = cfg.budget_critical_threshold if cfg and hasattr(cfg, 'budget_critical_threshold') else 1.0
+    warning_threshold, critical_threshold = get_thresholds(cfg)
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
@@ -182,6 +186,41 @@ def get_forecast(
         })
         prev_period_h = period_h
         prev_period_c = period_c
+
+    # Earned Schedule — requires a PV cost curve
+    pv_cost_curve = [
+        h["cumulative_planned_cost"]
+        for h in history
+        if h.get("cumulative_planned_cost") is not None
+    ]
+    at = len(cycle_data)          # actual time in cycles
+    pd_cycles = len(sorted_plans) # planned duration
+
+    es = compute_earned_schedule(
+        history[-1]["cumulative_ev_cost"] if history else None,
+        pv_cost_curve,
+    ) if pv_cost_curve else None
+    spi_t  = compute_spi_t(es, at)
+    sv_t   = compute_sv_t(es, at)
+    ieac_t = compute_ieac_t(pd_cycles or None, spi_t)
+
+    # Annotate each history entry with its incremental ES
+    for i, entry in enumerate(history):
+        partial_pv = [
+            h["cumulative_planned_cost"]
+            for h in history[:i + 1]
+            if h.get("cumulative_planned_cost") is not None
+        ]
+        if partial_pv:
+            es_i    = compute_earned_schedule(entry.get("cumulative_ev_cost"), partial_pv)
+            at_i    = float(i + 1)
+            spi_t_i = compute_spi_t(es_i, at_i)
+            sv_t_i  = compute_sv_t(es_i, at_i)
+        else:
+            es_i = spi_t_i = sv_t_i = None
+        entry["es"]     = es_i
+        entry["spi_t"]  = spi_t_i
+        entry["sv_t"]   = sv_t_i
 
     consumed_hours = cum_h
     actual_cost    = cum_c
@@ -311,10 +350,14 @@ def get_forecast(
         "vac_label":                  vac_label(vac),
         "vac_color":                  vac_color(vac),
         "cv":                         cv,
+        "cv_label":                   cv_label(cv),
+        "cv_color":                   cv_color(cv),
         "tcpi":                       tcpi,
         "tcpi_color":                 tcpi_color(tcpi),
         "tcpi_label":                 tcpi_label(tcpi),
         "sv":                         sv,
+        "sv_label":                   sv_label(sv),
+        "sv_color":                   sv_color(sv),
         "avg_hours_per_cycle":        round(avg_hours, 2),
         "estimated_cycles_to_complete": est_cycles,
         "est_cycles_optimistic":      est_cycles_optimistic,
@@ -332,6 +375,12 @@ def get_forecast(
         "health_hours":               classify_health(consumed_hours, budget_hours, warning_threshold, critical_threshold),
         "health_cost":                classify_health(actual_cost,    budget_cost,  warning_threshold, critical_threshold),
         "history":                    history,
+        "es":                         es,
+        "spi_t":                      spi_t,
+        "sv_t":                       sv_t,
+        "ieac_t":                     ieac_t,
+        "planned_duration_cycles":    pd_cycles if sorted_plans else None,
+        "actual_time_cycles":         at,
     }
 
 

@@ -889,3 +889,47 @@ class TestAllocationV2:
         item = next((x for x in result if x["collaborator"] == "CostUser"), None)
         assert item is not None
         assert item["total_cost"] == pytest.approx(500.0)
+
+
+# ── /api/v2/forecast — Earned Schedule (F3) ──────────────────────────────────
+
+class TestForecastES:
+    def test_forecast_returns_es_fields(self, client, db_session, clean_db):
+        c1 = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        c2 = _make_cycle(db_session, "FEV/2025", date(2025, 2, 1), date(2025, 2, 28))
+        proj = _make_project(db_session, "ES-001-01", "ES Project",
+                             budget_hours=100.0, budget_cost=5000.0)
+        collab = _make_collab(db_session, "ESUser", rate=50.0)
+        _make_record(db_session, collab, c1, "ES-001-01", "ES Project", 20.0, rate=50.0)
+        _make_record(db_session, collab, c2, "ES-001-01", "ES Project", 20.0, rate=50.0)
+        # Add plans so ES can be computed
+        plan1 = ProjectCyclePlan(project_id=proj.id, cycle_id=c1.id,
+                                 planned_hours=25.0, planned_cost=1250.0)
+        plan2 = ProjectCyclePlan(project_id=proj.id, cycle_id=c2.id,
+                                 planned_hours=25.0, planned_cost=1250.0)
+        db_session.add(plan1)
+        db_session.add(plan2)
+        db_session.commit()
+
+        r = client.get("/api/v2/forecast?pep_wbs=ES-001-01")
+        assert r.status_code == 200
+        body = r.json()
+        for field in ("es", "spi_t", "sv_t", "ieac_t",
+                      "actual_time_cycles", "planned_duration_cycles"):
+            assert field in body, f"Missing field: {field}"
+        assert body["actual_time_cycles"] == 2
+        assert body["planned_duration_cycles"] == 2
+
+    def test_forecast_es_none_without_plan(self, client, db_session, clean_db):
+        c1 = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        _make_project(db_session, "ES-002-01", "No Plan ES",
+                      budget_hours=100.0, budget_cost=5000.0)
+        collab = _make_collab(db_session, "ESUser2", rate=50.0)
+        _make_record(db_session, collab, c1, "ES-002-01", "No Plan ES", 20.0, rate=50.0)
+        db_session.commit()
+
+        r = client.get("/api/v2/forecast?pep_wbs=ES-002-01")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["es"] is None
+        assert body["planned_duration_cycles"] is None
