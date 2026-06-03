@@ -1584,29 +1584,45 @@ function _renderVelocitySparkline(fc) {
   if (history.length < 2) { el.hidden = true; return; }
   el.hidden = false;
 
-  const labels = history.map(h => h.cycle_name);
-  const vals   = history.map(h => h.period_hours);
-  const last3  = vals.slice(-3);
-  const avg3   = last3.reduce((s, v) => s + v, 0) / last3.length;
+  const labels   = history.map(h => h.cycle_name);
+  const vals     = history.map(h => h.period_hours);
+  const last3    = vals.slice(-3);
+  const avg3     = last3.reduce((s, v) => s + v, 0) / last3.length;
+  const barColor = _getPalette()[0] || _cssVar('--primary');
+  const avgColor = _cssVar('--amber');
 
   const chart = _getOrCreateChart('velocitySparklineChart');
   chart.setOption({
-    grid: { top: 18, bottom: 28, left: 40, right: 12 },
-    tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>${p[0].value.toFixed(1)} h` },
-    xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 9, interval: 'auto' } },
-    yAxis: { type: 'value', axisLabel: { fontSize: 9, formatter: v => v + 'h' } },
-    series: [
-      {
-        type: 'bar', data: vals, name: _t('sim.velocity_base'),
-        itemStyle: { color: 'var(--color-neutral, #6b7280)' },
-        markLine: {
-          silent: true, symbol: 'none',
-          lineStyle: { color: 'var(--color-danger, #ef4444)', width: 1.5, type: 'dashed' },
-          label: { formatter: `${_t('forecast.avg3')}: {c}h`, fontSize: 9 },
-          data: [{ yAxis: +avg3.toFixed(1) }],
+    ..._chartDefaults(),
+    grid: { top: 18, bottom: 28, left: 44, right: 16, containLabel: false },
+    tooltip: {
+      trigger: 'axis', ..._chartDefaults().tooltip,
+      formatter: p => `<b>${p[0].name}</b><br/>${p[0].marker}${p[0].value.toFixed(1)} h`,
+    },
+    xAxis: {
+      type: 'category', data: labels,
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 9, interval: 'auto' },
+      axisTick: { show: false }, axisLine: { lineStyle: { color: _cssVar('--border') } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => v + 'h' },
+      splitLine: { lineStyle: { color: _cssVar('--surface') } },
+    },
+    series: [{
+      type: 'bar', data: vals, name: _t('forecast.realized'),
+      barMaxWidth: 32,
+      itemStyle: { color: barColor, borderRadius: [2, 2, 0, 0] },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: avgColor, width: 1.5, type: 'dashed' },
+        label: {
+          formatter: `${_t('forecast.avg3')}: {c}h`,
+          fontSize: 9, color: avgColor, position: 'end',
         },
+        data: [{ yAxis: +avg3.toFixed(1) }],
       },
-    ],
+    }],
   }, true);
   chart.resize();
 }
