@@ -1836,35 +1836,60 @@ async function _runMonteCarlo() {
       const hc = _getOrCreateChart('mcHistogramChart');
       const cats  = r.histogram.map(b => String(b.cycle));
       const freqs = r.histogram.map(b => b.count);
+
+      // Color each bar by percentile region
+      const barData = cats.map((cat, i) => {
+        const v = Number(cat);
+        let color;
+        if      (r.p10 != null && v <= r.p10) color = _cssVar('--green');
+        else if (r.p50 != null && v <= r.p50) color = _cssVar('--primary');
+        else if (r.p90 != null && v <= r.p90) color = _cssVar('--amber');
+        else                                   color = _cssVar('--red');
+        return { value: freqs[i], itemStyle: { color } };
+      });
+
       hc.setOption({
         ..._chartDefaults(),
         grid: { top: 36, right: '4%', bottom: 40, left: '2%', containLabel: true },
         legend: { show: false },
-        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+        tooltip: {
+          trigger: 'axis', ..._chartDefaults().tooltip,
           formatter: params => `<b>${params[0].axisValue} ${_t('sim.cycles_to_complete')}</b><br>${params[0].marker}${_t('mc.histogram.frequency')}: <b>${params[0].value}</b>`,
         },
-        xAxis: { type: 'category', data: cats,
+        xAxis: {
+          type: 'category', data: cats,
           name: _t('sim.cycles_to_complete'), nameLocation: 'middle', nameGap: 28,
           nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisTick: { alignWithLabel: true },
+          axisLabel:     { color: _cssVar('--text-3'), fontSize: 10 },
+          axisTick:      { alignWithLabel: true },
         },
-        yAxis: { type: 'value', name: _t('mc.histogram.frequency'),
+        yAxis: {
+          type: 'value', name: _t('mc.histogram.frequency'),
           nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
-          splitLine: { lineStyle: { color: _cssVar('--surface') } },
+          axisLabel:     { color: _cssVar('--text-3'), fontSize: 10 },
+          splitLine:     { lineStyle: { color: _cssVar('--border') } },
         },
         series: [{
-          type: 'bar', data: freqs, barMaxWidth: 36,
-          itemStyle: { color: _cssVar('--primary') },
+          type: 'bar', data: barData, barMaxWidth: 36,
           markLine: {
             symbol: 'none',
-            lineStyle: { type: 'dashed', width: 1.5 },
-            label: { fontSize: 10 },
+            silent: true,
             data: [
-              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green')   }, label: { formatter: 'P10', color: _cssVar('--green'),   position: 'end',    fontSize: 10 } }] : []),
-              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary'), position: 'middle', fontSize: 10 } }] : []),
-              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red')     }, label: { formatter: 'P90', color: _cssVar('--red'),     position: 'start',  fontSize: 10 } }] : []),
+              ...(r.p10 != null ? [{ xAxis: String(r.p10),
+                lineStyle: { color: _cssVar('--green'),   type: 'dashed', width: 1.5 },
+                label: { formatter: `P10 · ${r.p10}`, color: _cssVar('--green'),
+                  position: 'end', offset: [0,  0], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+              ...(r.p50 != null ? [{ xAxis: String(r.p50),
+                lineStyle: { color: _cssVar('--primary'), type: 'solid',  width: 2   },
+                label: { formatter: `P50 · ${r.p50}`, color: _cssVar('--primary'),
+                  position: 'end', offset: [0, 16], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+              ...(r.p90 != null ? [{ xAxis: String(r.p90),
+                lineStyle: { color: _cssVar('--red'),     type: 'dashed', width: 1.5 },
+                label: { formatter: `P90 · ${r.p90}`, color: _cssVar('--red'),
+                  position: 'end', offset: [0, 32], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
             ],
           },
         }],
