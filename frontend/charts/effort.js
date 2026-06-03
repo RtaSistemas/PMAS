@@ -126,23 +126,38 @@ function _buildHoursBarOption({
   ];
 
   // ── 6. Total line series (optional) ─────────────────────────────────
+  // Per-item data objects are used instead of callbacks so that each
+  // symbol's color and size are resolved once, avoiding ECharts quirks
+  // with itemStyle.color functions on line series.
+  const totalLineData = totals.map(v => {
+    const isPeak = v > 0 && v === maxTotal;
+    return {
+      value:      v,
+      symbol:     v === 0 ? 'none' : 'circle',
+      symbolSize: isPeak ? 10 : 6,
+      itemStyle:  { color: isPeak ? _cssVar('--red') : _cssVar('--green') },
+    };
+  });
+
   const totalLineSeries = showTotal ? [{
     name:       _t('stat.total'),
     type:       'line',
     color:      _cssVar('--green'),
     legendIcon: 'circle',
-    data:       totals,
-    symbolSize: val => val === maxTotal ? 10 : 6,
+    data:       totalLineData,
     lineStyle:  { width: 1, type: 'dashed' },
-    itemStyle:  { color: p => p.value === maxTotal ? _cssVar('--red') : _cssVar('--green') },
     label: {
-      show:      true,
+      show:      !!stack,
       position:  isHoriz ? 'right' : 'top',
       fontSize:  10,
       color:     _cssVar('--green'),
-      formatter: p => p.value === maxTotal
-        ? `{peak|${p.value.toFixed(1)}h}`
-        : `${p.value.toFixed(1)}h`,
+      formatter: p => {
+        const v = p.value ?? 0;
+        if (v === 0) return '';
+        return v === maxTotal
+          ? `{peak|${v.toFixed(1)}h}`
+          : `${v.toFixed(1)}h`;
+      },
       rich: { peak: { color: _cssVar('--red'), fontSize: 10 } },
     },
     z: 10,
