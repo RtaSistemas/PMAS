@@ -1376,21 +1376,26 @@ function _buildForecastKpis(fc) {
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
   const spiCls  = _EVM_COLOR_CARD[fc.spi_color]  || 'neutral';
   const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
-  const svCls   = fc.sv   == null ? 'neutral' : fc.sv   >= 0 ? 'green' : 'red';
+  const svCls   = _EVM_COLOR_CARD[fc.sv_color] || 'neutral';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';
   const cpiCls  = _EVM_COLOR_CARD[fc.cpi_color]  || 'neutral';
   const cvFmt   = fc.cv   != null ? (fc.cv  >= 0 ? '+' : '') + fmtR(fc.cv)  : '—';
-  const cvCls   = fc.cv   == null ? 'neutral' : fc.cv   >= 0 ? 'green' : 'red';
+  const cvCls   = _EVM_COLOR_CARD[fc.cv_color] || 'neutral';
   const tcpiVal = fc.tcpi != null ? (+fc.tcpi).toFixed(2) : '—';
   const tcpiCls = _EVM_COLOR_CARD[fc.tcpi_color] || 'neutral';
   const vacFmt  = fc.vac  != null ? (fc.vac >= 0 ? '+' : '') + fmtR(fc.vac) : '—';
   const vacCls  = _EVM_COLOR_CARD[fc.vac_color]  || (fc.vac  == null ? 'neutral' : fc.vac >= 0 ? 'green' : 'red');
 
-  // EAC uncertainty range sublabel (R-12)
-  const eacSublbl = (fc.eac_low != null && fc.eac_high != null)
+  // EAC sublabel: method · schedule divergence (>5%) · uncertainty range
+  const eacMethodLabel = fc.eac_method === 'cpi_spi' ? 'CPI+SPI' : fc.eac_method === 'cpi' ? 'CPI' : null;
+  const eacSchedulePart = (fc.eac_schedule != null && fc.eac != null && Math.abs(fc.eac_schedule - fc.eac) / fc.eac > 0.05)
+    ? `agenda: ${fmtR(fc.eac_schedule)}`
+    : null;
+  const eacRangePart = (fc.eac_low != null && fc.eac_high != null)
     ? `${fmtR(fc.eac_low)} — ${fmtR(fc.eac_high)}`
     : null;
+  const eacSublbl = [eacMethodLabel, eacSchedulePart, eacRangePart].filter(Boolean).join(' · ') || null;
 
   // Completion cycle range sublabel (R-12)
   const completionRangeSublbl = (fc.est_cycles_optimistic != null && fc.est_cycles_pessimistic != null)
@@ -1408,7 +1413,7 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_hours != null ? fmtH(Math.max(0, fc.remaining_hours)) : '—',  lbl: _t('forecast.remaining'),         cls: overH ? 'red' : 'neutral' },
     { val: pctH,                                                                        lbl: _t('forecast.utilization_hours'), cls: overH ? 'red' : 'green'   },
     { val: spiVal,                                                                      lbl: 'SPI',  cls: spiCls,  evm: 'SPI',  sublbl: fc.spi_label  || null },
-    { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV'                                 },
+    { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV',   sublbl: fc.sv_label  || null },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl, cls: 'violet', sublbl: completionRangeSublbl      },
     { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
@@ -1418,7 +1423,7 @@ function _buildForecastKpis(fc) {
     { val: fc.remaining_cost != null ? fmtR(Math.max(0, fc.remaining_cost)) : '—',    lbl: 'ETC',                           cls: 'neutral', evm: 'ETC'     },
     { val: pctC,                                                                        lbl: _t('forecast.utilization_cost'), cls: overC ? 'red' : 'green'   },
     { val: cpiVal,                                                                      lbl: 'CPI',  cls: cpiCls,  evm: 'CPI',  sublbl: fc.cpi_label  || null },
-    { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV'                                 },
+    { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV',   sublbl: fc.cv_label  || null },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',  cls: 'neutral', evm: 'EAC', sublbl: eacSublbl           },
     { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
   ].map(_mkStatCard).join('');
