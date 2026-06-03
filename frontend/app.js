@@ -2757,11 +2757,19 @@ function _buildPortfolioStatsRow(health, trends) {
   const pepsActive = health.filter(d => d.total_hours > 0).length;
   const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
 
-  const _fmtDeltaBadge = pct => {
-    if (pct == null) return '';
-    const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
-    const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
-    return `<span class="stat-delta ${cls}">${dir}${Math.abs(pct).toFixed(1)}%</span>`;
+  const _fmtDeltaBadge = (pct, abs) => {
+    if (pct != null) {
+      const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
+      const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
+      return `<span class="stat-delta ${cls}">${dir}${Math.abs(pct).toFixed(1)}%</span>`;
+    }
+    // pct is null when prev=0 (division undefined) — show direction-only arrow
+    if (abs != null && abs !== 0) {
+      const dir = abs > 0 ? '↑' : '↓';
+      const cls = abs > 0 ? 'delta-up' : 'delta-down';
+      return `<span class="stat-delta ${cls}">${dir}</span>`;
+    }
+    return '';
   };
 
   const pal = _getPalette();
@@ -2782,10 +2790,10 @@ function _buildPortfolioStatsRow(health, trends) {
     const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
     const overH = budgetHours > 0 && totalHours > budgetHours;
     cards = [
-      { val: `${fmt(hNormal)}h`,   delta: _fmtDeltaBadge(lastTrend?.normal_hours_delta_pct),   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
-      { val: `${fmt(hExtra)}h`,    delta: _fmtDeltaBadge(lastTrend?.extra_hours_delta_pct),    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
-      { val: `${fmt(hStandby)}h`,  delta: _fmtDeltaBadge(lastTrend?.standby_hours_delta_pct),  lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
-      { val: `${fmt(totalHours)}h`, delta: _fmtDeltaBadge(lastTrend?.hours_delta_pct),         lbl: _t('stat.total'),       cls: 'green'   },
+      { val: `${fmt(hNormal)}h`,    delta: _fmtDeltaBadge(lastTrend?.normal_hours_delta_pct,   lastTrend?.normal_hours_delta),   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
+      { val: `${fmt(hExtra)}h`,     delta: _fmtDeltaBadge(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta),    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
+      { val: `${fmt(hStandby)}h`,   delta: _fmtDeltaBadge(lastTrend?.standby_hours_delta_pct,  lastTrend?.standby_hours_delta),  lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
+      { val: `${fmt(totalHours)}h`, delta: _fmtDeltaBadge(lastTrend?.hours_delta_pct,          lastTrend?.hours_delta),          lbl: _t('stat.total'),       cls: 'green'   },
       { val: pepsActive,                                                                         lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
     if (budgetHours > 0) {
@@ -2809,10 +2817,10 @@ function _buildPortfolioStatsRow(health, trends) {
     const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
     const overC = budgetCost > 0 && totalCost > budgetCost;
     cards = [
-      { val: _fmtCost(costNormal),  delta: _fmtDeltaBadge(lastTrend?.normal_cost_delta_pct),   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
-      { val: _fmtCost(costExtra),   delta: _fmtDeltaBadge(lastTrend?.extra_cost_delta_pct),    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
-      { val: _fmtCost(costStandby), delta: _fmtDeltaBadge(lastTrend?.standby_cost_delta_pct),  lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
-      { val: _fmtCost(totalCost),   delta: _fmtDeltaBadge(lastTrend?.cost_delta_pct),          lbl: _t('stat.cost_total'),   cls: 'green'   },
+      { val: _fmtCost(costNormal),  delta: _fmtDeltaBadge(lastTrend?.normal_cost_delta_pct,   lastTrend?.normal_cost_delta),   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
+      { val: _fmtCost(costExtra),   delta: _fmtDeltaBadge(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta),    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
+      { val: _fmtCost(costStandby), delta: _fmtDeltaBadge(lastTrend?.standby_cost_delta_pct,  lastTrend?.standby_cost_delta),  lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
+      { val: _fmtCost(totalCost),   delta: _fmtDeltaBadge(lastTrend?.cost_delta_pct,          lastTrend?.cost_delta),          lbl: _t('stat.cost_total'),   cls: 'green'   },
       { val: pepsActive,                                                                         lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
     if (budgetCost > 0) {
