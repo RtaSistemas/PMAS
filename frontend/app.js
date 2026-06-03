@@ -1862,9 +1862,9 @@ async function _runMonteCarlo() {
             lineStyle: { type: 'dashed', width: 1.5 },
             label: { fontSize: 10 },
             data: [
-              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green') }, label: { formatter: 'P10', color: _cssVar('--green') } }] : []),
-              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary') } }] : []),
-              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red') }, label: { formatter: 'P90', color: _cssVar('--red') } }] : []),
+              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green')   }, label: { formatter: 'P10', color: _cssVar('--green'),   position: 'end',    fontSize: 10 } }] : []),
+              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary'), position: 'middle', fontSize: 10 } }] : []),
+              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red')     }, label: { formatter: 'P90', color: _cssVar('--red'),     position: 'start',  fontSize: 10 } }] : []),
             ],
           },
         }],
