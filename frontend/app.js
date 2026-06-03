@@ -1736,14 +1736,14 @@ async function _runWhatIf() {
 
 async function _runMonteCarlo() {
   if (!_simProjectId) return;
-  const el    = document.getElementById('mcResult');
-  const histEl = document.getElementById('mcHistogram');
+  const el     = document.getElementById('mcResult');
+  const histEl = document.getElementById('mcHistogramChart');
   el.innerHTML = `<span class="hint">${_t('loading')}</span>`;
   if (histEl) histEl.hidden = true;
   try {
     const r = await apiFetch(`/api/v2/projects/${_simProjectId}/monte-carlo?iterations=1000`);
     if (r.error === 'insufficient_data') {
-      el.innerHTML = `<p class="hint">${_t('mc.insufficient_data')}</p>`;
+      el.innerHTML = `<div class="chart-empty">${_t('mc.insufficient_data')}</div>`;
       return;
     }
     const mcCards = [
@@ -1796,7 +1796,8 @@ async function _runMonteCarlo() {
       hc.resize();
     }
   } catch (e) {
-    el.innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+    if (histEl) histEl.hidden = true;
+    el.innerHTML = `<div class="chart-empty" style="color:var(--red,#f04040)">${_t('mc.error')}</div>`;
   }
 }
 

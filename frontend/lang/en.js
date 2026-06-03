@@ -465,6 +465,7 @@ window._LANG_EN = {
     'mc.pessimistic':'Pessimistic',
     'mc.mean_velocity':'Mean velocity',
     'mc.insufficient_data':'Insufficient data for simulation (minimum 2 cycles required).',
+    'mc.error':'Unable to run the simulation.',
     'mc.histogram.title':'Result Distribution — Cycle Count Frequency',
     'mc.histogram.frequency':'Frequency',
 };
