@@ -435,6 +435,8 @@ window._LANG_PT = {
     'over_alloc.th.date':'Data',
     'over_alloc.th.hours':'Total (h)',
     'over_alloc.th.peps':'PEPs',
+    'chart.all_cycles':'Todos os ciclos',
+    'chart.truncated':'Exibindo os primeiros {n} itens',
 
     // F11 — What-If Simulation
     'sim.title':'Simulação What-If',

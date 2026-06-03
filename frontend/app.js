@@ -1458,12 +1458,9 @@ function _renderForecastProjectInfo(fc, proj) {
   const el = document.getElementById('forecastProjectInfo');
   if (!el) return;
 
-  const _HEALTH_PRIORITY = { overrun: 0, critical: 1, warning: 2, ok: 3, no_budget: 4 };
-  const _HEALTH_TO_SEM   = { ok: 'green', warning: 'yellow', critical: 'red', overrun: 'red', no_budget: 'grey' };
   const hh = fc.health_hours || 'no_budget';
   const hc = fc.health_cost  || 'no_budget';
-  const worstHealth = (_HEALTH_PRIORITY[hh] ?? 4) <= (_HEALTH_PRIORITY[hc] ?? 4) ? hh : hc;
-  const semColor = _HEALTH_TO_SEM[worstHealth] || 'grey';
+  const semColor = _healthToSemColor(hh, hc);
   const semLabel  = _t(`sem.${semColor}`);
 
   const budgetParts = [];
@@ -5041,18 +5038,7 @@ async function loadSemaphore() {
     }
 
     // v2 returns health_hours and health_cost already classified by the server
-    const _semClass = p => {
-      if (p.health_hours === 'no_budget' && p.health_cost === 'no_budget') return 'grey';
-      const worseColor = (a, b) => {
-        const rank = { ok: 0, warning: 1, critical: 2, overrun: 2, no_budget: -1 };
-        return (rank[a] ?? 0) >= (rank[b] ?? 0) ? a : b;
-      };
-      const worst = worseColor(p.health_hours, p.health_cost);
-      if (worst === 'overrun' || worst === 'critical') return 'red';
-      if (worst === 'warning') return 'yellow';
-      if (worst === 'no_budget') return 'grey';
-      return 'green';
-    };
+    const _semClass = p => _healthToSemColor(p.health_hours || 'no_budget', p.health_cost || 'no_budget');
 
     const wPct = Math.round(_budgetWarning  * 100);
     const cPct = Math.round(_budgetCritical * 100);

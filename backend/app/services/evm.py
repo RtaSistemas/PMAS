@@ -5,7 +5,7 @@ a function defined here.  No other file may re-implement these formulas.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Tuple
 
 
 # ── Cost freezing ────────────────────────────────────────────────────────────
@@ -529,3 +529,17 @@ def compute_ieac_t(
     if planned_duration is None or spi_t is None or spi_t == 0:
         return None
     return round(planned_duration / spi_t, 2)
+
+
+# ── GlobalConfig threshold helper ────────────────────────────────────────────
+
+def get_thresholds(cfg) -> Tuple[float, float]:
+    """Return (warning_threshold, critical_threshold) from a GlobalConfig row.
+
+    Falls back to 0.9 / 1.0 when cfg is None or the columns are absent.
+    This is the single source of truth for budget threshold defaults.
+    """
+    warning  = getattr(cfg, 'budget_warning_threshold',  None) if cfg else None
+    critical = getattr(cfg, 'budget_critical_threshold', None) if cfg else None
+    return (warning if warning is not None else 0.9,
+            critical if critical is not None else 1.0)

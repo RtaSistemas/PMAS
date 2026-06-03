@@ -13,7 +13,7 @@ function calcHeight(count) { return Math.max(420, Math.min(count, 40) * 52 + 120
 // _buildEffortTitle — title string for the effort chart
 // ---------------------------------------------------------------------------
 function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
-  if (!selectedCycleIds.length) return 'Todos os ciclos';
+  if (!selectedCycleIds.length) return _t('chart.all_cycles');
   const first = (_allCycles || []).find(c => String(c.id) === String(selectedCycleIds[0]));
   const name = first ? first.name : `Ciclo #${selectedCycleIds[0]}`;
   let t = selectedCycleIds.length > 1
@@ -201,7 +201,7 @@ function _buildHoursBarOption({
     ..._chartDefaults(),
 
     title: truncated ? {
-      subtext:      `Exibindo os primeiros ${maxItems} itens`,
+      subtext:      _t('chart.truncated').replace('{n}', maxItems),
       left:         'center',
       top:          4,
       subtextStyle: { color: _cssVar('--text-3'), fontSize: 11 },

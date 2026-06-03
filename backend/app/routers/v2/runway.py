@@ -28,6 +28,7 @@ from backend.app.services.evm import (
     compute_spi,
     cpi_color,
     freeze_spi_boundary,
+    get_thresholds,
     resolve_effective_budget,
     spi_color,
 )
@@ -47,8 +48,7 @@ def get_runway(
     date_to: Optional[DateType] = None,
 ):
     cfg = db.get(GlobalConfig, 1)
-    warning_threshold  = cfg.budget_warning_threshold  if cfg and hasattr(cfg, 'budget_warning_threshold')  else 0.9
-    critical_threshold = cfg.budget_critical_threshold if cfg and hasattr(cfg, 'budget_critical_threshold') else 1.0
+    warning_threshold, critical_threshold = get_thresholds(cfg)
 
     # ACL filtering via _allowed_peps
     allowed = _allowed_peps(db, current_user)

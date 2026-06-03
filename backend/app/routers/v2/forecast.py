@@ -53,6 +53,7 @@ from backend.app.services.evm import (
     tcpi_label,
     vac_color,
     vac_label,
+    get_thresholds,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -71,8 +72,7 @@ def get_forecast(
         raise HTTPException(status_code=403, detail="Acesso negado.")
 
     cfg = db.get(GlobalConfig, 1)
-    warning_threshold  = cfg.budget_warning_threshold  if cfg and hasattr(cfg, 'budget_warning_threshold')  else 0.9
-    critical_threshold = cfg.budget_critical_threshold if cfg and hasattr(cfg, 'budget_critical_threshold') else 1.0
+    warning_threshold, critical_threshold = get_thresholds(cfg)
 
     project = db.query(Project).filter(Project.pep_wbs == pep_wbs).first()
 
