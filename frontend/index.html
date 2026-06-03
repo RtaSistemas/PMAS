@@ -759,6 +759,12 @@
         <tbody id="overAllocBody"><tr><td colspan="4" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
+      <div id="overAllocPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="overAllocPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="overAllocPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="overAllocPageLabel" class="hint"></span>
+        <button type="button" id="overAllocNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
     </div>
 
   </section>

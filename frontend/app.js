@@ -3487,21 +3487,22 @@ async function loadTeamTab() {
 
 let _overAllocData = [];
 
-function _renderOverAllocRows(items) {
-  const body = document.getElementById('overAllocBody');
-  if (!body) return;
-  if (!items.length) {
-    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
-    return;
-  }
-  body.innerHTML = items.map(it => `
+const _overAllocPag = _makePaginator(
+  { container: 'overAllocPagination', prev: 'overAllocPrevBtn', next: 'overAllocNextBtn', pageSize: 'overAllocPageSize', label: 'overAllocPageLabel' },
+  rows => _renderTable('overAllocBody', rows, {
+    colspan: 4,
+    emptyKey: 'over_alloc.empty',
+    rowFn: it => `
     <tr>
       <td>${escHtml(it.collaborator)}</td>
       <td>${_fmtDateBR(it.date)}</td>
       <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
       <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
-    </tr>`).join('');
-}
+    </tr>`,
+  })
+);
+
+function _renderOverAllocTable(rows) { _overAllocPag.render(rows); }
 
 async function _loadOverAllocation() {
   const card = document.getElementById('overAllocCard');
@@ -3522,7 +3523,8 @@ async function _loadOverAllocation() {
   try {
     const items = await apiFetch(`/api/v2/over-allocation${qs}`);
     _overAllocData = items;
-    _renderOverAllocRows(_applySort('overAllocTable', _overAllocData));
+    _overAllocPag.reset();
+    _renderOverAllocTable(_applySort('overAllocTable', _overAllocData));
   } catch (e) {
     _overAllocData = [];
     body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
@@ -5495,7 +5497,7 @@ _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 _makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
-_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, rows => _renderOverAllocRows(rows));
+_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, _renderOverAllocTable);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
