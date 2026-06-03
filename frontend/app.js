@@ -4566,9 +4566,18 @@ function _openQRDetail(id) {
 
 async function _doQRAction(id, action) {
   try {
-    await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
+    const rec = await apiFetchJSON(`/api/quarantine/${id}/${action}`, 'POST', {});
     closeModal('qrDetailModal');
-    notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
+    if (action === 'approve' && rec?.raw_data) {
+      const raw    = rec.raw_data;
+      const collab = raw['Colaborador']             || '—';
+      const date   = raw['Data']                    || '—';
+      const hours  = raw['Horas totais (decimal)']  || '—';
+      const pep    = raw['Código PEP'] || raw['PEP']|| '—';
+      notify(`${_t('msg.qr_approved')}: ${collab} · ${date} · ${hours}h · ${pep}`, 'success');
+    } else {
+      notify(_t(action === 'approve' ? 'msg.qr_approved' : 'msg.qr_rejected'), 'success');
+    }
     _refreshTabBadges();
     loadMyQr();
   } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }

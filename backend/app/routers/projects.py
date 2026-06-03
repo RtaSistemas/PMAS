@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, get_current_user
-from backend.app.models import BudgetRevision, Project
+from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.models import BudgetRevision, Project, UserProjectAccess
 from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
 from backend.app.utils import now_br
 
@@ -124,10 +124,18 @@ def update_project(project_id: int, body: ProjectUpdateIn, db: DbSession, curren
 
 
 @router.get("/{project_id}/budget-history", response_model=list[BudgetRevisionOut])
-def get_budget_history(project_id: int, db: DbSession):
+def get_budget_history(project_id: int, db: DbSession, current_user: CurrentUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    if current_user.role != "admin":
+        accesses = (
+            db.query(UserProjectAccess)
+            .filter(UserProjectAccess.user_id == current_user.id)
+            .all()
+        )
+        if accesses and not any(a.pep_wbs == project.pep_wbs for a in accesses):
+            raise HTTPException(status_code=403, detail="Acesso negado.")
     return (
         db.query(BudgetRevision)
         .filter(BudgetRevision.project_id == project_id)
