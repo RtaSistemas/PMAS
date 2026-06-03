@@ -625,7 +625,7 @@ async function _renderEffortTab() {
 // ---------------------------------------------------------------------------
 function _riskColor(risk) {
   const colors = {
-    ok:       'var(--primary, #4f8ef7)',
+    ok:       'var(--green,   #10d98a)',
     warning:  'var(--amber,   #d9b273)',
     critical: 'var(--red,     #c56d76)',
     overrun:  'var(--red,     #c56d76)',

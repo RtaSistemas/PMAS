@@ -249,7 +249,7 @@ header {
   color: var(--green);
 }
 #notification.error {
-  background: rgba(240,64,64,0.12); border: 1px solid rgba(240,64,64,0.35);
+  background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   color: var(--red);
 }
 #notification.info {
@@ -305,10 +305,10 @@ main {
   background: transparent; border-color: var(--border-hi); color: var(--text-2);
 }
 .btn-secondary:hover { border-color: var(--text-2); color: var(--text); }
-.btn-danger   { background: transparent; border-color: rgba(240,64,64,0.4); color: var(--red); }
-.btn-danger:hover { background: rgba(240,64,64,0.08); border-color: var(--red); }
-.btn-warning  { background: transparent; border-color: rgba(245,158,11,0.4); color: #fbbf24; }
-.btn-warning:hover { background: rgba(245,158,11,0.08); }
+.btn-danger   { background: transparent; border-color: color-mix(in srgb, var(--red)   40%, transparent); color: var(--red); }
+.btn-danger:hover { background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
+.btn-warning  { background: transparent; border-color: color-mix(in srgb, var(--amber) 40%, transparent); color: var(--amber); }
+.btn-warning:hover { background: color-mix(in srgb, var(--amber) 8%, transparent); }
 .btn-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.75rem; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .input-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.4rem; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
@@ -437,9 +437,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .sem-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
-.sem-dot.green  { background: var(--green); box-shadow: 0 0 4px rgba(34,197,94,.5); }
-.sem-dot.yellow { background: var(--amber); box-shadow: 0 0 4px rgba(245,158,11,.5); }
-.sem-dot.red    { background: #ef4444; box-shadow: 0 0 4px rgba(239,68,68,.5); }
+.sem-dot.green  { background: var(--green); box-shadow: 0 0 4px color-mix(in srgb, var(--green) 50%, transparent); }
+.sem-dot.yellow { background: var(--amber); box-shadow: 0 0 4px color-mix(in srgb, var(--amber) 50%, transparent); }
+.sem-dot.red    { background: var(--red);   box-shadow: 0 0 4px color-mix(in srgb, var(--red)   50%, transparent); }
 .sem-dot.grey   { background: var(--text-3); }
 .sem-divider {
   width: 1px; height: 16px; background: var(--border); flex-shrink: 0;
@@ -453,9 +453,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   white-space: nowrap; transition: filter 0.12s;
 }
 .sem-project:hover { filter: brightness(1.25); }
-.sem-project.green  { background: rgba(34,197,94,.1);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
-.sem-project.yellow { background: rgba(245,158,11,.1); color: #fbbf24; border: 1px solid rgba(245,158,11,.25); }
-.sem-project.red    { background: rgba(239,68,68,.1);  color: var(--red); border: 1px solid rgba(239,68,68,.25); }
+.sem-project.green  { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
+.sem-project.yellow { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
+.sem-project.red    { background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
 .sem-project.grey   { background: rgba(100,116,139,.1); color: var(--text-3); border: 1px solid rgba(100,116,139,.2); }
 .atab-btn {
   background: transparent; border: none;
@@ -552,20 +552,20 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   display: inline-block; padding: 0.15rem 0.6rem; border-radius: 9999px;
   font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.badge-status.ativo      { background: rgba(16,217,138,0.12); color: #34d399; border: 1px solid rgba(16,217,138,0.25); }
+.badge-status.ativo      { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
 .badge-status.encerrado  { background: rgba(100,116,139,0.15); color: var(--text-3); border: 1px solid rgba(100,116,139,0.25); }
-.badge-status.suspenso   { background: rgba(245,158,11,0.12);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
-.badge-status.quarantine { background: rgba(245,158,11,0.12);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+.badge-status.suspenso   { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
+.badge-status.quarantine { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
 .badge-status.warnings   { background: rgba(249,115,22,0.12);  color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
-.badge-status.rejected   { background: rgba(239,68,68,0.12);   color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+.badge-status.rejected   { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 28%, transparent); }
 
 .badge-budget {
   display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px;
   font-size: 0.63rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; margin-left: 0.45rem;
 }
-.badge-budget.critical { background: rgba(240,64,64,0.12); color: var(--red); border: 1px solid rgba(240,64,64,0.25); }
-.badge-budget.warning  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+.badge-budget.critical { background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
+.badge-budget.warning  { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
 
 .badge-baseline {
   display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px;
@@ -578,13 +578,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   margin-bottom: .6rem;
 }
 .baseline-banner.active  { background: rgba(79,142,247,.1);  color: #7eb3ff; border: 1px solid rgba(79,142,247,.2); }
-.baseline-banner.warning { background: rgba(245,158,11,.08); color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+.baseline-banner.warning { background: color-mix(in srgb, var(--amber) 10%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent); }
 
 .baseline-info-box {
   padding: .6rem .9rem; border-radius: 6px; font-size: .82rem; margin-bottom: .75rem; line-height: 1.6;
 }
 .baseline-info-box.active  { background: rgba(79,142,247,.1);  border: 1px solid rgba(79,142,247,.25); }
-.baseline-info-box.warning { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); color: #fbbf24; }
+.baseline-info-box.warning { background: color-mix(in srgb, var(--amber) 10%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent); color: var(--amber); }
 
 /* ── Bullet chart threshold legend ──────────────────────────── */
 .threshold-dot {
@@ -601,7 +601,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   padding: 0.2rem 0.55rem; border-radius: 0.35rem; cursor: pointer;
   transition: all 0.15s;
 }
-.panel-close:hover { color: var(--red); border-color: var(--red); background: rgba(240,64,64,0.08); }
+.panel-close:hover { color: var(--red); border-color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); }
 
 /* ── Modal ───────────────────────────────────────────────────── */
 .modal-backdrop {
@@ -845,8 +845,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   letter-spacing: 0.04em; flex-shrink: 0;
 }
 .rule-badge.info      { background: rgba(14,165,233,0.12); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.25); }
-.rule-badge.warning   { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
-.rule-badge.quarentena{ background: rgba(240,64,64,0.12);  color: var(--red); border: 1px solid rgba(240,64,64,0.25); }
+.rule-badge.warning   { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
+.rule-badge.quarentena{ background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
 .rule-badge.descarte  { background: rgba(148,0,211,0.12);  color: #c084fc; border: 1px solid rgba(148,0,211,0.25); }
 .rule-badge.system    { background: rgba(100,116,139,0.15); color: var(--text-3); border: 1px solid rgba(100,116,139,0.25); }
 

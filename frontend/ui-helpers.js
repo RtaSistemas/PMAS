@@ -6,7 +6,7 @@
 
 // Backend EVM color → CSS variable name (for charts and table cells)
 const _EVM_COLOR_CSS = {
-  success: 'var(--primary,#4f8ef7)',
+  success: 'var(--green,#10d98a)',
   warning: 'var(--amber,#d9b273)',
   danger:  'var(--red,#c56d76)',
 };
@@ -15,7 +15,7 @@ const _EVM_COLOR_CSS = {
 const _EVM_COLOR_CARD = { success: 'green', warning: 'amber', danger: 'red' };
 
 // Health-color → CSS variable name (used in Treemap and Bullet chart)
-const _HCSS = { success: '--primary', warning: '--amber', danger: '--red', muted: '--text-3' };
+const _HCSS = { success: '--green', warning: '--amber', danger: '--red', muted: '--text-3' };
 
 // ---------------------------------------------------------------------------
 // H1 — Health label → semaphore color (single source of truth)
