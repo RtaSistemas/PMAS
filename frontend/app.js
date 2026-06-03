@@ -1417,7 +1417,6 @@ function _buildForecastKpis(fc) {
     { val: spiVal,                                                                      lbl: 'SPI',  cls: spiCls,  evm: 'SPI',  sublbl: fc.spi_label  || null },
     { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV',   sublbl: fc.sv_label  || null },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl, cls: 'violet', sublbl: completionRangeSublbl      },
-    { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
 
   const row2 = [
@@ -1428,28 +1427,10 @@ function _buildForecastKpis(fc) {
     { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV',   sublbl: fc.cv_label  || null },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',  cls: 'neutral', evm: 'EAC', sublbl: eacSublbl           },
     { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
+    { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
 
-  // F3 — Earned Schedule row (only when ES data is available)
-  const esRow = (fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null) ? (() => {
-    const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
-    const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
-    const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
-    const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
-    const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
-    const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
-    const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
-    const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
-    const cards = [
-      { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
-      { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
-      { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
-      { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
-    ].map(_mkStatCard).join('');
-    return `<div class="stats-row">${cards}</div>`;
-  })() : '';
-
-  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>${esRow}`;
+  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
 }
 
 // _buildForecastOption — moved to charts/forecast.js
@@ -1523,7 +1504,7 @@ async function _renderForecastTab() {
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
-    document.getElementById('forecastAllocCostCard').hidden = true;
+    document.getElementById('simsCard').hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -1556,7 +1537,7 @@ async function _renderForecastTab() {
     _currentForecastPep = pep;
     _fcAvgVelocity = fc.avg_hours_per_cycle || null;
     if (proj) _loadForecastSimulation(proj.id);
-    else { document.getElementById('whatIfCard').hidden = true; document.getElementById('monteCarloCard').hidden = true; }
+    else { document.getElementById('simsCard').hidden = true; }
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
@@ -1574,7 +1555,7 @@ async function _renderForecastTab() {
     if (infoEl) infoEl.hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
-    document.getElementById('forecastAllocCostCard').hidden = true;
+    document.getElementById('simsCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
@@ -1636,15 +1617,15 @@ function _renderVelocitySparkline(fc) {
 }
 
 function _renderForecastBaseline(fc) {
-  const card = document.getElementById('forecastBaselineCard');
-  const body = document.getElementById('forecastBaselineBody');
-  if (!card || !body) return;
+  const section = document.getElementById('burnUpBaselineSection');
+  const body    = document.getElementById('burnUpBaselineBody');
+  if (!section || !body) return;
   const history = (fc.history || []).filter(h => h.planned_hours != null || h.planned_cost != null);
   if (!history.length) {
-    card.hidden = true;
+    section.hidden = true;
     return;
   }
-  card.hidden = false;
+  section.hidden = false;
 
   const hasHours = history.some(h => h.planned_hours != null);
   const hasCost  = history.some(h => h.planned_cost  != null);
@@ -1681,9 +1662,10 @@ function _renderForecastBaseline(fc) {
 }
 
 function _renderBurnUpChart(fc) {
-  const card = document.getElementById('burnUpCard');
+  const card    = document.getElementById('burnUpCard');
+  const esKpis  = document.getElementById('burnUpEsKpis');
   const history = fc.history || [];
-  const hasEV = history.some(h => h.cumulative_ev_cost != null);
+  const hasEV   = history.some(h => h.cumulative_ev_cost != null);
   if (!hasEV) {
     card.hidden = true;
     if (_charts['burnUpChart'] && !_charts['burnUpChart'].isDisposed()) {
@@ -1693,6 +1675,33 @@ function _renderBurnUpChart(fc) {
     return;
   }
   card.hidden = false;
+
+  // Earned Schedule KPI strip — lives here because ES is derived from the PV cost curve
+  if (esKpis) {
+    const hasES = fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null;
+    if (hasES) {
+      const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
+      const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
+      const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+      const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
+      const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
+      const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
+      const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
+      const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
+      const cards = [
+        { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
+        { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
+        { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
+        { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
+      ].map(_mkStatCard).join('');
+      esKpis.innerHTML = `<div class="stats-row">${cards}</div>`;
+      esKpis.hidden = false;
+    } else {
+      esKpis.hidden = true;
+      esKpis.innerHTML = '';
+    }
+  }
+
   try {
     const chart = _getOrCreateChart('burnUpChart');
     chart.setOption(_buildBurnUpOption(fc), true);
@@ -1707,11 +1716,9 @@ let _fcAvgVelocity = null;
 
 async function _loadForecastSimulation(projectId) {
   _simProjectId = projectId;
-  const wiCard = document.getElementById('whatIfCard');
-  const mcCard = document.getElementById('monteCarloCard');
-  if (!wiCard || !mcCard) return;
-  wiCard.hidden = false;
-  mcCard.hidden = false;
+  const simsCard = document.getElementById('simsCard');
+  if (!simsCard) return;
+  simsCard.hidden = false;
   // reset result areas
   document.getElementById('whatIfResult').innerHTML = '';
   document.getElementById('mcResult').innerHTML = `<span class="hint">${_t('loading')}</span>`;
@@ -1889,14 +1896,6 @@ document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
 });
 
-let _forecastAllocCostExpanded = true;
-document.getElementById('forecastAllocCostToggle').addEventListener('click', () => {
-  _forecastAllocCostExpanded = !_forecastAllocCostExpanded;
-  document.getElementById('forecastAllocCostBody').style.display = _forecastAllocCostExpanded ? '' : 'none';
-  const ch = document.getElementById('forecastAllocCostChevron');
-  ch.style.transform = _forecastAllocCostExpanded ? '' : 'rotate(-90deg)';
-});
-
 let _whatIfExpanded = true;
 document.getElementById('whatIfToggle').addEventListener('click', () => {
   _whatIfExpanded = !_whatIfExpanded;
@@ -1911,16 +1910,23 @@ document.getElementById('mcToggle').addEventListener('click', () => {
   document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
 });
 
-let _baselineExpanded = true;
-document.getElementById('baselineToggle').addEventListener('click', () => {
-  _baselineExpanded = !_baselineExpanded;
-  document.getElementById('forecastBaselineBody').style.display = _baselineExpanded ? '' : 'none';
-  document.getElementById('baselineChevron').style.transform = _baselineExpanded ? '' : 'rotate(-90deg)';
+let _burnUpBaselineExpanded = true;
+document.getElementById('burnUpBaselineToggle').addEventListener('click', () => {
+  _burnUpBaselineExpanded = !_burnUpBaselineExpanded;
+  document.getElementById('burnUpBaselineBody').style.display = _burnUpBaselineExpanded ? '' : 'none';
+  document.getElementById('burnUpBaselineChevron').style.transform = _burnUpBaselineExpanded ? '' : 'rotate(-90deg)';
 });
+
+function _setAllocMode(mode) {
+  document.getElementById('forecastAllocTableHours').hidden = (mode !== 'hours');
+  document.getElementById('forecastAllocTableCost').hidden  = (mode !== 'cost');
+  document.getElementById('allocBtnHours').className = mode === 'hours' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
+  document.getElementById('allocBtnCost').className  = mode === 'cost'  ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
+}
 
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
   const card = document.getElementById('forecastAllocCard');
-  const tbl  = document.getElementById('forecastAllocTable');
+  const tbl  = document.getElementById('forecastAllocTableHours');
   if (!pep) { card.hidden = true; return; }
 
   try {
@@ -1994,8 +2000,8 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 }
 
 async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
-  const card = document.getElementById('forecastAllocCostCard');
-  const tbl  = document.getElementById('forecastAllocCostTable');
+  const card = document.getElementById('forecastAllocCard');
+  const tbl  = document.getElementById('forecastAllocTableCost');
   if (!pep) { card.hidden = true; return; }
 
   try {

@@ -398,85 +398,87 @@
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
       </div>
 
-
+      <!-- Burn-Up de Custo + Earned Schedule KPIs + Baseline de Planejamento -->
       <div class="card" id="burnUpCard" data-panel-id="forecast-burnup" hidden>
         <div class="section-header">
           <h2 class="card-title" data-i18n="burnup.title">Burn-Up de Custo (R$)</h2>
         </div>
+        <!-- Earned Schedule KPI strip — only when ES data is available -->
+        <div id="burnUpEsKpis" hidden style="margin-bottom:.75rem"></div>
         <div id="burnUpChart" role="img" data-i18n-aria="chart.burnUpChart"></div>
+        <!-- Baseline de Planejamento sub-section -->
+        <div id="burnUpBaselineSection" hidden>
+          <div class="section-header" id="burnUpBaselineToggle" style="cursor:pointer;user-select:none;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+            <span style="font-size:.85rem;font-weight:600;color:var(--text)" data-i18n="plan.title">Baseline de Planejamento</span>
+            <span id="burnUpBaselineChevron" style="font-size:.9rem;transition:transform .25s;display:inline-block">▼</span>
+          </div>
+          <div id="burnUpBaselineBody"></div>
+        </div>
       </div>
 
+      <!-- Alocação por Colaborador — unified card with Horas / Custo toggle -->
       <div class="card" id="forecastAllocCard" data-panel-id="forecast-alloc" hidden>
         <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="forecast.alloc.title">Alocação por Colaborador — Horas</h2>
+          <h2 class="card-title" data-i18n="forecast.alloc.title_unified">Alocação por Colaborador</h2>
+          <div class="flex-center gap-sm" style="margin-left:auto;margin-right:.5rem" onclick="event.stopPropagation()">
+            <button id="allocBtnHours" class="btn btn-sm btn-primary" onclick="_setAllocMode('hours')" data-i18n="lbl.hours">Horas</button>
+            <button id="allocBtnCost"  class="btn btn-sm btn-secondary" onclick="_setAllocMode('cost')" data-i18n="lbl.cost">Custo</button>
+          </div>
           <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
         <div id="forecastAllocBody">
-          <div id="forecastAllocTable"></div>
+          <div id="forecastAllocTableHours"></div>
+          <div id="forecastAllocTableCost" hidden></div>
         </div>
       </div>
 
-      <div class="card" id="forecastAllocCostCard" data-panel-id="forecast-alloc-cost" hidden>
-        <div class="section-header" id="forecastAllocCostToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="forecast.alloc_cost.title">Alocação por Colaborador — Custo</h2>
-          <span id="forecastAllocCostChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+      <!-- Simulações: What-If + Monte Carlo como sub-seções -->
+      <div class="card" id="simsCard" data-panel-id="forecast-sims" hidden>
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="sims.title">Simulações</h2>
         </div>
-        <div id="forecastAllocCostBody">
-          <div id="forecastAllocCostTable"></div>
-        </div>
-      </div>
 
-      <!-- F11: What-If Simulation -->
-      <div class="card" id="whatIfCard" data-panel-id="forecast-whatsim" hidden>
-        <div class="section-header" id="whatIfToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="sim.title">Simulação What-If</h2>
-          <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
-        </div>
-        <div id="whatIfBody">
-          <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
-          <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
-            <div class="form-group" style="flex:0 0 180px">
-              <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
-              <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
-              <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
-            </div>
-            <div class="form-group" style="flex:0 0 150px">
-              <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
-              <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
-              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
-            </div>
-            <div class="form-group" style="flex:0 0 auto">
-              <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
-              <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
-              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
-            </div>
+        <!-- What-If sub-section -->
+        <div style="border-top:1px solid var(--border);margin-top:.25rem;padding-top:.75rem">
+          <div class="section-header" id="whatIfToggle" style="cursor:pointer;user-select:none;padding:0 0 .5rem">
+            <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="sim.title">Simulação What-If</span>
+            <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
           </div>
-          <div id="whatIfResult"></div>
-          <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
+          <div id="whatIfBody">
+            <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
+            <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
+              <div class="form-group" style="flex:0 0 180px">
+                <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
+                <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
+                <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
+              </div>
+              <div class="form-group" style="flex:0 0 150px">
+                <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
+                <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
+                <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+              </div>
+              <div class="form-group" style="flex:0 0 auto">
+                <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
+                <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
+                <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+              </div>
+            </div>
+            <div id="whatIfResult"></div>
+            <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
+          </div>
         </div>
-      </div>
 
-      <!-- F4: Monte Carlo Simulation -->
-      <div class="card" id="monteCarloCard" data-panel-id="forecast-montecarlo" hidden>
-        <div class="section-header" id="mcToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
-          <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
-        </div>
-        <div id="mcBody">
-          <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
-          <div id="mcResult"></div>
-          <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
-        </div>
-      </div>
-
-      <!-- Baseline de Planejamento — read-only view, editable in Projetos tab -->
-      <div class="card" id="forecastBaselineCard" data-panel-id="forecast-plan" hidden>
-        <div class="section-header" id="baselineToggle" style="cursor:pointer;user-select:none">
-          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento</h2>
-          <span id="baselineChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
-        </div>
-        <div id="forecastBaselineBody">
-          <p class="hint" data-i18n="forecast.baseline.empty">Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.</p>
+        <!-- Monte Carlo sub-section -->
+        <div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.75rem">
+          <div class="section-header" id="mcToggle" style="cursor:pointer;user-select:none;padding:0 0 .5rem">
+            <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</span>
+            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+          </div>
+          <div id="mcBody">
+            <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
+            <div id="mcResult"></div>
+            <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
+          </div>
         </div>
       </div>
     </div>
