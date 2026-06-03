@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/testes-536%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/testes-590%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -122,7 +122,7 @@ graph TD
     end
 
     subgraph DB["SQLite — pmas.db"]
-        Models["17 modelos ORM\n(SQLAlchemy 2.0)"]
+        Models["20 modelos ORM\n(SQLAlchemy 2.0)"]
         Summary["PepCycleSummary\nCollaboratorCycleSummary\n(escrito na ingestão)"]
     end
 
@@ -933,6 +933,9 @@ flowchart LR
 | `GET` | `/api/v2/trends` | Queima de horas/custo por ciclo (cronológico) | `pep_wbs` · `date_from` · `date_to` |
 | `GET` | `/api/v2/allocation` | Alocação: horas e custo por colaborador × PEP | idem effort |
 | `GET` | `/api/v2/concentration` | Concentração: top contribuidores por PEP | idem effort |
+| `GET` | `/api/v2/over-allocation` | Over-allocation: colaboradores acima da capacidade | `cycle_id` · `date_from` · `date_to` · `sort` |
+| `POST` | `/api/v2/projects/{id}/simulate` | What-If: multiplica velocidade + horas extras → EAC projetado | body: `velocity_multiplier`, `extra_hours_per_cycle` |
+| `GET` | `/api/v2/projects/{id}/monte-carlo` | Monte Carlo: P10/P50/P90 de conclusão + histograma | `iterations` · `date_from` · `date_to` · `seed` |
 
 ### Dashboard legado (v1)
 
@@ -1093,30 +1096,30 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-536 testes em 17 arquivos. Todos usam SQLite em memória (`StaticPool`) — nenhum `pmas.db` é tocado.
+590 testes em 20 arquivos. Todos usam SQLite em memória (`StaticPool`) — nenhum `pmas.db` é tocado.
 
 | Arquivo | Testes | Cobertura |
 |---|---:|---|
-| `test_full_sample.py` | 108 | Pipeline end-to-end completo |
-| `test_ingestion.py` | 65 | Parse CSV/XLSX, quarentena, motor de regras |
-| `test_analytics.py` | 36 | portfolio-health, trends, EVM cost |
+| `test_evm_service.py` | 104 | Unitários de todas as funções de `services/evm.py` (happy/boundary/None) |
+| `test_full_sample.py` | 83 | Pipeline end-to-end com dados de amostra completos |
+| `test_ingestion.py` | 64 | Parse CSV/XLSX, quarentena, motor de regras |
+| `test_v2_endpoints.py` | 64 | Todos endpoints `/api/v2` (filters, portfolio, effort, trends, forecast, allocation, concentration) |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, EVM freeze |
-| `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, avaliação |
-| `test_runway_concentration.py` | 23 | Runway, concentração, cost_risk |
+| `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, avaliação por linha |
+| `test_projects.py` | 27 | CRUD projetos + campos EVM (datas, status) |
+| `test_theme.py` | 24 | CRUD tema UI + presets de tema |
 | `test_quarantine.py` | 23 | Workflow approve/reject/delete |
-| `test_users.py` | 22 | CRUD usuários, JWT, papéis |
-| `test_evm_integrity.py` | 17 | Integridade do freeze de custo |
-| `test_v2_endpoints.py` | 16 | Endpoints v2 analytics |
+| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` (janela de velocidade, SPI/CPI, risco top-1) |
+| `test_users.py` | 22 | CRUD usuários, troca de senha, restrição de roles |
 | `test_cycles.py` | 20 | CRUD ciclos |
-| `test_projects.py` | 16 | CRUD projetos |
-| `test_reference.py` | 13 | Endpoints de filtro cascata |
-| `test_dashboard.py` | 11 | Agregação, ACL |
-| `test_validation_rules.py` | 10 | API de regras |
-| `test_auth.py` | 5 | Login, token |
-| `test_my.py` | 5 | Endpoints `/api/my/*` |
-| `test_theme.py` | 5 | CRUD tema |
-| `test_evm_service.py` | — | Unitários das funções `services/evm.py` |
-| `test_simulation.py` | — | Simulação de portfólio completo |
+| `test_evm_integrity.py` | 20 | EVM HTTP integration — respostas render-ready, EV capped at BAC, CPI=EV/AC |
+| `test_over_allocation.py` | 13 | Detecção de over-allocation (filtros, sort, CSV) |
+| `test_validation_rules.py` | 10 | API de regras de validação |
+| `test_monte_carlo.py` | 8 | Monte Carlo P10/P50/P90, histograma, guard de dados insuficientes |
+| `test_simulate.py` | 7 | What-If: janela de velocidade, EAC projetado, burn-up |
+| `test_auth.py` | 5 | Login JWT, validação de token |
+| `test_my.py` | 5 | Endpoints `/api/my/*` per-user |
+| `test_simulation.py` | 1 | Smoke test end-to-end de simulação de portfólio |
 
 O fixture `clean_db` em `conftest.py` limpa todas as tabelas **antes** de cada teste (setup, não teardown), garantindo estado inicial conhecido.
 
@@ -1129,7 +1132,7 @@ PMAS/
 ├── backend/
 │   └── app/
 │       ├── main.py              # FastAPI: CORS, routers, static, init_db
-│       ├── models.py            # 17 modelos ORM (SQLAlchemy 2.0)
+│       ├── models.py            # 20 modelos ORM (SQLAlchemy 2.0)
 │       ├── schemas.py           # Pydantic I/O
 │       ├── database.py          # Engine SQLite, get_db(), _migrate_columns()
 │       ├── deps.py              # JWT: get_current_user, require_admin
@@ -1152,13 +1155,16 @@ PMAS/
 │       │   ├── auditlog.py
 │       │   ├── theme.py
 │       │   └── v2/
-│       │       ├── effort.py    # Esforço por colaborador
-│       │       ├── portfolio.py # Saúde do portfólio
-│       │       ├── forecast.py  # EVM completo por PEP
-│       │       ├── runway.py    # Runway + risco
-│       │       ├── trends.py    # Queima de horas por ciclo
+│       │       ├── effort.py         # Esforço por colaborador
+│       │       ├── portfolio.py      # Saúde do portfólio
+│       │       ├── forecast.py       # EVM completo por PEP
+│       │       ├── runway.py         # Runway + risco
+│       │       ├── trends.py         # Queima de horas por ciclo
 │       │       ├── allocation.py
 │       │       ├── concentration.py
+│       │       ├── over_allocation.py # Over-allocation por colaborador
+│       │       ├── simulate.py        # What-If: cenário de velocidade + horas extras
+│       │       ├── monte_carlo.py     # Monte Carlo: P10/P50/P90 + histograma
 │       │       └── filters.py
 │       └── services/
 │           ├── evm.py           # ← Fonte única de todas as fórmulas EVM
@@ -1183,7 +1189,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # 531 chaves PT-BR
 │   └── en.js                    # 531 chaves EN
-├── tests/                       # 17 arquivos, 536 testes
+├── tests/                       # 20 arquivos, 590 testes
 ├── amostras/                    # Gerador de portfólio + CSVs prontos
 ├── assets/                      # Ícones para executável Windows
 ├── static/assets/logos/         # Logos enviados via /api/theme/logo
