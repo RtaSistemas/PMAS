@@ -129,20 +129,22 @@ function _buildHoursBarOption({
   // Per-item data objects are used instead of callbacks so that each
   // symbol's color and size are resolved once, avoiding ECharts quirks
   // with itemStyle.color functions on line series.
+  const _totalColor = _pal[3] || _cssVar('--primary');
+
   const totalLineData = totals.map(v => {
     const isPeak = v > 0 && v === maxTotal;
     return {
       value:      v,
       symbol:     v === 0 ? 'none' : 'circle',
       symbolSize: isPeak ? 10 : 6,
-      itemStyle:  { color: isPeak ? _cssVar('--red') : _cssVar('--green') },
+      itemStyle:  { color: isPeak ? _cssVar('--red') : _totalColor },
     };
   });
 
   const totalLineSeries = showTotal ? [{
     name:       _t('stat.total'),
     type:       'line',
-    color:      _cssVar('--green'),
+    color:      _totalColor,
     legendIcon: 'circle',
     data:       totalLineData,
     lineStyle:  { width: 1, type: 'dashed' },
@@ -150,7 +152,7 @@ function _buildHoursBarOption({
       show:      !!stack,
       position:  isHoriz ? 'right' : 'top',
       fontSize:  10,
-      color:     _cssVar('--green'),
+      color:     _totalColor,
       formatter: p => {
         const v = p.value ?? 0;
         if (v === 0) return '';
