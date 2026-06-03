@@ -93,7 +93,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 | File | Prefix | Responsibility |
 |---|---|---|
 | `filters.py` | `/api/v2` | Cascading filter options (collaborators, PEPs, cycles) |
-| `portfolio.py` | `/api/v2` | `/portfolio-health` — treemap + bullet (EVM-aware, hours/R$), `_allowed_peps` ACL helper reused by other v2 routers |
+| `portfolio.py` | `/api/v2` | `/portfolio` — treemap + bullet (EVM-aware, hours/R$), `_allowed_peps` ACL helper reused by other v2 routers |
 | `effort.py` | `/api/v2` | Hour aggregation by collaborator (Esforço da Equipe) |
 | `trends.py` | `/api/v2` | Per-cycle trends line (hours + cost, period deltas) |
 | `forecast.py` | `/api/v2` | Full EVM forecast per PEP — CPI/SPI/EAC/TCPI/VAC/CV/SV, Earned Schedule (ES/SPI(t)/SV(t)/IEAC(t)), S-curve history, uncertainty band; supports Physical Percent Complete and closed-project freeze |
@@ -146,7 +146,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 
 1. **Upload:** `POST /api/upload-timesheet` → `ingest_file()` → `_lookup_rate()` freezes `cost_per_hour` → creates `Collaborator` + `Cycle` rows → inserts `TimesheetRecord` rows → records `UploadSession` + any `QuarantineRecord` rows.
 2. **Esforço da Equipe:** `/api/v2/effort?date_from=&date_to=` → `GROUP BY collaborator` → horizontal stacked/grouped bar chart + client-side CSV export.
-3. **Saúde do Portfólio:** `/api/v2/portfolio-health?date_from=&date_to=` → `GROUP BY pep_wbs` → joined with `Project` → Treemap + Bullet Chart. Toggle Horas/R$ switches between `consumed_hours`/`budget_hours` and `actual_cost`/`budget_cost`.
+3. **Saúde do Portfólio:** `/api/v2/portfolio?date_from=&date_to=` → `GROUP BY pep_wbs` → joined with `Project` → Treemap + Bullet Chart. Toggle Horas/R$ switches between `consumed_hours`/`budget_hours` and `actual_cost`/`budget_cost`.
 4. **Tendências:** `/api/v2/trends?date_from=&date_to=` → `GROUP BY cycle` ordered by `start_date` (quarantine excluded) → Line chart (includes `actual_cost` per cycle).
 5. **Previsão:** `/api/v2/forecast?pep_wbs=` (full EVM, render-ready) + `/api/projects/{id}/plans` baseline → per-cycle planned vs actual hours/cost → S-curve, burn-up, and EVM cards. What-If (`/simulate`) and Monte Carlo (`/monte-carlo`) panels layer scenario and probabilistic forecasts on top.
 
