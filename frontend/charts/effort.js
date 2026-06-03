@@ -73,7 +73,7 @@ function _buildHoursBarOption({
       fontSize:  10,
       formatter: v => `${v}h`,
     },
-    splitLine: { lineStyle: { color: _cssVar('--surface') } },
+    splitLine: { lineStyle: { color: _cssVar('--border') } },
   };
 
   // ── 4. Unified tooltip ───────────────────────────────────────────────
