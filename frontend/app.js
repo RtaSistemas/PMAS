@@ -1890,6 +1890,20 @@ document.getElementById('forecastAllocCostToggle').addEventListener('click', () 
   ch.style.transform = _forecastAllocCostExpanded ? '' : 'rotate(-90deg)';
 });
 
+let _whatIfExpanded = true;
+document.getElementById('whatIfToggle').addEventListener('click', () => {
+  _whatIfExpanded = !_whatIfExpanded;
+  document.getElementById('whatIfBody').style.display = _whatIfExpanded ? '' : 'none';
+  document.getElementById('whatIfChevron').style.transform = _whatIfExpanded ? '' : 'rotate(-90deg)';
+});
+
+let _mcExpanded = true;
+document.getElementById('mcToggle').addEventListener('click', () => {
+  _mcExpanded = !_mcExpanded;
+  document.getElementById('mcBody').style.display = _mcExpanded ? '' : 'none';
+  document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
+});
+
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
   const card = document.getElementById('forecastAllocCard');
   const tbl  = document.getElementById('forecastAllocTable');

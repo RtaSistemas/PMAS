@@ -428,40 +428,48 @@
 
       <!-- F11: What-If Simulation -->
       <div class="card" id="whatIfCard" data-panel-id="forecast-whatsim" hidden>
-        <div class="section-header">
+        <div class="section-header" id="whatIfToggle" style="cursor:pointer;user-select:none">
           <h2 class="card-title" data-i18n="sim.title">Simulação What-If</h2>
+          <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
         </div>
-        <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
-        <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
-          <div class="form-group" style="flex:0 0 180px">
-            <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
-            <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
-            <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
+        <div id="whatIfBody">
+          <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
+          <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
+            <div class="form-group" style="flex:0 0 180px">
+              <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
+              <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
+              <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
+            </div>
+            <div class="form-group" style="flex:0 0 150px">
+              <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
+              <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
+              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+            </div>
+            <div class="form-group" style="flex:0 0 auto">
+              <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
+              <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
+              <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+            </div>
           </div>
-          <div class="form-group" style="flex:0 0 150px">
-            <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
-            <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
-            <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
-          </div>
-          <div class="form-group" style="flex:0 0 auto">
-            <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
-            <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
-            <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
-          </div>
+          <div id="whatIfResult"></div>
+          <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
         </div>
-        <div id="whatIfResult"></div>
-        <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
       </div>
 
       <!-- F4: Monte Carlo Simulation -->
       <div class="card" id="monteCarloCard" data-panel-id="forecast-montecarlo" hidden>
         <div class="section-header">
-          <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
+          <div id="mcToggle" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:.5rem;flex:1;min-width:0">
+            <h2 class="card-title" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</h2>
+            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block;flex-shrink:0">▼</span>
+          </div>
           <button type="button" class="btn btn-secondary btn-sm" onclick="_runMonteCarlo()" data-i18n="btn.refresh">↺ Recalcular</button>
         </div>
-        <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
-        <div id="mcResult"></div>
-        <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
+        <div id="mcBody">
+          <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
+          <div id="mcResult"></div>
+          <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
+        </div>
       </div>
 
       <!-- Baseline de Planejamento — read-only view, editable in Projetos tab -->
