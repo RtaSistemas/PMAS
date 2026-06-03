@@ -1377,7 +1377,7 @@ function _buildForecastKpis(fc) {
 
   const spiVal  = fc.spi  != null ? (+fc.spi).toFixed(2)  : '—';
   const spiCls  = _EVM_COLOR_CARD[fc.spi_color]  || 'neutral';
-  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtR(fc.sv)  : '—';
+  const svFmt   = fc.sv   != null ? (fc.sv  >= 0 ? '+' : '') + fmtH(fc.sv)  : '—';
   const svCls   = _EVM_COLOR_CARD[fc.sv_color] || 'neutral';
 
   const cpiVal  = fc.cpi  != null ? (+fc.cpi).toFixed(2)  : '—';

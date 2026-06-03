@@ -46,9 +46,7 @@ function _buildHoursBarOption({
   const normals    = slice.map(r => +(r.normal_hours  ?? 0).toFixed(2));
   const extras     = slice.map(r => +(r.extra_hours   ?? 0).toFixed(2));
   const standbys   = slice.map(r => +(r.standby_hours ?? 0).toFixed(2));
-  const totals     = slice.map((_, i) =>
-    +(normals[i] + extras[i] + standbys[i]).toFixed(2)
-  );
+  const totals     = slice.map((_, i) => +(normals[i] + extras[i] + standbys[i]).toFixed(2));
   const maxTotal   = Math.max(...totals, 0);
 
   // ── 2. Category axis ────────────────────────────────────────────────
@@ -82,9 +80,9 @@ function _buildHoursBarOption({
     axisPointer: { type: 'shadow' },
     ..._chartDefaults().tooltip,
     formatter: params => {
-      const bars  = params.filter(p => p.seriesName !== _t('stat.total'));
-      let html    = `<b>${params[0].axisValue}</b><br/>`;
-      let total   = 0;
+      const bars = params.filter(p => p.seriesType === 'bar');
+      let html   = `<b>${params[0].axisValue}</b><br/>`;
+      let total  = 0;
       bars.forEach(p => {
         if (p.value > 0) {
           html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
@@ -126,39 +124,40 @@ function _buildHoursBarOption({
   ];
 
   // ── 6. Total line series (optional) ─────────────────────────────────
-  // Per-item data objects are used instead of callbacks so that each
-  // symbol's color and size are resolved once, avoiding ECharts quirks
-  // with itemStyle.color functions on line series.
+  // Per-item data objects pre-resolve color and symbolSize so ECharts
+  // does not need to call callbacks on a line series (unreliable in v5).
+  const _totalColor = _pal[3] || _pal[0] || _cssVar('--primary');
+
   const totalLineData = totals.map(v => {
     const isPeak = v > 0 && v === maxTotal;
     return {
       value:      v,
       symbol:     v === 0 ? 'none' : 'circle',
       symbolSize: isPeak ? 10 : 6,
-      itemStyle:  { color: isPeak ? _cssVar('--red') : _cssVar('--green') },
+      itemStyle:  { color: isPeak ? _cssVar('--red') : _totalColor },
     };
   });
 
   const totalLineSeries = showTotal ? [{
     name:       _t('stat.total'),
     type:       'line',
-    color:      _cssVar('--green'),
+    color:      _totalColor,
     legendIcon: 'circle',
     data:       totalLineData,
-    lineStyle:  { width: 1, type: 'dashed' },
+    lineStyle:  { width: 1.5, type: 'dashed', color: _totalColor },
     label: {
       show:      !!stack,
       position:  isHoriz ? 'right' : 'top',
       fontSize:  10,
-      color:     _cssVar('--green'),
+      color:     _totalColor,
       formatter: p => {
-        const v = p.value ?? 0;
+        const v = typeof p.value === 'number' ? p.value : (p.data?.value ?? 0);
         if (v === 0) return '';
         return v === maxTotal
           ? `{peak|${v.toFixed(1)}h}`
           : `${v.toFixed(1)}h`;
       },
-      rich: { peak: { color: _cssVar('--red'), fontSize: 10 } },
+      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 10 } },
     },
     z: 10,
   }] : [];
@@ -174,8 +173,8 @@ function _buildHoursBarOption({
   // ── 8. Grid ──────────────────────────────────────────────────────────
   const grid = {
     top:          44,
-    right:        showTotal && isHoriz  ? '8%'  :
-                  showTotal && !isHoriz ? '6%'  : '3%',
+    right:        showTotal && isHoriz  ? '8%' :
+                  showTotal && !isHoriz ? '6%' : '3%',
     bottom:       isHoriz ? 28 : 56,
     left:         '2%',
     containLabel: true,
