@@ -80,7 +80,7 @@ function _buildHoursBarOption({
             );
           },
           rich: {
-            nm: { color: _cssVar('--text'), fontSize: 11, lineHeight: 18 },
+            nm: { color: _cssVar('--text'), fontSize: 10, lineHeight: 16 },
             hr: { color: _cssVar('--text-3'), fontSize: 9,  lineHeight: 14 },
           },
         }
@@ -95,10 +95,10 @@ function _buildHoursBarOption({
   const valueAxis = {
     type: 'value',
     name: 'h',
-    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+    nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
     axisLabel: {
       color:     _cssVar('--text-3'),
-      fontSize:  11,
+      fontSize:  10,
       formatter: v => `${v}h`,
     },
     splitLine: { lineStyle: { color: _cssVar('--surface') } },
@@ -173,7 +173,7 @@ function _buildHoursBarOption({
       formatter:  p => p.value === maxTotal
         ? `{peak|${p.value.toFixed(1)}h}`
         : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontWeight: 700, fontSize: 9 } },
+      rich: { peak: { color: _cssVar('--red'), fontSize: 9 } },
     },
     z: 10,
   }] : [];
