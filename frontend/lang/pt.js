@@ -139,7 +139,7 @@ window._LANG_PT = {
     'anomaly.title':'⚠ Alertas de Anomalia na Importação',
     'stat.normal_h':'Horas Normais','stat.extra_h':'Horas Extras','stat.standby_h':'Sobreaviso',
     'stat.total':'Total','stat.collabs':'Colaboradores',
-    'stat.budgeted':'Orçado (PEPs c/ orçamento)','stat.vs_budget':'Realizado vs Orçado',
+    'stat.budgeted':'Orçamento (horas)','stat.vs_budget':'Realizado vs Orçado',
     'stat.cost_normal':'Custo Horas Normais','stat.cost_extra':'Custo Horas Extras',
     'stat.cost_standby':'Custo Sobreaviso','stat.cost_total':'Custo Total Real',
     'stat.peps_active':'PEPs Ativos','stat.budget_cost':'Orçamento (R$)',

@@ -139,7 +139,7 @@ window._LANG_EN = {
     'anomaly.title':'⚠ Ingestion Anomaly Alerts',
     'stat.normal_h':'Normal Hours','stat.extra_h':'Overtime','stat.standby_h':'Standby',
     'stat.total':'Total','stat.collabs':'Collaborators',
-    'stat.budgeted':'Budgeted (PEPs w/ budget)','stat.vs_budget':'Actual vs Budget',
+    'stat.budgeted':'Budget (hours)','stat.vs_budget':'Actual vs Budget',
     'stat.cost_normal':'Normal Hours Cost','stat.cost_extra':'Overtime Cost',
     'stat.cost_standby':'Standby Cost','stat.cost_total':'Total Actual Cost',
     'stat.peps_active':'Active PEPs','stat.budget_cost':'Budget (Cost)',
