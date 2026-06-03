@@ -96,7 +96,7 @@ function _buildHoursBarOption({
   };
 
   // ── 5. Bar series ────────────────────────────────────────────────────
-  const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.05)' } };
+  const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.01)' } };
   const barMaxWidth = isHoriz ? 32 : 48;
 
   const _barSerie = (name, data, color) => ({
