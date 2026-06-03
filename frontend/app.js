@@ -624,8 +624,8 @@ async function _renderEffortTab() {
 // Portfolio Runway panel
 // ---------------------------------------------------------------------------
 function _riskColor(risk) {
+  if (risk === 'ok') return _getPalette()[0] || _cssVar('--primary');
   const colors = {
-    ok:       'var(--green,   #10d98a)',
     warning:  'var(--amber,   #d9b273)',
     critical: 'var(--red,     #c56d76)',
     overrun:  'var(--red,     #c56d76)',
