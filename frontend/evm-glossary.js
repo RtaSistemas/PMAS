@@ -171,14 +171,14 @@ window._EVM_TERMS = {
   },
   SimAvgVel: {
     pt: {
-      name: 'Velocidade Média Histórica',
-      desc: 'Média de horas registradas por ciclo com base no histórico real do projeto. Serve como referência para a simulação.',
-      formula: 'vel_média = horas_consumidas ÷ nº ciclos\n  Calculada sobre todos os ciclos com registro',
+      name: 'Velocidade Média Histórica — What-If',
+      desc: 'Média de horas por ciclo calculada sobre os últimos 6 ciclos (ou todos, se houver menos de 6). Janela mais ampla que a do Forecast (3 ciclos) para dar uma base mais suavizada ao cenário.',
+      formula: 'vel_média = Σ horas_ciclo ÷ n\n  n = min(6, total de ciclos)\n  Inclui ciclos com zero horas (períodos ociosos contam)\n  Forecast/Runway: últimos 3 ciclos\n  Monte Carlo: todos os ciclos com h > 0',
     },
     en: {
-      name: 'Historical Average Velocity',
-      desc: 'Average hours logged per cycle based on the project\'s actual history. Used as the baseline for simulation.',
-      formula: 'avg_velocity = consumed_hours ÷ cycle_count\n  Computed over all cycles with records',
+      name: 'Historical Average Velocity — What-If',
+      desc: 'Average hours per cycle over the last 6 cycles (or all cycles if fewer than 6). Wider window than Forecast (3 cycles) to provide a smoother scenario baseline.',
+      formula: 'avg_velocity = Σ cycle_hours ÷ n\n  n = min(6, total cycles)\n  Includes zero-hour cycles (idle periods count)\n  Forecast/Runway: last 3 cycles\n  Monte Carlo: all cycles with h > 0',
     },
   },
   SimVelocity: {
@@ -256,13 +256,25 @@ window._EVM_TERMS = {
   MCMeanVel: {
     pt: {
       name: 'Velocidade Média (Monte Carlo)',
-      desc: 'Média histórica de horas por ciclo utilizada como parâmetro central da distribuição gaussiana nas simulações. Quanto maior o desvio padrão, maior a incerteza do P90.',
-      formula: 'vel_média = Σ horas_ciclo ÷ nº ciclos\n  Distribuição amostrada: N(vel_média, σ)\n  σ = desvio padrão das velocidades históricas',
+      desc: 'Média de todos os ciclos com horas > 0, usada como centro da distribuição gaussiana. Quanto maior o desvio padrão σ, maior o espalhamento entre P10 e P90. Usa toda a história (sem janela) para capturar a variância real do projeto.',
+      formula: 'vel_média = Σ horas_ciclo ÷ nº ciclos (h > 0)\n  Distribuição amostrada: N(vel_média, σ)\n  σ = desvio padrão das velocidades históricas\n  Janela: TODOS os ciclos com h > 0 (sem limite)\n  Forecast/Runway: últimos 3 · Simulate: últimos 6',
     },
     en: {
       name: 'Mean Velocity (Monte Carlo)',
-      desc: 'Historical average hours per cycle used as the centre of the Gaussian distribution in simulations. Higher standard deviation means wider P10–P90 spread.',
-      formula: 'mean_velocity = Σ cycle_hours ÷ cycle_count\n  Sampled distribution: N(mean_velocity, σ)\n  σ = standard deviation of historical velocities',
+      desc: 'Average of all cycles with hours > 0, used as the centre of the Gaussian distribution. Higher σ means wider P10–P90 spread. Uses the full history (no window) to capture the project\'s true variance.',
+      formula: 'mean_velocity = Σ cycle_hours ÷ cycle_count (h > 0)\n  Sampled distribution: N(mean_velocity, σ)\n  σ = standard deviation of historical velocities\n  Window: ALL cycles with h > 0 (no cap)\n  Forecast/Runway: last 3 · Simulate: last 6',
+    },
+  },
+  RunwayAvg: {
+    pt: {
+      name: 'Média/ciclo — Runway',
+      desc: 'Média de horas (ou custo) por ciclo dos últimos 3 ciclos do PEP. Usada para calcular os ciclos restantes e a conclusão estimada na tabela de saúde. Ciclos com zero horas são excluídos do denominador mas mantidos na janela.',
+      formula: 'média = Σ h_ciclo (h > 0) ÷ nº ciclos não-zero\n  Janela: últimos 3 ciclos\n  Ex: [0, 8, 12] → (8+12) ÷ 2 = 10 h/ciclo\n  Alinhado ao Forecast (3 ciclos)\n  Simulate: últimos 6 · Monte Carlo: todos',
+    },
+    en: {
+      name: 'Avg/cycle — Runway',
+      desc: 'Average hours (or cost) per cycle over the last 3 cycles of the PEP. Used to estimate remaining cycles and projected completion in the health table. Zero-hour cycles are excluded from the denominator but kept within the window.',
+      formula: 'avg = Σ cycle_h (h > 0) ÷ non-zero cycle count\n  Window: last 3 cycles\n  Ex: [0, 8, 12] → (8+12) ÷ 2 = 10 h/cycle\n  Aligned with Forecast (3 cycles)\n  Simulate: last 6 · Monte Carlo: all',
     },
   },
   EVM: {

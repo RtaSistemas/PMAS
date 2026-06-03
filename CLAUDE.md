@@ -131,6 +131,17 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 - **PEP dual representation:** Each record stores `pep_wbs` (machine code) and `pep_description` (human label). Filters apply on either independently.
 - **Quarantine cycles:** Dates outside any registered cycle auto-create a quarantine cycle — no data is silently dropped. Quarantine cycles are excluded from the Trends chart.
 - **EVM freeze pattern:** `cost_per_hour` is resolved at ingestion time via `_lookup_rate()`. Rate changes after ingestion do NOT retroactively alter stored costs.
+- **Velocity windows (averaging rules):** Three distinct rules govern how the system computes average hours/cost per cycle. They are intentionally different — do not standardize them without understanding the rationale:
+
+  | Context | Window | File | Notes |
+  |---------|--------|------|-------|
+  | **Forecast** — projected completion + uncertainty band | last **3** cycles | `v2/forecast.py` | Reactive to recent rhythm; all cycles included in window |
+  | **Runway** — avg/cycle column + cycles-to-complete | last **3** non-zero cycles | `v2/runway.py` | Zero-hour cycles excluded from denominator, kept in window |
+  | **Simulate (What-If)** — `avg_velocity` baseline | last **min(6, N)** cycles | `v2/simulate.py` | Smoother base for scenario planning; zeros included |
+  | **Monte Carlo** — Gaussian μ and σ | **all** cycles with h > 0 | `v2/monte_carlo.py` | Full history needed to model variance; windowing underestimates σ |
+  | **Sparkline (frontend)** — avg3 reference line | last **3** non-zero cycles | `app.js` | Computed client-side from `fc.history`; aligns with Forecast |
+
+  The UI tooltips (hover on "Média/ciclo", "Vel. histórica média", "Vel. média") document these rules in the glossary (`evm-glossary.js` keys `RunwayAvg`, `SimAvgVel`, `MCMeanVel`).
 - **ValidationRule engine:** Ordered list of rules evaluated per row. Each rule has a `field`, `operator`, `value`, `action` (`quarantine`/`warn`/`reject`), and `is_active` flag. System rules cannot be deleted, only toggled.
 - **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin) and `/api/my/upload-history` (own uploads only).
 - **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine`.

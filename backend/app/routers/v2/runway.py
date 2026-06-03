@@ -180,7 +180,12 @@ def get_runway(
             proj and proj.status == "encerrado" and proj.completion_date is not None
         )
 
-        # Use the last-3-cycles velocity window — exclude zero-value cycles from denominator
+        # VELOCITY WINDOW — 3 cycles (Runway rule).
+        # Aligns with Forecast (also 3 cycles) so estimated completion in the
+        # runway table is consistent with the Forecast tab.
+        # Zero-hour cycles are excluded from the DENOMINATOR only (they still
+        # bound the window): e.g. [0, 8, 12] → avg = (8+12)/2 = 10, not 6.7.
+        # Compare: Simulate uses min(6, N); Monte Carlo uses ALL non-zero cycles.
         sorted_cids = sorted(
             data["cycle_ids"],
             key=lambda cid: cycle_start_by_id.get(cid, __import__('datetime').date.min),

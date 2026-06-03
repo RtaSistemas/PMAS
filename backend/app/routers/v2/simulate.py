@@ -71,7 +71,14 @@ def simulate_project(
     consumed_cost  = sum(c for _, _, _, c in cycle_data)
     remaining      = max(0.0, (budget_hours or 0.0) - consumed_hours)
 
-    # Compute average velocity from last N cycles (N = min(6, len(cycle_data)))
+    # VELOCITY WINDOW — last min(6, N) cycles (Simulate rule).
+    # Wider than Forecast/Runway (3 cycles) intentionally: the What-If tool is
+    # used for scenario planning, where a smoother baseline is preferable to
+    # one that over-reacts to a single atypical cycle.  The user then applies
+    # a multiplier on top, so sensitivity is controlled explicitly.
+    # Does NOT exclude zero-hour cycles — they represent real idle periods and
+    # should deflate the average when present.
+    # Compare: Forecast/Runway use 3 cycles; Monte Carlo uses ALL non-zero cycles.
     n = min(6, len(cycle_data))
     if n > 0:
         velocities = [h for _, _, h, _ in cycle_data[-n:]]

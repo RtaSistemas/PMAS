@@ -472,4 +472,5 @@ window._LANG_EN = {
     'mc.error':'Unable to run the simulation.',
     'mc.histogram.title':'Result Distribution — Cycle Count Frequency',
     'mc.histogram.frequency':'Frequency',
+    'mc.bell_curve':'Normal ref.',
 };

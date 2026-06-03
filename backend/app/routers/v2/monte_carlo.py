@@ -56,6 +56,14 @@ def monte_carlo(
     consumed_hours = sum(h for _, _, h, _ in cycle_data)
     remaining = max(0.0, (budget_hours or 0.0) - consumed_hours)
 
+    # VELOCITY WINDOW — ALL non-zero cycles (Monte Carlo rule).
+    # Monte Carlo fits a Gaussian N(μ, σ) to the full history: μ drives the
+    # median outcome, σ drives the P10–P90 spread.  A sliding window would
+    # truncate variance and underestimate uncertainty, defeating the purpose
+    # of probabilistic forecasting.  Zero-hour cycles are excluded because
+    # they represent reporting gaps, not genuine "zero-work" iterations, and
+    # would artificially inflate σ and depress μ.
+    # Compare: Forecast/Runway use 3 cycles; Simulate uses min(6, N) cycles.
     velocities = [h for _, _, h, _ in cycle_data if h > 0]
 
     insufficient = {
@@ -83,6 +91,8 @@ def monte_carlo(
             "p10": 0,
             "p50": 0,
             "p90": 0,
+            "mean_cycles":   0,
+            "stdev_cycles":  0,
             "mean_velocity": round(mu, 2),
             "stdev_velocity": round(sigma, 2),
             "consumed_hours": round(consumed_hours, 2),
@@ -112,6 +122,11 @@ def monte_carlo(
     p50 = results[int(0.50 * n)]
     p90 = results[int(0.90 * n)]
 
+    # Output distribution stats — used by the frontend to draw the reference bell curve.
+    # These describe the CYCLE-COUNT distribution (not the input velocity distribution).
+    mean_cycles  = round(statistics.mean(results), 2)
+    stdev_cycles = round(statistics.stdev(results), 2) if n >= 2 else 0.0
+
     # Build histogram buckets for frontend chart
     min_r, max_r = results[0], results[-1]
     if max_r - min_r <= 30:
@@ -134,7 +149,9 @@ def monte_carlo(
         "p10": p10,
         "p50": p50,
         "p90": p90,
-        "mean_velocity": round(mu, 2),
+        "mean_cycles":    mean_cycles,
+        "stdev_cycles":   stdev_cycles,
+        "mean_velocity":  round(mu, 2),
         "stdev_velocity": round(sigma, 2),
         "consumed_hours": round(consumed_hours, 2),
         "remaining_hours": round(remaining, 2),

@@ -1848,13 +1848,50 @@ async function _runMonteCarlo() {
         return { value: freqs[i], itemStyle: { color } };
       });
 
+      // Bell curve — theoretical N(μ, σ) of the OUTPUT distribution (cycle counts),
+      // scaled so its area matches the histogram area (iterations × binWidth).
+      // A good fit means the simulation output is approximately normal.
+      // Visible skew / heavy tail means the remaining work is large relative to
+      // velocity variance — the gap between histogram and curve is informative.
+      const bellColor  = _cssVar('--text-3');
+      const bellSeries = [];
+      if (r.mean_cycles != null && r.stdev_cycles > 0) {
+        const mu    = r.mean_cycles;
+        const sigma = r.stdev_cycles;
+        const nums  = cats.map(Number);
+        const binW  = nums.length > 1 ? (nums[nums.length - 1] - nums[0]) / (nums.length - 1) : 1;
+        const scale = r.iterations * binW;
+        const K     = scale / (sigma * Math.sqrt(2 * Math.PI));
+        bellSeries.push({
+          name:      _t('mc.bell_curve'),
+          type:      'line',
+          data:      nums.map(x => +(K * Math.exp(-0.5 * ((x - mu) / sigma) ** 2)).toFixed(2)),
+          smooth:    true,
+          symbol:    'none',
+          lineStyle: { color: bellColor, width: 1.5, type: 'dashed' },
+          z:         10,
+        });
+      }
+
       hc.setOption({
         ..._chartDefaults(),
         grid: { top: 36, right: '4%', bottom: 40, left: '2%', containLabel: true },
-        legend: { show: false },
+        legend: bellSeries.length ? {
+          data: [_t('mc.bell_curve')],
+          right: '4%', top: 4,
+          textStyle: { color: _cssVar('--text-3'), fontSize: 10 },
+          itemWidth: 18, itemHeight: 2,
+        } : { show: false },
         tooltip: {
           trigger: 'axis', ..._chartDefaults().tooltip,
-          formatter: params => `<b>${params[0].axisValue} ${_t('sim.cycles_to_complete')}</b><br>${params[0].marker}${_t('mc.histogram.frequency')}: <b>${params[0].value}</b>`,
+          formatter: params => {
+            const bar  = params.find(p => p.seriesType === 'bar') || params[0];
+            const bell = params.find(p => p.seriesType === 'line');
+            let html = `<b>${bar.axisValue} ${_t('sim.cycles_to_complete')}</b><br>`;
+            html += `${bar.marker}${_t('mc.histogram.frequency')}: <b>${bar.value}</b>`;
+            if (bell?.value != null) html += `<br><span style="color:${bellColor}">- -</span> ${_t('mc.bell_curve')}: <b>${(+bell.value).toFixed(1)}</b>`;
+            return html;
+          },
         },
         xAxis: {
           type: 'category', data: cats,
@@ -1869,30 +1906,33 @@ async function _runMonteCarlo() {
           axisLabel:     { color: _cssVar('--text-3'), fontSize: 10 },
           splitLine:     { lineStyle: { color: _cssVar('--border') } },
         },
-        series: [{
-          type: 'bar', data: barData, barMaxWidth: 36,
-          markLine: {
-            symbol: 'none',
-            silent: true,
-            data: [
-              ...(r.p10 != null ? [{ xAxis: String(r.p10),
-                lineStyle: { color: _cssVar('--green'),   type: 'dashed', width: 1.5 },
-                label: { formatter: `P10 · ${r.p10}`, color: _cssVar('--green'),
-                  position: 'end', offset: [0,  0], fontSize: 9,
-                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
-              ...(r.p50 != null ? [{ xAxis: String(r.p50),
-                lineStyle: { color: _cssVar('--primary'), type: 'solid',  width: 2   },
-                label: { formatter: `P50 · ${r.p50}`, color: _cssVar('--primary'),
-                  position: 'end', offset: [0, 16], fontSize: 9,
-                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
-              ...(r.p90 != null ? [{ xAxis: String(r.p90),
-                lineStyle: { color: _cssVar('--red'),     type: 'dashed', width: 1.5 },
-                label: { formatter: `P90 · ${r.p90}`, color: _cssVar('--red'),
-                  position: 'end', offset: [0, 32], fontSize: 9,
-                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
-            ],
+        series: [
+          {
+            type: 'bar', data: barData, barMaxWidth: 36,
+            markLine: {
+              symbol: 'none',
+              silent: true,
+              data: [
+                ...(r.p10 != null ? [{ xAxis: String(r.p10),
+                  lineStyle: { color: _cssVar('--green'),   type: 'dashed', width: 1.5 },
+                  label: { formatter: `P10 · ${r.p10}`, color: _cssVar('--green'),
+                    position: 'end', offset: [0,  0], fontSize: 9,
+                    backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+                ...(r.p50 != null ? [{ xAxis: String(r.p50),
+                  lineStyle: { color: _cssVar('--primary'), type: 'solid',  width: 2   },
+                  label: { formatter: `P50 · ${r.p50}`, color: _cssVar('--primary'),
+                    position: 'end', offset: [0, 16], fontSize: 9,
+                    backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+                ...(r.p90 != null ? [{ xAxis: String(r.p90),
+                  lineStyle: { color: _cssVar('--red'),     type: 'dashed', width: 1.5 },
+                  label: { formatter: `P90 · ${r.p90}`, color: _cssVar('--red'),
+                    position: 'end', offset: [0, 32], fontSize: 9,
+                    backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+              ],
+            },
           },
-        }],
+          ...bellSeries,
+        ],
       }, true);
       hc.resize();
     }
