@@ -56,6 +56,14 @@ def monte_carlo(
     consumed_hours = sum(h for _, _, h, _ in cycle_data)
     remaining = max(0.0, (budget_hours or 0.0) - consumed_hours)
 
+    # VELOCITY WINDOW — ALL non-zero cycles (Monte Carlo rule).
+    # Monte Carlo fits a Gaussian N(μ, σ) to the full history: μ drives the
+    # median outcome, σ drives the P10–P90 spread.  A sliding window would
+    # truncate variance and underestimate uncertainty, defeating the purpose
+    # of probabilistic forecasting.  Zero-hour cycles are excluded because
+    # they represent reporting gaps, not genuine "zero-work" iterations, and
+    # would artificially inflate σ and depress μ.
+    # Compare: Forecast/Runway use 3 cycles; Simulate uses min(6, N) cycles.
     velocities = [h for _, _, h, _ in cycle_data if h > 0]
 
     insufficient = {

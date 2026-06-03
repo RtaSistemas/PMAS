@@ -238,6 +238,11 @@ def get_forecast(
         if has_plan else (None, None)
     )
 
+    # VELOCITY WINDOW — 3 cycles (Forecast rule).
+    # Using only the 3 most recent cycles keeps the velocity reactive to current
+    # team rhythm without being distorted by ramp-up periods or past outliers.
+    # Compare: Simulate uses min(6, N) for a smoother scenario base;
+    #          Monte Carlo uses ALL non-zero cycles to model full variance.
     recent_h = [h for _, _, h, _ in cycle_data[-3:]]
     avg_hours = sum(recent_h) / len(recent_h) if recent_h else 0.0
 
@@ -294,7 +299,9 @@ def get_forecast(
         if len(future) >= n:
             est_completion = future[n - 1].name
 
-    # Uncertainty band from 3-cycle min/max throughput and cost rate (R-12)
+    # Uncertainty band — same 3-cycle window as avg_hours (R-12).
+    # Uses min/max throughput from that window to bound optimistic/pessimistic
+    # cycle estimates; EAC band uses observed cost rate from the same 3 cycles.
     eac_low = eac_high = None
     est_cycles_optimistic = est_cycles_pessimistic = None
     if est_cycles is not None and remaining_hours and remaining_hours > 0:
