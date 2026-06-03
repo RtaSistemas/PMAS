@@ -713,11 +713,18 @@
     <div class="card" id="overAllocCard" hidden>
       <div class="section-header">
         <h2 class="card-title" data-i18n="over_alloc.title">Detecção de Sobre-alocação</h2>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="_loadOverAllocation()" data-i18n="btn.refresh">↺ Atualizar</button>
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+          <input type="date" id="overAllocFrom" class="input-sm" title="Data início">
+          <input type="date" id="overAllocTo"   class="input-sm" title="Data fim">
+          <input type="number" id="overAllocThreshold" class="input-sm" min="0" step="0.5" style="width:80px"
+                 data-i18n-ph="over_alloc.filter.threshold">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_loadOverAllocation()" data-i18n="btn.load">Carregar</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_exportOverAllocCsv()" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
+        </div>
       </div>
       <p class="hint" style="margin-bottom:.5rem" data-i18n="over_alloc.hint">Colaboradores com horas diárias totais acima do limite configurado.</p>
       <div class="table-responsive">
-      <table class="data-table">
+      <table class="data-table" id="overAllocTable">
         <thead><tr>
           <th data-i18n="over_alloc.th.collaborator">Colaborador</th>
           <th data-i18n="over_alloc.th.date">Data</th>
@@ -1084,8 +1091,9 @@
       <h3 id="budgetHistoryTitle" data-i18n="budget.history.title">Histórico de Revisões de Budget</h3>
       <button type="button" class="modal-close" onclick="closeModal('budgetHistoryModal')">×</button>
     </div>
+    <div id="budgetSparkline" style="height:120px;margin-bottom:.5rem" hidden></div>
     <div class="table-responsive" style="max-height:400px;overflow-y:auto">
-      <table class="data-table">
+      <table class="data-table" id="budgetHistoryTable">
         <thead><tr>
           <th data-i18n="budget.history.th.when">Quando</th>
           <th data-i18n="budget.history.th.by">Por</th>

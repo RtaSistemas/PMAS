@@ -426,6 +426,8 @@ window._LANG_PT = {
     'budget.history.th.hours':'Horas',
     'budget.history.th.cost':'Custo',
     'budget.history.th.reason':'Motivo',
+    'budget.history.sparkline.hours':'Budget Horas',
+    'budget.history.sparkline.cost':'Budget Custo (R$)',
 
     // F5 — Over-allocation Detection
     'over_alloc.title':'Detecção de Sobre-alocação',
@@ -435,6 +437,7 @@ window._LANG_PT = {
     'over_alloc.th.date':'Data',
     'over_alloc.th.hours':'Total (h)',
     'over_alloc.th.peps':'PEPs',
+    'over_alloc.filter.threshold':'Limite (h)',
     'chart.all_cycles':'Todos os ciclos',
     'chart.truncated':'Exibindo os primeiros {n} itens',
 

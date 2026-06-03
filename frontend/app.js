@@ -2854,11 +2854,15 @@ document.getElementById('closePlanPanelBtn').addEventListener('click', _closePro
 
 // ── F7: Budget Revision History ───────────────────────────────────────────────
 
+let _budgetHistChart = null;
+
 async function _openBudgetHistory(projectId, projectName) {
   document.getElementById('budgetHistoryTitle').textContent =
     `${_t('budget.history.title')} — ${projectName}`;
   document.getElementById('budgetHistoryBody').innerHTML =
     `<tr><td colspan="5" class="td-empty">${_t('loading')}</td></tr>`;
+  const sparkEl = document.getElementById('budgetSparkline');
+  if (sparkEl) { sparkEl.hidden = true; }
   openModal('budgetHistoryModal');
   try {
     const rows = await apiFetch(`/api/projects/${projectId}/budget-history`);
@@ -2877,6 +2881,48 @@ async function _openBudgetHistory(projectId, projectName) {
           → ${r.new_budget_cost != null ? _fmtCost(r.new_budget_cost) : '—'}</td>
         <td>${escHtml(r.reason || '—')}</td>
       </tr>`).join('');
+
+    // Sparkline — chronological order (rows arrive newest-first)
+    if (sparkEl && rows.length >= 2) {
+      const sorted = [...rows].reverse();
+      const dates  = sorted.map(r => r.changed_at?.split('T')[0] || '');
+      const bHours = sorted.map(r => r.new_budget_hours ?? null);
+      const bCosts = sorted.map(r => r.new_budget_cost  ?? null);
+      if (_budgetHistChart) { _budgetHistChart.dispose(); _budgetHistChart = null; }
+      _budgetHistChart = echarts.init(sparkEl, 'dark', { renderer: 'svg' });
+      _budgetHistChart.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 28, right: 12, bottom: 24, left: 8, containLabel: true },
+        legend: {
+          data: [_t('budget.history.sparkline.hours'), _t('budget.history.sparkline.cost')],
+          top: 2, left: 'center',
+          textStyle: { color: _cssVar('--text'), fontSize: 10 },
+          itemGap: 16, itemWidth: 12, itemHeight: 8,
+        },
+        xAxis: { type: 'category', data: dates,
+          axisLabel: { color: _cssVar('--text-3'), fontSize: 9 },
+          axisTick: { show: false },
+        },
+        yAxis: [
+          { type: 'value', name: 'h', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
+            axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${v}h` },
+            splitLine: { lineStyle: { color: _cssVar('--surface') } } },
+          { type: 'value', name: 'R$', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
+            axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${(v/1000).toFixed(0)}k` },
+            splitLine: { show: false } },
+        ],
+        tooltip: { trigger: 'axis', ...(_chartDefaults().tooltip) },
+        series: [
+          { name: _t('budget.history.sparkline.hours'), type: 'line', yAxisIndex: 0,
+            data: bHours, itemStyle: { color: _cssVar('--primary') },
+            lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 },
+          { name: _t('budget.history.sparkline.cost'), type: 'line', yAxisIndex: 1,
+            data: bCosts, itemStyle: { color: _cssVar('--amber') },
+            lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 },
+        ],
+      });
+      sparkEl.hidden = false;
+    }
   } catch (e) {
     document.getElementById('budgetHistoryBody').innerHTML =
       `<tr><td colspan="5" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
@@ -3210,28 +3256,73 @@ async function loadTeamTab() {
 
 // ── F5: Over-allocation Detection ─────────────────────────────────────────────
 
+let _overAllocData = [];
+
+function _renderOverAllocRows(items) {
+  const body = document.getElementById('overAllocBody');
+  if (!body) return;
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = items.map(it => `
+    <tr>
+      <td>${escHtml(it.collaborator)}</td>
+      <td>${_fmtDateBR(it.date)}</td>
+      <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
+      <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
+    </tr>`).join('');
+}
+
 async function _loadOverAllocation() {
   const card = document.getElementById('overAllocCard');
   const body = document.getElementById('overAllocBody');
   if (!card || !body) return;
   body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('loading')}</td></tr>`;
   card.hidden = false;
+
+  const params = new URLSearchParams();
+  const from = document.getElementById('overAllocFrom')?.value;
+  const to   = document.getElementById('overAllocTo')?.value;
+  const thr  = document.getElementById('overAllocThreshold')?.value;
+  if (from) params.set('date_from', from);
+  if (to)   params.set('date_to',   to);
+  if (thr)  params.set('threshold', thr);
+  const qs = params.toString() ? `?${params}` : '';
+
   try {
-    const items = await apiFetch('/api/v2/over-allocation');
-    if (!items.length) {
-      body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
-      return;
-    }
-    body.innerHTML = items.map(it => `
-      <tr>
-        <td>${escHtml(it.collaborator)}</td>
-        <td>${_fmtDateBR(it.date)}</td>
-        <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
-        <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
-      </tr>`).join('');
+    const items = await apiFetch(`/api/v2/over-allocation${qs}`);
+    _overAllocData = items;
+    _renderOverAllocRows(_applySort('overAllocTable', _overAllocData));
   } catch (e) {
+    _overAllocData = [];
     body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
   }
+}
+
+function _exportOverAllocCsv() {
+  if (!_overAllocData.length) return;
+  const header = [
+    _t('over_alloc.th.collaborator'),
+    _t('over_alloc.th.date'),
+    _t('over_alloc.th.hours'),
+    'Limite (h)',
+    _t('over_alloc.th.peps'),
+  ].join(',');
+  const rows = _overAllocData.map(it =>
+    [
+      `"${it.collaborator}"`,
+      it.date,
+      it.total_hours.toFixed(2),
+      it.threshold,
+      `"${it.pep_list.join('; ')}"`,
+    ].join(',')
+  );
+  const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'sobre-alocacao.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 const _seniorityPag = _makePaginator(
@@ -5175,6 +5266,7 @@ _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 _makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
+_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, rows => _renderOverAllocRows(rows));
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
