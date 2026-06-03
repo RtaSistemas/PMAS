@@ -463,6 +463,16 @@
         <div id="mcResult"></div>
         <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
       </div>
+
+      <!-- Baseline de Planejamento — read-only view, editable in Projetos tab -->
+      <div class="card" id="forecastBaselineCard" data-panel-id="forecast-plan" hidden>
+        <div class="section-header">
+          <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento</h2>
+        </div>
+        <div id="forecastBaselineBody">
+          <p class="hint" data-i18n="forecast.baseline.empty">Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.</p>
+        </div>
+      </div>
     </div>
 
   </section>
@@ -814,6 +824,10 @@
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.bullet">Orçado vs. Realizado</span>
                 </li>
+                <li class="sortable-item sortable-item-sm" data-panel="portfolio-runway">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="runway.title">Runway do Portfólio</span>
+                </li>
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-quadrant">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.quadrant">Quadrante EVM</span>
@@ -825,10 +839,6 @@
                 <li class="sortable-item sortable-item-sm" data-panel="portfolio-allocation">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="atab.allocation">Alocação</span>
-                </li>
-                <li class="sortable-item sortable-item-sm" data-panel="portfolio-runway">
-                  <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="runway.title">Runway do Portfólio</span>
                 </li>
               </ul>
             </li>
@@ -842,13 +852,17 @@
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="chart.forecastChart">Previsão de Conclusão</span>
                 </li>
-                <li class="sortable-item sortable-item-sm" data-panel="forecast-plan">
-                  <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.plan">Baseline de Planejamento</span>
-                </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-burnup">
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="burnup.title">Burn-Up de Custo (R$)</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-montecarlo">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_montecarlo">Monte Carlo</span>
+                </li>
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-whatsim">
+                  <span class="sortable-handle panel-handle">⠿</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_whatsim">Simulação What-If</span>
                 </li>
                 <li class="sortable-item sortable-item-sm" data-panel="forecast-alloc">
                   <span class="sortable-handle panel-handle">⠿</span>
@@ -858,13 +872,9 @@
                   <span class="sortable-handle panel-handle">⠿</span>
                   <span class="sortable-item-label" data-i18n="layout.panel.forecast_alloc_cost">Alocação por Colaborador — Custo</span>
                 </li>
-                <li class="sortable-item sortable-item-sm" data-panel="forecast-whatsim">
+                <li class="sortable-item sortable-item-sm" data-panel="forecast-plan">
                   <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_whatsim">Simulação What-If</span>
-                </li>
-                <li class="sortable-item sortable-item-sm" data-panel="forecast-montecarlo">
-                  <span class="sortable-handle panel-handle">⠿</span>
-                  <span class="sortable-item-label" data-i18n="layout.panel.forecast_montecarlo">Monte Carlo</span>
+                  <span class="sortable-item-label" data-i18n="layout.panel.plan">Baseline de Planejamento</span>
                 </li>
               </ul>
             </li>

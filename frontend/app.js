@@ -1562,6 +1562,7 @@ async function _renderForecastTab() {
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderVelocitySparkline(fc);
     _renderBurnUpChart(fc);
+    _renderForecastBaseline(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
     await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
   } catch (err) {
@@ -1625,6 +1626,51 @@ function _renderVelocitySparkline(fc) {
     }],
   }, true);
   chart.resize();
+}
+
+function _renderForecastBaseline(fc) {
+  const card = document.getElementById('forecastBaselineCard');
+  const body = document.getElementById('forecastBaselineBody');
+  if (!card || !body) return;
+  const history = (fc.history || []).filter(h => h.planned_hours != null || h.planned_cost != null);
+  if (!history.length) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  const hasHours = history.some(h => h.planned_hours != null);
+  const hasCost  = history.some(h => h.planned_cost  != null);
+  const fmtH = v => v != null ? (+v).toFixed(1) + 'h' : '—';
+  const fmtC = v => v != null ? _fmtCost(v) : '—';
+  const delta = (plan, real) => {
+    if (plan == null || real == null) return '—';
+    const d = real - plan;
+    const cls = d > 0 ? 'red' : d < 0 ? 'green' : 'neutral';
+    return `<span style="color:var(--${cls})">${d >= 0 ? '+' : ''}${(+d).toFixed(1)}h</span>`;
+  };
+
+  let html = `<div class="table-responsive"><table class="data-table">
+    <thead><tr>
+      <th data-i18n="plan.th.cycle">${_t('plan.th.cycle')}</th>
+      ${hasHours ? `<th class="text-right" data-i18n="plan.th.hours">${_t('plan.th.hours')}</th>
+      <th class="text-right" data-i18n="forecast.realized">${_t('forecast.realized')}</th>
+      <th class="text-right">Δ Horas</th>` : ''}
+      ${hasCost  ? `<th class="text-right" data-i18n="plan.th.cost">${_t('plan.th.cost')}</th>
+      <th class="text-right">AC</th>` : ''}
+    </tr></thead><tbody>`;
+  for (const h of history) {
+    html += `<tr>
+      <td>${escHtml(h.cycle_name)}</td>
+      ${hasHours ? `<td class="text-right">${fmtH(h.planned_hours)}</td>
+      <td class="text-right">${fmtH(h.period_hours)}</td>
+      <td class="text-right">${delta(h.planned_hours, h.period_hours)}</td>` : ''}
+      ${hasCost  ? `<td class="text-right">${fmtC(h.planned_cost)}</td>
+      <td class="text-right">${fmtC(h.period_cost)}</td>` : ''}
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
 }
 
 function _renderBurnUpChart(fc) {

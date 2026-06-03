@@ -15,6 +15,7 @@ window._LANG_EN = {
     'forecast.title':'Completion Forecast (EVM)',
     'forecast.select_pep':'— select a PEP —',
     'forecast.empty':'Select a PEP to view the completion forecast.',
+    'forecast.baseline.empty':'Select a PEP and configure the baseline in the Projects tab to view here.',
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',
     'forecast.consumed_cost':'Consumed Cost','forecast.utilization_hours':'Hours Utilization','forecast.utilization_cost':'Cost Utilization',
     'forecast.remaining_cost':'Remaining Cost (ETC)','forecast.utilization':'Utilization','forecast.completion':'Est. Completion',

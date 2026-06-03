@@ -15,6 +15,7 @@ window._LANG_PT = {
     'forecast.title':'Previsão de Conclusão (EVM)',
     'forecast.select_pep':'— selecione um PEP —',
     'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
+    'forecast.baseline.empty':'Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.',
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
     'forecast.consumed_cost':'Custo Consumido','forecast.utilization_hours':'Utilização Horas','forecast.utilization_cost':'Utilização Custo',
     'forecast.remaining_cost':'Custo Restante (ETC)','forecast.utilization':'Utilização','forecast.completion':'Conclusão Estimada',
