@@ -34,12 +34,13 @@ function _healthToSemColor(a, b) {
 // ---------------------------------------------------------------------------
 // C1 — Stat card builder
 // ---------------------------------------------------------------------------
-function _mkStatCard({ val, lbl, cls, evm, sublbl }) {
+function _mkStatCard({ val, lbl, cls, evm, sublbl, delta }) {
   const lblHtml = evm
     ? `<span data-evm="${evm}">${escHtml(lbl)}</span>`
     : escHtml(lbl);
   const sublblHtml = sublbl ? `<div class="sublbl">${escHtml(sublbl)}</div>` : '';
-  return `<div class="stat-card ${cls}"><div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
+  const deltaHtml  = delta  ? delta : '';
+  return `<div class="stat-card ${cls}">${deltaHtml}<div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
 }
 
 // ---------------------------------------------------------------------------

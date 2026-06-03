@@ -495,9 +495,14 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   gap: 0.75rem;
 }
 .stat-card {
+  position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 0.75rem 0.9rem; text-align: center;
   transition: border-color 0.15s;
+}
+.stat-delta {
+  position: absolute; top: 0.3rem; right: 0.45rem;
+  font-size: 0.62rem; font-weight: 700; line-height: 1;
 }
 .stat-card:hover { border-color: var(--border-hi); }
 .stat-card .val { font-size: 1.35rem; font-weight: 700; line-height: 1.2; }
@@ -1116,9 +1121,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ── Trend delta arrows (stats cards) ───────────────────────────────────── */
-.delta-up      { font-size: .72rem; font-weight: 700; color: var(--red);   opacity: .9; }
-.delta-down    { font-size: .72rem; font-weight: 700; color: var(--green); opacity: .9; }
-.delta-neutral { font-size: .72rem; font-weight: 600; color: var(--text-3); }
+.delta-up      { font-weight: 700; color: var(--red);    opacity: .9; }
+.delta-down    { font-weight: 700; color: var(--green);  opacity: .9; }
+.delta-neutral { font-weight: 600; color: var(--text-3);              }
 
 /* ── Table responsive wrapper ────────────────────────────────────────────── */
 .table-responsive {

@@ -594,7 +594,6 @@ async function _renderEffortTab() {
       orientation: 'horizontal',
       stacked:     _stackMode,
       showTotal:   true,
-      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Esforco',
     }), true);
@@ -624,8 +623,8 @@ async function _renderEffortTab() {
 // Portfolio Runway panel
 // ---------------------------------------------------------------------------
 function _riskColor(risk) {
+  if (risk === 'ok') return _getPalette()[0] || _cssVar('--primary');
   const colors = {
-    ok:       'var(--green,   #10d98a)',
     warning:  'var(--amber,   #d9b273)',
     critical: 'var(--red,     #c56d76)',
     overrun:  'var(--red,     #c56d76)',
@@ -698,12 +697,12 @@ function _drawRunwayRows(data) {
 
     let spiCell = '—';
     if (item.spi != null) {
-      const spiColor = _EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.success;
+      const spiColor = item.spi_color === 'success' ? _getPalette()[0] : (_EVM_COLOR_CSS[item.spi_color] || _EVM_COLOR_CSS.warning);
       spiCell = `<span style="color:${spiColor};font-weight:600">${item.spi.toFixed(2)}</span>`;
     }
 
     const statusMap = {
-      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: 'var(--primary,#4f8ef7)' },
+      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: _getPalette()[0] || 'var(--primary,#4f8ef7)' },
       at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
       behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
       no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: '#475569' },
@@ -713,7 +712,7 @@ function _drawRunwayRows(data) {
 
     let cpiCell = '—';
     if (item.cpi != null) {
-      const cpiColor = _EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.success;
+      const cpiColor = item.cpi_color === 'success' ? _getPalette()[0] : (_EVM_COLOR_CSS[item.cpi_color] || _EVM_COLOR_CSS.warning);
       cpiCell = `<span style="color:${cpiColor};font-weight:600">${item.cpi.toFixed(2)}</span>`;
     }
 
@@ -879,6 +878,10 @@ async function _renderPortfolioTab() {
       document.getElementById('bulletPanel').hidden = false;
       document.getElementById('bulletChart').style.height =
         `${Math.max(220, withBudget.length * 60 + 80)}px`;
+      if (_charts['bulletChart'] && !_charts['bulletChart'].isDisposed()) {
+        _charts['bulletChart'].dispose();
+        delete _charts['bulletChart'];
+      }
       const bc = _getOrCreateChart('bulletChart');
       bc.setOption(_buildBulletOption(withBudget, _evmMode), true);
       bc.resize();
@@ -1077,7 +1080,6 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
       orientation: 'vertical',
       stacked:     true,
       showTotal:   true,
-      richLabel:   false,
       maxItems:    40,
       toolboxName: 'PMAS-Queima',
     });
@@ -1415,7 +1417,6 @@ function _buildForecastKpis(fc) {
     { val: spiVal,                                                                      lbl: 'SPI',  cls: spiCls,  evm: 'SPI',  sublbl: fc.spi_label  || null },
     { val: svFmt,                                                                       lbl: 'SV',   cls: svCls,   evm: 'SV',   sublbl: fc.sv_label  || null },
     { val: escHtml(String(completionVal)),                                              lbl: completionLbl, cls: 'violet', sublbl: completionRangeSublbl      },
-    { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
 
   const row2 = [
@@ -1426,28 +1427,10 @@ function _buildForecastKpis(fc) {
     { val: cvFmt,                                                                       lbl: 'CV',   cls: cvCls,   evm: 'CV',   sublbl: fc.cv_label  || null },
     { val: fc.eac != null ? fmtR(fc.eac) : '—',                                        lbl: 'EAC',  cls: 'neutral', evm: 'EAC', sublbl: eacSublbl           },
     { val: vacFmt,                                                                      lbl: 'VAC',  cls: vacCls,  evm: 'VAC',  sublbl: fc.vac_label  || null },
+    { val: tcpiVal,                                                                     lbl: 'TCPI', cls: tcpiCls, evm: 'TCPI', sublbl: fc.tcpi_label || null },
   ].map(_mkStatCard).join('');
 
-  // F3 — Earned Schedule row (only when ES data is available)
-  const esRow = (fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null) ? (() => {
-    const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
-    const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
-    const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
-    const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
-    const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
-    const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
-    const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
-    const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
-    const cards = [
-      { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
-      { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
-      { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
-      { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
-    ].map(_mkStatCard).join('');
-    return `<div class="stats-row">${cards}</div>`;
-  })() : '';
-
-  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>${esRow}`;
+  return `<div class="stats-row">${row1}</div><div class="stats-row">${row2}</div>`;
 }
 
 // _buildForecastOption — moved to charts/forecast.js
@@ -1521,7 +1504,7 @@ async function _renderForecastTab() {
     kpisEl.hidden = true;
     if (infoEl) infoEl.hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
-    document.getElementById('forecastAllocCostCard').hidden = true;
+    document.getElementById('simsCard').hidden = true;
     _disposeTabCharts('forecast');
     return;
   }
@@ -1554,7 +1537,7 @@ async function _renderForecastTab() {
     _currentForecastPep = pep;
     _fcAvgVelocity = fc.avg_hours_per_cycle || null;
     if (proj) _loadForecastSimulation(proj.id);
-    else { document.getElementById('whatIfCard').hidden = true; document.getElementById('monteCarloCard').hidden = true; }
+    else { document.getElementById('simsCard').hidden = true; }
     try {
       const chart = _getOrCreateChart('forecastChart');
       chart.setOption(_buildForecastOption(fc), true);
@@ -1572,7 +1555,7 @@ async function _renderForecastTab() {
     if (infoEl) infoEl.hidden = true;
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
-    document.getElementById('forecastAllocCostCard').hidden = true;
+    document.getElementById('simsCard').hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(`${_t('msg.err_generic')}: ${err.message}`, 'error');
   }
@@ -1595,10 +1578,15 @@ function _renderVelocitySparkline(fc) {
   const chart = _getOrCreateChart('velocitySparklineChart');
   chart.setOption({
     ..._chartDefaults(),
+    backgroundColor: _cssVar('--bg'),
     grid: { top: 18, bottom: 28, left: 44, right: 16, containLabel: false },
     tooltip: {
       trigger: 'axis', ..._chartDefaults().tooltip,
-      formatter: p => `<b>${p[0].name}</b><br/>${p[0].marker}${p[0].value.toFixed(1)} h`,
+      formatter: p => {
+        const bar = p[0];
+        return `<b>${bar.name}</b><br/>${bar.marker}${(+bar.value).toFixed(1)} h` +
+          `<br/><span style="color:${avgColor}">— — </span>${_t('forecast.avg3')}: <b style="color:${avgColor}">${avg3.toFixed(1)} h</b>`;
+      },
     },
     xAxis: {
       type: 'category', data: labels,
@@ -1629,15 +1617,15 @@ function _renderVelocitySparkline(fc) {
 }
 
 function _renderForecastBaseline(fc) {
-  const card = document.getElementById('forecastBaselineCard');
-  const body = document.getElementById('forecastBaselineBody');
-  if (!card || !body) return;
+  const section = document.getElementById('burnUpBaselineSection');
+  const body    = document.getElementById('burnUpBaselineBody');
+  if (!section || !body) return;
   const history = (fc.history || []).filter(h => h.planned_hours != null || h.planned_cost != null);
   if (!history.length) {
-    card.hidden = true;
+    section.hidden = true;
     return;
   }
-  card.hidden = false;
+  section.hidden = false;
 
   const hasHours = history.some(h => h.planned_hours != null);
   const hasCost  = history.some(h => h.planned_cost  != null);
@@ -1674,9 +1662,10 @@ function _renderForecastBaseline(fc) {
 }
 
 function _renderBurnUpChart(fc) {
-  const card = document.getElementById('burnUpCard');
+  const card    = document.getElementById('burnUpCard');
+  const esKpis  = document.getElementById('burnUpEsKpis');
   const history = fc.history || [];
-  const hasEV = history.some(h => h.cumulative_ev_cost != null);
+  const hasEV   = history.some(h => h.cumulative_ev_cost != null);
   if (!hasEV) {
     card.hidden = true;
     if (_charts['burnUpChart'] && !_charts['burnUpChart'].isDisposed()) {
@@ -1686,6 +1675,33 @@ function _renderBurnUpChart(fc) {
     return;
   }
   card.hidden = false;
+
+  // Earned Schedule KPI strip — lives here because ES is derived from the PV cost curve
+  if (esKpis) {
+    const hasES = fc.es != null || fc.spi_t != null || fc.sv_t != null || fc.ieac_t != null;
+    if (hasES) {
+      const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
+      const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
+      const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+      const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
+      const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
+      const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
+      const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
+      const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
+      const cards = [
+        { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
+        { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
+        { val: svTFmt,   lbl: 'SV(t)',   cls: svTCls,    evm: 'SVt'   },
+        { val: ieacTVal, lbl: 'IEAC(t)', cls: 'neutral', evm: 'IEACt', sublbl: `${_t('forecast.pd')} ${pdVal}` },
+      ].map(_mkStatCard).join('');
+      esKpis.innerHTML = `<div class="stats-row">${cards}</div>`;
+      esKpis.hidden = false;
+    } else {
+      esKpis.hidden = true;
+      esKpis.innerHTML = '';
+    }
+  }
+
   try {
     const chart = _getOrCreateChart('burnUpChart');
     chart.setOption(_buildBurnUpOption(fc), true);
@@ -1700,11 +1716,9 @@ let _fcAvgVelocity = null;
 
 async function _loadForecastSimulation(projectId) {
   _simProjectId = projectId;
-  const wiCard = document.getElementById('whatIfCard');
-  const mcCard = document.getElementById('monteCarloCard');
-  if (!wiCard || !mcCard) return;
-  wiCard.hidden = false;
-  mcCard.hidden = false;
+  const simsCard = document.getElementById('simsCard');
+  if (!simsCard) return;
+  simsCard.hidden = false;
   // reset result areas
   document.getElementById('whatIfResult').innerHTML = '';
   document.getElementById('mcResult').innerHTML = `<span class="hint">${_t('loading')}</span>`;
@@ -1822,35 +1836,60 @@ async function _runMonteCarlo() {
       const hc = _getOrCreateChart('mcHistogramChart');
       const cats  = r.histogram.map(b => String(b.cycle));
       const freqs = r.histogram.map(b => b.count);
+
+      // Color each bar by percentile region
+      const barData = cats.map((cat, i) => {
+        const v = Number(cat);
+        let color;
+        if      (r.p10 != null && v <= r.p10) color = _cssVar('--green');
+        else if (r.p50 != null && v <= r.p50) color = _cssVar('--primary');
+        else if (r.p90 != null && v <= r.p90) color = _cssVar('--amber');
+        else                                   color = _cssVar('--red');
+        return { value: freqs[i], itemStyle: { color } };
+      });
+
       hc.setOption({
         ..._chartDefaults(),
         grid: { top: 36, right: '4%', bottom: 40, left: '2%', containLabel: true },
         legend: { show: false },
-        tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
+        tooltip: {
+          trigger: 'axis', ..._chartDefaults().tooltip,
           formatter: params => `<b>${params[0].axisValue} ${_t('sim.cycles_to_complete')}</b><br>${params[0].marker}${_t('mc.histogram.frequency')}: <b>${params[0].value}</b>`,
         },
-        xAxis: { type: 'category', data: cats,
+        xAxis: {
+          type: 'category', data: cats,
           name: _t('sim.cycles_to_complete'), nameLocation: 'middle', nameGap: 28,
           nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisTick: { alignWithLabel: true },
+          axisLabel:     { color: _cssVar('--text-3'), fontSize: 10 },
+          axisTick:      { alignWithLabel: true },
         },
-        yAxis: { type: 'value', name: _t('mc.histogram.frequency'),
+        yAxis: {
+          type: 'value', name: _t('mc.histogram.frequency'),
           nameTextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
-          axisLabel: { color: _cssVar('--text-3'), fontSize: 10 },
-          splitLine: { lineStyle: { color: _cssVar('--surface') } },
+          axisLabel:     { color: _cssVar('--text-3'), fontSize: 10 },
+          splitLine:     { lineStyle: { color: _cssVar('--border') } },
         },
         series: [{
-          type: 'bar', data: freqs, barMaxWidth: 36,
-          itemStyle: { color: _cssVar('--primary') },
+          type: 'bar', data: barData, barMaxWidth: 36,
           markLine: {
             symbol: 'none',
-            lineStyle: { type: 'dashed', width: 1.5 },
-            label: { fontSize: 10 },
+            silent: true,
             data: [
-              ...(r.p10 != null ? [{ xAxis: String(r.p10), lineStyle: { color: _cssVar('--green') }, label: { formatter: 'P10', color: _cssVar('--green') } }] : []),
-              ...(r.p50 != null ? [{ xAxis: String(r.p50), lineStyle: { color: _cssVar('--primary') }, label: { formatter: 'P50', color: _cssVar('--primary') } }] : []),
-              ...(r.p90 != null ? [{ xAxis: String(r.p90), lineStyle: { color: _cssVar('--red') }, label: { formatter: 'P90', color: _cssVar('--red') } }] : []),
+              ...(r.p10 != null ? [{ xAxis: String(r.p10),
+                lineStyle: { color: _cssVar('--green'),   type: 'dashed', width: 1.5 },
+                label: { formatter: `P10 · ${r.p10}`, color: _cssVar('--green'),
+                  position: 'end', offset: [0,  0], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+              ...(r.p50 != null ? [{ xAxis: String(r.p50),
+                lineStyle: { color: _cssVar('--primary'), type: 'solid',  width: 2   },
+                label: { formatter: `P50 · ${r.p50}`, color: _cssVar('--primary'),
+                  position: 'end', offset: [0, 16], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
+              ...(r.p90 != null ? [{ xAxis: String(r.p90),
+                lineStyle: { color: _cssVar('--red'),     type: 'dashed', width: 1.5 },
+                label: { formatter: `P90 · ${r.p90}`, color: _cssVar('--red'),
+                  position: 'end', offset: [0, 32], fontSize: 9,
+                  backgroundColor: _cssVar('--card'), padding: [2, 4], borderRadius: 2 } }] : []),
             ],
           },
         }],
@@ -1882,14 +1921,6 @@ document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
 });
 
-let _forecastAllocCostExpanded = true;
-document.getElementById('forecastAllocCostToggle').addEventListener('click', () => {
-  _forecastAllocCostExpanded = !_forecastAllocCostExpanded;
-  document.getElementById('forecastAllocCostBody').style.display = _forecastAllocCostExpanded ? '' : 'none';
-  const ch = document.getElementById('forecastAllocCostChevron');
-  ch.style.transform = _forecastAllocCostExpanded ? '' : 'rotate(-90deg)';
-});
-
 let _whatIfExpanded = true;
 document.getElementById('whatIfToggle').addEventListener('click', () => {
   _whatIfExpanded = !_whatIfExpanded;
@@ -1904,9 +1935,23 @@ document.getElementById('mcToggle').addEventListener('click', () => {
   document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
 });
 
+let _burnUpBaselineExpanded = true;
+document.getElementById('burnUpBaselineToggle').addEventListener('click', () => {
+  _burnUpBaselineExpanded = !_burnUpBaselineExpanded;
+  document.getElementById('burnUpBaselineBody').style.display = _burnUpBaselineExpanded ? '' : 'none';
+  document.getElementById('burnUpBaselineChevron').style.transform = _burnUpBaselineExpanded ? '' : 'rotate(-90deg)';
+});
+
+function _setAllocMode(mode) {
+  document.getElementById('forecastAllocTableHours').hidden = (mode !== 'hours');
+  document.getElementById('forecastAllocTableCost').hidden  = (mode !== 'cost');
+  document.getElementById('allocBtnHours').className = mode === 'hours' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
+  document.getElementById('allocBtnCost').className  = mode === 'cost'  ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
+}
+
 async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
   const card = document.getElementById('forecastAllocCard');
-  const tbl  = document.getElementById('forecastAllocTable');
+  const tbl  = document.getElementById('forecastAllocTableHours');
   if (!pep) { card.hidden = true; return; }
 
   try {
@@ -1980,8 +2025,8 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
 }
 
 async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
-  const card = document.getElementById('forecastAllocCostCard');
-  const tbl  = document.getElementById('forecastAllocCostTable');
+  const card = document.getElementById('forecastAllocCard');
+  const tbl  = document.getElementById('forecastAllocTableCost');
   if (!pep) { card.hidden = true; return; }
 
   try {
@@ -2463,7 +2508,7 @@ async function _renderCollabTimeline(name) {
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
     orientation: 'vertical', stacked: true,
-    showTotal: true, richLabel: false,
+    showTotal: true,
     maxItems: 40, toolboxName: 'PMAS-CollabTimeline',
   }), true);
 
@@ -2712,16 +2757,17 @@ function _buildPortfolioStatsRow(health, trends) {
   const pepsActive = health.filter(d => d.total_hours > 0).length;
   const lastTrend  = trends && trends.length ? trends[trends.length - 1] : null;
 
-  const _fmtDelta = (pct, abs) => {
+  const _fmtDeltaBadge = (pct, abs) => {
     if (pct != null) {
       const dir = pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→';
       const cls = pct > 5 ? 'delta-up' : pct < -5 ? 'delta-down' : 'delta-neutral';
-      return ` <span class="${cls}">${dir} ${Math.abs(pct).toFixed(1)}%</span>`;
+      return `<span class="stat-delta ${cls}">${dir}${Math.abs(pct).toFixed(1)}%</span>`;
     }
+    // pct is null when prev=0 (division undefined) — show direction-only arrow
     if (abs != null && abs !== 0) {
       const dir = abs > 0 ? '↑' : '↓';
       const cls = abs > 0 ? 'delta-up' : 'delta-down';
-      return ` <span class="${cls}">${dir} ${abs > 0 ? '+' : ''}${abs.toFixed(1)}</span>`;
+      return `<span class="stat-delta ${cls}">${dir}</span>`;
     }
     return '';
   };
@@ -2743,14 +2789,12 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_hours, 0);
     const pctH  = budgetHours > 0 ? (totalHours / budgetHours * 100).toFixed(1) : '—';
     const overH = budgetHours > 0 && totalHours > budgetHours;
-    const totalHoursVal = `${fmt(totalHours)}h${lastTrend ? _fmtDelta(lastTrend.hours_delta_pct, lastTrend.hours_delta) : ''}`;
-
     cards = [
-      { val: `${fmt(hNormal)}h${_fmtDelta(lastTrend?.normal_hours_delta_pct,  lastTrend?.normal_hours_delta)}`,   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
-      { val: `${fmt(hExtra)}h${_fmtDelta(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta)}`,    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
-      { val: `${fmt(hStandby)}h${_fmtDelta(lastTrend?.standby_hours_delta_pct, lastTrend?.standby_hours_delta)}`, lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
-      { val: totalHoursVal,                                                          lbl: _t('stat.total'),       cls: 'green'   },
-      { val: pepsActive,                                                              lbl: _t('stat.peps_active'), cls: 'neutral' },
+      { val: `${fmt(hNormal)}h`,    delta: _fmtDeltaBadge(lastTrend?.normal_hours_delta_pct,   lastTrend?.normal_hours_delta),   lbl: _t('stat.normal_h'),    cls: 'blue',    color: pal[0] },
+      { val: `${fmt(hExtra)}h`,     delta: _fmtDeltaBadge(lastTrend?.extra_hours_delta_pct,    lastTrend?.extra_hours_delta),    lbl: _t('stat.extra_h'),     cls: 'amber',   color: pal[1] },
+      { val: `${fmt(hStandby)}h`,   delta: _fmtDeltaBadge(lastTrend?.standby_hours_delta_pct,  lastTrend?.standby_hours_delta),  lbl: _t('stat.standby_h'),   cls: 'violet',  color: pal[2] },
+      { val: `${fmt(totalHours)}h`, delta: _fmtDeltaBadge(lastTrend?.hours_delta_pct,          lastTrend?.hours_delta),          lbl: _t('stat.total'),       cls: 'green'   },
+      { val: pepsActive,                                                                         lbl: _t('stat.peps_active'), cls: 'neutral' },
     ];
     if (budgetHours > 0) {
       cards.push(
@@ -2772,14 +2816,12 @@ function _buildPortfolioStatsRow(health, trends) {
       .reduce((s, d) => s + d.budget_cost, 0);
     const pctC  = budgetCost > 0 ? (totalCost / budgetCost * 100).toFixed(1) : '—';
     const overC = budgetCost > 0 && totalCost > budgetCost;
-    const costTotalVal = `${_fmtCost(totalCost)}${lastTrend ? _fmtDelta(lastTrend.cost_delta_pct, lastTrend.cost_delta) : ''}`;
-
     cards = [
-      { val: `${_fmtCost(costNormal)}${_fmtDelta(lastTrend?.normal_cost_delta_pct,  lastTrend?.normal_cost_delta)}`,   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
-      { val: `${_fmtCost(costExtra)}${_fmtDelta(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta)}`,    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
-      { val: `${_fmtCost(costStandby)}${_fmtDelta(lastTrend?.standby_cost_delta_pct, lastTrend?.standby_cost_delta)}`, lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
-      { val: costTotalVal,                                                                lbl: _t('stat.cost_total'),   cls: 'green'   },
-      { val: pepsActive,                                                                  lbl: _t('stat.peps_active'),  cls: 'neutral' },
+      { val: _fmtCost(costNormal),  delta: _fmtDeltaBadge(lastTrend?.normal_cost_delta_pct,   lastTrend?.normal_cost_delta),   lbl: _t('stat.cost_normal'),  cls: 'blue',    color: pal[0] },
+      { val: _fmtCost(costExtra),   delta: _fmtDeltaBadge(lastTrend?.extra_cost_delta_pct,    lastTrend?.extra_cost_delta),    lbl: _t('stat.cost_extra'),   cls: 'amber',   color: pal[1] },
+      { val: _fmtCost(costStandby), delta: _fmtDeltaBadge(lastTrend?.standby_cost_delta_pct,  lastTrend?.standby_cost_delta),  lbl: _t('stat.cost_standby'), cls: 'violet',  color: pal[2] },
+      { val: _fmtCost(totalCost),   delta: _fmtDeltaBadge(lastTrend?.cost_delta_pct,          lastTrend?.cost_delta),          lbl: _t('stat.cost_total'),   cls: 'green'   },
+      { val: pepsActive,                                                                         lbl: _t('stat.peps_active'),  cls: 'neutral' },
     ];
     if (budgetCost > 0) {
       cards.push(
@@ -2791,11 +2833,11 @@ function _buildPortfolioStatsRow(health, trends) {
 
   const row = document.createElement('div');
   row.className = 'stats-row';
-  cards.forEach(({ val, lbl, cls, color }) => {
+  cards.forEach(({ val, lbl, cls, color, delta }) => {
     const card = document.createElement('div');
     card.className = `stat-card ${cls}`;
     const style = color ? ` style="color:${color}"` : '';
-    card.innerHTML = `<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
+    card.innerHTML = `${delta || ''}<div class="val"${style}>${val}</div><div class="lbl">${lbl}</div>`;
     row.appendChild(card);
   });
   return row;
@@ -3478,21 +3520,22 @@ async function loadTeamTab() {
 
 let _overAllocData = [];
 
-function _renderOverAllocRows(items) {
-  const body = document.getElementById('overAllocBody');
-  if (!body) return;
-  if (!items.length) {
-    body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('over_alloc.empty')}</td></tr>`;
-    return;
-  }
-  body.innerHTML = items.map(it => `
+const _overAllocPag = _makePaginator(
+  { container: 'overAllocPagination', prev: 'overAllocPrevBtn', next: 'overAllocNextBtn', pageSize: 'overAllocPageSize', label: 'overAllocPageLabel' },
+  rows => _renderTable('overAllocBody', rows, {
+    colspan: 4,
+    emptyKey: 'over_alloc.empty',
+    rowFn: it => `
     <tr>
       <td>${escHtml(it.collaborator)}</td>
       <td>${_fmtDateBR(it.date)}</td>
       <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
       <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
-    </tr>`).join('');
-}
+    </tr>`,
+  })
+);
+
+function _renderOverAllocTable(rows) { _overAllocPag.render(rows); }
 
 async function _loadOverAllocation() {
   const card = document.getElementById('overAllocCard');
@@ -3513,7 +3556,8 @@ async function _loadOverAllocation() {
   try {
     const items = await apiFetch(`/api/v2/over-allocation${qs}`);
     _overAllocData = items;
-    _renderOverAllocRows(_applySort('overAllocTable', _overAllocData));
+    _overAllocPag.reset();
+    _renderOverAllocTable(_applySort('overAllocTable', _overAllocData));
   } catch (e) {
     _overAllocData = [];
     body.innerHTML = `<tr><td colspan="4" class="td-empty">${_t('msg.err_generic')}</td></tr>`;
@@ -5486,7 +5530,7 @@ _makeSortable('auditTable',       [{key:'timestamp',type:'date'}, {key:'username
 _makeSortable('myHistoryTable',   [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
 _makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
-_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, rows => _renderOverAllocRows(rows));
+_makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, _renderOverAllocTable);
 
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');

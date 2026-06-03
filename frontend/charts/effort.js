@@ -25,8 +25,6 @@ function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
 
 // ============================================================
 // _buildHoursBarOption — Unified hours bar builder
-// Replaces: _buildEffortOption, _buildTrendsOption bar block,
-// and the inline tc.setOption({…}) in the timeline modal.
 // ============================================================
 function _buildHoursBarOption({
   data          = [],
@@ -34,7 +32,6 @@ function _buildHoursBarOption({
   orientation   = 'horizontal',   // 'horizontal' | 'vertical'
   stacked       = true,
   showTotal     = true,
-  richLabel     = false,
   maxItems      = 40,
   toolboxName   = 'PMAS-Horas',
 } = {}) {
@@ -54,41 +51,16 @@ function _buildHoursBarOption({
   );
   const maxTotal   = Math.max(...totals, 0);
 
-  // Quick lookup for richLabel (horizontal only)
-  const byCategory = Object.fromEntries(slice.map(r => [r[categoryKey], r]));
-
   // ── 2. Category axis ────────────────────────────────────────────────
   const categoryAxis = {
     type: 'category',
     data: categories,
     axisTick: { show: false },
-    axisLabel: richLabel && isHoriz
-      ? {
-          color:      _cssVar('--text'),
-          fontSize:   10,
-          lineHeight: 16,
-          formatter: name => {
-            const d  = byCategory[name];
-            if (!d) return name;
-            const t  = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-            const nm = name.length > 30 ? name.slice(0, 29) + '…' : name;
-            return (
-              `{nm|${nm}}\n` +
-              `{hr|N:${d.normal_hours.toFixed(1)}h  ` +
-              `E:${d.extra_hours.toFixed(1)}h  ` +
-              `S:${d.standby_hours.toFixed(1)}h  ∑${t}h}`
-            );
-          },
-          rich: {
-            nm: { color: _cssVar('--text'), fontSize: 10, lineHeight: 16 },
-            hr: { color: _cssVar('--text-3'), fontSize: 9,  lineHeight: 14 },
-          },
-        }
-      : {
-          color:    _cssVar('--text-3'),
-          fontSize: isHoriz ? 10 : 11,
-          rotate:   (!isHoriz && categories.length > 6) ? 30 : 0,
-        },
+    axisLabel: {
+      color:    _cssVar('--text-3'),
+      fontSize: 10,
+      rotate:   (!isHoriz && categories.length > 6) ? 30 : 0,
+    },
   };
 
   // ── 3. Value axis ────────────────────────────────────────────────────
@@ -101,7 +73,7 @@ function _buildHoursBarOption({
       fontSize:  10,
       formatter: v => `${v}h`,
     },
-    splitLine: { lineStyle: { color: _cssVar('--surface') } },
+    splitLine: { lineStyle: { color: _cssVar('--border') } },
   };
 
   // ── 4. Unified tooltip ───────────────────────────────────────────────
@@ -127,7 +99,6 @@ function _buildHoursBarOption({
 
   // ── 5. Bar series ────────────────────────────────────────────────────
   const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.05)' } };
-
   const barMaxWidth = isHoriz ? 32 : 48;
 
   const _barSerie = (name, data, color) => ({
@@ -141,8 +112,8 @@ function _buildHoursBarOption({
     label: {
       show:      !!stack,
       position:  'inside',
-      fontSize:  9,
-      color:     '#fff',
+      fontSize:  10,
+      color:     _cssVar('--text'),
       formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
     },
   });
@@ -155,25 +126,39 @@ function _buildHoursBarOption({
   ];
 
   // ── 6. Total line series (optional) ─────────────────────────────────
-  // position: 'right' in horizontal (G1), 'top' in vertical (G2/G3)
+  // Per-item data objects are used instead of callbacks so that each
+  // symbol's color and size are resolved once, avoiding ECharts quirks
+  // with itemStyle.color functions on line series.
+  const totalLineData = totals.map(v => {
+    const isPeak = v > 0 && v === maxTotal;
+    return {
+      value:      v,
+      symbol:     v === 0 ? 'none' : 'circle',
+      symbolSize: isPeak ? 10 : 6,
+      itemStyle:  { color: isPeak ? _cssVar('--red') : _cssVar('--green') },
+    };
+  });
+
   const totalLineSeries = showTotal ? [{
     name:       _t('stat.total'),
     type:       'line',
-    color:      '#10b981',
+    color:      _cssVar('--green'),
     legendIcon: 'circle',
-    data:       totals,
-    symbolSize: val => val === maxTotal ? 10 : 6,
+    data:       totalLineData,
     lineStyle:  { width: 1, type: 'dashed' },
-    itemStyle:  { color: p => p.value === maxTotal ? _cssVar('--red') : _cssVar('--green') },
     label: {
-      show:       true,
-      position:   isHoriz ? 'right' : 'top',
-      fontSize:   9,
-      color:      _cssVar('--green'),
-      formatter:  p => p.value === maxTotal
-        ? `{peak|${p.value.toFixed(1)}h}`
-        : `${p.value.toFixed(1)}h`,
-      rich: { peak: { color: _cssVar('--red'), fontSize: 9 } },
+      show:      !!stack,
+      position:  isHoriz ? 'right' : 'top',
+      fontSize:  10,
+      color:     _cssVar('--green'),
+      formatter: p => {
+        const v = p.value ?? 0;
+        if (v === 0) return '';
+        return v === maxTotal
+          ? `{peak|${v.toFixed(1)}h}`
+          : `${v.toFixed(1)}h`;
+      },
+      rich: { peak: { color: _cssVar('--red'), fontSize: 10 } },
     },
     z: 10,
   }] : [];
@@ -186,7 +171,7 @@ function _buildHoursBarOption({
     ...(showTotal ? [_t('stat.total')] : []),
   ];
 
-  // ── 8. Grid — margins adjusted by orientation and total presence ─────
+  // ── 8. Grid ──────────────────────────────────────────────────────────
   const grid = {
     top:          44,
     right:        showTotal && isHoriz  ? '8%'  :
@@ -204,14 +189,14 @@ function _buildHoursBarOption({
       subtext:      _t('chart.truncated').replace('{n}', maxItems),
       left:         'center',
       top:          4,
-      subtextStyle: { color: _cssVar('--text-3'), fontSize: 11 },
+      subtextStyle: { color: _cssVar('--text-3'), fontSize: 10 },
     } : undefined,
 
     legend: {
       data:       legendData,
       top:        8,
       left:       'center',
-      textStyle:  { color: _cssVar('--text'), fontSize: 12 },
+      textStyle:  { color: _cssVar('--text'), fontSize: 11 },
       itemGap:    24,
       itemWidth:  14,
       itemHeight: 10,
@@ -230,7 +215,6 @@ function _buildHoursBarOption({
     grid,
     tooltip,
 
-    // Axes: inverted position by orientation
     xAxis: isHoriz ? valueAxis    : categoryAxis,
     yAxis: isHoriz ? categoryAxis : valueAxis,
 

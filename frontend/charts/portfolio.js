@@ -5,6 +5,13 @@
  * Must be loaded AFTER app.js in index.html.
  */
 
+// Resolves the "ok/success" health color from the chart palette so it
+// follows the admin-configured palette color 1, not the fixed --green.
+function _healthColor(h) {
+  if (h === 'success') return _getPalette()[0] || _cssVar('--primary');
+  return _cssVar(_HCSS[h] || '--primary');
+}
+
 // ---------------------------------------------------------------------------
 // _buildEvmQuadrantOption — CPI × SPI scatter/bubble chart
 // ---------------------------------------------------------------------------
@@ -178,7 +185,7 @@ function _buildTreemapOption(health, evmMode = false) {
           itemStyle: {
             color: !d.is_registered
               ? _cssVar('--text-3')
-              : _cssVar(_HCSS[hColor] || '--primary'),
+              : _healthColor(hColor),
             borderColor: _cssVar('--bg'),
           },
         };
@@ -196,7 +203,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
   const actuals = withBudget.map(d => {
     const consumed = evmMode ? (d.total_cost || 0) * _currencyFactor : d.total_hours;
     const hColor = evmMode ? d.health_cost_color : d.health_hours_color;
-    const color  = _cssVar(_HCSS[hColor] || '--primary');
+    const color  = _healthColor(hColor);
     return { value: +consumed.toFixed(2), itemStyle: { color, borderRadius: [0, 2, 2, 0] } };
   });
   const unit = evmMode ? _currencySymbol : 'h';
