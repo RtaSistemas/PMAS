@@ -126,7 +126,7 @@ function _buildHoursBarOption({
   // ── 6. Total line series (optional) ─────────────────────────────────
   // Per-item data objects pre-resolve color and symbolSize so ECharts
   // does not need to call callbacks on a line series (unreliable in v5).
-  const _totalColor = _pal[3] || _pal[0] || _cssVar('--primary');
+  const _totalColor = _pal[4] || _pal[0] || _cssVar('--primary');
 
   const totalLineData = totals.map(v => {
     const isPeak = v > 0 && v === maxTotal;
@@ -144,11 +144,11 @@ function _buildHoursBarOption({
     color:      _totalColor,
     legendIcon: 'circle',
     data:       totalLineData,
-    lineStyle:  { width: 1.5, type: 'dashed', color: _totalColor },
+    lineStyle:  { width: 0.5, type: 'dashed', color: _totalColor },
     label: {
       show:      !!stack,
       position:  isHoriz ? 'right' : 'top',
-      fontSize:  10,
+      fontSize:  8,
       color:     _totalColor,
       formatter: p => {
         const v = typeof p.value === 'number' ? p.value : (p.data?.value ?? 0);
