@@ -56,6 +56,7 @@ def change_password(
         if not verify_password(body.current_password, target.hashed_password):
             raise HTTPException(status_code=400, detail="Senha atual incorreta.")
     target.hashed_password = hash_password(body.new_password)
+    target.must_change_password = False
     log_audit(db, current_user, "change_password", "user", user_id, {"target_username": target.username})
     db.commit()
     db.refresh(target)

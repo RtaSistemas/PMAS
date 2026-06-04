@@ -42,9 +42,8 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
-    token = jwt.encode(
-        {"sub": user.username, "role": user.role, "exp": expire},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    )
+    payload: dict = {"sub": user.username, "role": user.role, "exp": expire}
+    if getattr(user, "must_change_password", False):
+        payload["must_change"] = True
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return Token(access_token=token)

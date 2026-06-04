@@ -24,7 +24,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-406 tests across 15 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+590 tests across 20 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -38,15 +38,17 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 
 ### Backend (`backend/app/`)
 
-- **`main.py`** — Slim FastAPI app: CORS middleware, `include_router` for 16 router modules, static file mount, root redirect, startup hook (`init_db`).
-- **`models.py`** — 15 SQLAlchemy ORM models:
+- **`main.py`** — Slim FastAPI app: CORS middleware, rate limiting (slowapi), structured logging, `include_router` for the stable CRUD routers plus the full `/api/v2` analytics layer, static file mount, root redirect, lifespan hook (`init_db`).
+- **`models.py`** — 20 SQLAlchemy ORM models:
   - `SeniorityLevel` — unique name, linked to RateCard and Collaborator
   - `RateCard` — hourly_rate with valid_from / valid_to date range per seniority level
   - `Collaborator` — unique name, optional `seniority_level_id` FK, linked to records
   - `Cycle` — billing period with `start_date`, `end_date`, `is_closed` and `is_active` flags
   - `TimesheetRecord` — core entity linking collaborator + cycle + PEP + 4 hour fields + `cost_per_hour` (frozen at ingestion via EVM freeze pattern)
-  - `Project` — PEP registry with `budget_hours` and `budget_cost` for EVM tracking
-  - `ProjectCyclePlan` — planned hours/cost per (project, cycle) for baseline S-curve
+  - `Project` — PEP registry with `budget_hours`/`budget_cost`, plus `start_date`, `planned_end_date`, `completion_date` and `status` (`em_andamento`/`encerrado`) for EVM tracking
+  - `ProjectBaseline` — locked, approved budget revision per project (`is_active`, `locked_at`, `label`); authoritative budget when active
+  - `BudgetRevision` — append-only history of budget changes (hours/cost), surfaced as the budget-history sparkline
+  - `ProjectCyclePlan` — planned hours/cost (and optional `physical_pct`) per (project, cycle) for baseline S-curve
   - `User` — username, hashed_password, role (`admin`/`user`)
   - `GlobalConfig` — key/value store (logo path, UI theme overrides)
   - `AuditLog` — structured log: user, action, entity, old/new JSON snapshot
@@ -55,9 +57,14 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `UploadSession` — metadata record for each upload (filename, user, row counts, status)
   - `QuarantineRecord` — rows that failed validation, with review workflow (pending/approved/rejected)
   - `UserPreference` — per-user UI preferences (chart layout order, etc.)
+  - `PepCycleSummary` — pre-computed hours/cost per (pep_wbs, cycle); the fast path for v2 analytics, with raw `TimesheetRecord` aggregation as fallback
+  - `CollaboratorCycleSummary` — pre-computed hours/cost per (collaborator, cycle)
+  - `ThemePreset` — named UI theme presets (CRUD + CSV export/import)
 - **`schemas.py`** — All Pydantic input/output models: `CycleIn/Out`, `ProjectIn/Out`, `SeniorityLevelIn/Out`, `RateCardIn/Out`, `CollaboratorSeniorityIn`, `ImportResultOut`, `UserCreateIn`, `UserOut`, `ValidationRuleIn/Out`, `QuarantineRecordOut`, `UploadSessionOut`, `AlertSummaryOut`, `UserPreferenceIn/Out`, `UIThemeIn/Out`, `ProjectCyclePlanIn/Out`, `ForecastOut`, and others.
 - **`database.py`** — SQLite engine, `get_db()` dependency, `init_db()` (runs `create_all` + `_migrate_columns`). `_migrate_columns()` applies `ALTER TABLE` for columns added after the initial schema, upgrading existing `pmas.db` files safely on startup.
-- **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Multi-phase pipeline with a configurable validation rule engine.
+- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
+- **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Multi-phase pipeline with a configurable validation rule engine. Freezes cost via `freeze_costs` from `evm.py`.
+- **Other services** — `rule_engine.py` (per-row rule evaluation), `summaries.py` (maintains `PepCycleSummary`/`CollaboratorCycleSummary`), `quarantine_svc.py`, `upload_session_svc.py`, `theme_svc.py`.
 
 ### Backend Routers (`backend/app/routers/`)
 
@@ -68,10 +75,9 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 | `auditlog.py` | `/api` | `GET /audit-log` (admin) |
 | `cycles.py` | `/api/cycles` | CRUD + CSV import/export for billing cycles |
 | `projects.py` | `/api/projects` | CRUD + CSV import/export for projects/PEPs |
-| `plans.py` | `/api/projects` | `/{id}/plans` CRUD, `GET /plans/export`, `POST /plans/import` — baseline S-curve |
+| `plans.py` | `/api/projects` | `/{id}/plans` CRUD, `GET /plans/export`, `POST /plans/import` — baseline S-curve (planned hours/cost per cycle) |
+| `baselines.py` | `/api/projects` | `/{id}/baselines` — lock/activate budget baselines + `/{id}/budget-history` revision log |
 | `dashboard.py` | `/api/dashboard` | Hour aggregation by collaborator; supports `date_from`/`date_to` |
-| `reference.py` | `/api` | `/collaborators` and `/peps` for cascading filters |
-| `analytics.py` | `/api` | `/portfolio-health` and `/trends` — includes `actual_cost`, `budget_cost`; supports `date_from`/`date_to` |
 | `ratecard.py` | `/api` | `/seniority-levels`, `/rate-cards`, `/team`, `/team/{id}/seniority` — all with CSV import/export |
 | `acl.py` | `/api/projects` | `/{id}/access` — per-user PEP whitelist management (admin) |
 | `upload.py` | `/api` | `POST /upload-timesheet`, `GET /upload-history[/{id}]` |
@@ -79,6 +85,24 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 | `validation_rules.py` | `/api/validation-rules` | CRUD + toggle + reorder for the rule engine |
 | `my.py` | `/api/my` | Per-user: preferences, upload history, quarantine view, budget alerts |
 | `theme.py` | `/api/theme` | `GET/PUT` global UI theme, logo upload/delete |
+
+### v2 Analytics Routers (`backend/app/routers/v2/`)
+
+All analytics consumed by the frontend live under `/api/v2`. These responses are **render-ready**: every EVM number (CPI, SPI, EAC, TCPI, VAC, CV, SV, deltas, colors, labels) is computed server-side via `services/evm.py` so the frontend performs no EVM arithmetic. All v2 endpoints enforce the per-user PEP ACL via `_allowed_peps` and prefer `PepCycleSummary` with a raw `TimesheetRecord` fallback. The v1 `analytics`/`reference` routers were removed during the v2 migration.
+
+| File | Prefix | Responsibility |
+|---|---|---|
+| `filters.py` | `/api/v2` | Cascading filter options (collaborators, PEPs, cycles) |
+| `portfolio.py` | `/api/v2` | `/portfolio` — treemap + bullet (EVM-aware, hours/R$), `_allowed_peps` ACL helper reused by other v2 routers |
+| `effort.py` | `/api/v2` | Hour aggregation by collaborator (Esforço da Equipe) |
+| `trends.py` | `/api/v2` | Per-cycle trends line (hours + cost, period deltas) |
+| `forecast.py` | `/api/v2` | Full EVM forecast per PEP — CPI/SPI/EAC/TCPI/VAC/CV/SV, Earned Schedule (ES/SPI(t)/SV(t)/IEAC(t)), S-curve history, uncertainty band; supports Physical Percent Complete and closed-project freeze |
+| `allocation.py` | `/api/v2` | Hours allocation matrix (collaborator × PEP/cycle) |
+| `concentration.py` | `/api/v2` | Contributor concentration risk (top-1 dependency) |
+| `runway.py` | `/api/v2` | `/runway` — cycles-to-complete + SPI/CPI/risk per PEP, frozen-cost based |
+| `over_allocation.py` | `/api/v2` | Over-allocation detection (collaborators exceeding capacity) with filters/sort/CSV |
+| `simulate.py` | `/api/v2` | `POST /projects/{id}/simulate` — What-If scenario (velocity multiplier + extra hours → cycles-to-complete, projected EAC, burn-up) |
+| `monte_carlo.py` | `/api/v2` | `GET /projects/{id}/monte-carlo` — N-iteration probabilistic completion forecast → P10/P50/P90 + histogram |
 
 ### Frontend (`frontend/`)
 
@@ -88,7 +112,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 - **`app.js`** — All client logic:
   - **Auth:** JWT Bearer token stored in `sessionStorage`. `_getTokenPayload()` decodes it. `_isAdmin()` gates admin UI. `_bootApp()` is the central init called after login and on page load with a valid token.
   - **Header:** `_updateHeaderUser()` shows the logged-in username where "Gestão de Projetos" appears.
-  - **Semaphore:** `loadSemaphore()` fetches `/api/portfolio-health` (no filters) and renders a macro traffic-light bar — green/yellow/red/grey per project, with dot + count summary and pill per project.
+  - **Semaphore:** `loadSemaphore()` fetches `/api/v2/portfolio` (no filters) and renders a macro traffic-light bar — green/yellow/red/grey per project, with dot + count summary and pill per project. Clicking a pill drills down into the Portfolio tab filtered by that PEP.
   - **ECharts lifecycle:** `CHARTS_PER_TAB` registry, `_disposeTabCharts()` on sub-tab leave, `_getOrCreateChart()` on enter, single `ResizeObserver` on `<main>` for responsiveness.
   - **Analytics sub-tabs:** `_renderEffortTab()`, `_renderPortfolioTab()`, `_renderForecastTab()`. Chart builders: effort bars, treemap (EVM-aware), bullet chart (EVM-aware), trends line, S-curve forecast.
   - **`_evmMode` boolean** — toggles Portfolio tab between hours and R$ views.
@@ -121,10 +145,10 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 ### Data Flow
 
 1. **Upload:** `POST /api/upload-timesheet` → `ingest_file()` → `_lookup_rate()` freezes `cost_per_hour` → creates `Collaborator` + `Cycle` rows → inserts `TimesheetRecord` rows → records `UploadSession` + any `QuarantineRecord` rows.
-2. **Esforço da Equipe:** `/api/dashboard[/{cycle_id}]?date_from=&date_to=` → `GROUP BY collaborator` → horizontal stacked/grouped bar chart + client-side CSV export.
-3. **Saúde do Portfólio:** `/api/portfolio-health?date_from=&date_to=` → `GROUP BY pep_wbs` → joined with `Project` → Treemap + Bullet Chart. Toggle Horas/R$ switches between `consumed_hours`/`budget_hours` and `actual_cost`/`budget_cost`.
-4. **Tendências:** `/api/trends?date_from=&date_to=` → `GROUP BY cycle` ordered by `start_date` (quarantine excluded) → Line chart (includes `actual_cost` per cycle).
-5. **Previsão:** `/api/projects/{id}/plans` → per-cycle planned vs actual hours/cost → S-curve chart.
+2. **Esforço da Equipe:** `/api/v2/effort?date_from=&date_to=` → `GROUP BY collaborator` → horizontal stacked/grouped bar chart + client-side CSV export.
+3. **Saúde do Portfólio:** `/api/v2/portfolio?date_from=&date_to=` → `GROUP BY pep_wbs` → joined with `Project` → Treemap + Bullet Chart. Toggle Horas/R$ switches between `consumed_hours`/`budget_hours` and `actual_cost`/`budget_cost`.
+4. **Tendências:** `/api/v2/trends?date_from=&date_to=` → `GROUP BY cycle` ordered by `start_date` (quarantine excluded) → Line chart (includes `actual_cost` per cycle).
+5. **Previsão:** `/api/v2/forecast?pep_wbs=` (full EVM, render-ready) + `/api/projects/{id}/plans` baseline → per-cycle planned vs actual hours/cost → S-curve, burn-up, and EVM cards. What-If (`/simulate`) and Monte Carlo (`/monte-carlo`) panels layer scenario and probabilistic forecasts on top.
 
 ### Key Behaviors
 
@@ -145,7 +169,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 - **ValidationRule engine:** Ordered list of rules evaluated per row. Each rule has a `field`, `operator`, `value`, `action` (`quarantine`/`warn`/`reject`), and `is_active` flag. System rules cannot be deleted, only toggled.
 - **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin) and `/api/my/upload-history` (own uploads only).
 - **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine`.
-- **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all. Enforced in `/api/portfolio-health` and `/api/dashboard`.
+- **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all. Enforced across every `/api/v2/*` analytics endpoint via the shared `_allowed_peps` helper (`v2/portfolio.py`), and in `/api/dashboard`.
 - **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for new columns so production databases upgrade non-destructively.
 - **ECharts management:** Charts are initialized only after their container is visible. `dispose()` is called when leaving a sub-tab. A single `ResizeObserver` on `<main>` handles all resize events.
 - **Client-side CSV export:** "Exportar CSV" in Effort tab uses `_lastEffortData` cache, builds a CSV string, creates a `Blob` URL, and triggers download — no server round-trip. Seniority and rate card exports also use client-side cached arrays.
@@ -158,21 +182,26 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 
 | File | Tests | Coverage |
 |---|---|---|
-| `test_full_sample.py` | 108 | End-to-end upload + analytics pipeline |
-| `test_ingestion.py` | 65 | CSV/XLSX parsing, quarantine, rule engine integration |
-| `test_analytics.py` | 36 | portfolio-health, trends, EVM cost |
+| `test_evm_service.py` | 104 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None) |
+| `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
+| `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints (filters, portfolio, effort, trends, forecast, allocation, concentration) |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
 | `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
+| `test_projects.py` | 27 | CRUD de projetos + EVM fields (start/planned-end/completion dates, status) |
+| `test_theme.py` | 24 | UI theme CRUD + theme presets |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
+| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk) |
 | `test_users.py` | 22 | User CRUD, password change, role enforcement |
 | `test_cycles.py` | 20 | CRUD de ciclos |
-| `test_projects.py` | 16 | CRUD de projetos |
-| `test_reference.py` | 13 | `/collaborators` and `/peps` filter endpoints |
-| `test_dashboard.py` | 11 | Hour aggregation, ACL filtering |
+| `test_evm_integrity.py` | 20 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC |
+| `test_over_allocation.py` | 13 | `/api/v2/over-allocation` detection (filters, sort, CSV) |
 | `test_validation_rules.py` | 10 | ValidationRule API |
+| `test_monte_carlo.py` | 8 | `/api/v2/.../monte-carlo` (P10/P50/P90, histogram, insufficient-data guard) |
+| `test_simulate.py` | 7 | `/api/v2/.../simulate` What-If (velocity window, projected EAC, burn-up) |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
-| `test_theme.py` | 5 | UI theme CRUD |
-| **Total** | **406** | |
+| `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
+| **Total** | **590** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.

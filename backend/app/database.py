@@ -106,6 +106,7 @@ def _seed_admin() -> None:
                 username="admin",
                 hashed_password=_bcrypt.hashpw(b"admin", _bcrypt.gensalt()).decode(),
                 role="admin",
+                must_change_password=True,
             ))
             db.commit()
             log.warning(
@@ -206,6 +207,11 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN extra_cost FLOAT"))
             if "standby_cost" not in tr_cols:
                 conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
+            u_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(\"user\")"))}
+            if "must_change_password" not in u_cols:
+                conn.execute(text(
+                    "ALTER TABLE \"user\" ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
+                ))
             # budget_revision table (F7)
             tables = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
             if "budget_revision" not in tables:
