@@ -1095,6 +1095,12 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
     // Cost Composition chart — G3
     _renderCostCompositionChart(trends);
 
+    // Sync tooltips: hover on a cycle in either chart highlights the same cycle in the other
+    const cc = _charts['costCompositionChart'];
+    if (tc && cc && !tc.isDisposed() && !cc.isDisposed()) {
+      echarts.connect([tc, cc]);
+    }
+
     // Per-PEP CPI panel (toggle-controlled)
     if (!_pepCpiMode) {
       document.getElementById('pepCpiPanel').hidden = true;
@@ -1770,7 +1776,7 @@ async function _runWhatIf() {
       const wc = _getOrCreateChart('whatIfBurnUpChart');
       wc.setOption({
         ..._chartDefaults(),
-        grid: { top: 36, right: '4%', bottom: 32, left: '2%', containLabel: true },
+        grid: { top: 44, right: '4%', bottom: 32, left: '2%', containLabel: true },
         legend: {
           data: [_t('sim.burnup.projected'), ...(budget != null ? [_t('sim.burnup.budget')] : [])],
           top: 4, left: 'center',
