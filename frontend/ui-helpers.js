@@ -76,6 +76,7 @@ function _chartDefaults() {
       borderColor:     _cssVar('--border'),
       textStyle:       { color: _cssVar('--text'), fontSize: 12 },
     },
+    aria: { enabled: true, decal: { show: true } },
   };
 }
 

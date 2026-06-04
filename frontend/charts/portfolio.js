@@ -113,7 +113,7 @@ function _buildEvmQuadrantOption(items) {
           _raw: d,
         };
       }),
-      emphasis: { scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
+      emphasis: { focus: 'self', scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
       markLine: {
         silent: true, symbol: 'none',
         lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
@@ -195,6 +195,7 @@ function _buildTreemapOption(health, evmMode = false) {
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
       },
+      emphasis: { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
       itemStyle: { gapWidth: 2, borderRadius: 4 },
       levels: [{
         itemStyle: { borderWidth: 0, gapWidth: 4 },
@@ -277,6 +278,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         type: 'bar',
         barMaxWidth: 48,
         barGap: '-100%',
+        emphasis: { focus: 'series' },
         z: 1,
         data: budgets.map(b => ({
           value: b,
@@ -293,6 +295,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         type: 'bar',
         barMaxWidth: 28,
         barGap: '-100%',
+        emphasis: { focus: 'series' },
         z: 2,
         data: actuals,
         label: {

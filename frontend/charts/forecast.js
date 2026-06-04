@@ -61,6 +61,7 @@ function _buildForecastOption(fc) {
       lineStyle: { color: _fC0, width: 2.5 },
       itemStyle: { color: _fC0 },
       areaStyle: { color: _fC0 + '1a' },
+      emphasis:  { focus: 'series' },
       connectNulls: false,
       ...(lastHistoryCat ? {
         markLine: {
@@ -79,6 +80,7 @@ function _buildForecastOption(fc) {
       smooth: false, symbol: 'circle', symbolSize: 5,
       lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
       itemStyle: { color: _cssVar('--text-3') },
+      emphasis:  { focus: 'series' },
       connectNulls: false,
     },
   ];
@@ -91,6 +93,7 @@ function _buildForecastOption(fc) {
       symbol: 'none',
       lineStyle: { color: _fC3, width: 2, type: 'dotted' },
       itemStyle: { color: _fC3 },
+      emphasis:  { focus: 'series' },
       connectNulls: true,
     });
   }
@@ -102,6 +105,7 @@ function _buildForecastOption(fc) {
       symbol: 'none',
       lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
       itemStyle: { color: _cssVar('--amber') },
+      emphasis:  { focus: 'series' },
     });
   }
 
@@ -170,6 +174,7 @@ function _buildBurnUpOption(fc) {
       symbol: 'none', connectNulls: true,
       lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
       itemStyle: { color: '#94a3b8' },
+      emphasis:  { focus: 'series' },
     },
     {
       name: _t('burnup.ev'),
@@ -178,6 +183,7 @@ function _buildBurnUpOption(fc) {
       lineStyle: { color: _cssVar('--green') || '#22c55e', width: 2.5 },
       itemStyle: { color: _cssVar('--green') || '#22c55e' },
       areaStyle: { color: (_cssVar('--green') || '#22c55e') + '18' },
+      emphasis:  { focus: 'series' },
     },
     {
       name: _t('burnup.ac'),
@@ -185,6 +191,7 @@ function _buildBurnUpOption(fc) {
       symbol: 'circle', symbolSize: 5, connectNulls: false,
       lineStyle: { color: _cssVar('--red') || '#ef4444', width: 2.5 },
       itemStyle: { color: _cssVar('--red') || '#ef4444' },
+      emphasis:  { focus: 'series' },
     },
   ];
   if (fc.eac != null) {
@@ -195,6 +202,7 @@ function _buildBurnUpOption(fc) {
       symbol: 'none',
       lineStyle: { color: eacColor, width: 1.5, type: 'dotted' },
       itemStyle: { color: eacColor },
+      emphasis:  { focus: 'series' },
       tooltip: { formatter: () => `EAC: ${_fmtR(fc.eac)}` },
     });
   }

@@ -7,7 +7,10 @@
 // ---------------------------------------------------------------------------
 // calcHeight — dynamic chart height based on item count
 // ---------------------------------------------------------------------------
-function calcHeight(count) { return Math.max(360, Math.min(count, 40) * 40 + 100); }
+function calcHeight(count) {
+  // Cap visible rows at 15 — excess items scroll via the dataZoom slider
+  return Math.max(360, Math.min(count, 15) * 40 + 100);
+}
 
 // ---------------------------------------------------------------------------
 // _buildEffortTitle — title string for the effort chart
@@ -107,6 +110,7 @@ function _buildHoursBarOption({
     data,
     itemStyle:   { color },
     barMaxWidth,
+    emphasis:    { focus: 'series' },
     label: {
       show:      !!stack,
       position:  'inside',
@@ -143,6 +147,7 @@ function _buildHoursBarOption({
     type:       'line',
     color:      _totalColor,
     legendIcon: 'circle',
+    emphasis:   { focus: 'series' },
     data:       totalLineData,
     lineStyle:  { width: 1.5, type: 'dashed', color: _totalColor },
     label: {
@@ -170,17 +175,46 @@ function _buildHoursBarOption({
     ...(showTotal ? [_t('stat.total')] : []),
   ];
 
-  // ── 8. Grid ──────────────────────────────────────────────────────────
+  // ── 8. DataZoom — slider + inside scroll when items exceed visible threshold ──
+  const ZOOM_VISIBLE = isHoriz ? 15 : 12;
+  const needsZoom    = slice.length > ZOOM_VISIBLE;
+  const _zoomBase    = {
+    backgroundColor: _cssVar('--surface'),
+    fillerColor:     _cssVar('--primary') + '22',
+    borderColor:     _cssVar('--border'),
+    handleStyle:     { color: _cssVar('--primary') },
+    moveHandleStyle: { color: _cssVar('--primary') },
+    textStyle:       { color: _cssVar('--text-3'), fontSize: 9 },
+    emphasis: {
+      handleStyle:     { color: _cssVar('--primary') },
+      moveHandleStyle: { color: _cssVar('--primary') },
+    },
+    brushSelect: false,
+    startValue:  0,
+    endValue:    ZOOM_VISIBLE - 1,
+  };
+  const dataZoom = needsZoom ? [
+    isHoriz
+      ? { ..._zoomBase, type: 'slider', yAxisIndex: 0, width: 14, right: 4, filterMode: 'filter' }
+      : { ..._zoomBase, type: 'slider', xAxisIndex: 0, height: 14, bottom: 4, filterMode: 'filter' },
+    isHoriz
+      ? { type: 'inside', yAxisIndex: 0,  zoomOnMouseWheel: false, moveOnMouseWheel: true }
+      : { type: 'inside', xAxisIndex: 0,  zoomOnMouseWheel: false, moveOnMouseWheel: true },
+  ] : [];
+
+  // ── 9. Grid ──────────────────────────────────────────────────────────
   const grid = {
     top:          44,
-    right:        showTotal && isHoriz  ? '8%' :
-                  showTotal && !isHoriz ? '6%' : '3%',
-    bottom:       isHoriz ? 28 : 56,
+    right:        needsZoom && isHoriz && showTotal ? '11%' :
+                  needsZoom && isHoriz              ? '4%'  :
+                  showTotal && isHoriz              ? '8%'  :
+                  showTotal && !isHoriz             ? '6%'  : '3%',
+    bottom:       isHoriz ? 28 : (needsZoom ? 44 : 56),
     left:         '2%',
     containLabel: true,
   };
 
-  // ── 9. Final assembly ────────────────────────────────────────────────
+  // ── 10. Final assembly ───────────────────────────────────────────────
   return {
     ..._chartDefaults(),
 
@@ -216,6 +250,8 @@ function _buildHoursBarOption({
 
     xAxis: isHoriz ? valueAxis    : categoryAxis,
     yAxis: isHoriz ? categoryAxis : valueAxis,
+
+    ...(dataZoom.length ? { dataZoom } : {}),
 
     series: [...barSeries, ...totalLineSeries],
   };

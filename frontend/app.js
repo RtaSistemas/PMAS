@@ -974,9 +974,9 @@ function _renderCostCompositionChart(trends) {
     xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
     yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
     series: [
-      { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] } },
-      { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] } },
-      { name: _t('trends.standby'), type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] } },
+      { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] }, emphasis: { focus: 'series' } },
+      { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] }, emphasis: { focus: 'series' } },
+      { name: _t('trends.standby'), type: 'bar', stack: 'cost', data: standbyData, itemStyle: { color: pal[2] }, emphasis: { focus: 'series' } },
     ],
   }, true);
   cc.resize();
@@ -1602,6 +1602,7 @@ function _renderVelocitySparkline(fc) {
       type: 'bar', data: vals, name: _t('forecast.realized'),
       barMaxWidth: 32,
       itemStyle: { color: barColor, borderRadius: [2, 2, 0, 0] },
+      emphasis: { focus: 'series' },
       markLine: {
         silent: true, symbol: 'none',
         lineStyle: { color: avgColor, width: 1.5, type: 'dashed' },
@@ -1790,11 +1791,13 @@ async function _runWhatIf() {
             itemStyle: { color: _cssVar('--primary') },
             symbol: 'circle', symbolSize: 5, connectNulls: true,
             areaStyle: { color: (_cssVar('--primary') || '#6366f1') + '22' },
+            emphasis: { focus: 'series' },
           },
           ...(budget != null ? [{
             name: _t('sim.burnup.budget'), type: 'line', data: cats.map(() => budget),
             symbol: 'none', lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
             itemStyle: { color: _cssVar('--amber') },
+            emphasis: { focus: 'series' },
           }] : []),
         ],
       }, true);
@@ -1869,6 +1872,7 @@ async function _runMonteCarlo() {
           smooth:    true,
           symbol:    'none',
           lineStyle: { color: bellColor, width: 1.5, type: 'dashed' },
+          emphasis:  { focus: 'series' },
           z:         10,
         });
       }
@@ -1908,7 +1912,7 @@ async function _runMonteCarlo() {
         },
         series: [
           {
-            type: 'bar', data: barData, barMaxWidth: 36,
+            type: 'bar', data: barData, barMaxWidth: 36, emphasis: { focus: 'series' },
             markLine: {
               symbol: 'none',
               silent: true,
