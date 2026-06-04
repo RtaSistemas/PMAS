@@ -898,6 +898,11 @@ async function _renderPortfolioTab() {
       const sc = _getOrCreateChart('scatterChart');
       sc.setOption(_buildEvmQuadrantOption(quadrantItems), true);
       sc.resize();
+      sc.off('brushSelected');
+      sc.on('brushSelected', params => {
+        const indices = params.batch?.[0]?.selected?.[0]?.dataIndex ?? [];
+        _renderScatterBrushResult(indices, quadrantItems);
+      });
     } else {
       _showEmpty('scatterEmpty', quadrantItems.length === 0);
       document.getElementById('scatterPanel').hidden = true;
@@ -2458,6 +2463,61 @@ function _toolbox(extra = {}, name = 'PMAS') {
 
 
 // _buildEvmQuadrantOption — moved to charts/portfolio.js
+
+// ---------------------------------------------------------------------------
+// _renderScatterBrushResult — summary table shown below the EVM quadrant
+// when the user draws a brush rectangle selecting one or more projects.
+// ---------------------------------------------------------------------------
+function _renderScatterBrushResult(indices, items) {
+  const panel = document.getElementById('scatterBrushResult');
+  if (!panel) return;
+
+  if (!indices.length) { panel.hidden = true; return; }
+
+  const sel  = indices.map(i => items[i]).filter(Boolean);
+  const hcss = { success: '--green', warning: '--amber', danger: '--red' };
+  const dim  = 'color:var(--text-3)';
+
+  const rows = sel.map(d => {
+    const cC = `color:var(${hcss[d.cpi_color] || '--text'})`;
+    const sC = `color:var(${hcss[d.spi_color] || '--text'})`;
+    return `<tr>
+      <td style="font-weight:600;white-space:nowrap">${escHtml(d.pep_wbs)}</td>
+      <td style="${dim};font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.name || '—')}</td>
+      <td style="${cC};font-weight:700;text-align:right">${d.cpi.toFixed(2)}</td>
+      <td style="${sC};font-weight:700;text-align:right">${d.spi.toFixed(2)}</td>
+      <td style="text-align:right;${dim};font-size:10px">${d.total_hours != null ? d.total_hours.toFixed(0) + 'h' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <span style="font-size:.8rem;color:var(--text-2);font-weight:600">
+        ${_t('scatter.brush_n_selected').replace('{n}', sel.length)}
+      </span>
+      <button id="scatterBrushClear" class="btn btn-sm"
+        style="font-size:.75rem;padding:2px 10px;line-height:1.4">${_t('scatter.brush_clear')}</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" style="font-size:11px;width:100%">
+        <thead><tr>
+          <th>PEP</th>
+          <th data-i18n="lbl.name">Nome</th>
+          <th style="text-align:right">CPI</th>
+          <th style="text-align:right">SPI</th>
+          <th style="text-align:right" data-i18n="ch.hours">Horas</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('scatterBrushClear')?.addEventListener('click', () => {
+    const sc = _charts['scatterChart'];
+    if (sc && !sc.isDisposed()) sc.dispatchAction({ type: 'brush', areas: [] });
+    panel.hidden = true;
+  });
+}
 
 // _buildTreemapOption — moved to charts/portfolio.js
 

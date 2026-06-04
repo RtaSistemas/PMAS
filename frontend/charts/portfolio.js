@@ -49,7 +49,23 @@ function _buildEvmQuadrantOption(items) {
 
   return {
     ..._chartDefaults(),
-    toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
+    brush: {
+      brushStyle: {
+        borderWidth: 1,
+        color:       'rgba(148,163,184,0.10)',
+        borderColor: _cssVar('--primary'),
+      },
+      outOfBrush: { colorAlpha: 0.15 },
+    },
+    toolbox: _toolbox({
+      brush: {
+        type:  ['rect', 'clear'],
+        title: {
+          rect:  _t('toolbox.brush_rect'),
+          clear: _t('toolbox.brush_clear'),
+        },
+      },
+    }, 'PMAS-EVM-Quadrant'),
     tooltip: {
       trigger: 'item',
       ..._chartDefaults().tooltip,
