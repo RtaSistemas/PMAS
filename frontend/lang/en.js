@@ -45,6 +45,8 @@ window._LANG_EN = {
     'portfolio.empty':'No hour data found for the selected filters.',
     'portfolio.note':'Gray blocks = PEP without registered project',
     'btn.view_hours':'View: Hours','btn.view_cost':'View: R$',
+    'btn.timeline_on':'By Cycle','btn.timeline_off':'Accumulated',
+    'portfolio.treemap_timeline_h':'Evolution by Cycle — Hours','portfolio.treemap_timeline_r':'Evolution by Cycle — R$',
     'btn.view_cpi':'View: CPI per PEP','btn.hide_cpi':'Hide CPI per PEP',
     'bullet.title':'Budget vs. Actual — Bullet Chart',
     'pepcpi.title':'CPI per PEP by Cycle',

@@ -223,6 +223,7 @@ let _activeATab = 'effort';
 let _stackMode  = true;   // true = stacked, false = grouped
 let _evmMode    = false;  // false = hours, true = R$
 let _pepCpiMode = false;  // false = hidden, true = per-PEP CPI panel visible
+let _portfolioTimelineMode = false;  // false = aggregated treemap, true = cycle timeline
 
 const atabBtns     = document.querySelectorAll('.atab-btn');
 const atabSections = document.querySelectorAll('.atab-section');
@@ -244,6 +245,15 @@ atabBtns.forEach(btn => {
 document.getElementById('evmToggleBtn').addEventListener('click', () => {
   _evmMode = !_evmMode;
   document.getElementById('evmToggleBtn').textContent = _evmMode ? _t('btn.view_cost') : _t('btn.view_hours');
+  _renderPortfolioTab();
+});
+
+document.getElementById('timelineToggleBtn').addEventListener('click', () => {
+  _portfolioTimelineMode = !_portfolioTimelineMode;
+  document.getElementById('timelineToggleBtn').textContent =
+    _portfolioTimelineMode ? _t('btn.timeline_off') : _t('btn.timeline_on');
+  document.getElementById('timelineToggleBtn').classList.toggle('btn-primary', _portfolioTimelineMode);
+  document.getElementById('timelineToggleBtn').classList.toggle('btn-secondary', !_portfolioTimelineMode);
   _renderPortfolioTab();
 });
 
@@ -451,6 +461,9 @@ clearBtn.addEventListener('click', () => {
   pepDataCache = {};
   _evmMode = false;
   document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
+  _portfolioTimelineMode = false;
+  const _tlBtn = document.getElementById('timelineToggleBtn');
+  if (_tlBtn) { _tlBtn.textContent = _t('btn.timeline_on'); _tlBtn.className = 'btn btn-secondary btn-sm'; }
   _pepCpiMode = false;
   document.getElementById('cpiToggleBtn').textContent = _t('btn.view_cpi');
   document.getElementById('pepCpiPanel').hidden = true;
@@ -828,13 +841,20 @@ async function _renderPortfolioTab() {
   if (dateFrom) p.set('date_from', dateFrom);
   if (dateTo)   p.set('date_to',   dateTo);
 
+  // by-cycle uses only PEP filter (no date range — cycle is the time axis)
+  const byCycleP = new URLSearchParams();
+  pepCodes.forEach(c => byCycleP.append('pep_wbs', c));
+
   _setChartLoading(['treemapChart'], true);
   try {
-    const [health, trends, runway, concentration] = await Promise.all([
+    const [health, trends, runway, concentration, byCycle] = await Promise.all([
       apiFetch(`/api/v2/portfolio?${p}`),
       apiFetch(`/api/v2/trends?${p}`).catch(() => []),
       apiFetch(`/api/v2/runway?${p}`).catch(() => []),
       apiFetch(`/api/v2/concentration?${p}`).catch(() => []),
+      _portfolioTimelineMode
+        ? apiFetch(`/api/v2/portfolio/by-cycle?${byCycleP}`).catch(() => [])
+        : Promise.resolve([]),
     ]);
     _setChartLoading(['treemapChart'], false);
 
@@ -860,14 +880,26 @@ async function _renderPortfolioTab() {
     _showEmpty('portfolioEmpty', false);
 
     // Update treemap title
-    document.getElementById('portfolioTreemapTitle').textContent =
-      _evmMode ? _t('portfolio.treemap_r') : _t('portfolio.treemap_h');
+    document.getElementById('portfolioTreemapTitle').textContent = _portfolioTimelineMode
+      ? (_evmMode ? _t('portfolio.treemap_timeline_r') : _t('portfolio.treemap_timeline_h'))
+      : (_evmMode ? _t('portfolio.treemap_r') : _t('portfolio.treemap_h'));
 
     // Treemap — dynamic height: 220px for ≤4 PEPs, +55px per extra PEP, cap 440px
+    // Timeline mode adds 72px for the cycle scrubber
+    const treemapBaseH = health.length <= 4 ? 220 : Math.min(440, 220 + (health.length - 4) * 55);
     document.getElementById('treemapChart').style.height =
-      (health.length <= 4 ? 220 : Math.min(440, 220 + (health.length - 4) * 55)) + 'px';
+      (_portfolioTimelineMode && byCycle.length ? treemapBaseH + 72 : treemapBaseH) + 'px';
+    // Always dispose to avoid stale timeline component when switching modes
+    if (_charts['treemapChart'] && !_charts['treemapChart'].isDisposed()) {
+      _charts['treemapChart'].dispose();
+      delete _charts['treemapChart'];
+    }
     const tm = _getOrCreateChart('treemapChart');
-    tm.setOption(_buildTreemapOption(health, _evmMode), true);
+    if (_portfolioTimelineMode && byCycle.length) {
+      tm.setOption(_buildTimelineTreemapOption(byCycle, _evmMode), true);
+    } else {
+      tm.setOption(_buildTreemapOption(health, _evmMode), true);
+    }
     tm.resize();
 
     // Bullet chart — in hours mode use budget_hours, in R$ mode use budget_cost

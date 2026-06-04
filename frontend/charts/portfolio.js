@@ -236,6 +236,121 @@ function _buildTreemapOption(health, evmMode = false) {
 }
 
 // ---------------------------------------------------------------------------
+// _buildTimelineTreemapOption — treemap with ECharts timeline scrubber
+// ---------------------------------------------------------------------------
+function _buildTimelineTreemapOption(snapshots, evmMode) {
+  const defaults = _chartDefaults();
+  const dim = _cssVar('--text-3');
+
+  function _makeData(health) {
+    return health.map(d => {
+      const consumed = evmMode ? d.total_cost : d.total_hours;
+      const hColor   = evmMode ? d.health_cost_color : d.health_hours_color;
+      return {
+        name:      d.pep_wbs,
+        value:     consumed,
+        itemStyle: {
+          color:       !d.is_registered ? _cssVar('--text-3') : _healthColor(hColor),
+          borderColor: _cssVar('--bg'),
+        },
+        _raw: d,
+      };
+    });
+  }
+
+  return {
+    baseOption: {
+      ...defaults,
+      toolbox: _toolbox({}, 'PMAS-Treemap-Timeline'),
+      tooltip: {
+        trigger: 'item',
+        ...defaults.tooltip,
+        formatter: params => {
+          const d = params.data?._raw;
+          if (!d) return escHtml(params.name);
+          const fmtVal = v => evmMode ? _fmtCost(v) : v.toFixed(1) + 'h';
+          const consumed = evmMode ? d.total_cost : d.total_hours;
+          const budget   = evmMode ? d.budget_cost : d.budget_hours;
+          let html = `<b>${escHtml(d.pep_wbs)}</b>`;
+          if (d.pep_description) html += `<br><span style="color:${dim}">${escHtml(d.pep_description)}</span>`;
+          if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
+          html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
+          if (budget != null) {
+            const pct = (consumed / budget * 100).toFixed(1);
+            html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
+          }
+          if (!d.is_registered) html += `<br><span style="color:${_cssVar('--amber')}">${_t('tt.pep_not_reg')}</span>`;
+          return html;
+        },
+      },
+      timeline: {
+        axisType:     'category',
+        autoPlay:     false,
+        playInterval: 1500,
+        data:         snapshots.map(s => s.cycle_name),
+        left: 0, right: 0, bottom: 4,
+        height: 52,
+        padding: [4, 10, 4, 10],
+        currentIndex: snapshots.length - 1,
+        controlStyle: {
+          color:       _cssVar('--primary'),
+          borderColor: 'transparent',
+        },
+        checkpointStyle: {
+          color:       _cssVar('--primary'),
+          borderColor: _cssVar('--primary'),
+          symbol:      'circle',
+          symbolSize:  12,
+          animation:   false,
+        },
+        label: {
+          color:    dim,
+          fontSize: 9,
+          formatter: val => val.length > 9 ? val.slice(0, 8) + '…' : val,
+        },
+        lineStyle:    { color: _cssVar('--border') },
+        itemStyle:    { color: _cssVar('--border') },
+        emphasis: {
+          label:     { color: _cssVar('--text'), fontSize: 10 },
+          itemStyle: { color: _cssVar('--primary') },
+        },
+        tooltip: { show: false },
+        symbol:     'circle',
+        symbolSize: 7,
+      },
+      series: [{
+        type:  'treemap',
+        roam:  false,
+        left:  0,
+        right: 0,
+        top:   0,
+        bottom: 64,
+        breadcrumb: { show: false },
+        label: {
+          show: true, fontSize: 11, color: '#f1f5f9',
+          formatter: params => {
+            const d = params.data._raw;
+            if (!d) return params.name;
+            const raw  = evmMode ? d.total_cost : d.total_hours;
+            const disp = evmMode ? raw * _currencyFactor : raw;
+            const valStr = evmMode
+              ? _currencySymbol + (disp / 1000 >= 1 ? (disp / 1000).toFixed(0) + 'k' : disp.toFixed(0))
+              : disp.toFixed(0) + 'h';
+            const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
+            return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
+          },
+        },
+        emphasis:  { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
+        itemStyle: { gapWidth: 2, borderRadius: 4 },
+        levels:    [{ itemStyle: { borderWidth: 0, gapWidth: 4 }, upperLabel: { show: false } }],
+        data: [],
+      }],
+    },
+    options: snapshots.map(s => ({ series: [{ data: _makeData(s.items) }] })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // _buildBulletOption — bullet chart: budgeted vs actual
 // ---------------------------------------------------------------------------
 function _buildBulletOption(withBudget, evmMode = false) {

@@ -45,6 +45,8 @@ window._LANG_PT = {
     'portfolio.empty':'Nenhum dado de horas encontrado para os filtros selecionados.',
     'portfolio.note':'Blocos cinzas = PEP sem projeto cadastrado',
     'btn.view_hours':'Vista: Horas','btn.view_cost':'Vista: R$',
+    'btn.timeline_on':'Por Ciclo','btn.timeline_off':'Acumulado',
+    'portfolio.treemap_timeline_h':'Evolução por Ciclo — Horas','portfolio.treemap_timeline_r':'Evolução por Ciclo — R$',
     'btn.view_cpi':'Ver: CPI por PEP','btn.hide_cpi':'Ocultar CPI por PEP',
     'bullet.title':'Orçado vs. Realizado — Bullet Chart',
     'pepcpi.title':'CPI por PEP ao longo dos Ciclos',
