@@ -2536,7 +2536,7 @@ function _closeCollabDetail() {
   _selectedCollaborator = null;
   document.getElementById('collabDetailPanel').hidden = true;
   // dispose inline charts
-  ['collabInlineTimelineChart','collabCalendarChart'].forEach(id => {
+  ['collabInlineTimelineChart','collabRadarChart','collabCalendarChart'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const c = echarts.getInstanceByDom(el);
@@ -2607,6 +2607,7 @@ async function _renderCollabTimeline(name) {
   if (!rows.length) {
     emptyEl.hidden = false;
     chartEl.style.visibility = 'hidden';
+    _renderCollabRadar(name, []);
     return;
   }
   emptyEl.hidden = true;
@@ -2635,6 +2636,102 @@ async function _renderCollabTimeline(name) {
     document.getElementById('collabCalendarChart')
       .scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
+
+  _renderCollabRadar(name, rows);
+}
+
+function _renderCollabRadar(name, rows) {
+  const section = document.getElementById('collabRadarSection');
+  const chartEl = document.getElementById('collabRadarChart');
+  const existing = echarts.getInstanceByDom(chartEl);
+  if (existing && !existing.isDisposed()) existing.dispose();
+
+  if (!rows.length) { section.hidden = true; return; }
+  section.hidden = false;
+
+  // --- compute 5 axes ---
+  const cycleTotals = rows.map(r => (r.normal_hours || 0) + (r.extra_hours || 0) + (r.standby_hours || 0));
+  const totalH  = cycleTotals.reduce((a, b) => a + b, 0);
+  const extraH  = rows.reduce((a, r) => a + (r.extra_hours || 0), 0);
+  const standbyH = rows.reduce((a, r) => a + (r.standby_hours || 0), 0);
+
+  // Volume: collab total vs portfolio max (from last effort load)
+  const portfolioMax = _lastEffortData.length
+    ? Math.max(..._lastEffortData.map(d => (d.normal_hours || 0) + (d.extra_hours || 0) + (d.standby_hours || 0)))
+    : totalH;
+  const volume = portfolioMax > 0 ? Math.min(100, (totalH / portfolioMax) * 100) : 0;
+
+  // Extra% and Sobreaviso% of total hours
+  const extraPct   = totalH > 0 ? Math.min(100, (extraH  / totalH) * 100) : 0;
+  const standbyPct = totalH > 0 ? Math.min(100, (standbyH / totalH) * 100) : 0;
+
+  // Regularidade: 100 - CV×100 (CV = stdev / mean of per-cycle totals)
+  const activeTotals = cycleTotals.filter(h => h > 0);
+  let regularity = 100;
+  if (activeTotals.length > 1) {
+    const mean = activeTotals.reduce((a, b) => a + b, 0) / activeTotals.length;
+    const variance = activeTotals.reduce((a, h) => a + (h - mean) ** 2, 0) / activeTotals.length;
+    const cv = Math.sqrt(variance) / mean;
+    regularity = Math.max(0, 100 - cv * 100);
+  }
+
+  // Presença: % of cycles with any hours
+  const presence = rows.length > 0 ? (activeTotals.length / rows.length) * 100 : 0;
+
+  const palette = _getPalette();
+  const color   = palette[0];
+  const defaults = _chartDefaults();
+
+  const option = {
+    ...defaults,
+    tooltip: {
+      ...defaults.tooltip,
+      trigger: 'item',
+      formatter: params => {
+        const [vol, ext, sby, reg, pres] = params.value;
+        return [
+          `<b>${params.name}</b>`,
+          `${_t('radar.volume')}: ${vol.toFixed(1)}`,
+          `${_t('radar.extra')}: ${ext.toFixed(1)}`,
+          `${_t('radar.standby')}: ${sby.toFixed(1)}`,
+          `${_t('radar.regularity')}: ${reg.toFixed(1)}`,
+          `${_t('radar.presence')}: ${pres.toFixed(1)}`,
+        ].join('<br>');
+      },
+    },
+    radar: {
+      indicator: [
+        { name: _t('radar.volume'),     max: 100 },
+        { name: _t('radar.extra'),      max: 100 },
+        { name: _t('radar.standby'),    max: 100 },
+        { name: _t('radar.regularity'), max: 100 },
+        { name: _t('radar.presence'),   max: 100 },
+      ],
+      shape: 'polygon',
+      splitNumber: 4,
+      center: ['50%', '52%'],
+      radius: '62%',
+      axisName: { color: _cssVar('--text-3'), fontSize: 11 },
+      splitLine: { lineStyle: { color: _cssVar('--border') } },
+      splitArea: { show: false },
+      axisLine: { lineStyle: { color: _cssVar('--border') } },
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: [volume, extraPct, standbyPct, regularity, presence],
+        name,
+        itemStyle: { color },
+        lineStyle: { color, width: 2 },
+        areaStyle: { color, opacity: 0.2 },
+      }],
+      emphasis: { focus: 'self' },
+    }],
+  };
+
+  const rc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  rc.setOption(option);
+  _charts['collabRadarChart'] = rc;
 }
 
 async function _renderCollabCalendar(name, year, month) {
