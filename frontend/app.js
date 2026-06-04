@@ -122,12 +122,15 @@ function _makeSortable(tableId, colDefs, getDataFn, renderFn) {
     const def = colDefs[i];
     if (!def) return;
     th.classList.add('sortable');
+    th.setAttribute('role', 'columnheader');
+    th.setAttribute('aria-sort', 'none');
     th.addEventListener('click', () => {
       const st = _tableSortState[tableId];
       if (st.col === def.key) { st.dir *= -1; }
       else { st.col = def.key; st.type = def.type; st.dir = 1; }
-      ths.forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+      ths.forEach(t => { t.classList.remove('sort-asc', 'sort-desc'); t.removeAttribute('aria-sort'); });
       th.classList.add(st.dir === 1 ? 'sort-asc' : 'sort-desc');
+      th.setAttribute('aria-sort', st.dir === 1 ? 'ascending' : 'descending');
       renderFn(_applySort(tableId, getDataFn()));
     });
   });
@@ -317,12 +320,31 @@ document.getElementById('stackToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Dashboard — DOM refs and multi-selects
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Dirty-filter state — visual indicator when filters change without reloading
+// ---------------------------------------------------------------------------
+let _filtersDirty = false;
+function _markFiltersDirty() {
+  if (_filtersDirty) return;
+  _filtersDirty = true;
+  const btn = document.getElementById('loadBtn');
+  if (btn) { btn.classList.add('btn-dirty'); btn.title = 'Filtros alterados — clique para atualizar'; }
+}
+function _clearFiltersDirty() {
+  _filtersDirty = false;
+  const btn = document.getElementById('loadBtn');
+  if (btn) { btn.classList.remove('btn-dirty'); btn.title = ''; }
+}
+
 const loadBtn  = document.getElementById('loadBtn');
 const clearBtn   = document.getElementById('clearBtn');
 
 const _msRegistry = [];
 function _createMS(el, placeholder, onChange) {
-  const ms = new MultiSelect(el, placeholder, onChange);
+  const ms = new MultiSelect(el, placeholder, async () => {
+    _markFiltersDirty();
+    if (onChange) await onChange();
+  });
   _msRegistry.push(ms);
   return ms;
 }
@@ -331,6 +353,9 @@ const cycleMs        = _createMS(document.getElementById('cycleMs'),        _t('
 const pepMs          = _createMS(document.getElementById('pepMs'),           _t('ms.pep_ph'),      onPepChange);
 const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
 const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
+
+document.getElementById('dateFromInput').addEventListener('change', _markFiltersDirty);
+document.getElementById('dateToInput').addEventListener('change', _markFiltersDirty);
 
 let pepDataCache = {};
 
@@ -397,7 +422,7 @@ function _showIngestResult(json, filename) {
     val > 0 ? `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.1rem .5rem;font-size:.78rem;white-space:nowrap">${label}: <strong>${val}</strong></span>` : '';
 
   summary.innerHTML =
-    `<span style="font-weight:600;color:#e2e8f0">${escHtml(filename)}</span>` +
+    `<span style="font-weight:600;color:${_cssVar('--text')}">${escHtml(filename)}</span>` +
     chip('Inseridos',   json.records_inserted,         '#2ecc71') +
     chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
     chip('Quarentena',  json.quarantine_records_added,  _cssVar('--red')) +
@@ -409,17 +434,17 @@ function _showIngestResult(json, filename) {
     html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid ${_cssVar('--surface')}">
       <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
-        ${json.warnings.map(w => `<li style="color:#fcd34d;font-size:.79rem">${escHtml(w)}</li>`).join('')}
+        ${json.warnings.map(w => `<li style="color:${_cssVar('--amber')};font-size:.79rem">${escHtml(w)}</li>`).join('')}
       </ul></details>`;
   }
   if (json.infos?.length) {
     html += `<details open style="padding:.6rem 1rem">
-      <summary style="cursor:pointer;color:#60a5fa;font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
+      <summary style="cursor:pointer;color:${_cssVar('--primary')};font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
-        ${json.infos.map(i => `<li style="color:#93c5fd;font-size:.79rem">${escHtml(i)}</li>`).join('')}
+        ${json.infos.map(i => `<li style="color:${_cssVar('--primary')};font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
   }
-  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:#475569;font-size:.8rem;margin:0">${_t('msg.no_warnings_infos')}</p>`;
+  details.innerHTML = html || `<p style="padding:.6rem 1rem;color:${_cssVar('--text-3')};font-size:.8rem;margin:0">${_t('msg.no_warnings_infos')}</p>`;
   panel.hidden = false;
   clearTimeout(panel._dismissTimer);
   panel._dismissTimer = setTimeout(() => { panel.hidden = true; }, 6000);
@@ -432,6 +457,7 @@ function _showIngestResult(json, filename) {
 document.getElementById('langToggleBtn').addEventListener('click', () => {
   _locale = _locale === 'pt' ? 'en' : 'pt';
   localStorage.setItem('pmas_lang', _locale);
+  document.documentElement.lang = _locale === 'pt' ? 'pt-BR' : 'en';
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
   cycleMs.setPlaceholder(_t('ms.cycle_ph'));
@@ -451,9 +477,10 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Load button
 // ---------------------------------------------------------------------------
-loadBtn.addEventListener('click', () => { _saveFilters(); _renderActiveTab(); });
+loadBtn.addEventListener('click', () => { _clearFiltersDirty(); _saveFilters(); _renderActiveTab(); });
 
 clearBtn.addEventListener('click', () => {
+  _clearFiltersDirty();
   cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
@@ -688,9 +715,9 @@ function _drawRunwayRows(data) {
       ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
       : `${item.consumed_hours.toFixed(1)}h`;
     const pctLabel = rawPct != null ? `${rawPct.toFixed(1)}% (${absLabel})` : '—';
-    const bar = `<div style="background:#1e293b;border-radius:3px;height:6px;width:120px">` +
+    const bar = `<div style="background:${_cssVar('--bg')};border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
-      `<span style="font-size:.75rem;color:#94a3b8;margin-left:.4rem">${pctLabel}</span>`;
+      `<span style="font-size:.75rem;color:${_cssVar('--text-3')};margin-left:.4rem">${pctLabel}</span>`;
 
     let cyclesCell;
     let completionCell;
@@ -718,7 +745,7 @@ function _drawRunwayRows(data) {
       on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: _getPalette()[0] || 'var(--primary,#4f8ef7)' },
       at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
       behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
-      no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: '#475569' },
+      no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: _cssVar('--text-3') },
     };
     const st = statusMap[item.schedule_status] || statusMap.no_baseline;
     const statusCell = `<span style="font-size:.78rem;font-weight:600;color:${st.color}">${st.label}</span>`;
@@ -737,7 +764,7 @@ function _drawRunwayRows(data) {
     tr.style.cssText = rowBg;
     tr.innerHTML = `
       <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
-      <td style="font-size:.82rem;color:#94a3b8">${escHtml(item.name || '—')}</td>
+      <td style="font-size:.82rem;color:${_cssVar('--text-3')}">${escHtml(item.name || '—')}</td>
       <td style="text-align:right">${_evmMode
         ? (item.budget_cost != null ? `R$ ${item.budget_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
         : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
@@ -794,11 +821,11 @@ function _renderConcentrationPanel(concentration) {
         ? `${_t('concentration.others')} (${c.others_count})`
         : c.name;
       return `<div style="display:flex;align-items:center;gap:.35rem;min-width:0">` +
-        `<span style="font-size:.78rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(cName)}">${escHtml(cName)}</span>` +
-        `<div style="flex:1;min-width:40px;max-width:80px;background:#1e293b;border-radius:2px;height:8px">` +
+        `<span style="font-size:.78rem;color:${_cssVar('--text-3')};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px" title="${escHtml(cName)}">${escHtml(cName)}</span>` +
+        `<div style="flex:1;min-width:40px;max-width:80px;background:${_cssVar('--bg')};border-radius:2px;height:8px">` +
           `<div style="height:8px;border-radius:2px;background:${dotColor};width:${barWidth}%"></div>` +
         `</div>` +
-        `<span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${pct.toFixed(0)}%</span>` +
+        `<span style="font-size:.75rem;color:${_cssVar('--text-3')};white-space:nowrap">${pct.toFixed(0)}%</span>` +
         `</div>`;
     }).join('');
 
@@ -807,15 +834,15 @@ function _renderConcentrationPanel(concentration) {
       : `${item.total_hours.toFixed(0)}h`;
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:#0e2038';
+    row.style.cssText = `display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
     row.innerHTML = `
       <div style="min-width:14px;display:flex;align-items:center"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor}"></span></div>
       <div style="min-width:130px">
-        <div style="font-family:monospace;font-size:.8rem;color:#e2e8f0">${escHtml(item.pep_wbs)}</div>
-        <div style="font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
+        <div style="font-family:monospace;font-size:.8rem;color:${_cssVar('--text')}">${escHtml(item.pep_wbs)}</div>
+        <div style="font-size:.72rem;color:${_cssVar('--text-3')};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
-      <div style="font-size:.72rem;color:#475569;white-space:nowrap">${totalDisplay}</div>
+      <div style="font-size:.72rem;color:${_cssVar('--text-3')};white-space:nowrap">${totalDisplay}</div>
     `;
     grid.appendChild(row);
   });
@@ -1998,6 +2025,10 @@ document.getElementById('filterToggle').addEventListener('click', () => {
   _filterExpanded = !_filterExpanded;
   document.getElementById('filterBody').style.display = _filterExpanded ? '' : 'none';
   document.getElementById('filterChevron').style.transform = _filterExpanded ? '' : 'rotate(-90deg)';
+  document.getElementById('filterToggle').setAttribute('aria-expanded', String(_filterExpanded));
+});
+document.getElementById('filterToggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('filterToggle').click(); }
 });
 
 let _forecastAllocExpanded = true;
@@ -2006,6 +2037,10 @@ document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
   const ch = document.getElementById('forecastAllocChevron');
   ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
+  document.getElementById('forecastAllocToggle').setAttribute('aria-expanded', String(_forecastAllocExpanded));
+});
+document.getElementById('forecastAllocToggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('forecastAllocToggle').click(); }
 });
 
 let _whatIfExpanded = true;
@@ -2013,6 +2048,10 @@ document.getElementById('whatIfToggle').addEventListener('click', () => {
   _whatIfExpanded = !_whatIfExpanded;
   document.getElementById('whatIfBody').style.display = _whatIfExpanded ? '' : 'none';
   document.getElementById('whatIfChevron').style.transform = _whatIfExpanded ? '' : 'rotate(-90deg)';
+  document.getElementById('whatIfToggle').setAttribute('aria-expanded', String(_whatIfExpanded));
+});
+document.getElementById('whatIfToggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('whatIfToggle').click(); }
 });
 
 let _mcExpanded = true;
@@ -2027,6 +2066,10 @@ document.getElementById('burnUpBaselineToggle').addEventListener('click', () => 
   _burnUpBaselineExpanded = !_burnUpBaselineExpanded;
   document.getElementById('burnUpBaselineBody').style.display = _burnUpBaselineExpanded ? '' : 'none';
   document.getElementById('burnUpBaselineChevron').style.transform = _burnUpBaselineExpanded ? '' : 'rotate(-90deg)';
+  document.getElementById('burnUpBaselineToggle').setAttribute('aria-expanded', String(_burnUpBaselineExpanded));
+});
+document.getElementById('burnUpBaselineToggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('burnUpBaselineToggle').click(); }
 });
 
 function _setAllocMode(mode) {
@@ -2193,13 +2236,13 @@ let _planProjectId = null;
 async function _renderPlanTable() {
   const tbody = document.getElementById('planBody');
   if (!_planProjectId) {
-    tbody.innerHTML = `<tr><td colspan="4" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.panel.select_hint')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="color:${_cssVar('--text-3')};font-size:.85rem;padding:.75rem">${_t('plan.panel.select_hint')}</td></tr>`;
     return;
   }
   try {
     const plans = await apiFetch(`/api/projects/${_planProjectId}/plans`);
     if (!plans.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color:#64748b;font-size:.85rem;padding:.75rem">${_t('plan.no_plans')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="color:${_cssVar('--text-3')};font-size:.85rem;padding:.75rem">${_t('plan.no_plans')}</td></tr>`;
       return;
     }
     tbody.innerHTML = plans.map(pl => {
@@ -3097,7 +3140,7 @@ const _cyclesPag = _makePaginator(
       emptyKey: 'no_cycles',
       rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
-      <td>${escHtml(c.name)}${!c.is_active ? ' <em style="color:#64748b;font-size:.8rem">(arquivado)</em>' : ''}</td>
+      <td>${escHtml(c.name)}${!c.is_active ? ` <em style="color:${_cssVar('--text-3')};font-size:.8rem">(arquivado)</em>` : ''}</td>
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
       <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
@@ -3331,7 +3374,7 @@ function _buildDatesCell(p) {
   if (p.start_date)       parts.push(`▸ ${_fmtDateBR(p.start_date)}`);
   if (p.planned_end_date) parts.push(`→ ${_fmtDateBR(p.planned_end_date)}`);
   if (p.completion_date)  parts.push(`✓ ${_fmtDateBR(p.completion_date)}`);
-  return parts.length ? `<span style="font-size:.8rem;color:#94a3b8">${parts.join(' ')}</span>` : '—';
+  return parts.length ? `<span style="font-size:.8rem;color:${_cssVar('--text-3')}">${parts.join(' ')}</span>` : '—';
 }
 
 function _renderProjectsTable(projects) { _projectsPag.render(projects); }
@@ -3466,38 +3509,43 @@ function closeProjectModal() { closeModal('projectModal'); }
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
   if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
-  const budget         = document.getElementById('projectBudgetInput').value;
-  const budgetCost     = document.getElementById('projectBudgetCostInput').value;
   const completionDate = document.getElementById('projectCompletionInput').value || null;
-  let status = document.getElementById('projectStatusInput').value;
-  if (completionDate && status !== 'encerrado') {
-    if (confirm(_t('confirm.set_encerrado'))) status = 'encerrado';
-  }
-  const budgetReason = document.getElementById('projectBudgetReasonInput')?.value.trim() || null;
-  const body = {
-    pep_wbs:               pep,
-    name:                  document.getElementById('projectNameInput').value.trim()    || null,
-    client:                document.getElementById('projectClientInput').value.trim()  || null,
-    manager:               document.getElementById('projectManagerInput').value.trim() || null,
-    budget_hours:          budget     !== '' ? parseFloat(budget)     : null,
-    budget_cost:           budgetCost !== '' ? parseFloat(budgetCost) : null,
-    status,
-    start_date:            document.getElementById('projectStartInput').value       || null,
-    planned_end_date:      document.getElementById('projectPlannedEndInput').value  || null,
-    completion_date:       completionDate,
-    budget_change_reason:  budgetReason,
-  };
-  try {
-    if (_projectEditId) {
-      await apiFetchJSON(`/api/projects/${_projectEditId}`, 'PUT', body);
-    } else {
-      await apiFetchJSON('/api/projects', 'POST', body);
+  const statusRaw      = document.getElementById('projectStatusInput').value;
+
+  const _doSave = async (status) => {
+    const budget     = document.getElementById('projectBudgetInput').value;
+    const budgetCost = document.getElementById('projectBudgetCostInput').value;
+    const budgetReason = document.getElementById('projectBudgetReasonInput')?.value.trim() || null;
+    const body = {
+      pep_wbs:              pep,
+      name:                 document.getElementById('projectNameInput').value.trim()    || null,
+      client:               document.getElementById('projectClientInput').value.trim()  || null,
+      manager:              document.getElementById('projectManagerInput').value.trim() || null,
+      budget_hours:         budget     !== '' ? parseFloat(budget)     : null,
+      budget_cost:          budgetCost !== '' ? parseFloat(budgetCost) : null,
+      status,
+      start_date:           document.getElementById('projectStartInput').value       || null,
+      planned_end_date:     document.getElementById('projectPlannedEndInput').value  || null,
+      completion_date:      completionDate,
+      budget_change_reason: budgetReason,
+    };
+    try {
+      if (_projectEditId) {
+        await apiFetchJSON(`/api/projects/${_projectEditId}`, 'PUT', body);
+      } else {
+        await apiFetchJSON('/api/projects', 'POST', body);
+      }
+      closeProjectModal();
+      loadProjectsTable();
+    } catch (e) {
+      document.getElementById('projectError').textContent = e.message;
     }
-    closeProjectModal();
-    loadProjectsTable();
-  } catch (e) {
-    document.getElementById('projectError').textContent = e.message;
+  };
+
+  if (completionDate && statusRaw !== 'encerrado') {
+    return confirmDialog(_t('confirm.set_encerrado'), () => _doSave('encerrado'), false);
   }
+  _doSave(statusRaw);
 });
 
 document.getElementById('projectCancelBtn').addEventListener('click', closeProjectModal);
@@ -3538,7 +3586,7 @@ async function _openBaselineModal(projectId) {
   const proj = _allProjects.find(p => p.id === projectId);
   const title = proj ? `${_t('baseline.title')} — ${proj.pep_wbs}${proj.name ? ' · ' + proj.name : ''}` : _t('baseline.title');
   document.getElementById('baselineModalTitle').textContent = title;
-  document.getElementById('baselineModalBody').innerHTML = '<p style="color:#64748b">Carregando…</p>';
+  document.getElementById('baselineModalBody').innerHTML = `<p style="color:${_cssVar('--text-3')}">Carregando…</p>`;
   openModal('baselineModal');
   await _refreshBaselineModal(projectId);
 }
@@ -3655,11 +3703,11 @@ async function _openAclModal(projectId, pepWbs) {
 
 async function _loadAclEntries() {
   const tbody = document.getElementById('aclEntriesBody');
-  tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('loading')}</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:${_cssVar('--text-3')};padding:.75rem">${_t('loading')}</td></tr>`;
   try {
     const entries = await apiFetch(`/api/projects/${_aclProjectId}/access`);
     if (!entries.length) {
-      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#475569;padding:.75rem">${_t('msg.no_access_granted')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:${_cssVar('--text-3')};padding:.75rem">${_t('msg.no_access_granted')}</td></tr>`;
       return;
     }
     tbody.innerHTML = entries.map(e => `
@@ -3891,7 +3939,7 @@ const _teamPag = _makePaginator(
     rowFn: m => `
     <tr>
       <td>${escHtml(m.name)}</td>
-      <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : '<span style="color:#475569">—</span>'}</td>
+      <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : `<span style="color:${_cssVar('--text-3')}">—</span>`}</td>
       <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
     </tr>`,
@@ -4226,9 +4274,7 @@ function notify(msg, type = 'info') {
   textEl.textContent = msg;
   el.className = type;
   el.hidden = false;
-  if (type !== 'error') {
-    el._timer = setTimeout(() => { el.hidden = true; }, 6000);
-  }
+  el._timer = setTimeout(() => { el.hidden = true; }, type === 'error' ? 15000 : 6000);
 }
 document.getElementById('notificationClose').addEventListener('click', () => {
   const el = document.getElementById('notification');
@@ -4437,7 +4483,7 @@ const _auditPag = _makePaginator(
       <td><code>${escHtml(r.action)}</code></td>
       <td>${escHtml(r.entity)}</td>
       <td style="text-align:right">${r.entity_id ?? '—'}</td>
-      <td style="font-size:.78rem;color:#94a3b8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
+      <td style="font-size:.78rem;color:${_cssVar('--text-3')};max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(detail)}">${escHtml(detail)}</td>
     </tr>`;
     },
   })
@@ -4808,8 +4854,10 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
 document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const resultEl = document.getElementById('myAreaUploadResult');
-  resultEl.textContent = _t('loading');
+  const resultEl   = document.getElementById('myAreaUploadResult');
+  const uploadLabel = document.getElementById('myAreaCsvInput')?.closest('label');
+  resultEl.textContent = '⏳ ' + _t('loading');
+  if (uploadLabel) { uploadLabel.setAttribute('aria-disabled', 'true'); uploadLabel.style.opacity = '0.6'; uploadLabel.style.pointerEvents = 'none'; }
   try {
     const fd = new FormData();
     fd.append('file', file);
@@ -4831,6 +4879,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
     resultEl.textContent = `${_t('msg.err_generic')}: ${e.message}`;
     notify(e.message, 'error');
   }
+  if (uploadLabel) { uploadLabel.removeAttribute('aria-disabled'); uploadLabel.style.opacity = ''; uploadLabel.style.pointerEvents = ''; }
   e.target.value = '';
 });
 
@@ -4927,7 +4976,7 @@ const _myQrPag = _makePaginator(
     const tbody = document.getElementById('myQrBody');
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#475569;padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:${_cssVar('--text-3')};padding:2rem">${_t('msg.no_quarantine')}</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map(r => {
@@ -4983,14 +5032,28 @@ async function loadRulesList() {
   });
 }
 
+async function moveRule(id, direction) {
+  const idx = _rules.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= _rules.length) return;
+  [_rules[idx], _rules[newIdx]] = [_rules[newIdx], _rules[idx]];
+  const orderMap = {};
+  _rules.forEach((r, i) => { orderMap[r.id] = i + 1; });
+  try {
+    await apiFetchJSON('/api/validation-rules/reorder', 'POST', orderMap);
+    _renderRulesList();
+  } catch (e) { notify(`${_t('msg.rule_reorder_error')}: ${e.message}`, 'error'); }
+}
+
 function _renderRulesList() {
   const ul = document.getElementById('rulesList');
   if (!ul) return;
   if (!_rules.length) {
-    ul.innerHTML = `<li style="text-align:center;color:#475569;padding:1rem;font-size:.85rem">${_t('vr.empty')}</li>`;
+    ul.innerHTML = `<li style="text-align:center;color:${_cssVar('--text-3')};padding:1rem;font-size:.85rem">${_t('vr.empty')}</li>`;
     return;
   }
-  ul.innerHTML = _rules.map(r => {
+  ul.innerHTML = _rules.map((r, ruleIdx) => {
     const actionBadge = `<span class="rule-badge ${r.action}">${r.action}</span>`;
     const systemBadge = r.is_system ? `<span class="rule-badge system">🔒 ${_t('vr.badge.system')}</span>` : '';
     const activeClass = r.is_active ? '' : 'rule-inactive';
@@ -4999,16 +5062,19 @@ function _renderRulesList() {
     const delBtn = r.is_system ? '' :
       `<button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">✕</button>`;
     const toggleTitle = _t(r.is_active ? 'vr.btn.deactivate' : 'vr.btn.activate');
+    const moveUpBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_up') || 'Mover acima'}" aria-label="${_t('vr.btn.move_up') || 'Mover acima'}" onclick="moveRule(${r.id}, -1)" ${ruleIdx === 0 ? 'disabled' : ''}>↑</button>`;
+    const moveDnBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_down') || 'Mover abaixo'}" aria-label="${_t('vr.btn.move_down') || 'Mover abaixo'}" onclick="moveRule(${r.id}, 1)" ${ruleIdx === _rules.length - 1 ? 'disabled' : ''}>↓</button>`;
     return `<li class="sortable-item ${activeClass}" data-rule-id="${r.id}">
       <span class="sortable-handle">⠿</span>
       <span class="sortable-item-label">
         <strong>${escHtml(r.field)}</strong>
-        <span style="color:#64748b;font-size:.75rem;margin:0 .3rem">${escHtml(r.operator)}</span>
-        <span style="color:#e2e8f0">${escHtml(r.value || '—')}</span>
-        ${r.description ? `<span style="color:#64748b;font-size:.75rem;margin-left:.5rem">— ${escHtml(r.description)}</span>` : ''}
+        <span style="color:${_cssVar('--text-3')};font-size:.75rem;margin:0 .3rem">${escHtml(r.operator)}</span>
+        <span style="color:${_cssVar('--text')}">${escHtml(r.value || '—')}</span>
+        ${r.description ? `<span style="color:${_cssVar('--text-3')};font-size:.75rem;margin-left:.5rem">— ${escHtml(r.description)}</span>` : ''}
       </span>
       ${actionBadge}${systemBadge}
       <div class="sortable-item-actions">
+        ${moveUpBtn}${moveDnBtn}
         <button class="btn btn-secondary btn-sm" title="${toggleTitle}" onclick="toggleRule(${r.id})">${r.is_active ? '⏸' : '▶'}</button>
         ${editBtn}${delBtn}
       </div>
@@ -5200,10 +5266,10 @@ async function _openSessionDetail(sessionId) {
     const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     title.textContent = `Importação — ${r.source_file}`;
     meta.innerHTML = [
-      `<span style="color:#64748b">Data</span><span>${escHtml(when)}</span>`,
-      `<span style="color:#64748b">Usuário</span><span>${escHtml(r.uploaded_by_username)}</span>`,
-      `<span style="color:#64748b">Arquivo</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
-      `<span style="color:#64748b">Status</span><span>${escHtml(r.status)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">Data</span><span>${escHtml(when)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">Usuário</span><span>${escHtml(r.uploaded_by_username)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">Arquivo</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">Status</span><span>${escHtml(r.status)}</span>`,
     ].join('');
 
     const chip = (label, val, color) =>
@@ -5242,14 +5308,14 @@ async function _openSessionDetail(sessionId) {
     if (r.infos_detail?.length) {
       iList.innerHTML = r.infos_detail.map(i => `<li>${escHtml(i)}</li>`).join('');
       document.getElementById('sessionDetailInfosHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">ℹ Informações</p>
          <button type="button" id="sdInfoCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
       setTimeout(() => document.getElementById('sdInfoCsvBtn')?.addEventListener('click', () =>
         _exportDetailCsv(r.infos_detail, 'Informações')), 0);
       iDiv.hidden = false;
     } else {
       document.getElementById('sessionDetailInfosHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:#60a5fa;margin:0">ℹ Informações</p>`;
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">ℹ Informações</p>`;
       iDiv.hidden = true;
     }
 
@@ -5467,12 +5533,12 @@ function _renderThemeEditor() {
   // Section: app name + density
   const densitySection = `
     <div class="form-group full" style="margin-bottom:.25rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.app_name')}</label>
+      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.app_name')}</label>
       <input type="text" id="themeAppName" value="${escHtml(t.app_name || 'PMAS')}"
         style="max-width:240px;margin-top:.25rem" />
     </div>
     <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.density')}</label>
+      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.density')}</label>
       <div style="display:flex;gap:.5rem;margin-top:.25rem">
         ${['compact','normal','relaxed'].map(d => `
           <button class="btn btn-secondary btn-sm theme-density-btn${(t.density || 'normal') === d ? ' active' : ''}"
@@ -5484,7 +5550,7 @@ function _renderThemeEditor() {
   // Section: profile (load + save presets in one row)
   const presetsSection = `
     <div class="form-group full" style="margin-bottom:.75rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.profile')}</label>
+      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.profile')}</label>
       <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.35rem">
         <select id="presetSelect" onchange="_updatePresetDeleteBtn()"
           style="flex:2;min-width:180px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
@@ -5507,11 +5573,11 @@ function _renderThemeEditor() {
   // Section: colors
   const colorSection = `
     <div class="form-group full" style="margin-bottom:.25rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.colors')}</label>
+      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.colors')}</label>
     </div>
     ${_THEME_FIELDS.map(f => `
       <div class="form-group">
-        <label style="font-size:.7rem;color:#94a3b8">${escHtml(f.label)}</label>
+        <label style="font-size:.7rem;color:${_cssVar('--text-3')}">${escHtml(f.label)}</label>
         <div class="theme-swatch-row">
           <input type="color" id="themeColor_${f.key}" value="${escHtml(t[f.key] || '#000000')}" />
           <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(t[f.key] || '')}"
@@ -5523,11 +5589,11 @@ function _renderThemeEditor() {
   // Section: chart palette
   const paletteSection = `
     <div class="form-group full" style="margin:.5rem 0 .25rem">
-      <label style="font-size:.75rem;font-weight:600;color:#cbd5e1">${_t('appearance.palette')}</label>
+      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.palette')}</label>
     </div>
     ${Array.from({ length: 6 }, (_, i) => `
       <div class="form-group">
-        <label style="font-size:.7rem;color:#94a3b8">Cor ${i + 1}</label>
+        <label style="font-size:.7rem;color:${_cssVar('--text-3')}">Cor ${i + 1}</label>
         <div class="theme-swatch-row">
           <input type="color" id="themePalColor_${i}" value="${escHtml(pal[i] || '#4f8ef7')}" />
           <input type="text" id="themePalTxt_${i}" value="${escHtml(pal[i] || '')}"

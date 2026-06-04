@@ -15,6 +15,7 @@ class MultiSelect {
     this.btn = document.createElement('button');
     this.btn.type = 'button';
     this.btn.className = 'ms-toggle';
+    this.btn.id = `${this.el.id}-toggle`;
     this.btn.setAttribute('role', 'combobox');
     this.btn.setAttribute('aria-haspopup', 'listbox');
     this.btn.setAttribute('aria-expanded', 'false');
@@ -44,8 +45,16 @@ class MultiSelect {
     this.panel.addEventListener('keydown', e => {
       const items = [...this.panel.querySelectorAll('label.ms-option')];
       const idx = items.indexOf(document.activeElement);
-      if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(idx + 1, items.length - 1)]?.focus(); }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); idx <= 0 ? this.btn.focus() : items[Math.max(idx - 1, 0)]?.focus(); }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = items[Math.min(idx + 1, items.length - 1)];
+        if (next) { next.focus(); if (next.id) this.btn.setAttribute('aria-activedescendant', next.id); }
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx <= 0) { this.btn.focus(); this.btn.removeAttribute('aria-activedescendant'); }
+        else { const prev = items[Math.max(idx - 1, 0)]; if (prev) { prev.focus(); if (prev.id) this.btn.setAttribute('aria-activedescendant', prev.id); } }
+      }
       if (e.key === 'Escape')    { e.preventDefault(); this._close(); this.btn.focus(); }
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[idx]?.querySelector('input')?.click(); }
       if (e.key === 'Tab')       { this._close(); }
@@ -62,12 +71,16 @@ class MultiSelect {
 
   _focusFirst() {
     const first = this.panel.querySelector('label.ms-option');
-    if (first) first.focus();
+    if (first) {
+      first.focus();
+      if (first.id) this.btn.setAttribute('aria-activedescendant', first.id);
+    }
   }
 
   _close() {
     this.panel.hidden = true;
     this.btn.setAttribute('aria-expanded', 'false');
+    this.btn.removeAttribute('aria-activedescendant');
   }
 
   destroy() {
@@ -162,6 +175,7 @@ class MultiSelect {
     lbl.setAttribute('role', 'option');
     lbl.setAttribute('aria-selected', 'false');
     lbl.setAttribute('tabindex', '0');
+    if (!isAll) lbl.id = `ms-opt-${this.el.id}-${String(value).replace(/[^a-zA-Z0-9\-_]/g, '_')}`;
     lbl.addEventListener('click', e => e.stopPropagation());
     const chk = document.createElement('input'); chk.type = 'checkbox'; chk.value = value;
     const span = document.createElement('span'); span.textContent = label;

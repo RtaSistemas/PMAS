@@ -59,9 +59,12 @@ async function _withLoading(btn, asyncFn) {
 // ---------------------------------------------------------------------------
 // C3 — Confirm-before-delete helper
 // ---------------------------------------------------------------------------
-async function _confirmDelete(entityName, asyncFn) {
-  if (!confirm(`Excluir ${entityName}? Esta ação não pode ser desfeita.`)) return;
-  return asyncFn();
+function _confirmDelete(entityName, asyncFn) {
+  confirmDialog(
+    `Excluir ${entityName}? Esta ação não pode ser desfeita.`,
+    asyncFn,
+    true
+  );
 }
 
 // ---------------------------------------------------------------------------
