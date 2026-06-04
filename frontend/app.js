@@ -5580,6 +5580,7 @@ function _bootApp() {
   _loadPreferences().then(() => _applyLayoutPreferences());
   _updateHeaderUser();
   _restoreFilterDates();
+  if (_getTokenPayload()?.must_change) _showDefaultPasswordBanner();
   loadDashboardCycles().then(() => {
     if (!_allCycles.length && _isAdmin()) _showOnboardingBanner();
   });
@@ -5587,6 +5588,37 @@ function _bootApp() {
   loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
+}
+
+function _showDefaultPasswordBanner() {
+  if (document.getElementById('defaultPassBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'defaultPassBanner';
+  banner.style.cssText = [
+    'display:flex;align-items:center;gap:1rem;flex-wrap:wrap',
+    'margin:1rem 1.5rem 0',
+    'padding:.75rem 1rem',
+    'border-radius:6px',
+    'border:1px solid var(--red)',
+    'background:rgba(var(--red-rgb,220,38,38),0.08)',
+    'color:var(--text)',
+  ].join(';');
+  banner.innerHTML = `
+    <span style="font-size:1.2rem">⚠️</span>
+    <span style="flex:1;font-size:.9rem">
+      <b style="color:var(--red)">${_t('sec.default_pass.title')}</b><br>
+      <span style="color:var(--text-2)">${_t('sec.default_pass.body')}</span>
+    </span>
+    <button class="btn btn-sm" id="defaultPassCta"
+      style="background:var(--red);color:#fff;border:none;white-space:nowrap">
+      ${_t('sec.default_pass.cta')}
+    </button>
+  `;
+  document.getElementById('appShell')?.prepend(banner);
+  document.getElementById('defaultPassCta')?.addEventListener('click', () => {
+    document.querySelector('[data-tab="admin"]')?.click();
+    setTimeout(() => document.getElementById('usersTable')?.scrollIntoView({ behavior: 'smooth' }), 200);
+  });
 }
 
 function _showOnboardingBanner() {

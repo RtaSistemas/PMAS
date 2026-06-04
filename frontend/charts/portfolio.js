@@ -121,9 +121,9 @@ function _buildEvmQuadrantOption(items) {
           { xAxis: 1.0,      label: { formatter: 'SPI=1',        color: dim, fontSize: 9 } },
           { yAxis: 1.0,      label: { formatter: 'CPI=1',        color: dim, fontSize: 9 } },
           { xAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
-            label: { formatter: `→ ${AXIS_CAP}`, color: dim, fontSize: 8, position: 'insideEndTop' } },
+            label: { formatter: `→ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
           { yAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
-            label: { formatter: `↑ ${AXIS_CAP}`, color: dim, fontSize: 8, position: 'insideEndTop' } },
+            label: { formatter: `↑ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
         ],
       },
       markArea: {
