@@ -672,9 +672,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   flex: 1; overflow-y: auto; min-height: 0;
   display: flex; flex-direction: column; gap: 0.85rem;
 }
+.modal-form-body {
+  flex: 1; overflow-y: auto; min-height: 0;
+  padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem;
+}
 .modal-form-body-sm {
   flex: 1; overflow-y: auto; min-height: 0;
-  display: flex; flex-direction: column; gap: 0.85rem;
+  padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;
 }
 .error-msg { font-size: 0.79rem; color: var(--red); min-height: 1.2em; flex-shrink: 0; }
 
@@ -1260,9 +1264,6 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 /* Calendar prev/next month nav buttons */
 .cal-nav-btn { background: none; border: 1px solid var(--border); color: var(--text-2); border-radius: .35rem; padding: .2rem .55rem; cursor: pointer; font-size: .9rem; }
 
-/* Modal form body padding — flex column */
-.modal-form-body    { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-.modal-form-body-sm { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
 
 /* Raw data pre block (quarantine modal) */
 .raw-pre { font-size: .72rem; background: var(--surface); padding: .75rem; border-radius: .4rem; overflow: auto; max-height: 260px; margin-top: .5rem; }
