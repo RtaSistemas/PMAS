@@ -1014,10 +1014,27 @@ function _renderCostCompositionChart(trends) {
   const extraData   = filtered.map(t => +((t.extra_cost   || 0) * factor).toFixed(2));
   const standbyData = filtered.map(t => +((t.standby_cost || 0) * factor).toFixed(2));
 
+  const ZOOM_VISIBLE = 12;
+  const needsZoom = categories.length > ZOOM_VISIBLE;
+  const _zoomBase = {
+    backgroundColor: _cssVar('--surface'), fillerColor: _cssVar('--primary') + '22',
+    borderColor: _cssVar('--border'), brushSelect: false,
+    handleStyle: { color: _cssVar('--primary') },
+    textStyle:   { color: _cssVar('--text-3'), fontSize: 9 },
+    startValue: 0, endValue: ZOOM_VISIBLE - 1,
+  };
+  const dataZoom = needsZoom ? [
+    { ..._zoomBase, type: 'slider', xAxisIndex: 0, height: 14, bottom: 4, filterMode: 'filter' },
+    { type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: false, moveOnMouseWheel: true },
+  ] : [];
+
   const pal = _getPalette();
   const cc = _getOrCreateChart('costCompositionChart');
   cc.setOption({
     ..._chartDefaults(),
+    toolbox: _toolbox({
+      magicType: { type: ['stack', 'tiled'], title: { stack: _t('toolbox.stack'), tiled: _t('toolbox.tiled') } },
+    }, 'PMAS-CostComp'),
     legend: { top: 0, textStyle: { color: _cssVar('--text-2'), fontSize: 11 } },
     tooltip: {
       trigger: 'axis',
@@ -1034,9 +1051,10 @@ function _renderCostCompositionChart(trends) {
         return html;
       },
     },
-    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: needsZoom ? 44 : '3%', containLabel: true },
     xAxis: { type: 'category', data: categories, axisLabel: { color: _cssVar('--text-2'), fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
     yAxis: { type: 'value', axisLabel: { color: _cssVar('--text-2'), fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
+    ...(dataZoom.length ? { dataZoom } : {}),
     series: [
       { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] }, emphasis: { focus: 'series' } },
       { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] }, emphasis: { focus: 'series' } },
