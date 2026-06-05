@@ -13,7 +13,7 @@
 
 **Aproveitamento da Stack: 7,0/10 — Cada biblioteca está sendo usada para o que foi escolhida, mas com profundidades muito diferentes.** Apache ECharts é a biblioteca com maior gap de utilização: o sistema usa scatter, treemap, bar, line, radar, heatmap/calendar e timeline — mas omite visualMap, parallel, gauge, dataView completo e o registro de tema global (`echarts.registerTheme`), obrigando cada gráfico a repetir boilerplate de `backgroundColor/textStyle/axisLine`. SortableJS é usado exatamente para o que foi projetado, mas só com os callbacks `onEnd`. O `utils.js` exporta funções ES Module que não são importadas em lugar nenhum — é código morto presente no repositório.
 
-**Cumprimento de Propósito: 8,5/10 — Para um sistema de timesheet + EVM, a cobertura funcional é notavelmente alta.** O ciclo completo de upload → validação → quarentena → aprovação → analytics está implementado e testado. EVM completo (CPI, SPI, EAC, TCPI, VAC, CV, SV, Earned Schedule, IEAC(t), Monte Carlo, What-If) está presente. Os dois gaps genuínos de propósito são: (1) ausência de entrada manual de horas — o sistema só ingere via CSV/XLSX, não há formulário de lançamento individual; e (2) ausência de notificações proativas — alertas de orçamento existem como badges na tela, mas não há envio de e-mail, webhook ou qualquer notificação push quando CPI/SPI cruzam thresholds configurados.
+**Cumprimento de Propósito: 9,0/10 — Para um sistema de timesheet + EVM, a cobertura funcional é notavelmente alta.** O ciclo completo de upload → validação → quarentena → aprovação → analytics está implementado e testado. EVM completo (CPI, SPI, EAC, TCPI, VAC, CV, SV, Earned Schedule, IEAC(t), Monte Carlo, What-If) está presente. A ausência de entrada manual de horas e de edição de registros individuais **não é um gap — é uma decisão arquitetural explícita**: o sistema legado é a fonte única de verdade; PMAS é uma camada de leitura e análise que não manipula dados na origem. O gap genuíno de propósito remanescente é: ausência de notificações proativas — alertas de orçamento existem como badges na tela, mas não há envio de e-mail, webhook ou qualquer notificação push quando CPI/SPI cruzam thresholds configurados.
 
 ---
 
@@ -224,8 +224,8 @@ Registro de Tempo
   ✅ Quarentena com workflow de revisão
   ✅ Ciclos de faturamento com controle de status
   ✅ Colaboradores + senioridade + rate card
-  ❌ Entrada manual de horas (sem upload)
-  ❌ Edição de registro individual pós-ingesta
+  ⊘ Entrada manual de horas — fora de escopo (GR-1: fonte única é o sistema legado)
+  ⊘ Edição de registro individual — fora de escopo (GR-1: manipulação vedada)
 
 Gestão de Projetos
   ✅ CRUD de projetos (PEP/WBS)
@@ -277,7 +277,7 @@ Operações e Administração
   ✅ i18n pt-BR/en completo
   ❌ Notificações por email/webhook
   ❌ Relatório exportável consolidado (PDF/XLSX com múltiplos gráficos)
-  ❌ Entrada manual de lançamento de horas
+  ⊘ Entrada manual de lançamento de horas — fora de escopo (GR-1)
 ```
 
 ### 3.2 Tabela de Cumprimento
@@ -304,8 +304,8 @@ Operações e Administração
 | Concentração de risco | ✅ Implementado | `routers/v2/concentration.py` |
 | Perfil de colaborador | ✅ Implementado | `app.js` linhas 2629–2917 (radar + calendar heatmap + inline timeline) |
 | Export CSV (múltiplos) | ✅ Implementado | `ratecard.py`, `plans.py`, `my.py`, client-side em `app.js` |
-| Entrada manual de horas | ❌ Ausente | Sem formulário POST para `TimesheetRecord` individual |
-| Edição de registro individual | ❌ Ausente | Sem `PUT /api/timesheet-records/{id}` |
+| Entrada manual de horas | ⊘ Fora de escopo | GR-1: o sistema legado é a fonte única de verdade; PMAS é camada de leitura |
+| Edição de registro individual | ⊘ Fora de escopo | GR-1: manipulação de dados no sistema está vetada |
 | Notificações por email | ❌ Ausente | Zero referências a `smtp`, `email`, `sendgrid` |
 | Notificações webhook | ❌ Ausente | Sem `httpx` ou `requests` para callbacks externos |
 | Relatório consolidado (PDF) | ❌ Ausente | Sem `reportlab`, `weasyprint`, `puppeteer` |
@@ -313,12 +313,10 @@ Operações e Administração
 
 ### 3.3 Gaps de Propósito
 
-**GP-01 — Entrada manual de horas ausente**
-- Impacto no usuário: colaboradores sem acesso ao sistema de ponto digital (prestadores, consultores) não têm como lançar horas diretamente. O PM precisa manter uma planilha auxiliar e fazer upload periódico, quebrando a rastreabilidade em tempo real
-- Estado atual: `POST /api/upload-timesheet` aceita apenas arquivo CSV/XLSX; não há rota `POST /api/timesheet-records` para um único lançamento
-- Caminho de implementação: adicionar `POST /api/timesheet-records` com validação de ciclo ativo + quarentena opcional + audit log. Frontend: modal de lançamento no Dashboard (colaborador + data + PEP + horas). O pipeline de validação já está abstraído em `rule_engine.py`
-- Esforço estimado: Médio (2–3 dias de backend + 1 dia de frontend)
-- Prioridade: Alta — é a funcionalidade mais óbvia que um usuário de timesheet espera
+**GP-01 — ⊘ RECLASSIFICADO: Fora de Escopo — Entrada manual de horas**
+- **Decisão de produto (GR-1):** a entrada de dados ocorre exclusivamente via ingestão de arquivos CSV/XLSX exportados do sistema legado de ponto eletrônico. O sistema legado é a fonte única de verdade; PMAS é uma camada de leitura, análise e visualização — não um sistema de registro. Implementar um formulário de lançamento manual introduziria divergência entre as duas bases e quebraria a invariante de rastreabilidade.
+- **O fluxo correto:** erros ou omissões devem ser corrigidos no sistema de origem e reimportados via upload. O workflow de quarentena (aprovação/rejeição) é o único mecanismo de intervenção permitido sobre dados já ingeridos.
+- **Documentação:** esta regra está codificada como GR-1 no `CLAUDE.md`.
 
 **GP-02 — Notificações proativas ausentes**
 - Impacto no usuário: CPI < 0.8 ou orçamento > 95% acontece sem que ninguém seja avisado até que o PM abra a tela. Em portfólios com 10+ projetos, problemas passam despercebidos por semanas
@@ -327,12 +325,10 @@ Operações e Administração
 - Esforço estimado: Médio (1–2 dias para notificação in-app; adicionar SMTP é +1 dia)
 - Prioridade: Média-Alta
 
-**GP-03 — Edição de registro individual pós-ingesta ausente**
-- Impacto no usuário: erro em uma linha de uma planilha exige re-upload de toda a planilha. O workflow de quarentena permite aprovar/rejeitar linhas problemáticas, mas não permite corrigir o valor de uma linha já importada sem re-fazer o upload
-- Estado atual: sem `PUT /api/timesheet-records/{id}`. O sistema usa delete-by-pep+cycle + insert na fase 4 da ingesta, o que torna uma edição granular viável tecnicamente (bastaria replicar esse padrão para um único registro)
-- Caminho de implementação: `PATCH /api/timesheet-records/{id}` com campos editáveis (horas_normal, horas_extra, horas_sobreaviso), re-freeze de custo e registro em `AuditLog`. Backend: ~50 linhas. Frontend: botão de edição inline na tabela de registros
-- Esforço estimado: Baixo-médio (1 dia)
-- Prioridade: Média
+**GP-03 — ⊘ RECLASSIFICADO: Fora de Escopo — Edição de registro individual pós-ingesta**
+- **Decisão de produto (GR-1):** a edição granular de um `TimesheetRecord` já importado constitui manipulação direta de dados que contradiz a regra de fonte única de verdade. O caminho correto é corrigir o dado no sistema legado e reimportar o arquivo CSV/XLSX — o pipeline de ingesta aplica delete-by-(pep_wbs, cycle_id) + insert, substituindo naturalmente o conjunto completo.
+- **Mecanismo existente para dados problemáticos:** o workflow de quarentena (approve/reject) em `routers/quarantine.py` é o único ponto de intervenção permitido sobre linhas com falha de validação.
+- **Documentação:** esta regra está codificada como GR-1 no `CLAUDE.md`.
 
 **GP-04 — Relatório exportável consolidado ausente**
 - Impacto no usuário: para apresentações ao cliente ou reuniões de steering, o PM precisa copiar prints individuais de cada gráfico. O `toolbox.saveAsImage` do ECharts salva gráficos um a um; não há "exportar relatório completo"
@@ -401,11 +397,10 @@ SortableJS ghostClass/chosenClass → Feedback visual no drag
 | Corrigir `#94a3b8` → `_cssVar` (GR-01) | Alto gráfico | 30min | +0.3 GR |
 | Definir `--primary-light` (GR-05) | Baixo gráfico | 5min | +0.1 GR |
 | Notificação in-app via BackgroundTasks | Alto propósito | 1 dia | +0.3 GP |
-| Entrada manual de horas (GP-01) | Alto propósito | 3 dias | +0.5 GP |
 | Integrar `utils.js` como módulo real | Médio stack | 2h | +0.2 ST |
 | `SortableJS ghostClass` | Baixo gráfico | 30min | +0.1 GR |
 | Inter via Google Fonts (GR-02) | Médio gráfico | 10min | +0.2 GR |
-| **Total desbloqueável** | | ~5 dias | **+2.2 pts** |
+| **Total desbloqueável** | | ~2 dias | **+1.7 pts** |
 
 ---
 
@@ -423,11 +418,10 @@ Corrigir todos os gaps que não exigem novo código, apenas ajustes:
 - **GR-06**: implementar `echarts.registerTheme('pmas', ...)` chamado em `_loadTheme()` e passar o nome para `echarts.init(el, 'pmas')`
 - **Stack**: integrar `utils.js` como script global (remover `export`, adicionar ao `index.html` antes de `app.js`, remover definição local em `app.js` linha 4324)
 
-### Fase 2 — Funcionalidades de Propósito (Semanas 2–3) — Score esperado: 8.5 / 7.5 / 9.5
+### Fase 2 — Funcionalidades de Propósito (Semanas 2–3) — Score esperado: 9.0 / 7.5 / 9.5
 
-- **GP-01**: `POST /api/timesheet-records` — endpoint de entrada manual com validação + audit log
 - **GP-02**: notificação in-app via `BackgroundTasks` — tabela `Notification` + badge no header
-- **GP-03**: `PATCH /api/timesheet-records/{id}` — edição granular com re-freeze de custo
+- **GP-04**: página de relatório HTML/CSS printável (GP-01 e GP-03 foram reclassificados como fora de escopo — ver GR-1 no `CLAUDE.md`)
 
 ### Fase 3 — Excelência Técnica (Semana 4+) — Score esperado: 9.0 / 8.5 / 9.5
 

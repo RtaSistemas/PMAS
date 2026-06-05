@@ -8,6 +8,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
+## Golden Rules — Architectural Constraints
+
+These rules are non-negotiable. They encode decisions made at the product level and must never be violated by any implementation, refactor, or feature addition.
+
+**GR-1 — Data entry via ingestion only. Manual manipulation is forbidden.**
+The only pathway for timesheet data to enter PMAS is through the established CSV/XLSX ingestion pipeline (`POST /api/upload-timesheet` → `ingest_file()`). The upstream legacy system (the client's timekeeping platform) is the single source of truth. PMAS is a read-and-analyze layer on top of it. Consequently:
+- No `POST /api/timesheet-records` endpoint for individual row creation.
+- No `PUT` / `PATCH` / `DELETE` on individual `TimesheetRecord` rows outside the quarantine workflow.
+- Errors in imported data must be corrected at the source and re-imported, not patched in PMAS.
+- The quarantine workflow (approve / reject) is the only in-system intervention allowed on ingested rows.
+
+**GR-2 — EVM formulas live exclusively in `services/evm.py`.**
+No router, no frontend script, and no test may re-implement an EVM formula. All EVM computation (CPI, SPI, EAC, TCPI, VAC, CV, SV, Earned Schedule, etc.) must call the functions in `services/evm.py`. This is the single source of truth for every financial metric.
+
+**GR-3 — Chart data-series colors must use `_getPalette()`.**
+Colors for data series in ECharts charts must come from `_getPalette()` (admin-configured palette). Semantic/status colors (health alerts, thresholds, peaks) may use `_cssVar()`. Hardcoded hex literals in chart options are forbidden.
+
 ## Running the Project
 
 ```bash
