@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
 class SimulateIn(BaseModel):
-    velocity_multiplier: float = Field(default=1.0, gt=0, le=10)
+    velocity_multiplier: float = Field(default=1.0, ge=0.1, le=5.0)
     extra_hours_per_cycle: float = Field(default=0.0, ge=0)
     date_from: Optional[DateType] = None
     date_to: Optional[DateType] = None

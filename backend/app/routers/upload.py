@@ -15,6 +15,7 @@ from backend.app.services.ingestion import (
     LockedProjectError,
     ingest_file,
 )
+from backend.app.services.notifications_svc import create_notification
 from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
@@ -76,6 +77,17 @@ def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser)
         _save_rejected_session(db, current_user, fname, "Erro interno durante ingestão.")
         log.exception("Erro inesperado durante ingestão.")
         raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
+
+    accepted = summary.get("records_inserted", 0)
+    quarantined = summary.get("quarantine_records_added", 0)
+    level = "info" if quarantined == 0 else "warning"
+    message = (
+        f"Upload '{fname}' processado: {accepted} registros aceitos, "
+        f"{quarantined} em quarentena."
+    )
+    create_notification(db, current_user.id, message, level=level)
+    db.commit()
+
     return summary
 
 

@@ -49,6 +49,7 @@
   --density-font-size: 0.875rem;
 
   --text-1:      #ddeeff;
+  --primary-light: #38bdf8;
   --font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Extended palette — for off-token inline styles */
@@ -255,6 +256,34 @@ header {
   background: rgba(14,165,233,0.12); border: 1px solid rgba(14,165,233,0.3);
   color: #7dd3fc;
 }
+
+/* ── Notification bell ───────────────────────────────────────── */
+.notif-badge {
+  position: absolute;
+  top: 0.1rem; right: 0.1rem;
+  min-width: 1.1rem; height: 1.1rem;
+  background: var(--danger, var(--red));
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#notifBtn { position: relative; }
+.notif-panel {
+  position: absolute; top: 100%; right: 0;
+  width: 22rem; max-height: 28rem; overflow-y: auto;
+  background: var(--surface-1, var(--surface)); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  z-index: 200; padding: 0.5rem 0;
+}
+.notif-item {
+  padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+  display: flex; gap: 0.5rem; align-items: flex-start;
+}
+.notif-item.unread { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.notif-item .notif-msg { flex: 1; font-size: 0.85rem; }
+.notif-item .notif-time { font-size: 0.75rem; color: var(--text-2); }
 
 /* ── Layout ─────────────────────────────────────────────────── */
 main {
@@ -716,7 +745,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   /* Hide all chrome — only visible content prints */
   header, .app-tabs, .analytics-tabs, #notification, #anomalyPanel,
   .header-actions, #logoutBtn, #langToggleBtn,
-  .btn:not(.btn-print), .actions, input[type="file"], label[for],
+  .btn:not(.btn-print), #printReportBtn, .actions, input[type="file"], label[for],
   .table-search-input, select, #cycleSearch, #projectSearch,
   #showArchivedCycles, #auditEntityFilter, #auditActionFilter,
   #auditRefreshBtn, #addPlanRowBtn, .section-header button,
@@ -745,6 +774,11 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   /* Tables — tighten spacing for paper */
   .data-table { font-size: 9pt; border-collapse: collapse; width: 100%; }
   .data-table th, .data-table td { padding: 4px 6px !important; }
+
+  /* Base overrides for print */
+  body { background: #fff; color: #000; }
+  .app-main { padding: 0; }
+  .chart-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
 }
 
 /* ── Theme custom properties (overridden by JS from /api/theme) ── */
@@ -811,6 +845,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .sortable-item:hover { border-color: var(--border-hi); }
 .sortable-item.sortable-chosen { cursor: grabbing; box-shadow: var(--shadow); }
 .sortable-item.sortable-ghost { opacity: 0.4; border-style: dashed; }
+.sortable-ghost  { opacity: 0.4; }
+.sortable-chosen { background: color-mix(in srgb, var(--primary) 15%, transparent); }
 .sortable-handle {
   color: var(--text-3); font-size: 0.9rem; flex-shrink: 0; cursor: grab;
 }
@@ -926,10 +962,10 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .palette-swatches { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
 
 /* ── Quarantine type / status badges ─────────────────────────────────────── */
-.badge-structural { background: #422006; color: #fcd34d; border: 1px solid #92400e; }
-.badge-rule       { background: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; }
-.badge-reviewed   { background: #14532d; color: #86efac; border: 1px solid #166534; }
-.badge-pending    { background: #292524; color: #a8a29e; border: 1px solid #44403c; }
+.badge-structural { background: color-mix(in srgb, var(--amber) 20%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); }
+.badge-rule       { background: rgba(30,27,75,0.85); color: #a5b4fc; border: 1px solid #3730a3; }
+.badge-reviewed   { background: color-mix(in srgb, var(--success, var(--green)) 20%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 40%, transparent); }
+.badge-pending    { background: rgba(41,37,36,0.85); color: var(--text-3); border: 1px solid rgba(68,64,60,0.7); }
 
 /* ── Validation rule helpers ─────────────────────────────────────────────── */
 .aggregate-hint { font-size: 0.75rem; color: var(--color-warning, #f39c12); margin-top: 0.25rem; }

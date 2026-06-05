@@ -198,7 +198,7 @@ function _disposeTabCharts(tabId) {
 
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
-    _charts[id] = echarts.init(document.getElementById(id), 'dark', { renderer: 'svg' });
+    _charts[id] = echarts.init(document.getElementById(id), 'pmas', { renderer: 'svg' });
     _charts[id].setOption({ aria: { enabled: true } });
   }
   return _charts[id];
@@ -1018,7 +1018,7 @@ function _renderCostCompositionChart(trends) {
   const cc = _getOrCreateChart('costCompositionChart');
   cc.setOption({
     ..._chartDefaults(),
-    legend: { top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+    legend: { top: 0, textStyle: { color: _cssVar('--text-2'), fontSize: 11 } },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -1035,8 +1035,8 @@ function _renderCostCompositionChart(trends) {
       },
     },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
-    yAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
+    xAxis: { type: 'category', data: categories, axisLabel: { color: _cssVar('--text-2'), fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
+    yAxis: { type: 'value', axisLabel: { color: _cssVar('--text-2'), fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
     series: [
       { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] }, emphasis: { focus: 'series' } },
       { name: _t('trends.extra'),   type: 'bar', stack: 'cost', data: extraData,   itemStyle: { color: pal[1] }, emphasis: { focus: 'series' } },
@@ -2703,7 +2703,7 @@ async function _renderCollabTimeline(name) {
   emptyEl.hidden = true;
   chartEl.style.visibility = '';
 
-  const tc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  const tc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
   tc.setOption({ aria: { enabled: true } });
   _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
@@ -2819,7 +2819,7 @@ function _renderCollabRadar(name, rows) {
     }],
   };
 
-  const rc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  const rc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
   rc.setOption(option);
   _charts['collabRadarChart'] = rc;
 }
@@ -2912,7 +2912,7 @@ async function _renderCollabCalendar(name, year, month) {
   const numWeeks  = Math.ceil((firstDow + lastDay) / 7);
   chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
-  const cc = echarts.init(chartEl, 'dark', { renderer: 'svg' });
+  const cc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
   cc.setOption({ aria: { enabled: true } });
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
@@ -3442,7 +3442,7 @@ async function _openBudgetHistory(projectId, projectName) {
       const bHours = sorted.map(r => r.new_budget_hours ?? null);
       const bCosts = sorted.map(r => r.new_budget_cost  ?? null);
       if (_budgetHistChart) { _budgetHistChart.dispose(); _budgetHistChart = null; }
-      _budgetHistChart = echarts.init(sparkEl, 'dark', { renderer: 'svg' });
+      _budgetHistChart = echarts.init(sparkEl, 'pmas', { renderer: 'svg' });
       _budgetHistChart.setOption({
         backgroundColor: 'transparent',
         grid: { top: 28, right: 12, bottom: 24, left: 8, containLabel: true },
@@ -4676,6 +4676,16 @@ async function _loadTheme() {
     // Chart palette
     window._CHART_PALETTE = t.chart_palette?.length ? t.chart_palette : undefined;
 
+    // Register pmas echarts theme from CSS tokens
+    if (window.echarts) {
+      echarts.registerTheme('pmas', {
+        backgroundColor: 'transparent',
+        textStyle: { color: _cssVar('--text-1') },
+        axisLabel: { color: _cssVar('--text-2') },
+        splitLine: { lineStyle: { color: _cssVar('--border') } },
+      });
+    }
+
     // App name
     const appName = t.app_name || 'PMAS';
     document.title = `${appName} — Dashboard`;
@@ -4731,12 +4741,12 @@ function _initChartLayout() {
   const list = document.getElementById('chartLayoutList');
   if (!list || typeof Sortable === 'undefined') return;
   if (_sortableLayout) _sortableLayout.destroy();
-  _sortableLayout = Sortable.create(list, { animation: 150, handle: '.tab-handle' });
+  _sortableLayout = Sortable.create(list, { animation: 150, handle: '.tab-handle', ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen' });
   ['effort', 'portfolio', 'forecast'].forEach(tabId => {
     const pList = document.getElementById(`panelList-${tabId}`);
     if (!pList) return;
     if (_panelSortables[tabId]) _panelSortables[tabId].destroy();
-    _panelSortables[tabId] = Sortable.create(pList, { animation: 120, handle: '.panel-handle' });
+    _panelSortables[tabId] = Sortable.create(pList, { animation: 120, handle: '.panel-handle', ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen' });
   });
 }
 
@@ -5109,6 +5119,8 @@ function _renderRulesList() {
   _rulesSortable = Sortable.create(ul, {
     animation: 150,
     handle: '.sortable-handle',
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
     onEnd: async () => {
       const items = [...ul.querySelectorAll('[data-rule-id]')];
       const orderMap = {};
@@ -5860,6 +5872,96 @@ _makeSortable('myQrTable',        [{key:'ingested_at',type:'date'}, null, null, 
 _makeSortable('runwayTable',      [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}], () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})), _drawRunwayRows);
 _makeSortable('overAllocTable',   [{key:'collaborator',type:'str'}, {key:'date',type:'date'}, {key:'total_hours',type:'num'}, null], () => _overAllocData, _renderOverAllocTable);
 
+async function _initNotifications() {
+  const btn = document.getElementById('notifBtn');
+  const badge = document.getElementById('notifBadge');
+  if (!btn) return;
+
+  let panel = null;
+  let open = false;
+
+  async function _fetchNotifs() {
+    try {
+      const r = await fetch('/api/my/notifications', { headers: _authHeaders() });
+      if (!r.ok) return;
+      const data = await r.json();
+      const unread = data.filter(n => !n.is_read).length;
+      if (unread > 0) {
+        badge.textContent = unread;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+      return data;
+    } catch { return []; }
+  }
+
+  function _renderPanel(notifs) {
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.className = 'notif-panel';
+      btn.parentElement.appendChild(panel);
+    }
+    if (!notifs || notifs.length === 0) {
+      panel.innerHTML = `<p style="padding:1rem;text-align:center;color:var(--text-2)">${_t('notif.empty')}</p>`;
+      return;
+    }
+    const markAll = `<button class="btn btn-ghost btn-xs" id="notifMarkAll" style="margin:0.5rem 1rem">${_t('notif.mark_all_read')}</button>`;
+    panel.innerHTML = markAll + notifs.map(n => `
+      <div class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}">
+        <div style="flex:1">
+          <div class="notif-msg">${escHtml(n.message)}</div>
+          <div class="notif-time">${fmtDateBR(n.created_at?.slice(0,10))}</div>
+        </div>
+        <button class="btn btn-ghost btn-xs notif-del" data-id="${n.id}" title="${_t('notif.delete')}">✕</button>
+      </div>`).join('');
+    panel.querySelector('#notifMarkAll')?.addEventListener('click', async () => {
+      await fetch('/api/my/notifications/read-all', { method: 'POST', headers: _authHeaders() });
+      const d = await _fetchNotifs();
+      _renderPanel(d);
+    });
+    panel.querySelectorAll('.notif-del').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        await fetch(`/api/my/notifications/${id}`, { method: 'DELETE', headers: _authHeaders() });
+        const d = await _fetchNotifs();
+        _renderPanel(d);
+      });
+    });
+    panel.querySelectorAll('.notif-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('notif-del')) return;
+        const id = item.dataset.id;
+        await fetch(`/api/my/notifications/${id}/read`, { method: 'POST', headers: _authHeaders() });
+        item.classList.remove('unread');
+        await _fetchNotifs();
+      });
+    });
+  }
+
+  btn.addEventListener('click', async () => {
+    open = !open;
+    if (open) {
+      const d = await _fetchNotifs();
+      _renderPanel(d);
+      panel.style.display = '';
+    } else {
+      if (panel) panel.style.display = 'none';
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (open && panel && !btn.contains(e.target) && !panel.contains(e.target)) {
+      open = false;
+      panel.style.display = 'none';
+    }
+  });
+
+  // Poll every 60 seconds
+  _fetchNotifs();
+  setInterval(_fetchNotifs, 60000);
+}
+
 function _bootApp() {
   if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
@@ -5877,6 +5979,7 @@ function _bootApp() {
   loadGlobalConfig();
   _refreshTabBadges();
   _renderActiveTab();
+  _initNotifications();
 }
 
 function _showDefaultPasswordBanner() {
