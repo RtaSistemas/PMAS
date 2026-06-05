@@ -166,7 +166,8 @@ tabBtns.forEach(btn => {
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
     if (btn.dataset.tab === 'dashboard') _renderActiveTab();
-    if (btn.dataset.tab === 'projects') { loadCyclesTable(); loadProjectsTable(); }
+    if (btn.dataset.tab === 'projects') loadProjectsTable();
+    if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
     if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
@@ -2345,43 +2346,6 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
-let _addPlanAvailableCycles = [];
-
-function _addPlanRow(available) {
-  const container = document.getElementById('addPlanRows');
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'display:flex;flex-direction:column;gap:.3rem;padding:.5rem;border:1px solid var(--border);border-radius:.4rem';
-
-  const topRow = document.createElement('div');
-  topRow.style.cssText = 'display:flex;gap:.5rem;align-items:center';
-  const sel = document.createElement('select');
-  sel.className = 'form-select';
-  sel.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
-  sel.innerHTML = `<option value="">— ${_t('plan.select_cycle')} —</option>` +
-    available.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  const rm = document.createElement('button');
-  rm.type = 'button';
-  rm.className = 'btn btn-secondary btn-sm';
-  rm.textContent = '✕';
-  rm.onclick = () => wrapper.remove();
-  topRow.append(sel, rm);
-
-  const bottomRow = document.createElement('div');
-  bottomRow.style.cssText = 'display:flex;gap:.5rem';
-  const inpH = document.createElement('input');
-  inpH.type = 'number'; inpH.min = '0'; inpH.step = '0.5';
-  inpH.placeholder = _t('plan.th.hours');
-  inpH.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
-  const inpC = document.createElement('input');
-  inpC.type = 'number'; inpC.min = '0'; inpC.step = '0.01';
-  inpC.placeholder = _t('plan.th.cost') + ' (opcional)';
-  inpC.style.cssText = 'flex:1;height:2rem;font-size:.82rem';
-  bottomRow.append(inpH, inpC);
-
-  wrapper.append(topRow, bottomRow);
-  container.appendChild(wrapper);
-}
-
 document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
   try {
@@ -2390,13 +2354,28 @@ document.getElementById('addPlanRowBtn').addEventListener('click', async () => {
       apiFetch(`/api/projects/${_planProjectId}/plans`),
     ]);
     const plannedCycleIds = new Set(existingPlans.map(p => p.cycle_id));
-    _addPlanAvailableCycles = allCycles.filter(c => !plannedCycleIds.has(c.id));
-    if (!_addPlanAvailableCycles.length) { notify(_t('msg.all_baseline_set'), 'info'); return; }
-    document.getElementById('addPlanRows').innerHTML = '';
+    const available = allCycles.filter(c => !plannedCycleIds.has(c.id));
+    if (!available.length) { notify(_t('msg.all_baseline_set'), 'info'); return; }
+    document.getElementById('addPlanRows').innerHTML = available.map(c => `
+      <tr>
+        <td><input type="checkbox" class="plan-cycle-check" data-cycle-id="${c.id}" /></td>
+        <td>${escHtml(c.name)}</td>
+        <td><input type="number" min="0" step="0.5" class="plan-hours form-input input-sm"
+             style="width:6rem;text-align:right" placeholder="0" /></td>
+        <td><input type="number" min="0" step="0.01" class="plan-cost form-input input-sm"
+             style="width:7rem;text-align:right" placeholder="${_t('label.optional')}" /></td>
+      </tr>`).join('');
+    const checkAll = document.getElementById('addPlanCheckAll');
+    checkAll.checked = false;
+    checkAll.indeterminate = false;
     document.getElementById('addPlanError').textContent = '';
-    _addPlanRow(_addPlanAvailableCycles);
     openModal('addPlanModal');
   } catch (e) { notify(_friendlyError(e), 'error'); }
+});
+
+document.getElementById('addPlanCheckAll').addEventListener('change', e => {
+  document.getElementById('addPlanRows').querySelectorAll('.plan-cycle-check')
+    .forEach(cb => { cb.checked = e.target.checked; });
 });
 
 // ---------------------------------------------------------------------------
@@ -2477,42 +2456,30 @@ document.getElementById('physicalProgressSaveBtn').addEventListener('click', asy
   } catch (e) { errEl.textContent = `${_t('msg.err_generic')}: ${e.message}`; }
 });
 
-document.getElementById('addPlanAddRowBtn').addEventListener('click', () => {
-  _addPlanRow(_addPlanAvailableCycles);
-});
-
-function _closeAddPlanModal() {
-  closeModal('addPlanModal');
-}
+function _closeAddPlanModal() { closeModal('addPlanModal'); }
 document.getElementById('addPlanModalClose').addEventListener('click', _closeAddPlanModal);
 document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
 
 document.getElementById('addPlanSaveBtn').addEventListener('click', async () => {
-  const wrappers = document.getElementById('addPlanRows').querySelectorAll(':scope > div');
+  const rows = document.getElementById('addPlanRows').querySelectorAll('tr');
   const errEl = document.getElementById('addPlanError');
   errEl.textContent = '';
   const entries = [];
-  const seenIds = new Set();
-  for (const wrapper of wrappers) {
-    const sel   = wrapper.querySelector('select');
-    const inpH  = wrapper.querySelectorAll('input')[0];
-    const inpC  = wrapper.querySelectorAll('input')[1];
-    const cycleId = parseInt(sel.value);
-    const hours   = parseFloat(inpH.value);
-    const rawC    = inpC.value.trim();
+  for (const row of rows) {
+    const check = row.querySelector('.plan-cycle-check');
+    if (!check?.checked) continue;
+    const cycleId = parseInt(check.dataset.cycleId);
+    const hours   = parseFloat(row.querySelector('.plan-hours').value);
+    const rawC    = row.querySelector('.plan-cost').value.trim();
     const cost    = rawC === '' ? null : parseFloat(rawC);
-    if (!cycleId) { errEl.textContent = _t('msg.select_cycle_all'); return; }
-    if (seenIds.has(cycleId)) { errEl.textContent = _t('msg.duplicate_cycle'); return; }
     if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
     if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = 'Custo inválido.'; return; }
-    seenIds.add(cycleId);
     entries.push({ cycle_id: cycleId, planned_hours: hours, planned_cost: cost });
   }
   if (!entries.length) { _closeAddPlanModal(); return; }
   try {
     await Promise.all(entries.map(e =>
-      apiFetchJSON(`/api/projects/${_planProjectId}/plans/${e.cycle_id}`, 'PUT',
-        { cycle_id: e.cycle_id, planned_hours: e.planned_hours, planned_cost: e.planned_cost })
+      apiFetchJSON(`/api/projects/${_planProjectId}/plans/${e.cycle_id}`, 'PUT', e)
     ));
     _closeAddPlanModal();
     await _renderPlanTable();
@@ -3165,6 +3132,25 @@ function _buildPortfolioStatsRow(health, trends) {
 }
 
 // ---------------------------------------------------------------------------
+// Row-actions dropdown (delegated)
+// ---------------------------------------------------------------------------
+document.addEventListener('click', e => {
+  const trigger = e.target.closest('.row-actions-trigger');
+  if (trigger) {
+    e.stopPropagation();
+    const menu = trigger.closest('.row-actions-wrap')?.querySelector('.row-actions-menu');
+    const isOpen = menu?.classList.contains('open');
+    document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
+    if (menu && !isOpen) menu.classList.add('open');
+    return;
+  }
+  document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
+});
+
+// ---------------------------------------------------------------------------
 // Cycles management
 // ---------------------------------------------------------------------------
 let _cycleEditId = null;
@@ -3353,11 +3339,17 @@ const _projectsPag = _makePaginator(
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
-        <button class="btn btn-secondary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
-        <button class="btn btn-secondary btn-sm" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})" data-i18n-title="budget.history.btn">${_t('budget.history.btn')}</button>
-        <button class="btn btn-secondary btn-sm" onclick="_openBaselineModal(${p.id})" title="${_t('baseline.title')}">📍</button>
-        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 Acesso</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
+        <button class="btn btn-primary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
+        <div class="row-actions-wrap">
+          <button class="btn btn-secondary btn-sm row-actions-trigger" title="${_t('btn.more_actions')}">⋮</button>
+          <div class="row-actions-menu" role="menu">
+            <button class="row-actions-item" role="menuitem" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('budget.history.btn')}</button>
+            <button class="row-actions-item" role="menuitem" onclick="_openBaselineModal(${p.id})">📍 ${_t('baseline.title')}</button>
+            ${_isAdmin() ? `<button class="row-actions-item" role="menuitem" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 ${_t('acl.title')}</button>` : ''}
+            <div class="row-actions-sep"></div>
+            <button class="row-actions-item danger" role="menuitem" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
+          </div>
+        </div>
       </div></td>
     </tr>`;
     },
@@ -3387,7 +3379,65 @@ async function loadProjectsTable() {
     });
 
     _renderProjectsTable(_applySort('projectsTable', projects));
+    _renderProjectStats();
   } catch (e) { notify(_friendlyError(e), 'error'); }
+}
+
+function _renderProjectStats() {
+  const el = document.getElementById('projectsStats');
+  if (!el || !_allProjects.length) { if (el) el.hidden = true; return; }
+
+  const counts = { ativo: 0, suspenso: 0, encerrado: 0 };
+  let totalBudgetH = 0, withBaseline = 0, atRisk = 0;
+
+  _allProjects.forEach(p => {
+    counts[p.status] = (counts[p.status] || 0) + 1;
+    if (p.budget_hours) totalBudgetH += p.budget_hours;
+    if (_baselineByProject[p.id]) withBaseline++;
+    const h = _consumedByPep[p.pep_wbs]?.health;
+    if (h === 'warning' || h === 'overrun') atRisk++;
+  });
+
+  const total = _allProjects.length;
+  const budgetStr = totalBudgetH > 0 ? totalBudgetH.toLocaleString('pt-BR') + 'h' : '—';
+  const riskHtml = atRisk > 0
+    ? `<div class="stat-sep"></div>
+       <div class="stat-item">
+         <span class="stat-value" style="color:var(--amber)">${atRisk}</span>
+         <span class="stat-label">${_t('stats.at_risk')}</span>
+       </div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="stat-item">
+      <span class="stat-value">${total}</span>
+      <span class="stat-label">${_t('stats.projects')}</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <span class="stat-value"><span class="stat-dot ativo"></span>${counts.ativo || 0}</span>
+      <span class="stat-label">${_t('opt.ativo')}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value"><span class="stat-dot suspenso"></span>${counts.suspenso || 0}</span>
+      <span class="stat-label">${_t('opt.suspenso')}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value"><span class="stat-dot encerrado"></span>${counts.encerrado || 0}</span>
+      <span class="stat-label">${_t('opt.encerrado')}</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <span class="stat-value">${budgetStr}</span>
+      <span class="stat-label">${_t('stats.budget_h')}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">${withBaseline}/${total}</span>
+      <span class="stat-label">${_t('stats.with_baseline')}</span>
+    </div>
+    ${riskHtml}
+  `;
+  el.hidden = false;
 }
 
 function _buildBudgetCell(p) {
@@ -3416,18 +3466,16 @@ function selectProjectPlan(projectId, pepWbs, projectName) {
   _planProjectId = projectId;
   const nameEl = document.getElementById('planProjectName');
   if (nameEl) nameEl.textContent = projectName;
-  const panel = document.getElementById('projectPlanPanel');
-  panel.hidden = false;
   _renderPlanTable();
-  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+  openModal('planModal', document.activeElement);
 }
 
 function _closeProjectPlan() {
   _planProjectId = null;
-  document.getElementById('projectPlanPanel').hidden = true;
+  closeModal('planModal');
 }
 
-document.getElementById('closePlanPanelBtn').addEventListener('click', _closeProjectPlan);
+document.getElementById('planModalClose').addEventListener('click', _closeProjectPlan);
 
 // ── F7: Budget Revision History ───────────────────────────────────────────────
 
@@ -3656,6 +3704,39 @@ async function _refreshBaselineModal(projectId) {
     </div>`;
     if (!hasbudget) {
       html += `<p class="hint" style="color:var(--amber);margin-top:-.5rem">Defina o orçamento (budget_cost) do projeto para habilitar baseline.</p>`;
+    }
+
+    // Diff between two most recent baselines
+    if (baselines.length >= 2) {
+      const sorted = [...baselines].sort((a, b) => new Date(b.locked_at) - new Date(a.locked_at));
+      const newer = sorted[0], older = sorted[1];
+      const _diffCell = (n, o) => {
+        if (n == null && o == null) return '<td>—</td><td>—</td><td class="text-dim">—</td>';
+        const nStr = n != null ? n : '—';
+        const oStr = o != null ? o : '—';
+        const delta = (n != null && o != null) ? n - o : null;
+        const color = delta == null ? '' : delta > 0 ? `color:var(--amber)` : delta < 0 ? `color:var(--green)` : '';
+        const sign  = delta > 0 ? '+' : '';
+        const dStr  = delta != null ? `${sign}${delta.toLocaleString('pt-BR')}` : '—';
+        return `<td>${oStr}</td><td>${nStr}</td><td style="${color};font-weight:600">${dStr}</td>`;
+      };
+      const dH = older.budget_hours != null || newer.budget_hours != null
+        ? _diffCell(newer.budget_hours, older.budget_hours) : null;
+      const dC = older.budget_cost != null || newer.budget_cost != null
+        ? _diffCell(newer.budget_cost, older.budget_cost) : null;
+      if (dH || dC) {
+        html += `<div class="baseline-diff-box">
+          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">${_t('baseline.diff_title')}</span>
+          <table class="data-table" style="font-size:.82rem;margin-top:.4rem"><thead><tr>
+            <th></th><th>${escHtml(older.label || _fmtDateShort(older.locked_at))}</th>
+            <th>${escHtml(newer.label || _fmtDateShort(newer.locked_at))}</th>
+            <th>Δ</th>
+          </tr></thead><tbody>
+          ${dH ? `<tr><td style="color:var(--text-3)">${_t('baseline.budget_h')}</td>${dH}</tr>` : ''}
+          ${dC ? `<tr><td style="color:var(--text-3)">${_t('baseline.budget_cost')}</td>${dC}</tr>` : ''}
+          </tbody></table>
+        </div>`;
+      }
     }
 
     // History table
