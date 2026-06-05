@@ -40,7 +40,8 @@ function _mkStatCard({ val, lbl, cls, evm, sublbl, delta }) {
     : escHtml(lbl);
   const sublblHtml = sublbl ? `<div class="sublbl">${escHtml(sublbl)}</div>` : '';
   const deltaHtml  = delta  ? delta : '';
-  return `<div class="stat-card ${cls}">${deltaHtml}<div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
+  const ariaLbl = [lbl, val != null ? String(val) : '—', sublbl].filter(Boolean).join(', ');
+  return `<div class="stat-card ${cls}" aria-label="${escHtml(ariaLbl)}">${deltaHtml}<div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
 }
 
 // ---------------------------------------------------------------------------

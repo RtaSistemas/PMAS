@@ -2,7 +2,6 @@
    PMAS — Design System
    Paleta: Navy profundo + Sky Blue + Cyan accent + Emerald
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -249,7 +248,7 @@ header {
   color: var(--green);
 }
 #notification.error {
-  background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  background: rgba(240,80,80,0.12); background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid rgba(240,80,80,0.35); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   color: var(--red);
 }
 #notification.info {
@@ -305,8 +304,8 @@ main {
   background: transparent; border-color: var(--border-hi); color: var(--text-2);
 }
 .btn-secondary:hover { border-color: var(--text-2); color: var(--text); }
-.btn-danger   { background: transparent; border-color: color-mix(in srgb, var(--red)   40%, transparent); color: var(--red); }
-.btn-danger:hover { background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
+.btn-danger   { background: transparent; border-color: rgba(240,80,80,0.40); border-color: color-mix(in srgb, var(--red) 40%, transparent); color: var(--red); }
+.btn-danger:hover { background: rgba(240,80,80,0.08); background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
 .btn-warning  { background: transparent; border-color: color-mix(in srgb, var(--amber) 40%, transparent); color: var(--amber); }
 .btn-warning:hover { background: color-mix(in srgb, var(--amber) 8%, transparent); }
 .btn-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.75rem; }
@@ -453,9 +452,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   white-space: nowrap; transition: filter 0.12s;
 }
 .sem-project:hover { filter: brightness(1.25); }
-.sem-project.green  { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
+.sem-project.green  { background: rgba(52,211,153,0.12); background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
 .sem-project.yellow { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
-.sem-project.red    { background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
+.sem-project.red    { background: rgba(240,80,80,0.12); background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
 .sem-project.grey   { background: rgba(100,116,139,.1); color: var(--text-3); border: 1px solid rgba(100,116,139,.2); }
 .atab-btn {
   background: transparent; border: none;
@@ -557,19 +556,19 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   display: inline-block; padding: 0.15rem 0.6rem; border-radius: 9999px;
   font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.badge-status.ativo      { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
+.badge-status.ativo      { background: rgba(52,211,153,0.12); background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
 .badge-status.encerrado  { background: rgba(100,116,139,0.15); color: var(--text-3); border: 1px solid rgba(100,116,139,0.25); }
 .badge-status.suspenso   { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
 .badge-status.quarantine { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
 .badge-status.warnings   { background: rgba(249,115,22,0.12);  color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
-.badge-status.rejected   { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 28%, transparent); }
+.badge-status.rejected   { background: rgba(240,80,80,0.12); background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 28%, transparent); }
 
 .badge-budget {
   display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px;
   font-size: 0.63rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; margin-left: 0.45rem;
 }
-.badge-budget.critical { background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
+.badge-budget.critical { background: rgba(240,80,80,0.12); background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
 .badge-budget.warning  { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
 
 .badge-baseline {
@@ -606,7 +605,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   padding: 0.2rem 0.55rem; border-radius: 0.35rem; cursor: pointer;
   transition: all 0.15s;
 }
-.panel-close:hover { color: var(--red); border-color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); }
+.panel-close:hover { color: var(--red); border-color: var(--red); background: rgba(240,80,80,0.08); background: color-mix(in srgb, var(--red) 8%, transparent); }
 
 /* ── Modal ───────────────────────────────────────────────────── */
 .modal-backdrop {
@@ -851,7 +850,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 .rule-badge.info      { background: rgba(14,165,233,0.12); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.25); }
 .rule-badge.warning   { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); }
-.rule-badge.quarentena{ background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
+.rule-badge.quarentena{ background: rgba(240,80,80,0.12); background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red);   border: 1px solid color-mix(in srgb, var(--red)   28%, transparent); }
 .rule-badge.descarte  { background: rgba(148,0,211,0.12);  color: #c084fc; border: 1px solid rgba(148,0,211,0.25); }
 .rule-badge.system    { background: rgba(100,116,139,0.15); color: var(--text-3); border: 1px solid rgba(100,116,139,0.25); }
 

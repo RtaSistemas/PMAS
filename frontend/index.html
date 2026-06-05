@@ -2,12 +2,15 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PMAS — Dashboard de Gestão de Projetos</title>
   <link rel="icon" type="image/png" href="/static/assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="/frontend/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeG+D4vGSqXFWdWL9lXCI=" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -528,7 +531,7 @@
             <th data-i18n="projects.th.name">Nome do Projeto</th>
             <th data-i18n="projects.th.client">Cliente</th>
             <th data-i18n="projects.th.mgr">Gerente</th>
-            <th class="text-right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th class="text-right" data-i18n="projects.th.budget" data-i18n-title="projects.th.budget_tip">Budget (h)</th>
             <th data-i18n="projects.th.dates">Datas</th>
             <th data-i18n="projects.th.status">Status</th>
             <th></th>
@@ -538,7 +541,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="projectsPageLabel" class="hint"></span>
         <button type="button" id="projectsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -579,6 +582,9 @@
       </div>
     </div>
 
+    <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0 1.5rem">
+    <h2 class="section-title" data-i18n="cycles.section_title" style="margin-bottom:1rem">Ciclos de Faturamento</h2>
+
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
@@ -614,7 +620,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="cyclesPageLabel" class="hint"></span>
         <button type="button" id="cyclesNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -681,7 +687,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="seniorityPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="seniorityPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="seniorityPageLabel" class="hint"></span>
         <button type="button" id="seniorityNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -715,7 +721,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="rateCardPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="rateCardPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="rateCardPageLabel" class="hint"></span>
         <button type="button" id="rateCardNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -745,7 +751,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="teamPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="teamPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="teamPageLabel" class="hint"></span>
         <button type="button" id="teamNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -778,7 +784,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="overAllocPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="overAllocPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="overAllocPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="overAllocPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="overAllocPageLabel" class="hint"></span>
         <button type="button" id="overAllocNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -949,7 +955,7 @@
         </table>
         </div><!-- /.table-responsive -->
         <div id="myHistoryPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+          <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myHistoryPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myHistoryPageLabel" class="hint"></span>
           <button type="button" id="myHistoryNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -986,7 +992,7 @@
         </table>
         </div><!-- /.table-responsive -->
         <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+          <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myQrPageLabel" class="hint"></span>
           <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -1019,7 +1025,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="usersPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="usersPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="usersPageLabel" class="hint"></span>
         <button type="button" id="usersNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -1109,7 +1115,7 @@
       </table>
       </div><!-- /.table-responsive -->
       <div id="auditPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <label class="hint" style="display:flex;align-items:center;gap:.3rem"><span data-i18n="page.items_label">Itens:</span> <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="auditPageLabel" class="hint"></span>
         <button type="button" id="auditNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>

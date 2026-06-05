@@ -104,6 +104,15 @@ class MultiSelect {
 
   getValues() { return [...this.selected]; }
 
+  setValues(vals) {
+    if (!Array.isArray(vals) || !vals.length) return;
+    const valid = new Set(this.items.map(i => String(i.value)));
+    this.selected = new Set(vals.map(String).filter(v => valid.has(v)));
+    this._renderPanel();
+    this._updateBtn();
+    this.onChange?.();
+  }
+
   selectOnly(value) {
     this.selected.clear();
     if (value != null) this.selected.add(String(value));
