@@ -181,6 +181,7 @@ class User(Base):
 
     project_access = relationship("UserProjectAccess", back_populates="user", cascade="all, delete-orphan")
     preference = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 
 class GlobalConfig(Base):
@@ -367,3 +368,16 @@ class ThemePreset(Base):
     is_builtin = Column(Boolean, default=False, nullable=False)
     config     = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    __tablename__ = "notification"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    message    = Column(String, nullable=False)
+    level      = Column(String, nullable=False, default="info")
+    is_read    = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="notifications")
