@@ -363,21 +363,60 @@ class UserPreferenceOut(BaseModel):
 
 # ── UI theme ─────────────────────────────────────────────────────────────────
 
+import re as _re
+
+_HEX_COLOR_RE = r'^#[0-9a-fA-F]{6}$'
+
+
 class UIThemeIn(BaseModel):
     app_name: str = "PMAS"
-    color_primary: str = "#4f8ef7"
+    color_primary:    str = "#4f8ef7"
     color_background: str = "#081122"
-    color_surface: str = "#0e2038"
-    color_accent: str = "#07b3d7"
-    color_success: str = "#5ad388"
-    color_warning: str = "#d9b273"
-    color_danger: str = "#c56d76"
-    color_text: str = "#e0e0e0"
+    color_surface:    str = "#0e2038"
+    color_accent:     str = "#07b3d7"
+    color_success:    str = "#5ad388"
+    color_warning:    str = "#d9b273"
+    color_danger:     str = "#c56d76"
+    color_text:       str = "#e0e0e0"
     color_text_muted: str = "#818998"
+    # New optional tokens
+    color_card:       Optional[str] = None  # --card
+    color_border:     Optional[str] = None  # --border
+    color_text_hint:  Optional[str] = None  # --text-3
+    color_violet:     Optional[str] = None  # --violet
+    border_radius:    Optional[str] = None  # "sharp" | "normal" | "rounded"
+    font_family:      Optional[str] = None
     density: Literal["compact", "normal", "relaxed"] = "normal"
-    chart_palette: List[str] = Field(default_factory=lambda: [
+    chart_palette: Optional[List[str]] = Field(default_factory=lambda: [
         "#4f8ef7", "#d9b273", "#a78bfa", "#35a1f3", "#5ad388", "#01c1b9"
     ])
+
+    @field_validator("chart_palette")
+    @classmethod
+    def _check_palette(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None or len(v) == 0:
+            return v
+        if not (6 <= len(v) <= 8):
+            raise ValueError("chart_palette deve ter entre 6 e 8 cores (ou ser vazia).")
+        for color in v:
+            if not _re.match(_HEX_COLOR_RE, color):
+                raise ValueError(f"Cor inválida na paleta: {color}")
+        return v
+
+    @field_validator("color_card", "color_border", "color_text_hint", "color_violet")
+    @classmethod
+    def _check_optional_hex(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not _re.match(_HEX_COLOR_RE, v):
+            raise ValueError(f"Cor inválida: {v} (esperado #rrggbb)")
+        return v
+
+    @field_validator("border_radius")
+    @classmethod
+    def _check_border_radius(cls, v: Optional[str]) -> Optional[str]:
+        allowed = {"sharp", "normal", "rounded"}
+        if v is not None and v not in allowed:
+            raise ValueError(f"border_radius deve ser um de {allowed}, recebido '{v}'.")
+        return v
 
 
 class UIThemeOut(UIThemeIn):

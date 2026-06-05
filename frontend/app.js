@@ -4556,24 +4556,30 @@ const _THEME_PRESETS = {
     color_surface: '#0e2038', color_accent: '#07b3d7',
     color_success: '#5ad388', color_warning: '#d9b273',
     color_danger:  '#c56d76', color_text: '#e0e0e0',
-    color_text_muted: '#818998', density: 'normal',
-    chart_palette: ['#4f8ef7','#d9b273','#a78bfa','#35a1f3','#5ad388','#01c1b9'],
+    color_text_muted: '#818998', color_card: '#0e2038',
+    color_border: '#1e3a5f', color_text_hint: '#818998',
+    color_violet: '#a78bfa', density: 'normal', border_radius: 'normal',
+    chart_palette: ['#4f8ef7','#d9b273','#a78bfa','#35a1f3','#5ad388','#01c1b9','#f472b6','#fb923c'],
   },
   corporate: {
     color_primary: '#0070f3', color_background: '#0a0a23',
     color_surface: '#111133', color_accent: '#00d4ff',
     color_success: '#00c853', color_warning: '#ffab00',
     color_danger:  '#ff1744', color_text: '#f0f4ff',
-    color_text_muted: '#7986cb', density: 'normal',
-    chart_palette: ['#0070f3','#00d4ff','#00c853','#ffab00','#7c4dff','#26c6da'],
+    color_text_muted: '#7986cb', color_card: '#111133',
+    color_border: '#1e2f60', color_text_hint: '#7986cb',
+    color_violet: '#7c4dff', density: 'normal', border_radius: 'normal',
+    chart_palette: ['#0070f3','#00d4ff','#00c853','#ffab00','#7c4dff','#26c6da','#e040fb','#ff7043'],
   },
   high_contrast: {
     color_primary: '#ffffff', color_background: '#000000',
     color_surface: '#111111', color_accent: '#ffff00',
     color_success: '#00ff00', color_warning: '#ff8800',
     color_danger:  '#ff0000', color_text: '#ffffff',
-    color_text_muted: '#aaaaaa', density: 'relaxed',
-    chart_palette: ['#ffffff','#ffff00','#00ff00','#ff8800','#00ffff','#ff00ff'],
+    color_text_muted: '#aaaaaa', color_card: '#111111',
+    color_border: '#444444', color_text_hint: '#aaaaaa',
+    color_violet: '#dd88ff', density: 'relaxed', border_radius: 'sharp',
+    chart_palette: ['#ffffff','#ffff00','#00ff00','#ff8800','#00ffff','#ff00ff','#88ff88','#ff8888'],
   },
 };
 
@@ -4664,6 +4670,18 @@ async function _loadTheme() {
     root.style.setProperty('--amber',     warning);
     root.style.setProperty('--red',       danger);
     root.style.setProperty('--cyan',      accent);
+
+    // Extended optional tokens — override defaults when present
+    if (t.color_card)      root.style.setProperty('--card',     t.color_card);
+    if (t.color_border)    root.style.setProperty('--border',   t.color_border);
+    if (t.color_text_hint) root.style.setProperty('--text-3',   t.color_text_hint);
+    if (t.color_violet)    root.style.setProperty('--violet',   t.color_violet);
+    if (t.border_radius) {
+      const _radMap = { sharp: '2px',  normal: '8px',  rounded: '16px' };
+      const _lgMap  = { sharp: '4px',  normal: '12px', rounded: '24px' };
+      root.style.setProperty('--radius',    _radMap[t.border_radius] || '8px');
+      root.style.setProperty('--radius-lg', _lgMap[t.border_radius]  || '12px');
+    }
 
     // Density
     const density = _DENSITY_MAP[t.density] || _DENSITY_MAP.normal;
@@ -5361,25 +5379,34 @@ async function _openSessionDetail(sessionId) {
 // ---------------------------------------------------------------------------
 // Theme editor (Admin tab)
 // ---------------------------------------------------------------------------
-const _THEME_FIELDS = [
-  { key: 'color_primary',     label: 'Cor primária' },
-  { key: 'color_background',  label: 'Fundo' },
-  { key: 'color_surface',     label: 'Superfície' },
-  { key: 'color_accent',      label: 'Destaque' },
-  { key: 'color_success',     label: 'Sucesso' },
-  { key: 'color_warning',     label: 'Alerta' },
-  { key: 'color_danger',      label: 'Perigo' },
-  { key: 'color_text',        label: 'Texto' },
-  { key: 'color_text_muted',  label: 'Texto muted' },
+const _THEME_COLS = [
+  { id: 'Structure', fields: [
+    { key: 'color_background',  label: 'appearance.f_bg' },
+    { key: 'color_surface',     label: 'appearance.f_surface' },
+    { key: 'color_card',        label: 'appearance.f_card',   optional: true },
+    { key: 'color_border',      label: 'appearance.f_border', optional: true },
+    { key: 'color_text',        label: 'appearance.f_text' },
+    { key: 'color_text_muted',  label: 'appearance.f_text2' },
+    { key: 'color_text_hint',   label: 'appearance.f_text3',  optional: true },
+  ]},
+  { id: 'Interaction', fields: [
+    { key: 'color_primary',     label: 'appearance.f_primary' },
+    { key: 'color_accent',      label: 'appearance.f_accent' },
+    { key: 'color_violet',      label: 'appearance.f_violet',  optional: true },
+  ]},
+  { id: 'Semantic', fields: [
+    { key: 'color_success',     label: 'appearance.f_success' },
+    { key: 'color_warning',     label: 'appearance.f_warning' },
+    { key: 'color_danger',      label: 'appearance.f_danger' },
+  ]},
 ];
+const _THEME_FIELDS = _THEME_COLS.flatMap(c => c.fields);
 
 let _currentTheme = {};
 
 async function _loadThemeEditor() {
   try {
     _currentTheme = await fetch('/api/theme').then(r => r.json());
-    _renderThemeEditor();
-    _renderCustomPresets();
   } catch (e) { notify(_friendlyError(e), 'error'); }
 }
 
@@ -5392,11 +5419,12 @@ function _applyThemePreset(key) {
 function _applyThemePresetConfig(preset) {
   if (!preset) return;
   _THEME_FIELDS.forEach(f => {
-    if (preset[f.key]) {
+    const v = preset[f.key];
+    if (v !== undefined) {
       const picker = document.getElementById(`themeColor_${f.key}`);
       const txt    = document.getElementById(`themeColorTxt_${f.key}`);
-      if (picker) picker.value = preset[f.key];
-      if (txt)    txt.value   = preset[f.key];
+      if (picker) picker.value = v || '#000000';
+      if (txt)    txt.value   = v || '';
     }
   });
   if (preset.density) {
@@ -5406,6 +5434,11 @@ function _applyThemePresetConfig(preset) {
     const d = _DENSITY_MAP[preset.density] || _DENSITY_MAP.normal;
     document.documentElement.style.setProperty('--density-spacing',   d.spacing);
     document.documentElement.style.setProperty('--density-font-size', d.fontSize);
+  }
+  if (preset.border_radius !== undefined) {
+    document.querySelectorAll('.theme-radius-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.radius === (preset.border_radius || 'normal'));
+    });
   }
   if (preset.chart_palette) {
     preset.chart_palette.forEach((c, i) => {
@@ -5512,9 +5545,14 @@ async function _saveCurrentAsPreset() {
   if (appNameEl) payload.app_name = appNameEl.value.trim() || 'PMAS';
   const activeBtn = document.querySelector('.theme-density-btn.active');
   if (activeBtn) payload.density = activeBtn.dataset.density;
-  payload.chart_palette = Array.from({ length: 6 }, (_, i) => {
-    return document.getElementById(`themePalTxt_${i}`)?.value || _THEME_PRESETS.pmas.chart_palette[i];
-  });
+  const activeR2 = document.querySelector('.theme-radius-btn.active');
+  if (activeR2) payload.border_radius = activeR2.dataset.radius;
+  const fontEl2 = document.getElementById('themeFont');
+  if (fontEl2) payload.font_family = fontEl2.value || null;
+  const pal2 = Array.from({ length: 8 }, (_, i) =>
+    document.getElementById(`themePalTxt_${i}`)?.value?.trim() || ''
+  ).filter(c => c);
+  payload.chart_palette = pal2.length >= 6 ? pal2 : _THEME_PRESETS.pmas.chart_palette;
   try {
     await apiFetchJSON('/api/theme/presets', 'POST', { name, config: payload });
     notify(_t('appearance.preset_saved'), 'success');
@@ -5559,109 +5597,104 @@ async function _importPresetsCSV(input) {
   input.value = '';
 }
 
+function _buildColorField(f, value) {
+  const v = (value != null && value !== '') ? value : '';
+  const colorVal = v || '#000000';
+  return `
+    <div class="theme-field">
+      <label style="font-size:.7rem;color:var(--text-3)">${escHtml(_t(f.label))}</label>
+      <div class="theme-swatch-row">
+        <input type="color" id="themeColor_${f.key}" value="${escHtml(colorVal)}" />
+        <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(v)}"
+          style="flex:1;font-size:.8rem" placeholder="${f.optional ? _t('appearance.optional') : ''}" />
+      </div>
+    </div>`;
+}
+
 function _renderThemeEditor() {
-  const grid = document.getElementById('themeColorGrid');
-  if (!grid) return;
   const t   = _currentTheme;
-  const pal = t.chart_palette?.length ? t.chart_palette : _THEME_PRESETS.pmas.chart_palette;
+  const pal = (t.chart_palette?.length >= 6) ? t.chart_palette : _THEME_PRESETS.pmas.chart_palette;
 
-  // Section: app name + density
-  const densitySection = `
-    <div class="form-group full" style="margin-bottom:.25rem">
-      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.app_name')}</label>
-      <input type="text" id="themeAppName" value="${escHtml(t.app_name || 'PMAS')}"
-        style="max-width:240px;margin-top:.25rem" />
-    </div>
-    <div class="form-group full" style="margin-bottom:.5rem">
-      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.density')}</label>
-      <div style="display:flex;gap:.5rem;margin-top:.25rem">
-        ${['compact','normal','relaxed'].map(d => `
-          <button class="btn btn-secondary btn-sm theme-density-btn${(t.density || 'normal') === d ? ' active' : ''}"
-            data-density="${d}" type="button">${_t('appearance.density.'+d)}</button>
-        `).join('')}
-      </div>
-    </div>`;
+  // Populate 3 columns
+  _THEME_COLS.forEach(col => {
+    const el = document.getElementById(`themeCol${col.id}Fields`);
+    if (!el) return;
+    el.innerHTML = col.fields.map(f => _buildColorField(f, t[f.key])).join('');
+  });
 
-  // Section: profile (load + save presets in one row)
-  const presetsSection = `
-    <div class="form-group full" style="margin-bottom:.75rem">
-      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.profile')}</label>
-      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.35rem">
-        <select id="presetSelect" onchange="_updatePresetDeleteBtn()"
-          style="flex:2;min-width:180px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
-          <option value="">${_t('appearance.preset_select_placeholder')}</option>
-        </select>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="_loadSelectedPreset()">${_t('appearance.preset_load')}</button>
-        <button type="button" id="presetDeleteBtn" class="btn btn-sm" disabled
-          style="padding:.3rem .6rem;background:transparent;color:#c56d76;border:1px solid #c56d76;border-radius:6px;opacity:.4"
-          onclick="_deleteSelectedPreset()">${_t('appearance.preset_delete')}</button>
-        <div style="width:1px;height:1.5rem;background:var(--border);margin:0 .25rem"></div>
-        <input id="presetNameInput" type="text" placeholder="${_t('appearance.preset_name')}"
-          style="flex:2;min-width:140px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
-        <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()">${_t('appearance.save_preset')}</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()">${_t('appearance.preset_export')}</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()">${_t('appearance.preset_import')}</button>
-        <input id="presetImportInput" type="file" accept=".csv" style="display:none" onchange="_importPresetsCSV(this)">
-      </div>
-    </div>`;
+  // Palette (8 swatches)
+  const palEl = document.getElementById('themeModalPalette');
+  if (palEl) {
+    palEl.innerHTML = Array.from({ length: 8 }, (_, i) => `
+      <div class="theme-pal-item">
+        <input type="color" id="themePalColor_${i}" value="${escHtml(pal[i] || '#4f8ef7')}" />
+        <input type="text"  id="themePalTxt_${i}"   value="${escHtml(pal[i] || '')}"
+          placeholder="Cor ${i + 1}" style="font-size:.75rem" />
+      </div>`).join('');
+  }
 
-  // Section: colors
-  const colorSection = `
-    <div class="form-group full" style="margin-bottom:.25rem">
-      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.colors')}</label>
-    </div>
-    ${_THEME_FIELDS.map(f => `
-      <div class="form-group">
-        <label style="font-size:.7rem;color:${_cssVar('--text-3')}">${escHtml(f.label)}</label>
-        <div class="theme-swatch-row">
-          <input type="color" id="themeColor_${f.key}" value="${escHtml(t[f.key] || '#000000')}" />
-          <input type="text" id="themeColorTxt_${f.key}" value="${escHtml(t[f.key] || '')}"
-            style="flex:1;font-size:.8rem" />
-        </div>
-      </div>
-    `).join('')}`;
+  // App name
+  const appNameEl = document.getElementById('themeAppName');
+  if (appNameEl) appNameEl.value = t.app_name || 'PMAS';
 
-  // Section: chart palette
-  const paletteSection = `
-    <div class="form-group full" style="margin:.5rem 0 .25rem">
-      <label style="font-size:.75rem;font-weight:600;color:${_cssVar('--text-3')}">${_t('appearance.palette')}</label>
-    </div>
-    ${Array.from({ length: 6 }, (_, i) => `
-      <div class="form-group">
-        <label style="font-size:.7rem;color:${_cssVar('--text-3')}">Cor ${i + 1}</label>
-        <div class="theme-swatch-row">
-          <input type="color" id="themePalColor_${i}" value="${escHtml(pal[i] || '#4f8ef7')}" />
-          <input type="text" id="themePalTxt_${i}" value="${escHtml(pal[i] || '')}"
-            style="flex:1;font-size:.8rem" />
-        </div>
-      </div>
-    `).join('')}`;
+  // Font
+  const fontEl = document.getElementById('themeFont');
+  if (fontEl) fontEl.value = t.font_family || '';
 
-  grid.innerHTML = densitySection + presetsSection + colorSection + paletteSection;
+  // Density buttons
+  const density = t.density || 'normal';
+  document.querySelectorAll('.theme-density-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.density === density);
+  });
+
+  // Radius buttons
+  const radius = t.border_radius || 'normal';
+  document.querySelectorAll('.theme-radius-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.radius === radius);
+  });
+
   _renderCustomPresets();
 
   // Wire color pickers ↔ text inputs
   _THEME_FIELDS.forEach(f => {
     const picker = document.getElementById(`themeColor_${f.key}`);
     const txt    = document.getElementById(`themeColorTxt_${f.key}`);
-    picker?.addEventListener('input', () => { txt.value = picker.value; });
-    txt?.addEventListener('change',  () => { if (/^#[0-9a-f]{6}$/i.test(txt.value)) picker.value = txt.value; });
+    picker?.addEventListener('input', () => { if (txt) txt.value = picker.value; });
+    txt?.addEventListener('change',  () => {
+      const v = txt.value.trim();
+      if (/^#[0-9a-f]{6}$/i.test(v) && picker) picker.value = v;
+    });
   });
-  Array.from({ length: 6 }, (_, i) => {
+  Array.from({ length: 8 }, (_, i) => {
     const picker = document.getElementById(`themePalColor_${i}`);
     const txt    = document.getElementById(`themePalTxt_${i}`);
-    picker?.addEventListener('input', () => { txt.value = picker.value; });
-    txt?.addEventListener('change',  () => { if (/^#[0-9a-f]{6}$/i.test(txt.value)) picker.value = txt.value; });
+    picker?.addEventListener('input', () => { if (txt) txt.value = picker.value; });
+    txt?.addEventListener('change',  () => {
+      const v = txt.value.trim();
+      if (/^#[0-9a-f]{6}$/i.test(v) && picker) picker.value = v;
+    });
   });
 
-  // Density button toggle — apply preview immediately
-  grid.querySelectorAll('.theme-density-btn').forEach(btn => {
+  // Density toggle + live preview
+  document.getElementById('themeDensityBtns')?.querySelectorAll('.theme-density-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      grid.querySelectorAll('.theme-density-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.theme-density-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const d = _DENSITY_MAP[btn.dataset.density] || _DENSITY_MAP.normal;
       document.documentElement.style.setProperty('--density-spacing',   d.spacing);
       document.documentElement.style.setProperty('--density-font-size', d.fontSize);
+    });
+  });
+
+  // Radius toggle + live preview
+  document.getElementById('themeRadiusBtns')?.querySelectorAll('.theme-radius-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.theme-radius-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const radMap = { sharp: '2px',  normal: '8px',  rounded: '16px' };
+      const lgMap  = { sharp: '4px',  normal: '12px', rounded: '24px' };
+      document.documentElement.style.setProperty('--radius',    radMap[btn.dataset.radius] || '8px');
+      document.documentElement.style.setProperty('--radius-lg', lgMap[btn.dataset.radius]  || '12px');
     });
   });
 }
@@ -5670,18 +5703,27 @@ document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
   const payload = { ..._currentTheme };
   _THEME_FIELDS.forEach(f => {
     const txt = document.getElementById(`themeColorTxt_${f.key}`);
-    if (txt) payload[f.key] = txt.value;
+    if (txt !== null) payload[f.key] = txt.value.trim() || null;
   });
+  // Required fields must not be null
+  const _required = ['color_primary','color_background','color_surface','color_accent','color_success','color_warning','color_danger','color_text','color_text_muted'];
+  _required.forEach(k => { if (!payload[k]) payload[k] = _THEME_PRESETS.pmas[k]; });
   const appNameEl = document.getElementById('themeAppName');
   if (appNameEl) payload.app_name = appNameEl.value.trim() || 'PMAS';
-  const activeBtn = document.querySelector('.theme-density-btn.active');
-  if (activeBtn) payload.density = activeBtn.dataset.density;
-  payload.chart_palette = Array.from({ length: 6 }, (_, i) => {
-    return document.getElementById(`themePalTxt_${i}`)?.value || _THEME_PRESETS.pmas.chart_palette[i];
-  });
+  const fontEl = document.getElementById('themeFont');
+  if (fontEl) payload.font_family = fontEl.value || null;
+  const activeD = document.querySelector('.theme-density-btn.active');
+  if (activeD) payload.density = activeD.dataset.density;
+  const activeR = document.querySelector('.theme-radius-btn.active');
+  if (activeR) payload.border_radius = activeR.dataset.radius;
+  const pal = Array.from({ length: 8 }, (_, i) =>
+    document.getElementById(`themePalTxt_${i}`)?.value?.trim() || ''
+  ).filter(c => c);
+  payload.chart_palette = pal.length >= 6 ? pal : _THEME_PRESETS.pmas.chart_palette;
   try {
     _currentTheme = await apiFetchJSON('/api/theme', 'PUT', payload);
     _loadTheme();
+    closeModal('themeModal');
     notify(_t('appearance.saved'), 'success');
   } catch (e) { notify(_friendlyError(e), 'error'); }
 });
@@ -5718,6 +5760,18 @@ document.getElementById('deleteLogoBtn')?.addEventListener('click', () => {
     } catch (e) { notify(_friendlyError(e), 'error'); }
   });
 });
+
+document.getElementById('openThemeModalBtn')?.addEventListener('click', async () => {
+  if (!Object.keys(_currentTheme).length) {
+    try { _currentTheme = await fetch('/api/theme').then(r => r.json()); }
+    catch { /* ignore */ }
+  }
+  _renderThemeEditor();
+  openModal('themeModal');
+});
+
+document.getElementById('closeThemeModalBtn')?.addEventListener('click', () => closeModal('themeModal'));
+document.getElementById('cancelThemeBtn')?.addEventListener('click', () => closeModal('themeModal'));
 
 // ---------------------------------------------------------------------------
 // Boot

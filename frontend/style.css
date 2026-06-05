@@ -921,6 +921,78 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   background: var(--primary); color: #fff; border-color: var(--primary);
 }
 
+/* ── Theme customization modal ───────────────────────────────── */
+.theme-modal-box {
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow: hidden;
+}
+.theme-modal-body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 0 1.25rem 1rem;
+}
+
+/* 3-column color grid */
+.theme-cols-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+.theme-col { display: flex; flex-direction: column; gap: 0; }
+.theme-col-title {
+  font-size: 0.68rem; font-weight: 700; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.09em;
+  margin-bottom: 0.75rem; padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.theme-col-fields { display: flex; flex-direction: column; gap: 0.65rem; }
+.theme-field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+/* Palette row — 8 swatches side by side */
+.theme-palette-row {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end;
+}
+.theme-pal-item { display: flex; flex-direction: column; gap: 0.2rem; align-items: center; }
+.theme-pal-item input[type="color"] {
+  width: 2.4rem; height: 2.4rem;
+  border-radius: var(--radius); cursor: pointer;
+  border: 2px solid var(--border); padding: 0;
+  background: transparent;
+}
+.theme-pal-item input[type="text"] {
+  width: 5rem; font-size: 0.68rem;
+  text-align: center; padding: 0.2rem 0.3rem;
+}
+
+/* Layout row — density + radius + font + app-name */
+.theme-layout-row {
+  display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: flex-end;
+}
+
+/* Preset row */
+.theme-preset-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.theme-preset-btns { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+/* Section separator */
+.theme-section { border-top: 1px solid var(--border); padding-top: 1rem; }
+
+/* Radius active button */
+.theme-radius-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Preview bar inside modal */
+#themeModalPreviewBar {
+  display: flex; height: 1.5rem; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border);
+}
+#themeModalPreviewBar span { flex: 1; }
+
+/* Responsive: stack columns on narrow screens */
+@media (max-width: 640px) {
+  .theme-cols-grid { grid-template-columns: 1fr; }
+  .theme-layout-row { flex-direction: column; }
+}
+
 /* ── Chart grid / card layout (data-driven) ─────────────────────────────── */
 .chart-grid[data-cols='1'] { grid-template-columns: 1fr; }
 .chart-grid[data-cols='2'] { grid-template-columns: 1fr 1fr; }

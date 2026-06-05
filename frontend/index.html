@@ -1056,20 +1056,9 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
-        <div class="flex-center gap-sm flex-wrap">
-          <label class="btn btn-secondary btn-sm cursor-pointer" title="Enviar logo" data-i18n="appearance.logo_upload">
-            📷 Logo
-            <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
-          </label>
-          <button type="button" class="btn btn-danger btn-sm" id="deleteLogoBtn" data-i18n="appearance.logo_remove">✕ Remover logo</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="restoreDefaultThemeBtn" data-i18n="appearance.restore">Restaurar padrões</button>
-          <button type="button" class="btn btn-primary btn-sm" id="saveThemeBtn" data-i18n="appearance.save">Salvar aparência</button>
-        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="openThemeModalBtn" data-i18n="appearance.open_btn">🎨 Personalizar Aparência</button>
       </div>
-      <div id="themePreviewBar" class="theme-preview-bar" style="margin-bottom:1rem"></div>
-      <div class="theme-color-grid" id="themeColorGrid">
-        <!-- populated by JS -->
-      </div>
+      <div id="themePreviewBar" class="theme-preview-bar" style="margin-top:.5rem"></div>
     </div>
 
     <div class="card">
@@ -1685,6 +1674,116 @@
       <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="baselineModalClose">×</button>
     </div>
     <div class="modal-body" style="padding:1.25rem" id="baselineModalBody">
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Aparência do Sistema                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="themeModal" hidden>
+  <div class="modal-box theme-modal-box" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+    <div class="modal-header">
+      <h3 id="themeModalTitle" data-i18n="appearance.modal_title">Personalizar Aparência</h3>
+      <button type="button" class="modal-close" aria-label="Fechar" id="closeThemeModalBtn">×</button>
+    </div>
+
+    <!-- Scrollable body -->
+    <div class="theme-modal-body">
+
+    <!-- Presets row -->
+    <div class="theme-preset-row">
+      <select id="presetSelect" onchange="_updatePresetDeleteBtn()" style="flex:2;min-width:160px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+        <option value="" data-i18n="appearance.preset_select_placeholder">Selecione um perfil...</option>
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="_loadSelectedPreset()" data-i18n="appearance.preset_load">Carregar</button>
+      <button type="button" id="presetDeleteBtn" class="btn btn-sm" disabled
+        style="padding:.3rem .6rem;background:transparent;color:#c56d76;border:1px solid #c56d76;border-radius:6px;opacity:.4"
+        onclick="_deleteSelectedPreset()" data-i18n="appearance.preset_delete">Excluir</button>
+      <div style="width:1px;height:1.5rem;background:var(--border);margin:0 .1rem"></div>
+      <input id="presetNameInput" type="text" data-i18n-ph="appearance.preset_name" placeholder="Nome do preset"
+        style="flex:2;min-width:120px;padding:.35rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+      <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()" data-i18n="appearance.save_preset">Salvar preset</button>
+      <div class="theme-preset-btns">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()" data-i18n="appearance.preset_export">⬇ CSV</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()" data-i18n="appearance.preset_import">⬆ CSV</button>
+        <input id="presetImportInput" type="file" accept=".csv" hidden onchange="_importPresetsCSV(this)">
+      </div>
+    </div>
+
+    <!-- Preview bar -->
+    <div id="themeModalPreviewBar" class="theme-preview-bar" style="margin:.5rem 0 .75rem"></div>
+
+    <!-- 3-column color grid -->
+    <div class="theme-cols-grid">
+      <div class="theme-col" id="themeColStructure">
+        <div class="theme-col-title" data-i18n="appearance.col_structure">Estrutura</div>
+        <div class="theme-col-fields" id="themeColStructureFields"><!-- populated by JS --></div>
+      </div>
+      <div class="theme-col" id="themeColInteraction">
+        <div class="theme-col-title" data-i18n="appearance.col_interaction">Interação</div>
+        <div class="theme-col-fields" id="themeColInteractionFields"><!-- populated by JS --></div>
+      </div>
+      <div class="theme-col" id="themeColSemantic">
+        <div class="theme-col-title" data-i18n="appearance.col_semantic">Semântica</div>
+        <div class="theme-col-fields" id="themeColSemanticFields"><!-- populated by JS --></div>
+      </div>
+    </div>
+
+    <!-- Palette -->
+    <div class="theme-section" data-i18n="appearance.col_palette">Paleta de gráficos</div>
+    <div class="theme-palette-row" id="themeModalPalette"><!-- populated by JS --></div>
+
+    <!-- Layout & typography -->
+    <div class="theme-section" data-i18n="appearance.col_layout">Layout e tipografia</div>
+    <div class="theme-layout-row">
+      <div class="theme-field">
+        <label data-i18n="appearance.app_name">Nome do sistema</label>
+        <input type="text" id="themeAppName" placeholder="PMAS" />
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.font_family">Fonte</label>
+        <select id="themeFont" style="width:100%;padding:.3rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
+          <option value="">Padrão (Inter)</option>
+          <option value="'Roboto', sans-serif">Roboto</option>
+          <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
+          <option value="'Source Sans 3', sans-serif">Source Sans 3</option>
+        </select>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.density">Densidade</label>
+        <div id="themeDensityBtns" style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm theme-density-btn" data-density="compact" type="button" data-i18n="appearance.density.compact">Compacto</button>
+          <button class="btn btn-secondary btn-sm theme-density-btn active" data-density="normal" type="button" data-i18n="appearance.density.normal">Normal</button>
+          <button class="btn btn-secondary btn-sm theme-density-btn" data-density="relaxed" type="button" data-i18n="appearance.density.relaxed">Espaçado</button>
+        </div>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.border_radius">Raio dos cantos</label>
+        <div id="themeRadiusBtns" style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm theme-radius-btn" data-radius="sharp" type="button" data-i18n="appearance.radius_sharp">Reto</button>
+          <button class="btn btn-secondary btn-sm theme-radius-btn active" data-radius="normal" type="button" data-i18n="appearance.radius_normal">Normal</button>
+          <button class="btn btn-secondary btn-sm theme-radius-btn" data-radius="rounded" type="button" data-i18n="appearance.radius_rounded">Arredondado</button>
+        </div>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.logo">Logo</label>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-i18n="appearance.logo_upload">
+            📷 Enviar
+            <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
+          </label>
+          <button type="button" class="btn btn-danger btn-sm" id="deleteLogoBtn" data-i18n="appearance.logo_remove">🗑 Remover</button>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- end .theme-modal-body -->
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-sm" id="restoreDefaultThemeBtn" data-i18n="appearance.restore">Restaurar padrões</button>
+      <button type="button" class="btn btn-secondary" id="cancelThemeBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="saveThemeBtn" data-i18n="appearance.save">Salvar aparência</button>
     </div>
   </div>
 </div>
