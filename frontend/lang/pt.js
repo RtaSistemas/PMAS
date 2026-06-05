@@ -34,7 +34,7 @@ window._LANG_PT = {
     'sem.green':'Verde','sem.yellow':'Atenção','sem.red':'Crítico','sem.grey':'Sem orçamento',
     'effort.empty':'Selecione um ciclo ou PEP nos filtros e clique em Carregar.',
     'btn.stacked':'Vista: Empilhada','btn.grouped':'Vista: Agrupada',
-    'btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
+    'btn.print_report':'Imprimir relatório','btn.export_csv':'⬇ Exportar CSV','budget.title':'Orçado vs. Realizado por PEP',
     'scatter.title':'Quadrante EVM — CPI × SPI',
     'scatter.note':'Eixo X = SPI (prazo) · Eixo Y = CPI (custo) · Referência em 1,0',
     'scatter.empty':'Nenhum dado de PEP disponível para os filtros selecionados.',

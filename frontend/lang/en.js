@@ -34,7 +34,7 @@ window._LANG_EN = {
     'sem.green':'Green','sem.yellow':'Warning','sem.red':'Critical','sem.grey':'No budget',
     'effort.empty':'Select a cycle or PEP in the filters and click Load.',
     'btn.stacked':'View: Stacked','btn.grouped':'View: Grouped',
-    'btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
+    'btn.print_report':'Print report','btn.export_csv':'⬇ Export CSV','budget.title':'Budget vs. Actual by PEP',
     'scatter.title':'EVM Quadrant — CPI × SPI',
     'scatter.note':'X = SPI (schedule) · Y = CPI (cost) · Reference at 1.0',
     'scatter.empty':'No PEP data available for selected filters.',
