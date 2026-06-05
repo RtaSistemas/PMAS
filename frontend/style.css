@@ -1185,6 +1185,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   .header-sep { display: none; }
   .header-actions { gap: 0.35rem; }
   .header-widget { display: none; }
+  #printReportBtn { display: none; }
 
   /* Nav tabs — horizontal scroll instead of wrapping */
   .app-tabs {
@@ -1205,6 +1206,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 
   /* Filter card grid: stack columns */
   .filter-grid { grid-template-columns: 1fr !important; }
+  .btn-group { flex-wrap: wrap; }
 
   /* Section headers: allow wrap */
   .section-header {

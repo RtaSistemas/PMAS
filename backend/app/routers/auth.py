@@ -28,7 +28,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 @router.post("/token", response_model=Token)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 def login(
     request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],

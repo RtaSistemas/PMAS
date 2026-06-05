@@ -5882,7 +5882,7 @@ async function _initNotifications() {
 
   async function _fetchNotifs() {
     try {
-      const r = await fetch('/api/my/notifications', { headers: _authHeaders() });
+      const r = await fetch('/api/my/notifications/', { headers: _authHeaders() });
       if (!r.ok) return;
       const data = await r.json();
       const unread = data.filter(n => !n.is_read).length;
