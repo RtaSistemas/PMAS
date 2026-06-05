@@ -649,9 +649,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   width: 100%; max-width: 560px;
   display: flex; flex-direction: column; gap: 1.35rem;
   box-shadow: var(--shadow), var(--glow);
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
 }
-.modal-header { display: flex; justify-content: space-between; align-items: center; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
 .modal-header h3 { font-size: 1rem; font-weight: 700; color: var(--text); }
+/* Fallback scroll for modals without an explicit .modal-body wrapper */
+.modal-box > .form-grid { min-height: 0; overflow-y: auto; }
 .modal-close {
   background: transparent; border: none; color: var(--text-3);
   font-size: 1.3rem; cursor: pointer; line-height: 1;
@@ -659,8 +663,16 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   transition: color 0.15s; font-family: inherit;
 }
 .modal-close:hover { color: var(--text); }
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; }
-.error-msg { font-size: 0.79rem; color: var(--red); min-height: 1.2em; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; flex-shrink: 0; }
+.modal-body {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.85rem;
+}
+.modal-form-body-sm {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.85rem;
+}
+.error-msg { font-size: 0.79rem; color: var(--red); min-height: 1.2em; flex-shrink: 0; }
 
 /* ── Upload zone (legacy — kept for compat) ─────────────────── */
 .upload-zone {
@@ -924,7 +936,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 /* ── Theme customization modal ───────────────────────────────── */
 .theme-modal-box {
   display: flex; flex-direction: column;
-  max-height: 90vh; overflow: hidden;
+  max-width: 900px; max-height: 90vh; overflow: hidden;
 }
 .theme-modal-body {
   flex: 1; overflow-y: auto; overflow-x: hidden;
