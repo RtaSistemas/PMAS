@@ -1648,6 +1648,12 @@ async function _renderForecastTab() {
     } catch (_) { /* chart lib may not be loaded in offline envs */ }
     _renderVelocitySparkline(fc);
     _renderBurnUpChart(fc);
+    // Sync cross-highlight: hovering a historical cycle in either chart highlights it in the other
+    const fChart = _charts['forecastChart'];
+    const bChart = _charts['burnUpChart'];
+    if (fChart && bChart && !fChart.isDisposed() && !bChart.isDisposed()) {
+      echarts.connect([fChart, bChart]);
+    }
     _renderForecastBaseline(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
     await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
