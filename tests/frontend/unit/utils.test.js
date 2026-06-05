@@ -4,8 +4,6 @@ import {
   fmtDateBR,
   formatHours,
   formatCost,
-  riskColor,
-  classifyBudgetHealth,
   clamp,
   parseISODate,
 } from '../../../frontend/utils.js';
@@ -125,71 +123,6 @@ describe('formatCost', () => {
 
   it('returns dash for undefined', () => {
     expect(formatCost(undefined)).toBe('—');
-  });
-});
-
-// ── riskColor ─────────────────────────────────────────────────────────────────
-
-describe('riskColor', () => {
-  it('returns primary color for ok', () => {
-    expect(riskColor('ok')).toContain('#4f8ef7');
-  });
-
-  it('returns amber for warning', () => {
-    expect(riskColor('warning')).toContain('#d9b273');
-  });
-
-  it('returns red for critical', () => {
-    expect(riskColor('critical')).toContain('#c56d76');
-  });
-
-  it('returns red for overrun (same as critical)', () => {
-    expect(riskColor('overrun')).toBe(riskColor('critical'));
-  });
-
-  it('returns muted color for no_budget', () => {
-    expect(riskColor('no_budget')).toContain('#818998');
-  });
-
-  it('returns no_budget color for unknown risk level', () => {
-    expect(riskColor('unknown')).toBe(riskColor('no_budget'));
-  });
-});
-
-// ── classifyBudgetHealth ──────────────────────────────────────────────────────
-
-describe('classifyBudgetHealth', () => {
-  it('returns no_budget when budget is null', () => {
-    expect(classifyBudgetHealth(100, null)).toBe('no_budget');
-  });
-
-  it('returns no_budget when budget is zero', () => {
-    expect(classifyBudgetHealth(100, 0)).toBe('no_budget');
-  });
-
-  it('returns ok when ratio is below warning threshold', () => {
-    expect(classifyBudgetHealth(80, 100)).toBe('ok');
-  });
-
-  it('returns warning at exactly the warning threshold', () => {
-    expect(classifyBudgetHealth(90, 100)).toBe('warning');
-  });
-
-  it('returns warning between thresholds', () => {
-    expect(classifyBudgetHealth(95, 100)).toBe('warning');
-  });
-
-  it('returns critical at exactly 100%', () => {
-    expect(classifyBudgetHealth(100, 100)).toBe('critical');
-  });
-
-  it('returns critical above 100%', () => {
-    expect(classifyBudgetHealth(110, 100)).toBe('critical');
-  });
-
-  it('uses custom thresholds', () => {
-    expect(classifyBudgetHealth(70, 100, 0.7, 0.8)).toBe('warning');
-    expect(classifyBudgetHealth(80, 100, 0.7, 0.8)).toBe('critical');
   });
 });
 

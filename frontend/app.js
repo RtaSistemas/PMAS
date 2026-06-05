@@ -1490,7 +1490,7 @@ function _buildForecastKpis(fc) {
     : null;
 
   const completionVal = fc.is_closed && fc.completed_on
-    ? _fmtDateBR(fc.completed_on)
+    ? fmtDateBR(fc.completed_on)
     : (fc.estimated_completion_cycle
       || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—'));
   const completionLbl = fc.is_closed ? _t('forecast.completed_on') : _t('forecast.completion');
@@ -1555,9 +1555,9 @@ function _renderForecastProjectInfo(fc, proj) {
   }
 
   const dateChips = [];
-  if (fc.start_date)       dateChips.push(`▸ ${_t('forecast.info.start')}: ${_fmtDateBR(fc.start_date)}`);
-  if (fc.planned_end_date) dateChips.push(`→ ${_t('forecast.info.planned_end')}: ${_fmtDateBR(fc.planned_end_date)}`);
-  if (fc.completed_on)     dateChips.push(`✓ ${_t('forecast.info.completed')}: ${_fmtDateBR(fc.completed_on)}`);
+  if (fc.start_date)       dateChips.push(`▸ ${_t('forecast.info.start')}: ${fmtDateBR(fc.start_date)}`);
+  if (fc.planned_end_date) dateChips.push(`→ ${_t('forecast.info.planned_end')}: ${fmtDateBR(fc.planned_end_date)}`);
+  if (fc.completed_on)     dateChips.push(`✓ ${_t('forecast.info.completed')}: ${fmtDateBR(fc.completed_on)}`);
 
   el.innerHTML =
     _forecastInfoStat(_t('forecast.info.project'),
@@ -3378,17 +3378,11 @@ function _buildBudgetCell(p) {
   return budgetStr;
 }
 
-function _fmtDateBR(iso) {
-  if (!iso) return null;
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
 function _buildDatesCell(p) {
   const parts = [];
-  if (p.start_date)       parts.push(`▸ ${_fmtDateBR(p.start_date)}`);
-  if (p.planned_end_date) parts.push(`→ ${_fmtDateBR(p.planned_end_date)}`);
-  if (p.completion_date)  parts.push(`✓ ${_fmtDateBR(p.completion_date)}`);
+  if (p.start_date)       parts.push(`▸ ${fmtDateBR(p.start_date)}`);
+  if (p.planned_end_date) parts.push(`→ ${fmtDateBR(p.planned_end_date)}`);
+  if (p.completion_date)  parts.push(`✓ ${fmtDateBR(p.completion_date)}`);
   return parts.length ? `<span style="font-size:.8rem;color:${_cssVar('--text-3')}">${parts.join(' ')}</span>` : '—';
 }
 
@@ -3432,7 +3426,7 @@ async function _openBudgetHistory(projectId, projectName) {
     }
     document.getElementById('budgetHistoryBody').innerHTML = rows.map(r => `
       <tr>
-        <td>${_fmtDateBR(r.changed_at?.split('T')[0]) || '—'}</td>
+        <td>${fmtDateBR(r.changed_at?.split('T')[0]) || '—'}</td>
         <td>${escHtml(r.changed_by)}</td>
         <td class="text-right">${r.old_budget_hours != null ? r.old_budget_hours.toFixed(1) + 'h' : '—'}
           → ${r.new_budget_hours != null ? r.new_budget_hours.toFixed(1) + 'h' : '—'}</td>
@@ -3830,7 +3824,7 @@ const _overAllocPag = _makePaginator(
     rowFn: it => `
     <tr>
       <td>${escHtml(it.collaborator)}</td>
-      <td>${_fmtDateBR(it.date)}</td>
+      <td>${fmtDateBR(it.date)}</td>
       <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
       <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
     </tr>`,
@@ -4319,10 +4313,6 @@ function fmt(h) {
   return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {
     minimumFractionDigits: 1, maximumFractionDigits: 1,
   });
-}
-
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ---------------------------------------------------------------------------

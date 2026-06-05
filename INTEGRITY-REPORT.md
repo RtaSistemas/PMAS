@@ -69,11 +69,10 @@
 - Impacto: os 4 badges de quarentena usam uma paleta Tailwind amber/purple/green/stone completamente fora do vocabulário do design system. Um tema customizado não os alcança
 - Recomendação: remapear para `color-mix(in srgb, var(--amber) 12%, transparent)` / `var(--amber)` seguindo o padrão das demais badges
 
-**GR-04 — `utils.js` exporta ES Modules que não são importados**
-- Localização: `/home/user/PMAS/frontend/utils.js` — contém `export function escHtml`, `export function fmtDateBR`, etc.
-- Nenhum `<script type="module">` no `index.html`; `app.js` redefine `escHtml` localmente na linha 4324
-- Impacto: `utils.js` não é carregado em `index.html` — é código morto. A duplicação de `escHtml` entre `utils.js` e `app.js` é um risco de divergência silenciosa
-- Recomendação: ou converter o frontend para ES modules (adicionando `type="module"` e `import`) ou remover as declarações `export` de `utils.js` e carregá-lo como script global
+**GR-04 — `utils.js` exporta ES Modules que não são importados** ✅ RESOLVIDO (Fase 1)
+- Solução aplicada: `utils.js` carregado via `<script type="module">` em `index.html`; as funções são expostas como globals via `window.*` para compatibilidade com o classic script `app.js`
+- Duplicatas eliminadas: `escHtml` e `_fmtDateBR` removidas de `app.js`; todas as chamadas renomeadas para `fmtDateBR`
+- Violações removidas: `riskColor` (violava GR-3 — hardcodava `var(--primary)` em vez de usar `_getPalette()`) e `classifyBudgetHealth` (violava GR-2 — reimplementava `classify_health()` do backend com retorno inconsistente `'critical'` vs `'overrun'`) foram removidas de `utils.js` e dos testes Vitest
 
 **GR-05 — `--primary-light` referenciado em CSS mas não definido em `:root`**
 - Localização: `style.css` linha 694: `.alloc-total { color: var(--primary-light); }`
@@ -414,9 +413,8 @@ Corrigir todos os gaps que não exigem novo código, apenas ajustes:
 - **GR-02**: adicionar `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap')` no topo de `style.css`
 - **GR-05**: definir `--primary-light: #38bdf8` em `:root` de `style.css`
 - **GR-03**: remap dos badges de quarentena para `color-mix(in srgb, var(--amber)...)`
-- **GR-04**: mover SortableJS para servir localmente (o arquivo já existe em `frontend/sortable.min.js`)
+- **GR-04**: ✅ `utils.js` integrado via `<script type="module">` em `index.html`; funções expostas como `window.*`; duplicatas `escHtml`/`_fmtDateBR` removidas de `app.js`; violações GR-2/GR-3 (`riskColor`, `classifyBudgetHealth`) removidas
 - **GR-06**: implementar `echarts.registerTheme('pmas', ...)` chamado em `_loadTheme()` e passar o nome para `echarts.init(el, 'pmas')`
-- **Stack**: integrar `utils.js` como script global (remover `export`, adicionar ao `index.html` antes de `app.js`, remover definição local em `app.js` linha 4324)
 
 ### Fase 2 — Funcionalidades de Propósito (Semanas 2–3) — Score esperado: 9.0 / 7.5 / 9.5
 

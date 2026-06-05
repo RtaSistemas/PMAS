@@ -33,29 +33,6 @@ export function formatCost(raw, factor = 1, symbol = 'R$') {
   })}`;
 }
 
-export function riskColor(risk) {
-  const colors = {
-    ok:        'var(--primary, #4f8ef7)',
-    warning:   'var(--amber,   #d9b273)',
-    critical:  'var(--red,     #c56d76)',
-    overrun:   'var(--red,     #c56d76)',
-    no_budget: 'var(--text-3,  #818998)',
-  };
-  return colors[risk] || colors.no_budget;
-}
-
-/**
- * Classify budget consumption health.
- * @returns {'ok'|'warning'|'critical'|'no_budget'}
- */
-export function classifyBudgetHealth(consumed, budget, warnThreshold = 0.9, critThreshold = 1.0) {
-  if (budget == null || budget <= 0) return 'no_budget';
-  const ratio = consumed / budget;
-  if (ratio >= critThreshold) return 'critical';
-  if (ratio >= warnThreshold) return 'warning';
-  return 'ok';
-}
-
 /**
  * Clamp a number between min and max.
  */
@@ -71,4 +48,14 @@ export function parseISODate(iso) {
   if (!iso) return null;
   const [y, m, d] = String(iso).split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
+}
+
+// Expose as browser globals when running outside a module context (Vitest runs via import)
+if (typeof window !== 'undefined') {
+  window.escHtml = escHtml;
+  window.fmtDateBR = fmtDateBR;
+  window.formatHours = formatHours;
+  window.formatCost = formatCost;
+  window.clamp = clamp;
+  window.parseISODate = parseISODate;
 }
