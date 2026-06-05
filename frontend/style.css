@@ -854,6 +854,16 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   --theme-danger:      #e74c3c;
   --theme-text:        #e0e0e0;
   --theme-text-muted:  #8892a4;
+
+  /* Heatmap calendar — sequential intensity scale (hours/day).
+     6 steps from lightest to darkest, derived from the primary blue.
+     Override here if the theme uses a non-blue primary. */
+  --heatmap-1: #d4e3f5;
+  --heatmap-2: #96bcdf;
+  --heatmap-3: #5490c8;
+  --heatmap-4: #2662ae;
+  --heatmap-5: #103c8c;
+  --heatmap-6: #071e60;
 }
 
 /* ── Header logo image (when custom logo is set) ─────────────── */

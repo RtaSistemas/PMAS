@@ -24,9 +24,9 @@ const _EVM_TERMS = window._EVM_TERMS || {};
 let _currencyFactor = 1;
 let _currencySymbol = 'R$';
 
-function _fmtCost(rawValue) {
+function _fmtCost(rawValue, decimals = 2) {
   const v = rawValue * _currencyFactor;
-  return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 function _applyConversion(factor, symbol) {
@@ -713,7 +713,7 @@ function _drawRunwayRows(data) {
     const color = _riskColor(_evmMode ? item.cost_risk : item.risk);
 
     const absLabel = _evmMode
-      ? `R$ ${item.actual_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      ? _fmtCost(item.actual_cost, 0)
       : `${item.consumed_hours.toFixed(1)}h`;
     const pctLabel = rawPct != null ? `${rawPct.toFixed(1)}% (${absLabel})` : '—';
     const bar = `<div style="background:${_cssVar('--bg')};border-radius:3px;height:6px;width:120px">` +
@@ -743,9 +743,9 @@ function _drawRunwayRows(data) {
     }
 
     const statusMap = {
-      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: _getPalette()[0] || 'var(--primary,#4f8ef7)' },
-      at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: 'var(--amber,#d9b273)' },
-      behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: 'var(--red,#c56d76)' },
+      on_track:    { label: _t('runway.status.on_track')    || 'No prazo',     color: _getPalette()[0] || _cssVar('--primary') },
+      at_risk:     { label: _t('runway.status.at_risk')     || 'Atenção',      color: _cssVar('--amber') },
+      behind:      { label: _t('runway.status.behind')      || 'Atrasado',     color: _cssVar('--red') },
       no_baseline: { label: _t('runway.status.no_baseline') || 'Sem baseline', color: _cssVar('--text-3') },
     };
     const st = statusMap[item.schedule_status] || statusMap.no_baseline;
@@ -767,11 +767,11 @@ function _drawRunwayRows(data) {
       <td style="font-family:monospace;font-size:.82rem">${escHtml(item.pep_wbs)}</td>
       <td style="font-size:.82rem;color:${_cssVar('--text-3')}">${escHtml(item.name || '—')}</td>
       <td style="text-align:right">${_evmMode
-        ? (item.budget_cost != null ? `R$ ${item.budget_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
+        ? (item.budget_cost != null ? _fmtCost(item.budget_cost, 0) : '—')
         : (item.budget_hours != null ? item.budget_hours.toFixed(1) : '—')}</td>
       <td style="white-space:nowrap">${bar}</td>
       <td style="text-align:right">${_evmMode
-        ? (item.avg_cost_per_cycle  != null ? `R$ ${item.avg_cost_per_cycle.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '—')
+        ? (item.avg_cost_per_cycle  != null ? _fmtCost(item.avg_cost_per_cycle, 0) : '—')
         : (item.avg_hours_per_cycle != null ? item.avg_hours_per_cycle.toFixed(1) : '—')}</td>
       <td style="text-align:right">${cpiCell}</td>
       <td style="text-align:right">${cyclesCell}</td>
@@ -831,7 +831,7 @@ function _renderConcentrationPanel(concentration) {
     }).join('');
 
     const totalDisplay = _evmMode
-      ? `R$ ${item.total_cost.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+      ? _fmtCost(item.total_cost, 0)
       : `${item.total_hours.toFixed(0)}h`;
 
     const row = document.createElement('div');
@@ -1046,15 +1046,15 @@ function _renderCostCompositionChart(trends) {
         let html = `<b>${params[0].axisValue}</b><br/>`;
         params.forEach(p => {
           const pct = total > 0 ? (p.value / total * 100).toFixed(1) : '0.0';
-          html += `${p.marker}${p.seriesName}: ${sym} ${p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${pct}%)<br/>`;
+          html += `${p.marker}${p.seriesName}: ${_fmtCost(p.value)} (${pct}%)<br/>`;
         });
-        html += `<b>Total: ${sym} ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
+        html += `<b>Total: ${_fmtCost(total)}</b>`;
         return html;
       },
     },
     grid: { left: '3%', right: '4%', bottom: needsZoom ? 44 : '3%', containLabel: true },
     xAxis: { type: 'category', data: categories, axisLabel: { color: _cssVar('--text-2'), fontSize: 11, rotate: categories.length > 8 ? 30 : 0 } },
-    yAxis: { type: 'value', axisLabel: { color: _cssVar('--text-2'), fontSize: 11, formatter: v => `${sym} ${v.toLocaleString('pt-BR')}` } },
+    yAxis: { type: 'value', axisLabel: { color: _cssVar('--text-2'), fontSize: 11, formatter: v => _fmtCost(v, 0) } },
     ...(dataZoom.length ? { dataZoom } : {}),
     series: [
       { name: _t('trends.normal'),  type: 'bar', stack: 'cost', data: normalData,  itemStyle: { color: pal[0] }, emphasis: { focus: 'series' } },
@@ -1389,7 +1389,7 @@ function _drawAllocMatrix() {
   });
 
   const fmt = v => _evmMode
-    ? `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`
+    ? _fmtCost(v, 0)
     : `${v.toFixed(1)}h`;
 
   const cellBg = v => {
@@ -1900,7 +1900,7 @@ async function _runWhatIf() {
             lineStyle: { color: _cssVar('--primary'), width: 2.5 },
             itemStyle: { color: _cssVar('--primary') },
             symbol: 'circle', symbolSize: 5, connectNulls: true,
-            areaStyle: { color: (_cssVar('--primary') || '#6366f1') + '22' },
+            areaStyle: { color: _cssVar('--primary') + '22' },
             emphasis: { focus: 'series' },
           },
           ...(budget != null ? [{
@@ -2287,14 +2287,14 @@ async function _renderPlanTable() {
     }
     tbody.innerHTML = plans.map(pl => {
       const costStr = pl.planned_cost != null
-        ? pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+        ? pl.planned_cost.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
         : '<span style="color:var(--text-3)">—</span>';
       const physStr = pl.physical_pct != null
         ? `<span style="color:var(--color-accent);font-weight:600">${(pl.physical_pct * 100).toFixed(0)}%</span>`
         : '<span style="color:var(--text-3)">—</span>';
       return `<tr>
         <td>${escHtml(pl.cycle_name)}</td>
-        <td style="text-align:right">${(+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
+        <td style="text-align:right">${fmt(pl.planned_hours)}</td>
         <td style="text-align:right">${costStr}</td>
         <td style="text-align:right">${physStr}</td>
         <td style="white-space:nowrap">
@@ -2390,9 +2390,9 @@ document.getElementById('physicalProgressBtn').addEventListener('click', async (
     tbody.innerHTML = plans.map(pl => {
       const pctVal = pl.physical_pct != null ? (pl.physical_pct * 100).toFixed(0) : '';
       const noteVal = escHtml(pl.physical_note || '');
-      const hStr = (+pl.planned_hours).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + 'h';
+      const hStr = fmt(pl.planned_hours) + 'h';
       const cStr = pl.planned_cost != null
-        ? ' / R$ ' + pl.planned_cost.toLocaleString('pt-BR', {minimumFractionDigits:2})
+        ? ' / ' + _fmtCost(pl.planned_cost)
         : '';
       return `<tr data-cycle-id="${pl.cycle_id}">
         <td>${escHtml(pl.cycle_name)}</td>
@@ -2927,12 +2927,12 @@ async function _renderCollabCalendar(name, year, month) {
       // 6 discrete bands matching the blue scale in the reference legend.
       // Values 0 and -1 (inactive / zero-hour days) fall through to outOfRange.
       pieces: [
-        { gte:  1, lte:  3, color: '#d4e3f5' },
-        { gte:  4, lte:  6, color: '#96bcdf' },
-        { gte:  7, lte:  9, color: '#5490c8' },
-        { gte: 10, lte: 12, color: '#2662ae' },
-        { gte: 13, lte: 15, color: '#103c8c' },
-        { gt:  15,           color: '#071e60' },
+        { gte:  1, lte:  3, color: _cssVar('--heatmap-1') },
+        { gte:  4, lte:  6, color: _cssVar('--heatmap-2') },
+        { gte:  7, lte:  9, color: _cssVar('--heatmap-3') },
+        { gte: 10, lte: 12, color: _cssVar('--heatmap-4') },
+        { gte: 13, lte: 15, color: _cssVar('--heatmap-5') },
+        { gt:  15,           color: _cssVar('--heatmap-6') },
       ],
       outOfRange: { color: [cardColor] },
     },
@@ -2969,10 +2969,10 @@ async function _renderCollabCalendar(name, year, month) {
         rich: {
           inactive: { fontSize: 9, color: inactiveText,  lineHeight: 14, align: 'center' },
           day:      { fontSize: 9, fontWeight: 'bold', color: activeText, lineHeight: 14, align: 'center' },
-          qday:     { fontSize: 9, fontWeight: 'bold', color: '#f59e0b',  lineHeight: 14, align: 'center' },
-          n:    { fontSize: 9, color: pal[0] || '#4f8ef7', lineHeight: 13, align: 'center' },
-          e:    { fontSize: 9, color: pal[1] || '#d9b273', lineHeight: 13, align: 'center' },
-          s:    { fontSize: 9, color: pal[2] || '#a78bfa', lineHeight: 13, align: 'center' },
+          qday:     { fontSize: 9, fontWeight: 'bold', color: _cssVar('--amber'), lineHeight: 14, align: 'center' },
+          n:    { fontSize: 9, color: pal[0] || _cssVar('--primary'), lineHeight: 13, align: 'center' },
+          e:    { fontSize: 9, color: pal[1] || _cssVar('--accent'),  lineHeight: 13, align: 'center' },
+          s:    { fontSize: 9, color: pal[2] || _cssVar('--violet'),  lineHeight: 13, align: 'center' },
         },
       },
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: primaryColor } },
@@ -4024,7 +4024,7 @@ const _rateCardPag = _makePaginator(
     rowFn: c => `
     <tr>
       <td>${escHtml(c.seniority_level_name)}</td>
-      <td style="text-align:right">R$ ${Number(c.hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+      <td style="text-align:right">${_fmtCost(c.hourly_rate)}</td>
       <td>${c.valid_from}</td>
       <td>${c.valid_to ?? '—'}</td>
       <td><div class="actions">
@@ -4054,7 +4054,7 @@ const _teamPag = _makePaginator(
     <tr>
       <td>${escHtml(m.name)}</td>
       <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : `<span style="color:${_cssVar('--text-3')}">—</span>`}</td>
-      <td style="text-align:right">${m.current_hourly_rate != null ? 'R$ ' + Number(m.current_hourly_rate).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'}</td>
+      <td style="text-align:right">${m.current_hourly_rate != null ? _fmtCost(m.current_hourly_rate) : '—'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
     </tr>`,
   })
