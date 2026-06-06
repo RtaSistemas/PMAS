@@ -19,7 +19,7 @@ let _consumedByPep  = {};
 let _baselineByProject = {};   // project_id → active ProjectBaselineOut | null
 
 const _projectsPag = _makePaginator(
-  { container: 'projectsPagination', prev: 'projectsPrevBtn', next: 'projectsNextBtn', pageSize: 'projectsPageSize', label: 'projectsPageLabel' },
+  { container: 'projectsPagination', prev: 'projectsPrevBtn', next: 'projectsNextBtn', pageSize: 'projectsPageSize', label: 'projectsPageLabel', entity: 'projects.title' },
   rows => _renderTable('projectsBody', rows, {
     colspan: 8,
     emptyKey: 'no_projects',
@@ -41,7 +41,7 @@ const _projectsPag = _makePaginator(
         <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
         <button class="btn btn-primary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
         <div class="row-actions-wrap">
-          <button class="btn btn-secondary btn-sm row-actions-trigger" title="${_t('btn.more_actions')}">⋮</button>
+          <button class="btn btn-secondary btn-sm row-actions-trigger" title="${_t('btn.more_actions')}" aria-label="${_t('btn.more_actions')}" aria-haspopup="menu" aria-expanded="false">⋮</button>
           <div class="row-actions-menu" role="menu">
             <button class="row-actions-item" role="menuitem" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('budget.history.btn')}</button>
             <button class="row-actions-item" role="menuitem" onclick="_openBaselineModal(${p.id})">📍 ${_t('baseline.title')}</button>

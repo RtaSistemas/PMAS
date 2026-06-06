@@ -15,7 +15,7 @@ let _cycleEditId = null;
 let _allCycles = [];
 
 const _cyclesPag = _makePaginator(
-  { container: 'cyclesPagination', prev: 'cyclesPrevBtn', next: 'cyclesNextBtn', pageSize: 'cyclesPageSize', label: 'cyclesPageLabel' },
+  { container: 'cyclesPagination', prev: 'cyclesPrevBtn', next: 'cyclesNextBtn', pageSize: 'cyclesPageSize', label: 'cyclesPageLabel', entity: 'cycles.title' },
   rows => {
     const admin = _isAdmin();
     _renderTable('cyclesBody', rows, {

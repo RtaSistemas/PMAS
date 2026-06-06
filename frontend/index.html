@@ -2,9 +2,6 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PMAS — Dashboard de Gestão de Projetos</title>
   <link rel="icon" type="image/png" href="/static/assets/icon.png" />
@@ -256,7 +253,10 @@
       <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
         <div class="detail-panel-header">
           <span id="collabDetailName" class="font-600" style="font-size:.95rem;color:var(--text)"></span>
-          <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
+          <div class="flex-center gap-sm" style="margin-left:auto">
+            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
+            <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
+          </div>
         </div>
         <!-- Section 1: horas por ciclo -->
         <div style="padding:1rem 1.25rem .5rem">
@@ -474,10 +474,10 @@
         <!-- What-If sub-section -->
         <div style="border-top:1px solid var(--border);margin-top:.25rem;padding-top:.75rem">
           <div class="section-header" id="whatIfToggle" role="button" tabindex="0"
-               aria-expanded="true" aria-controls="whatIfBody"
+               aria-expanded="false" aria-controls="whatIfBody"
                style="cursor:pointer;user-select:none;padding:0 0 .5rem">
             <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="sim.title">Simulação What-If</span>
-            <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+            <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block;transform:rotate(-90deg)">▼</span>
           </div>
           <div id="whatIfBody">
             <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
@@ -505,9 +505,11 @@
 
         <!-- Monte Carlo sub-section -->
         <div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.75rem">
-          <div class="section-header" id="mcToggle" style="cursor:pointer;user-select:none;padding:0 0 .5rem">
+          <div class="section-header" id="mcToggle" role="button" tabindex="0"
+               aria-expanded="false" aria-controls="mcBody"
+               style="cursor:pointer;user-select:none;padding:0 0 .5rem">
             <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</span>
-            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block;transform:rotate(-90deg)">▼</span>
           </div>
           <div id="mcBody">
             <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
@@ -744,7 +746,10 @@
       </div>
     </div>
 
-    <!-- F5: Over-allocation Detection -->
+    <!-- F5: Over-allocation Detection (admin only — hint shown to non-admins) -->
+    <p id="overAllocHint" class="panel-note" style="margin-top:.5rem;display:none" data-i18n="over_alloc.admin_hint">
+      ℹ Administradores têm acesso à detecção de sobre-alocação nesta aba.
+    </p>
     <div class="card" id="overAllocCard" hidden>
       <div class="section-header">
         <h2 class="card-title" data-i18n="over_alloc.title">Detecção de Sobre-alocação</h2>
@@ -1792,7 +1797,7 @@
       <div class="theme-field">
         <label data-i18n="appearance.font_family">Fonte</label>
         <select id="themeFont" style="width:100%;padding:.3rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem">
-          <option value="">Padrão (Inter)</option>
+          <option value="">Padrão (sistema)</option>
           <option value="'Roboto', sans-serif">Roboto</option>
           <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
           <option value="'Source Sans 3', sans-serif">Source Sans 3</option>

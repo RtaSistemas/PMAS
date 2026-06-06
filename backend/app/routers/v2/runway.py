@@ -153,6 +153,7 @@ def get_runway(
     )
     cycle_index_map = {c.id: i for i, c in enumerate(all_cycles)}
     cycle_start_by_id = {c.id: c.start_date for c in all_cycles}
+    cycle_name_by_id  = {c.id: c.name       for c in all_cycles}
 
     # Batch-fetch all ProjectCyclePlan entries for the relevant projects (avoid N+1)
     all_plans = (
@@ -251,6 +252,28 @@ def get_runway(
         )
         cost_risk = classify_health(actual_cost, budget_cost, warning_threshold, critical_threshold)
 
+        # CPI/SPI trajectory — per-cycle cumulative snapshot for EVM quadrant connector lines
+        trajectory = []
+        if budget_hours and budget_cost:
+            proj_plans_sorted = sorted(plans_by_project.get(proj.id if proj else -1, []), key=lambda x: x[0])
+            cum_h = cum_c = 0.0
+            for cid in sorted_cids:
+                cum_h += pep_cycle_hours.get(key, {}).get(cid, 0.0)
+                cum_c += pep_cycle_costs.get(key, {}).get(cid, 0.0)
+                t_cpi = compute_cpi_ev(cum_h, budget_hours, budget_cost, cum_c)
+                t_spi = None
+                c_start = cycle_start_by_id.get(cid)
+                if proj_plans_sorted and c_start is not None:
+                    pv_cumul = sum(ph for s, ph in proj_plans_sorted if s <= c_start and ph is not None)
+                    if pv_cumul > 0:
+                        t_spi = compute_spi(pv_cumul, cum_h)
+                if t_cpi is not None and t_spi is not None:
+                    trajectory.append({
+                        "cycle_name": cycle_name_by_id.get(cid, ""),
+                        "cpi": round(t_cpi, 3),
+                        "spi": round(t_spi, 3),
+                    })
+
         result.append({
             "pep_wbs": key,
             "pep_description": data["pep_description"],
@@ -273,6 +296,7 @@ def get_runway(
             "cpi_color": cpi_color(cpi),
             "risk": risk,
             "cost_risk": cost_risk,
+            "trajectory": trajectory,
         })
 
     result.sort(key=lambda x: x["consumed_hours"], reverse=True)

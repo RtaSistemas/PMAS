@@ -491,6 +491,7 @@ window._LANG_PT = {
     'over_alloc.th.hours':'Total (h)',
     'over_alloc.th.peps':'PEPs',
     'over_alloc.filter.threshold':'Limite (h)',
+    'over_alloc.admin_hint':'ℹ Administradores têm acesso à detecção de sobre-alocação nesta aba.',
     'chart.all_cycles':'Todos os ciclos',
     'chart.truncated':'Exibindo os primeiros {n} itens',
 

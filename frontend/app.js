@@ -2091,42 +2091,73 @@ document.getElementById('filterToggle').addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('filterToggle').click(); }
 });
 
-let _forecastAllocExpanded = true;
+let _forecastAllocExpanded    = true;
+let _whatIfExpanded           = false;
+let _mcExpanded               = false;
+let _burnUpBaselineExpanded   = true;
+
+let _saveFcSecTimer = null;
+function _saveForecastSections() {
+  clearTimeout(_saveFcSecTimer);
+  _saveFcSecTimer = setTimeout(async () => {
+    try {
+      const dash = _userPrefs?.dashboard || {};
+      _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', {
+        dashboard: { ...dash, forecast_sections: {
+          alloc:      _forecastAllocExpanded,
+          whatif:     _whatIfExpanded,
+          montecarlo: _mcExpanded,
+          baseline:   _burnUpBaselineExpanded,
+        }},
+      });
+    } catch (_) {}
+  }, 400);
+}
+
+function _applyFcSection(expanded, bodyId, chevronId, toggleId) {
+  const body    = document.getElementById(bodyId);
+  const chevron = document.getElementById(chevronId);
+  const toggle  = document.getElementById(toggleId);
+  if (body)   body.style.display = expanded ? '' : 'none';
+  if (chevron) chevron.style.transform = expanded ? '' : 'rotate(-90deg)';
+  if (toggle) toggle.setAttribute('aria-expanded', String(expanded));
+}
+
+// Apply initial collapsed state for advanced sections
+_applyFcSection(_whatIfExpanded,  'whatIfBody',    'whatIfChevron',   'whatIfToggle');
+_applyFcSection(_mcExpanded,      'mcBody',        'mcChevron',       'mcToggle');
+
 document.getElementById('forecastAllocToggle').addEventListener('click', () => {
   _forecastAllocExpanded = !_forecastAllocExpanded;
-  document.getElementById('forecastAllocBody').style.display = _forecastAllocExpanded ? '' : 'none';
-  const ch = document.getElementById('forecastAllocChevron');
-  ch.style.transform = _forecastAllocExpanded ? '' : 'rotate(-90deg)';
-  document.getElementById('forecastAllocToggle').setAttribute('aria-expanded', String(_forecastAllocExpanded));
+  _applyFcSection(_forecastAllocExpanded, 'forecastAllocBody', 'forecastAllocChevron', 'forecastAllocToggle');
+  _saveForecastSections();
 });
 document.getElementById('forecastAllocToggle').addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('forecastAllocToggle').click(); }
 });
 
-let _whatIfExpanded = true;
 document.getElementById('whatIfToggle').addEventListener('click', () => {
   _whatIfExpanded = !_whatIfExpanded;
-  document.getElementById('whatIfBody').style.display = _whatIfExpanded ? '' : 'none';
-  document.getElementById('whatIfChevron').style.transform = _whatIfExpanded ? '' : 'rotate(-90deg)';
-  document.getElementById('whatIfToggle').setAttribute('aria-expanded', String(_whatIfExpanded));
+  _applyFcSection(_whatIfExpanded, 'whatIfBody', 'whatIfChevron', 'whatIfToggle');
+  _saveForecastSections();
 });
 document.getElementById('whatIfToggle').addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('whatIfToggle').click(); }
 });
 
-let _mcExpanded = true;
 document.getElementById('mcToggle').addEventListener('click', () => {
   _mcExpanded = !_mcExpanded;
-  document.getElementById('mcBody').style.display = _mcExpanded ? '' : 'none';
-  document.getElementById('mcChevron').style.transform = _mcExpanded ? '' : 'rotate(-90deg)';
+  _applyFcSection(_mcExpanded, 'mcBody', 'mcChevron', 'mcToggle');
+  _saveForecastSections();
+});
+document.getElementById('mcToggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('mcToggle').click(); }
 });
 
-let _burnUpBaselineExpanded = true;
 document.getElementById('burnUpBaselineToggle').addEventListener('click', () => {
   _burnUpBaselineExpanded = !_burnUpBaselineExpanded;
-  document.getElementById('burnUpBaselineBody').style.display = _burnUpBaselineExpanded ? '' : 'none';
-  document.getElementById('burnUpBaselineChevron').style.transform = _burnUpBaselineExpanded ? '' : 'rotate(-90deg)';
-  document.getElementById('burnUpBaselineToggle').setAttribute('aria-expanded', String(_burnUpBaselineExpanded));
+  _applyFcSection(_burnUpBaselineExpanded, 'burnUpBaselineBody', 'burnUpBaselineChevron', 'burnUpBaselineToggle');
+  _saveForecastSections();
 });
 document.getElementById('burnUpBaselineToggle').addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('burnUpBaselineToggle').click(); }
@@ -3154,20 +3185,58 @@ function _buildPortfolioStatsRow(health, trends) {
 // ---------------------------------------------------------------------------
 // Row-actions dropdown (delegated)
 // ---------------------------------------------------------------------------
+function _openRowMenu(trigger) {
+  const wrap = trigger.closest('.row-actions-wrap');
+  const menu = wrap?.querySelector('.row-actions-menu');
+  if (!menu) return;
+  const isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.row-actions-menu.open').forEach(m => {
+    m.classList.remove('open');
+    m.closest('.row-actions-wrap')?.querySelector('.row-actions-trigger')
+      ?.setAttribute('aria-expanded', 'false');
+  });
+  if (!isOpen) {
+    menu.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.querySelector('[role=menuitem]:not([disabled])')?.focus();
+  }
+}
+
 document.addEventListener('click', e => {
   const trigger = e.target.closest('.row-actions-trigger');
-  if (trigger) {
-    e.stopPropagation();
-    const menu = trigger.closest('.row-actions-wrap')?.querySelector('.row-actions-menu');
-    const isOpen = menu?.classList.contains('open');
-    document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
-    if (menu && !isOpen) menu.classList.add('open');
+  if (trigger) { e.stopPropagation(); _openRowMenu(trigger); return; }
+  document.querySelectorAll('.row-actions-menu.open').forEach(m => {
+    m.classList.remove('open');
+    m.closest('.row-actions-wrap')?.querySelector('.row-actions-trigger')
+      ?.setAttribute('aria-expanded', 'false');
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.row-actions-menu.open').forEach(m => {
+      const wrap = m.closest('.row-actions-wrap');
+      m.classList.remove('open');
+      const trig = wrap?.querySelector('.row-actions-trigger');
+      trig?.setAttribute('aria-expanded', 'false');
+      trig?.focus();
+    });
     return;
   }
-  document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.row-actions-menu.open').forEach(m => m.classList.remove('open'));
+  const trigger = e.target.closest('.row-actions-trigger');
+  if (trigger && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    _openRowMenu(trigger);
+    return;
+  }
+  const menuItem = e.target.closest('[role=menuitem]');
+  if (menuItem) {
+    const menu = menuItem.closest('.row-actions-menu');
+    const items = [...menu.querySelectorAll('[role=menuitem]:not([disabled])')];
+    const idx = items.indexOf(menuItem);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(idx + 1) % items.length]?.focus(); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus(); }
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -3191,7 +3260,9 @@ let _assignCollabId     = null;
 async function loadTeamTab() {
   await Promise.all([loadSeniorityLevels(), loadRateCards(), loadGlobalConfig()]);
   await loadTeamTable();
-  await _loadOverAllocation();
+  const hintEl = document.getElementById('overAllocHint');
+  if (hintEl) hintEl.style.display = _isAdmin() ? 'none' : 'block';
+  if (_isAdmin()) await _loadOverAllocation();
 }
 
 // ── F5: Over-allocation Detection ─────────────────────────────────────────────
@@ -3199,7 +3270,7 @@ async function loadTeamTab() {
 let _overAllocData = [];
 
 const _overAllocPag = _makePaginator(
-  { container: 'overAllocPagination', prev: 'overAllocPrevBtn', next: 'overAllocNextBtn', pageSize: 'overAllocPageSize', label: 'overAllocPageLabel' },
+  { container: 'overAllocPagination', prev: 'overAllocPrevBtn', next: 'overAllocNextBtn', pageSize: 'overAllocPageSize', label: 'overAllocPageLabel', entity: 'over_alloc.title' },
   rows => _renderTable('overAllocBody', rows, {
     colspan: 4,
     emptyKey: 'over_alloc.empty',
@@ -3268,7 +3339,7 @@ function _exportOverAllocCsv() {
 }
 
 const _seniorityPag = _makePaginator(
-  { container: 'seniorityPagination', prev: 'seniorityPrevBtn', next: 'seniorityNextBtn', pageSize: 'seniorityPageSize', label: 'seniorityPageLabel' },
+  { container: 'seniorityPagination', prev: 'seniorityPrevBtn', next: 'seniorityNextBtn', pageSize: 'seniorityPageSize', label: 'seniorityPageLabel', entity: 'seniority.title' },
   rows => _renderTable('seniorityBody', rows, {
     colspan: 2,
     emptyKey: 'no_seniority',
@@ -3294,7 +3365,7 @@ async function loadSeniorityLevels() {
 }
 
 const _rateCardPag = _makePaginator(
-  { container: 'rateCardPagination', prev: 'rateCardPrevBtn', next: 'rateCardNextBtn', pageSize: 'rateCardPageSize', label: 'rateCardPageLabel' },
+  { container: 'rateCardPagination', prev: 'rateCardPrevBtn', next: 'rateCardNextBtn', pageSize: 'rateCardPageSize', label: 'rateCardPageLabel', entity: 'ratecard.title' },
   rows => _renderTable('rateCardBody', rows, {
     colspan: 5,
     emptyKey: 'no_rates',
@@ -3323,7 +3394,7 @@ async function loadRateCards() {
 }
 
 const _teamPag = _makePaginator(
-  { container: 'teamPagination', prev: 'teamPrevBtn', next: 'teamNextBtn', pageSize: 'teamPageSize', label: 'teamPageLabel' },
+  { container: 'teamPagination', prev: 'teamPrevBtn', next: 'teamNextBtn', pageSize: 'teamPageSize', label: 'teamPageLabel', entity: 'team.title' },
   rows => _renderTable('teamBody', rows, {
     colspan: 4,
     emptyKey: 'no_team',
@@ -3773,6 +3844,25 @@ function _checkTokenExpiry() {
 }
 
 document.getElementById('collabDetailClose').addEventListener('click', _closeCollabDetail);
+
+document.getElementById('collabExportCsvBtn').addEventListener('click', async () => {
+  if (!_selectedCollaborator) return;
+  const params = new URLSearchParams({ collaborator_name: _selectedCollaborator });
+  const dateFrom = document.getElementById('dateFromInput').value;
+  const dateTo   = document.getElementById('dateToInput').value;
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo)   params.set('date_to',   dateTo);
+  pepMs.getValues().forEach(c => params.append('pep_code', c));
+  try {
+    const resp = await fetch(`/api/dashboard/collaborator-export?${params}`, { headers: _authHeaders() });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const blob = await resp.blob();
+    const safe = _selectedCollaborator.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const url  = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), { href: url, download: `timesheets_${safe}.csv` }).click();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify(_friendlyError(e), 'error'); }
+});
 document.getElementById('calPrevMonth').addEventListener('click', async () => {
   if (!_selectedCollaborator) return;
   _calMonth--;
@@ -3802,7 +3892,7 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 let _allUsers = [];
 
 const _usersPag = _makePaginator(
-  { container: 'usersPagination', prev: 'usersPrevBtn', next: 'usersNextBtn', pageSize: 'usersPageSize', label: 'usersPageLabel' },
+  { container: 'usersPagination', prev: 'usersPrevBtn', next: 'usersNextBtn', pageSize: 'usersPageSize', label: 'usersPageLabel', entity: 'admin.title' },
   rows => {
     const selfId = _getTokenPayload()?.sub ?? null;
     _renderTable('usersBody', rows, {
@@ -3905,7 +3995,7 @@ function deleteUser(id, username) {
 let _auditLogCache = [];
 
 const _auditPag = _makePaginator(
-  { container: 'auditPagination', prev: 'auditPrevBtn', next: 'auditNextBtn', pageSize: 'auditPageSize', label: 'auditPageLabel' },
+  { container: 'auditPagination', prev: 'auditPrevBtn', next: 'auditNextBtn', pageSize: 'auditPageSize', label: 'auditPageLabel', entity: 'auditlog.title' },
   rows => _renderTable('auditBody', rows, {
     colspan: 6,
     emptyKey: 'no_audit',
@@ -4284,6 +4374,19 @@ function _applyLayoutPreferences() {
     if (cp.order != null) panel.style.order = cp.order;
   });
 
+  // Forecast section collapse states (restore persisted open/closed)
+  const fcs = prefs.forecast_sections;
+  if (fcs) {
+    _forecastAllocExpanded  = fcs.alloc      !== false;
+    _whatIfExpanded         = fcs.whatif     !== false;
+    _mcExpanded             = fcs.montecarlo !== false;
+    _burnUpBaselineExpanded = fcs.baseline   !== false;
+    _applyFcSection(_forecastAllocExpanded,  'forecastAllocBody',  'forecastAllocChevron',  'forecastAllocToggle');
+    _applyFcSection(_whatIfExpanded,         'whatIfBody',         'whatIfChevron',          'whatIfToggle');
+    _applyFcSection(_mcExpanded,             'mcBody',             'mcChevron',              'mcToggle');
+    _applyFcSection(_burnUpBaselineExpanded, 'burnUpBaselineBody', 'burnUpBaselineChevron',  'burnUpBaselineToggle');
+  }
+
   Object.values(_charts).forEach(c => {
     try { if (!c.isDisposed()) c.resize(); } catch (_) {}
   });
@@ -4299,7 +4402,8 @@ document.getElementById('saveLayoutBtn')?.addEventListener('click', async () => 
     if (pList) panelOrder[tabId] = [...pList.querySelectorAll(':scope > .sortable-item')].map(i => i.dataset.panel);
   });
   try {
-    _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { chart_order: order, panel_order: panelOrder } });
+    const dash = _userPrefs?.dashboard || {};
+    _userPrefs = await apiFetchJSON('/api/my/preferences', 'PUT', { dashboard: { ...dash, chart_order: order, panel_order: panelOrder } });
     _applyLayoutPreferences();
     notify(_t('msg.layout_saved'), 'success');
   } catch (e) { notify(_friendlyError(e), 'error'); }
@@ -4380,7 +4484,7 @@ document.getElementById('myAreaCsvInput')?.addEventListener('change', async (e) 
 let _myHistoryCache = [];
 
 const _historyPag = _makePaginator(
-  { container: 'myHistoryPagination', prev: 'myHistoryPrevBtn', next: 'myHistoryNextBtn', pageSize: 'myHistoryPageSize', label: 'myHistoryPageLabel' },
+  { container: 'myHistoryPagination', prev: 'myHistoryPrevBtn', next: 'myHistoryNextBtn', pageSize: 'myHistoryPageSize', label: 'myHistoryPageLabel', entity: 'myarea.history' },
   rows => _renderTable('myHistoryBody', rows, {
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
@@ -4462,7 +4566,7 @@ async function loadMyQr() {
 }
 
 const _myQrPag = _makePaginator(
-  { container: 'myQrPagination', prev: 'myQrPrevBtn', next: 'myQrNextBtn', pageSize: 'myQrPageSize', label: 'myQrPageLabel' },
+  { container: 'myQrPagination', prev: 'myQrPrevBtn', next: 'myQrNextBtn', pageSize: 'myQrPageSize', label: 'myQrPageLabel', entity: 'myarea.quarantine' },
   rows => {
     const tbody = document.getElementById('myQrBody');
     if (!tbody) return;
