@@ -63,11 +63,10 @@ test.describe('App shell after login', () => {
     await expect(page.locator('#tab-projects')).not.toBeHidden();
   });
 
-  test('cycles section is visible inside Projetos tab', async ({ page }) => {
-    // Ciclos live inside the Projetos tab, not a separate tab
-    const projTab = page.locator('.tab-btn', { hasText: /Projetos/i });
-    await projTab.click();
-    await expect(page.locator('#tab-projects')).not.toBeHidden();
+  test('cycles section is visible in Ciclos tab', async ({ page }) => {
+    const cyclesTab = page.locator('.tab-btn', { hasText: /Ciclos/i });
+    await cyclesTab.click();
+    await expect(page.locator('#tab-cycles')).not.toBeHidden();
     await expect(page.locator('#cyclesTable')).toBeVisible();
   });
 
