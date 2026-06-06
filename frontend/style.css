@@ -349,7 +349,7 @@ main {
 .btn-danger:hover { background: rgba(240,80,80,0.08); background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
 .btn-warning  { background: transparent; border-color: color-mix(in srgb, var(--amber) 40%, transparent); color: var(--amber); }
 .btn-warning:hover { background: color-mix(in srgb, var(--amber) 8%, transparent); }
-.btn-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.75rem; }
+.btn-sm { height: 1.875rem; font-size: 0.76rem; padding: 0 0.75rem; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .input-sm { height: 2.25rem; font-size: 0.76rem; padding: 0 0.4rem; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
 

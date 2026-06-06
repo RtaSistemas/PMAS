@@ -25,6 +25,7 @@ let _currencyFactor = 1;
 let _currencySymbol = 'R$';
 
 function _fmtCost(rawValue, decimals = 2) {
+  if (rawValue == null) return '—';
   const v = rawValue * _currencyFactor;
   return `${_currencySymbol} ${v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
@@ -414,7 +415,7 @@ async function refreshPeps() {
     peps.forEach(p => { pepDataCache[p.code] = p.descriptions || []; });
     pepMs.setItems(peps.map(p => ({ value: p.code, label: p.code })), true);
     refreshPepDescriptions();
-  } catch (e) { console.warn('refreshPeps:', e); notify(`${_t('msg.err_update_pep_filter')}: ${e.message}`, 'warning'); }
+  } catch (e) { notify(`${_t('msg.err_update_pep_filter')}: ${e.message}`, 'warning'); }
 }
 
 function refreshPepDescriptions() {
@@ -427,7 +428,7 @@ async function refreshCollaborators() {
   try {
     const filters = await apiFetch('/api/v2/filters');
     collaboratorMs.setItems(filters.collaborators.map(c => ({ value: c.id, label: c.name })), true);
-  } catch (e) { console.warn('refreshCollaborators:', e); notify(`${_t('msg.err_update_collab_filter')}: ${e.message}`, 'warning'); }
+  } catch (e) { notify(`${_t('msg.err_update_collab_filter')}: ${e.message}`, 'warning'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -3992,7 +3993,7 @@ const _auditPag = _makePaginator(
     colspan: 6,
     emptyKey: 'no_audit',
     rowFn: r => {
-      const when = new Date(r.timestamp).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const when = _fmtDate(r.timestamp);
       let detail = '';
       if (r.detail) {
         try {
@@ -4475,7 +4476,7 @@ const _historyPag = _makePaginator(
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
     rowFn: r => {
-      const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const when = _fmtDate(r.uploaded_at);
       const statusKey = r.status === 'ok' ? 'history.status.ok'
         : r.status === 'warnings' ? 'history.status.warnings'
         : r.status === 'quarantine' ? 'history.status.quarantine'
@@ -4521,7 +4522,7 @@ document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
   const header = ['Quando','Arquivo','Enviado por','Inseridos','Ignorados','Quarentena','Avisos','Infos','Status'];
   const lines = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    const when = _fmtDate(r.uploaded_at);
     return [esc(when), esc(r.source_file), esc(r.uploaded_by_username),
       r.records_inserted, r.records_skipped, r.quarantine_added,
       r.warning_count, r.info_count, esc(r.status)].join(',');
@@ -4562,7 +4563,7 @@ const _myQrPag = _makePaginator(
     }
     tbody.innerHTML = rows.map(r => {
       const raw  = r.raw_data || {};
-      const when = new Date(r.ingested_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const when = _fmtDate(r.ingested_at);
       return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
@@ -4792,7 +4793,7 @@ function _openQRDetail(id) {
   document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
   document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
   document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
-    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' })}`
+    ? `${r.reviewed_by} em ${_fmtDate(r.reviewed_at)}`
     : '—';
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
@@ -4843,7 +4844,7 @@ async function _openSessionDetail(sessionId) {
     const iDiv   = document.getElementById('sessionDetailInfos');
     const iList  = document.getElementById('sessionDetailInfosList');
 
-    const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    const when = _fmtDate(r.uploaded_at);
     title.textContent = `Importação — ${r.source_file}`;
     meta.innerHTML = [
       `<span style="color:${_cssVar('--text-3')}">Data</span><span>${escHtml(when)}</span>`,

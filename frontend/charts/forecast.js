@@ -161,8 +161,6 @@ function _buildBurnUpOption(fc) {
   const evData = history.map(h => h.cumulative_ev_cost      ?? null);
   const acData = history.map(h => h.cumulative_cost         ?? null);
 
-  const _fmtR = v => v == null ? '' : `R$ ${(+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-
   const eacColor = _cssVar('--amber') || '#f59e0b';
   const legendData = [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')];
   if (fc.eac != null) legendData.push(_t('burnup.eac'));
@@ -203,7 +201,7 @@ function _buildBurnUpOption(fc) {
       lineStyle: { color: eacColor, width: 1.5, type: 'dotted' },
       itemStyle: { color: eacColor },
       emphasis:  { focus: 'series' },
-      tooltip: { formatter: () => `EAC: ${_fmtR(fc.eac)}` },
+      tooltip: { formatter: () => `EAC: ${_fmtCost(fc.eac)}` },
     });
   }
 
@@ -222,7 +220,7 @@ function _buildBurnUpOption(fc) {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
           if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${_fmtR(p.value)}</b><br>`;
+          html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value)}</b><br>`;
         });
         return html;
       },

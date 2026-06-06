@@ -34,6 +34,17 @@ export function formatCost(raw, factor = 1, symbol = 'R$', locale = 'pt-BR') {
 }
 
 /**
+ * Format an ISO timestamp for display. Respects the current locale (_locale global)
+ * and an optional window._timezone override (default: America/Sao_Paulo).
+ */
+export function fmtDate(isoStr) {
+  if (!isoStr) return '—';
+  const tz = (typeof window !== 'undefined' && window._timezone) || 'America/Sao_Paulo';
+  const loc = (typeof _locale !== 'undefined' ? _locale : (typeof window !== 'undefined' ? window._locale : 'pt')) || 'pt';
+  return new Date(isoStr).toLocaleString(loc === 'pt' ? 'pt-BR' : 'en-US', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
+}
+
+/**
  * Clamp a number between min and max.
  */
 export function clamp(val, min, max) {
@@ -56,6 +67,8 @@ if (typeof window !== 'undefined') {
   window.fmtDateBR = fmtDateBR;
   window.formatHours = formatHours;
   window.formatCost = formatCost;
+  window.fmtDate = fmtDate;
+  window._fmtDate = fmtDate;
   window.clamp = clamp;
   window.parseISODate = parseISODate;
 }

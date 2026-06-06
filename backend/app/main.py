@@ -5,6 +5,7 @@ import logging.config
 import os
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,6 +78,8 @@ app = FastAPI(
     description="Project Management Assistant System — Timesheet Foundation",
     version="1.0.0",
     lifespan=_lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -153,6 +156,15 @@ if os.path.isdir(_static_path):
     app.mount("/static", StaticFiles(directory=_static_path), name="static_assets")
 
 app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="frontend")
+
+
+@app.get("/health", tags=["ops"])
+def health():
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": app.version,
+    }
 
 
 @app.get("/", include_in_schema=False)

@@ -218,9 +218,10 @@ display_cpi = f"{cpi:.2f}" if cpi is not None else "—"
 
 All formulas live in `backend/app/services/evm.py`. Reference:
 
-| Function | Inputs | Returns |
-|----------|--------|---------|
-| `compute_cpi_ev(h, bh, bc, ac)` | consumed_h, budget_h, budget_cost, actual_cost | `float\|None` |
+| Function | Inputs | Returns | Notes |
+|----------|--------|---------|-------|
+| `compute_cpi(ev_cost, ac)` | pre-computed EV in R$, actual_cost | `float\|None` | Use when EV is already computed; see `compute_cpi_ev` when you only have hours |
+| `compute_cpi_ev(h, bh, bc, ac)` | consumed_h, budget_h, budget_cost, actual_cost | `float\|None` | Derives EV from hours; use when EV has not been pre-computed |
 | `compute_spi(pv, ev)` | planned_h_cumul, actual_h_cumul | `float\|None` |
 | `compute_eac(ac, cpi)` | actual_cost, cpi | `float\|None` |
 | `compute_eac_schedule(bac, cpi, spi)` | budget_cost, cpi, spi | `float\|None` |
@@ -300,7 +301,8 @@ These are defined in `utils.js` or `app.js` and usable from any module:
 ```javascript
 // Formatting
 _fmtH(n)              // "1.234 h"
-_fmtCost(n)           // "R$ 1.234,56"
+_fmtCost(n)           // "R$ 1.234,56" — null-safe; returns '—' for null
+_fmtDate(isoStr)      // "15/06/2024, 09:30" — respects _locale + window._timezone
 _t(key)               // i18n lookup
 
 // Theming
