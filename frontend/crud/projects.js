@@ -188,8 +188,6 @@ function _closeProjectPlan() {
   closeModal('planModal');
 }
 
-document.getElementById('planModalClose').addEventListener('click', _closeProjectPlan);
-
 // ── F7: Budget Revision History ───────────────────────────────────────────────
 
 let _budgetHistChart = null;
@@ -342,8 +340,6 @@ document.getElementById('projectSaveBtn').addEventListener('click', async () => 
   _doSave(statusRaw);
 });
 
-document.getElementById('projectCancelBtn').addEventListener('click', closeProjectModal);
-document.getElementById('projectModalClose').addEventListener('click', closeProjectModal);
 document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
 
 document.getElementById('projectSearch').addEventListener('input', e => {
@@ -513,8 +509,6 @@ async function _deleteBaseline(projectId, baselineId) {
   });
 }
 
-document.getElementById('baselineModalClose').addEventListener('click', () => closeModal('baselineModal'));
-
 // ---------------------------------------------------------------------------
 // ACL de projetos — controle de acesso por PEP
 // ---------------------------------------------------------------------------
@@ -579,9 +573,6 @@ function _revokeAccess(userId) {
     } catch (e) { notify(_friendlyError(e), 'error'); }
   });
 }
-
-document.getElementById('aclModalClose')?.addEventListener('click', () => { closeModal('aclModal'); });
-document.getElementById('aclModalCloseBtn')?.addEventListener('click', () => { closeModal('aclModal'); });
 
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }

@@ -117,8 +117,6 @@ document.getElementById('cycleSaveBtn').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('cycleCancelBtn').addEventListener('click', closeCycleModal);
-document.getElementById('cycleModalClose').addEventListener('click', closeCycleModal);
 document.getElementById('newCycleBtn').addEventListener('click', () => openCycleModal());
 
 document.getElementById('cycleSearch').addEventListener('input', e => {

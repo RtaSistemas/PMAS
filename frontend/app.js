@@ -80,6 +80,12 @@ function closeModal(modalId) {
   modal._triggerEl?.focus();
 }
 
+// Single delegated handler — any button/link with data-modal-close="<id>" closes that modal
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-modal-close]');
+  if (btn) closeModal(btn.dataset.modalClose);
+});
+
 function confirmDialog(message, onConfirm, danger = true) {
   document.getElementById('confirmModalMsg').textContent = message;
   const btn = document.getElementById('confirmModalOk');
@@ -2378,8 +2384,6 @@ function editPlan(cycle_id, cycle_name, planned_hours, planned_cost) {
   openModal('editPlanModal');
 }
 
-document.getElementById('editPlanModalClose').addEventListener('click', () => closeModal('editPlanModal'));
-document.getElementById('editPlanCancelBtn').addEventListener('click', () => closeModal('editPlanModal'));
 
 document.getElementById('editPlanSaveBtn').addEventListener('click', async () => {
   if (!_planProjectId || !_editPlanCycleId) return;
@@ -2475,8 +2479,6 @@ document.getElementById('physicalProgressBtn').addEventListener('click', async (
   } catch (e) { notify(_friendlyError(e), 'error'); }
 });
 
-document.getElementById('physicalProgressModalClose').addEventListener('click', () => closeModal('physicalProgressModal'));
-document.getElementById('physicalProgressCancelBtn').addEventListener('click', () => closeModal('physicalProgressModal'));
 
 document.getElementById('physicalProgressSaveBtn').addEventListener('click', async () => {
   if (!_planProjectId) return;
@@ -2508,8 +2510,6 @@ document.getElementById('physicalProgressSaveBtn').addEventListener('click', asy
 });
 
 function _closeAddPlanModal() { closeModal('addPlanModal'); }
-document.getElementById('addPlanModalClose').addEventListener('click', _closeAddPlanModal);
-document.getElementById('addPlanCancelBtn').addEventListener('click', _closeAddPlanModal);
 
 document.getElementById('addPlanSaveBtn').addEventListener('click', async () => {
   const rows = document.getElementById('addPlanRows').querySelectorAll('tr');
@@ -3453,8 +3453,6 @@ document.getElementById('senioritySaveBtn').addEventListener('click', async () =
     await loadSeniorityLevels();
   } catch (e) { document.getElementById('seniorityError').textContent = e.message; }
 });
-document.getElementById('seniorityCancelBtn').addEventListener('click', closeSeniorityModal);
-document.getElementById('seniorityModalClose').addEventListener('click', closeSeniorityModal);
 document.getElementById('newSeniorityBtn').addEventListener('click', () => openSeniorityModal());
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
@@ -3533,8 +3531,6 @@ document.getElementById('rateCardSaveBtn').addEventListener('click', async () =>
     await loadTeamTable();
   } catch (e) { document.getElementById('rateCardError').textContent = e.message; }
 });
-document.getElementById('rateCardCancelBtn').addEventListener('click', closeRateCardModal);
-document.getElementById('rateCardModalClose').addEventListener('click', closeRateCardModal);
 document.getElementById('newRateCardBtn').addEventListener('click', () => openRateCardModal());
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
@@ -3938,8 +3934,6 @@ document.getElementById('newUserBtn').addEventListener('click', () => {
   openModal('userModal');
 });
 
-document.getElementById('userModalClose').addEventListener('click',  () => { closeModal('userModal'); });
-document.getElementById('userCancelBtn').addEventListener('click',   () => { closeModal('userModal'); });
 
 document.getElementById('userSaveBtn').addEventListener('click', async () => {
   const username = document.getElementById('userUsernameInput').value.trim();
@@ -3963,8 +3957,6 @@ function openPwdModal(userId) {
   openModal('pwdModal');
 }
 
-document.getElementById('pwdModalClose').addEventListener('click', () => { closeModal('pwdModal'); });
-document.getElementById('pwdCancelBtn').addEventListener('click',  () => { closeModal('pwdModal'); });
 
 document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   const userId      = document.getElementById('pwdTargetId').value;
@@ -4416,12 +4408,6 @@ document.getElementById('myChangePwdBtn')?.addEventListener('click', () => {
   document.getElementById('myPwdError').textContent = '';
   openModal('myPwdModal');
 });
-document.getElementById('myPwdModalClose')?.addEventListener('click', () => {
-  closeModal('myPwdModal');
-});
-document.getElementById('myPwdCancelBtn')?.addEventListener('click', () => {
-  closeModal('myPwdModal');
-});
 document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   const currentPwd = document.getElementById('myCurrentPwdInput').value.trim();
   const newPwd     = document.getElementById('myNewPwdInput').value.trim();
@@ -4737,8 +4723,6 @@ function openEditRule(id) {
 
 document.getElementById('ruleFieldInput')?.addEventListener('change', _updateRuleActionOptions);
 document.getElementById('newRuleBtn')?.addEventListener('click', () => _openRuleModal());
-document.getElementById('ruleModalClose')?.addEventListener('click',  () => closeModal('ruleModal'));
-document.getElementById('ruleCancelBtn')?.addEventListener('click',   () => closeModal('ruleModal'));
 
 document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
   const errEl = document.getElementById('ruleError');
@@ -4841,8 +4825,6 @@ async function _doQRAction(id, action) {
   } catch (e) { notify(_friendlyError(e), 'error'); }
 }
 
-document.getElementById('qrModalClose')?.addEventListener('click',    () => closeModal('qrDetailModal'));
-document.getElementById('qrModalCloseBtn')?.addEventListener('click', () => closeModal('qrDetailModal'));
 
 
 // ---------------------------------------------------------------------------
@@ -5315,8 +5297,6 @@ document.getElementById('openThemeModalBtn')?.addEventListener('click', async ()
   openModal('themeModal');
 });
 
-document.getElementById('closeThemeModalBtn')?.addEventListener('click', () => closeModal('themeModal'));
-document.getElementById('cancelThemeBtn')?.addEventListener('click', () => closeModal('themeModal'));
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -5637,8 +5617,6 @@ function _showOnboardingBanner() {
   });
 }
 
-document.getElementById('confirmModalClose')?.addEventListener('click', () => closeModal('confirmModal'));
-document.getElementById('confirmModalCancel')?.addEventListener('click', () => closeModal('confirmModal'));
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
