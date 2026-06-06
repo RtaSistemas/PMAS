@@ -503,6 +503,7 @@ def ingest_file(
         "warnings": ingest_warnings,
         "infos": ingest_infos,
         "upload_session_id": session_id,
+        "affected_peps": sorted(pep_codes_in_file),
     }
 
 

@@ -199,7 +199,7 @@ function _buildTreemapOption(health, evmMode = false) {
       height: '100%',
       breadcrumb: { show: false },
       label: {
-        show: true, fontSize: 11, color: '#f1f5f9',
+        show: true, fontSize: 11, color: _cssVar('--text'),
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
           const raw = d ? (evmMode ? d.total_cost : d.total_hours) : 0;
@@ -327,7 +327,7 @@ function _buildTimelineTreemapOption(snapshots, evmMode) {
         bottom: 64,
         breadcrumb: { show: false },
         label: {
-          show: true, fontSize: 11, color: '#f1f5f9',
+          show: true, fontSize: 11, color: _cssVar('--text'),
           formatter: params => {
             const d = params.data._raw;
             if (!d) return params.name;

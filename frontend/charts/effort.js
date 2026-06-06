@@ -124,7 +124,7 @@ function _buildHoursBarOption({
   const barSeries = [
     _barSerie(_t('ch.normal_h'),  normals,   _pal[0] || _cssVar('--primary')),
     _barSerie(_t('ch.extra_h'),   extras,    _pal[1] || _cssVar('--amber')),
-    _barSerie(_t('ch.standby_h'), standbys,  _pal[2] || '#8b5cf6'),
+    _barSerie(_t('ch.standby_h'), standbys,  _pal[2] || _cssVar('--violet')),
   ];
 
   // ── 6. Total line series (optional) ─────────────────────────────────

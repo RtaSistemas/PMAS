@@ -154,6 +154,16 @@ def compute_vac(
     return round(budget_cost - eac, 2)
 
 
+def compute_etc(
+    eac: Optional[float],
+    actual_cost: Optional[float],
+) -> Optional[float]:
+    """Estimate to Complete = EAC − AC, zero-floored."""
+    if eac is None or actual_cost is None:
+        return None
+    return round(max(eac - actual_cost, 0.0), 2)
+
+
 def compute_cv(
     ev_cost: Optional[float],
     actual_cost: float,

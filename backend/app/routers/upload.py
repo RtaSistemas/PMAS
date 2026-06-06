@@ -17,7 +17,7 @@ from backend.app.services.ingestion import (
     LockedProjectError,
     ingest_file,
 )
-from backend.app.services.notifications_svc import create_notification
+from backend.app.services.notifications_svc import create_notification, notify_threshold_crossings
 from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
@@ -95,6 +95,9 @@ def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_
         f"{quarantined} em quarentena."
     )
     create_notification(db, current_user.id, message, level=level)
+
+    notify_threshold_crossings(db, summary.get("affected_peps", []))
+
     db.commit()
 
     return summary

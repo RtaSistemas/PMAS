@@ -51,7 +51,7 @@ function _buildForecastOption(fc) {
     : null;
 
   const _fpal = _getPalette();
-  const _fC0  = _fpal[0] || '#0ea5e9';
+  const _fC0  = _fpal[0] || _cssVar('--primary');
   const series = [
     {
       name: _t('forecast.realized'),
@@ -85,7 +85,7 @@ function _buildForecastOption(fc) {
     },
   ];
   if (pvData) {
-    const _fC3 = _fpal[3] || '#a78bfa';
+    const _fC3 = _fpal[3] || _cssVar('--violet');
     series.push({
       name: _t('forecast.pv_line'),
       type: 'line', yAxisIndex: 0,
@@ -172,8 +172,8 @@ function _buildBurnUpOption(fc) {
       name: _t('burnup.pv'),
       type: 'line', data: pvData,
       symbol: 'none', connectNulls: true,
-      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
-      itemStyle: { color: '#94a3b8' },
+      lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
+      itemStyle: { color: _cssVar('--text-3') },
       emphasis:  { focus: 'series' },
     },
     {
