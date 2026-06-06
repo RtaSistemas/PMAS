@@ -531,4 +531,5 @@ window._LANG_PT = {
     'err.rate_limit': 'Muitas requisições. Aguarde um momento.',
     'summaries.stale': 'Analytics desatualizados — execute um novo upload para sincronizar.',
     'err.server': 'Erro no servidor. Tente novamente em instantes.',
+    'auth.session_expiring_soon': 'Sua sessão expira em menos de 10 minutos. Salve seu trabalho.',
 };

@@ -530,4 +530,6 @@ window._LANG_EN = {
     'err.validation': 'Invalid data. Please check the fields and try again.',
     'err.rate_limit': 'Too many requests. Please wait a moment.',
     'err.server': 'Server error. Please try again shortly.',
+    'summaries.stale': 'Analytics are stale — run a new upload to synchronise.',
+    'auth.session_expiring_soon': 'Your session expires in less than 10 minutes. Save your work.',
 };

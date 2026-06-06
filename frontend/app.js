@@ -4427,6 +4427,11 @@ document.getElementById('notificationClose').addEventListener('click', () => {
   el.hidden = true;
 });
 
+window.addEventListener('unhandledrejection', e => {
+  notify(_friendlyError(e.reason), 'error');
+  console.error('[unhandled]', e.reason);
+});
+
 function fmt(h) {
   return Number(h).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {
     minimumFractionDigits: 1, maximumFractionDigits: 1,
@@ -4464,13 +4469,23 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
+function _logout() {
   sessionStorage.removeItem('access_token');
   sessionStorage.removeItem('username');
   sessionStorage.removeItem('role');
   document.getElementById('appShell').hidden = true;
   document.getElementById('loginOverlay').removeAttribute('hidden');
-});
+}
+
+document.getElementById('logoutBtn').addEventListener('click', _logout);
+
+function _checkTokenExpiry() {
+  const p = _getTokenPayload();
+  if (!p?.exp) return;
+  const minsLeft = (p.exp - Date.now() / 1000) / 60;
+  if (minsLeft <= 0) { _logout(); return; }
+  if (minsLeft < 10) notify(_t('auth.session_expiring_soon'), 'warning');
+}
 
 document.getElementById('collabDetailClose').addEventListener('click', _closeCollabDetail);
 document.getElementById('calPrevMonth').addEventListener('click', async () => {
@@ -6152,6 +6167,8 @@ function _bootApp() {
   _refreshTabBadges();
   _renderActiveTab();
   _initNotifications();
+  _checkTokenExpiry();
+  setInterval(_checkTokenExpiry, 5 * 60 * 1000);
 }
 
 function _showDefaultPasswordBanner() {
@@ -6210,6 +6227,14 @@ function _showOnboardingBanner() {
 
 document.getElementById('confirmModalClose')?.addEventListener('click', () => closeModal('confirmModal'));
 document.getElementById('confirmModalCancel')?.addEventListener('click', () => closeModal('confirmModal'));
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!sessionStorage.getItem('access_token')) return;
+  const tab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (tab === 'cycles')   loadCyclesTable();
+  if (tab === 'projects') loadProjectsTable();
+});
 
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
