@@ -260,9 +260,9 @@ All formulas live in `backend/app/services/evm.py`. Reference:
 
 ```
 frontend/
-├── index.html          — HTML shell + modal declarations
-├── app.js              — Auth, boot, analytics tabs, semaphore, layout prefs
-├── style.css           — Design tokens + all CSS rules
+├── index.html          — HTML shell + modal declarations (0 inline style= attributes)
+├── app.js              — Core only: globals, auth/fetch/notify, preferences, _bootApp (≤800 lines)
+├── style.css           — Design tokens + all CSS rules (+ utility classes from MA-07)
 ├── utils.js            — Pure utility functions (_fmtH, _fmtCost, _cssVar, _getPalette)
 ├── ui-helpers.js       — Shared UI: _makePaginator, _confirmDelete, _makeRiskBadge
 ├── multiselect.js      — Cascading MultiSelect component
@@ -273,8 +273,14 @@ frontend/
 │   ├── portfolio.js    — Portfolio tab chart builders (treemap, bullet, quadrant)
 │   └── forecast.js     — Forecast tab chart builders (S-curve, burn-up, MC histogram)
 ├── crud/
-│   ├── cycles.js       — Cycles tab CRUD
-│   └── projects.js     — Projects tab CRUD (Plan, Baseline, ACL modals)
+│   ├── cycles.js       — Cycles tab CRUD + _makeSortable for cyclesTable
+│   └── projects.js     — Projects tab CRUD (Plan, Baseline, ACL modals) + _makeSortable for projectsTable
+├── tabs/
+│   ├── dashboard.js    — Dashboard tab: filters, MultiSelects, all render functions (~2969 lines)
+│   ├── equipe.js       — Team/Equipe tab: seniority, rate cards, over-alloc + _makeSortable
+│   ├── admin.js        — Admin tab: users, audit, validation rules, quarantine, theme editor + _makeSortable
+│   ├── minha-area.js   — Minha Área tab: preferences, upload history, quarantine view + _makeSortable
+│   └── header.js       — Header: _updateHeaderUser, loadSemaphore, _initNotifications
 └── lang/
     ├── pt.js           — pt-BR strings
     └── en.js           — en-US strings
@@ -292,16 +298,26 @@ frontend/
 <script src="frontend/ui-helpers.js"></script>
 <!-- 4. EVM glossary (depends on utils) -->
 <script src="frontend/evm-glossary.js"></script>
-<!-- 5. Chart builders (depend on utils) -->
+<!-- 5. MultiSelect component -->
+<script src="multiselect.js"></script>
+<!-- 6. Core app: globals, auth/notify, theme, _bootApp -->
+<script src="app.js"></script>
+<!-- 7. CRUD modules (depend on app.js globals) -->
+<script src="frontend/crud/cycles.js"></script>
+<script src="frontend/crud/projects.js"></script>
+<!-- 8. Chart builders (depend on utils) -->
 <script src="frontend/charts/effort.js"></script>
 <script src="frontend/charts/portfolio.js"></script>
 <script src="frontend/charts/forecast.js"></script>
-<!-- 6. CRUD modules (depend on utils + ui-helpers + lang) -->
-<script src="frontend/crud/cycles.js"></script>
-<script src="frontend/crud/projects.js"></script>
-<!-- 7. Main app (depends on all above) -->
-<script src="frontend/app.js"></script>
+<!-- 9. Tab modules (depend on app.js + CRUD + charts) -->
+<script src="frontend/tabs/dashboard.js"></script>
+<script src="frontend/tabs/equipe.js"></script>
+<script src="frontend/tabs/admin.js"></script>
+<script src="frontend/tabs/minha-area.js"></script>
+<script src="frontend/tabs/header.js"></script>
 ```
+
+> **Cross-file globals:** All scripts run as non-module synchronous `<script>` tags. Top-level `let`/`const` in any file are accessible from files loaded later. Event listener *callbacks* resolve symbols at call time (after all scripts load), so forward references from `app.js` to functions in `tabs/` are safe. The `_makeSortable` call for each table must be in the same file that defines its render function to avoid an undefined-reference bug.
 
 ### Global functions available everywhere
 
@@ -402,6 +418,42 @@ Every CSS animation or transition must be wrapped:
   [id$="Chart"] { height: 200px !important; min-height: 160px; }
 }
 ```
+
+### No inline `style=` attributes in `index.html`
+
+`index.html` must have **zero** `style=` inline attributes. All presentation belongs in `style.css`.
+
+```html
+<!-- ❌ Forbidden -->
+<div style="display:flex;gap:.5rem;margin-top:.5rem">
+
+<!-- ✅ Correct — use an existing utility class -->
+<div class="pagination-bar">
+
+<!-- ✅ Correct — add a CSS rule targeting the element's ID -->
+```
+
+**Available utility classes** (all in `style.css`):
+
+| Class | Style |
+|-------|-------|
+| `.pagination-bar` | `display:flex; align-items:center; justify-content:flex-end; gap:.5rem; margin-top:.5rem` |
+| `.pagination-label` | `display:flex; align-items:center; gap:.3rem` |
+| `.mb-0`–`.mb-4` | `margin-bottom: 0 / .35rem / .5rem / .75rem / 1rem` |
+| `.mt-2` | `margin-top: .5rem` |
+| `.m-0` | `margin: 0` |
+| `.w-full` | `width: 100%` |
+| `.mw-520` | `max-width: 520px` |
+| `.flex-wrap-sm` | `display:flex; gap:.4rem; flex-wrap:wrap` |
+| `.chevron` / `.chevron-open` | Collapsible chevron icon (normal / rotated) |
+| `.label-strong` | `font-size:.88rem; font-weight:600; color:var(--text)` |
+| `.col-flex-sm` | `flex:1; display:flex; flex-direction:column; gap:.25rem; font-size:.82rem` |
+| `.field-hint-block` | `display:block; min-height:1.1em; margin-top:.25rem` |
+| `.collapsible-trigger` | `cursor:pointer; user-select:none; padding:0 0 .5rem` |
+| `.clickable` | `cursor:pointer; user-select:none` |
+| `.input-sel-sm` | `min-width:160px; height:2rem; font-size:.8rem` |
+
+For one-off element styles, add a CSS rule targeting the element's `id` in `style.css`. For new modals, add `#myModal .modal-box { max-width: Xpx; }` — do not use `style="max-width:Xpx"`.
 
 ---
 
@@ -791,6 +843,8 @@ async function loadSomething() {
 
 ## 14. Testing Patterns
 
+**Current test count: 677 tests across 21 files** (`pytest tests/ -v` — all in-memory SQLite, no `pmas.db` touched).
+
 ### Backend tests
 
 All tests use an in-memory SQLite database. Never touch `pmas.db`.
@@ -828,6 +882,19 @@ def test_compute_etc_overrun():
 def test_compute_etc_none_inputs():
     assert compute_etc(None, 60.0) is None
     assert compute_etc(100.0, None) is None
+```
+
+### Ingestion phase tests
+
+`tests/test_ingestion_phases.py` tests each phase function independently via its public signature. When modifying a phase, add/update tests in the corresponding test class:
+
+```python
+class TestPhaseLoadAndValidate:   # _phase_load_and_validate
+class TestPhaseAuthorizePeps:     # _phase_authorize_peps
+class TestPhasePrescanDates:      # _phase_prescan_dates
+class TestPhaseValidateRows:      # _phase_validate_rows
+class TestPhaseAggregateRules:    # _phase_aggregate_rules
+class TestPhaseUpsertRecords:     # _phase_upsert_records
 ```
 
 ### Golden rules tests
