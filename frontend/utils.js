@@ -24,10 +24,10 @@ export function formatHours(h) {
   return Number(h).toFixed(1) + 'h';
 }
 
-export function formatCost(raw, factor = 1, symbol = 'R$') {
+export function formatCost(raw, factor = 1, symbol = 'R$', locale = 'pt-BR') {
   if (raw == null || isNaN(Number(raw))) return '—';
   const converted = Number(raw) * factor;
-  return `${symbol} ${converted.toLocaleString('pt-BR', {
+  return `${symbol} ${converted.toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

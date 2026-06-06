@@ -124,6 +124,30 @@ describe('formatCost', () => {
   it('returns dash for undefined', () => {
     expect(formatCost(undefined)).toBe('—');
   });
+
+  it('uses pt-BR locale by default (dot as thousands separator)', () => {
+    const result = formatCost(1000000);
+    // pt-BR: 1.000.000,00
+    expect(result).toContain('1.000.000');
+  });
+
+  it('accepts en-US locale (comma as thousands separator)', () => {
+    const result = formatCost(1000000, 1, '$', 'en-US');
+    // en-US: 1,000,000.00
+    expect(result).toContain('1,000,000');
+  });
+
+  it('locale parameter affects decimal separator', () => {
+    const ptResult = formatCost(1.5, 1, 'R$', 'pt-BR');
+    const enResult = formatCost(1.5, 1, '$', 'en-US');
+    expect(ptResult).toContain('1,50');   // pt-BR uses comma for decimals
+    expect(enResult).toContain('1.50');   // en-US uses dot for decimals
+  });
+
+  it('custom symbol appears in output regardless of locale', () => {
+    const result = formatCost(100, 1, '€', 'en-US');
+    expect(result).toContain('€');
+  });
 });
 
 // ── clamp ─────────────────────────────────────────────────────────────────────

@@ -1007,8 +1007,8 @@ function _renderCostCompositionChart(trends) {
   emptyEl.hidden = true;
   document.getElementById('costCompositionChart').style.visibility = '';
 
-  const sym = document.getElementById('currencySymbol')?.value || 'R$';
-  const factor = parseFloat(document.getElementById('currencyFactor')?.value) || 1;
+  const sym = _currencySymbol;
+  const factor = _currencyFactor;
 
   const categories = filtered.map(t => t.cycle_name);
   const normalData  = filtered.map(t => +((t.normal_cost  || 0) * factor).toFixed(2));
@@ -2287,7 +2287,7 @@ async function _renderPlanTable() {
     }
     tbody.innerHTML = plans.map(pl => {
       const costStr = pl.planned_cost != null
-        ? pl.planned_cost.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+        ? _fmtCost(pl.planned_cost)
         : '<span style="color:var(--text-3)">—</span>';
       const physStr = pl.physical_pct != null
         ? `<span style="color:var(--color-accent);font-weight:600">${(pl.physical_pct * 100).toFixed(0)}%</span>`
@@ -3169,7 +3169,7 @@ const _cyclesPag = _makePaginator(
       <td>${c.start_date}</td>
       <td>${c.end_date}</td>
       <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
-      <td style="text-align:right">${c.record_count.toLocaleString('pt-BR')}</td>
+      <td style="text-align:right">${c.record_count.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
         ${admin ? `<button class="btn btn-sm btn-secondary" onclick="toggleCycleArchive(${c.id}, ${c.is_active})" title="${c.is_active ? _t('title.archive') : _t('title.restore')}">${c.is_active ? '📦' : '↩'}</button>` : ''}
@@ -3399,7 +3399,7 @@ function _renderProjectStats() {
   });
 
   const total = _allProjects.length;
-  const budgetStr = totalBudgetH > 0 ? totalBudgetH.toLocaleString('pt-BR') + 'h' : '—';
+  const budgetStr = totalBudgetH > 0 ? fmt(totalBudgetH) : '—';
   const riskHtml = atRisk > 0
     ? `<div class="stat-sep"></div>
        <div class="stat-item">
@@ -3443,7 +3443,7 @@ function _renderProjectStats() {
 function _buildBudgetCell(p) {
   if (p.budget_hours == null) return '—';
   const entry = _consumedByPep[p.pep_wbs];
-  const budgetStr = p.budget_hours.toLocaleString('pt-BR') + 'h';
+  const budgetStr = fmt(p.budget_hours);
   if (!entry) return budgetStr;
   const { hours: consumed, health } = entry;
   const wPct = Math.round(_budgetWarning * 100);
@@ -3532,7 +3532,7 @@ async function _openBudgetHistory(projectId, projectName) {
           { type: 'value', name: 'h', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
             axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${v}h` },
             splitLine: { lineStyle: { color: _cssVar('--surface') } } },
-          { type: 'value', name: 'R$', nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
+          { type: 'value', name: _currencySymbol, nameTextStyle: { color: _cssVar('--text-3'), fontSize: 9 },
             axisLabel: { color: _cssVar('--text-3'), fontSize: 9, formatter: v => `${(v/1000).toFixed(0)}k` },
             splitLine: { show: false } },
         ],
@@ -3686,7 +3686,7 @@ async function _refreshBaselineModal(projectId) {
       html += `<div class="baseline-info-box active">
         <strong>📍 ${_t('baseline.active')}</strong>${active.label ? ` — <em>${escHtml(active.label)}</em>` : ''}
         <br><span class="text-dim">${_t('baseline.locked_at')} ${_fmtDateShort(active.locked_at)} ${_t('baseline.locked_by')} ${escHtml(active.locked_by || '?')}</span>
-        <br><span class="text-dim">${_t('baseline.budget_h')}: <b>${active.budget_hours != null ? active.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</b>
+        <br><span class="text-dim">${_t('baseline.budget_h')}: <b>${active.budget_hours != null ? fmt(active.budget_hours) : '—'}</b>
         &nbsp;·&nbsp; ${_t('baseline.budget_cost')}: <b>${active.budget_cost != null ? _fmtCost(active.budget_cost) : '—'}</b></span>
       </div>`;
     } else {
@@ -3717,7 +3717,7 @@ async function _refreshBaselineModal(projectId) {
         const delta = (n != null && o != null) ? n - o : null;
         const color = delta == null ? '' : delta > 0 ? `color:var(--amber)` : delta < 0 ? `color:var(--green)` : '';
         const sign  = delta > 0 ? '+' : '';
-        const dStr  = delta != null ? `${sign}${delta.toLocaleString('pt-BR')}` : '—';
+        const dStr  = delta != null ? `${sign}${delta.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US')}` : '—';
         return `<td>${oStr}</td><td>${nStr}</td><td style="${color};font-weight:600">${dStr}</td>`;
       };
       const dH = older.budget_hours != null || newer.budget_hours != null
@@ -3753,7 +3753,7 @@ async function _refreshBaselineModal(projectId) {
         html += `<tr style="${b.is_active ? 'background:rgba(79,142,247,.08)' : ''}">
           <td>${_fmtDateShort(b.locked_at)}</td>
           <td>${escHtml(b.locked_by || '—')}</td>
-          <td>${b.budget_hours != null ? b.budget_hours.toLocaleString('pt-BR') + 'h' : '—'}</td>
+          <td>${b.budget_hours != null ? fmt(b.budget_hours) : '—'}</td>
           <td>${b.budget_cost != null ? _fmtCost(b.budget_cost) : '—'}</td>
           <td>${escHtml(b.label || '—')}</td>
           <td><div class="actions" style="gap:.25rem">
@@ -5050,7 +5050,7 @@ const _historyPag = _makePaginator(
     colspan: 9,
     emptyKey: 'msg.no_import_sessions',
     rowFn: r => {
-      const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
       const statusKey = r.status === 'ok' ? 'history.status.ok'
         : r.status === 'warnings' ? 'history.status.warnings'
         : r.status === 'quarantine' ? 'history.status.quarantine'
@@ -5096,7 +5096,7 @@ document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
   const header = ['Quando','Arquivo','Enviado por','Inseridos','Ignorados','Quarentena','Avisos','Infos','Status'];
   const lines = rows.map(r => {
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     return [esc(when), esc(r.source_file), esc(r.uploaded_by_username),
       r.records_inserted, r.records_skipped, r.quarantine_added,
       r.warning_count, r.info_count, esc(r.status)].join(',');
@@ -5137,7 +5137,7 @@ const _myQrPag = _makePaginator(
     }
     tbody.innerHTML = rows.map(r => {
       const raw  = r.raw_data || {};
-      const when = new Date(r.ingested_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+      const when = new Date(r.ingested_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
       return `<tr style="cursor:pointer" onclick="_openQRDetail(${r.id})">
       <td style="font-size:.78rem;white-space:nowrap">${escHtml(when)}</td>
       <td>${escHtml(raw['Colaborador'] || '—')}</td>
@@ -5368,7 +5368,7 @@ function _openQRDetail(id) {
   document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
   document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
   document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
-    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' })}`
+    ? `${r.reviewed_by} em ${new Date(r.reviewed_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle:'short', timeStyle:'short' })}`
     : '—';
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
@@ -5421,7 +5421,7 @@ async function _openSessionDetail(sessionId) {
     const iDiv   = document.getElementById('sessionDetailInfos');
     const iList  = document.getElementById('sessionDetailInfosList');
 
-    const when = new Date(r.uploaded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    const when = new Date(r.uploaded_at).toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
     title.textContent = `Importação — ${r.source_file}`;
     meta.innerHTML = [
       `<span style="color:${_cssVar('--text-3')}">Data</span><span>${escHtml(when)}</span>`,
@@ -5453,14 +5453,14 @@ async function _openSessionDetail(sessionId) {
     if (r.warnings_detail?.length) {
       wList.innerHTML = r.warnings_detail.map(w => `<li>${escHtml(w)}</li>`).join('');
       document.getElementById('sessionDetailWarningsHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">⚠ Avisos</p>
          <button type="button" id="sdWarnCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
       setTimeout(() => document.getElementById('sdWarnCsvBtn')?.addEventListener('click', () =>
         _exportDetailCsv(r.warnings_detail, 'Avisos')), 0);
       wDiv.hidden = false;
     } else {
       document.getElementById('sessionDetailWarningsHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:#f59e0b;margin:0">⚠ Avisos</p>`;
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">⚠ Avisos</p>`;
       wDiv.hidden = true;
     }
     if (r.infos_detail?.length) {
@@ -5911,7 +5911,7 @@ async function loadSemaphore() {
       const s = _semClass(p);
       counts[s]++;
       const pH = p.budget_hours ? (p.total_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
-      const pC = p.budget_cost  ? (p.total_cost  / p.budget_cost  * 100).toFixed(0) + '% R$': '— R$';
+      const pC = p.budget_cost  ? (p.total_cost  / p.budget_cost  * 100).toFixed(0) + '% ' + _currencySymbol: '— ' + _currencySymbol;
       const tip = `${p.pep_wbs}: ${pH} · ${pC} — clique para detalhar`;
       return `<span class="sem-project ${s}" data-pep="${escHtml(p.pep_wbs)}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
     });
@@ -6161,7 +6161,7 @@ function _showDefaultPasswordBanner() {
       <span style="color:var(--text-2)">${_t('sec.default_pass.body')}</span>
     </span>
     <button class="btn btn-sm" id="defaultPassCta"
-      style="background:var(--red);color:#fff;border:none;white-space:nowrap">
+      style="background:var(--red);color:var(--text-inv,#fff);border:none;white-space:nowrap">
       ${_t('sec.default_pass.cta')}
     </button>
   `;
