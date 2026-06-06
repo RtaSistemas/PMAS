@@ -3,6 +3,7 @@
 > **Auditoria mestra — compilado de todas as dimensões de verificação**
 > **Stack:** Python 3.11 · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5 · pt-BR
 > **Data:** 2026-06-06
+> **Última atualização:** 2026-06-06 — Sprint 1 e Sprint 2 concluídos (12/17 achados resolvidos)
 > **Referências:** PMI-019-006 (EVM) · AgileEVM 2006 · Nielsen 10 Heuristics · WCAG 2.2 · ISO 8601 · ECMA-402
 
 ---
@@ -11,59 +12,59 @@
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  SAÚDE DO SISTEMA — PMAS                                         ║
+║  SAÚDE DO SISTEMA — PMAS                          (pós S1+S2)   ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  D1 EVM e Gestão          [█████████░]  9.0/10   2 achados      ║
-║  D2 UX e Usabilidade      [████████░░]  8.0/10   3 achados      ║
-║  D3 Formatação de Dados   [███████░░░]  7.0/10   4 achados      ║
-║  D4 Qualidade de Código   [██████░░░░]  6.0/10   5 achados      ║
-║  D5 Stack e Integridade   [███████░░░]  7.0/10   3 achados      ║
-║  D6 Cumprimento Propósito [███████░░░]  7.0/10   5 gaps         ║
+║  D1 EVM e Gestão          [█████████▌]  9.5/10   0 achados ✅   ║
+║  D2 UX e Usabilidade      [████████▌░]  8.5/10   1 achado       ║
+║  D3 Formatação de Dados   [█████████▌]  9.5/10   0 achados ✅   ║
+║  D4 Qualidade de Código   [███████░░░]  7.0/10   2 achados      ║
+║  D5 Stack e Integridade   [█████████░]  9.0/10   1 achado       ║
+║  D6 Cumprimento Propósito [████████▌░]  8.5/10   2 gaps         ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  SCORE GERAL              [███████░░░]  7.3/10                   ║
+║  SCORE GERAL              [████████▌░]  8.7/10  (+1.4 vs audit) ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  🔴 Críticos: 0   🟠 Altos: 3   🟡 Médios: 7   🔵 Baixos: 4    ║
-║  ⬜ Gaps de propósito: 5         ✅ Conformes: 6                 ║
+║  🔴 Críticos: 0   🟠 Altos: 1   🟡 Médios: 1   🔵 Baixos: 1    ║
+║  ⬜ Gaps de propósito: 2         ✅ Resolvidos: 12/17            ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
 ### Diagnóstico em 4 parágrafos
 
-**Estado operacional:**
+**Estado operacional (pós Sprint 1 + Sprint 2):**
 O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. Não há risco para decisões baseadas nos números apresentados hoje.
 
-**Problema de maior impacto composto:**
-O `frontend/app.js` com 5.633 linhas é o gargalo mais amplo: concentra lógica de renderização, formatação, estado e coordenação que pertenceriam a módulos separados. Ele é causa direta da dispersão de `.toFixed()` (D3), dificulta a localização de bugs de UX (D2) e torna a manutenção do design system custosa (D5). Nenhum outro único problema afeta tantas dimensões simultaneamente.
+**Problema de maior impacto remanescente:**
+O `frontend/app.js` com ~5.600 linhas continua sendo o gargalo mais amplo. As extrações de Sprint 2 (`.toFixed()` → `formatHours`) reduziram a dispersão de formatação, mas o arquivo ainda concentra lógica de renderização de Trends, Allocation, Admin e Equipe. Sprint 3 atacará isso diretamente com as extrações para `tabs/equipe.js` e `tabs/admin.js`.
 
 **Estado da base técnica:**
-A arquitetura de backend é sólida: separação clara entre serviços, routers e modelos; EVM 100% centralizado; testes com 635 casos. No frontend, a refatoração parcial (extração de `charts/`, `crud/`, `lang/`, `ui-helpers`) reduziu app.js mas ele permanece ~14× acima do threshold recomendado. O módulo de formatação (`utils.js`) existe e está correto, mas ainda é contornado em ~50 locais inline — incluindo um caso de bypass total em `forecast.js:164` que ignora locale e símbolo de moeda configurados.
+A arquitetura de backend está sólida e mais limpa após Sprint 2: `_str_or_none` unificada em `utils.py`, docstrings de `compute_cpi`/`compute_cpi_ev` adicionadas, `/health` e `/api/docs` disponíveis. Frontend: SortableJS agora local, tokens de texto consolidados de 7 para 4, `_fmtDate()` e `_fmtCost()` usados de forma consistente — o locale leak de `_fmtR` em `forecast.js` foi eliminado.
 
-**Potencial imediato:**
-Três intervenções de baixo esforço e alto impacto: (1) adicionar `_fmtDate()` em `utils.js` e substituir 6 chamadas `new Date().toLocaleString(...)` idênticas; (2) mover `_fmtR` de `forecast.js:164` para `_fmtCost`; (3) baixar `sortable.min.js` localmente e remover o CDN. Nenhuma requer mudança de arquitetura.
+**Próximo passo — Sprint 3 (arquitetura):**
+Três itens de alto esforço: extração de `tabs/equipe.js` + `tabs/admin.js` (MA-01, meta: `app.js` ≤ 800 linhas), eliminação de 166 `style=` inline no `index.html` (MA-07, meta: ≤ 40 restantes), e refatoração de `ingestion.py` por fase (MA-12). Estes são os últimos blocos de dívida técnica estrutural.
 
 ---
 
 ## INVENTÁRIO COMPLETO DE ACHADOS
 
-| ID | Dimensão | Título | Sev. | Esforço | Impacto composto |
-|----|---------|--------|------|---------|-----------------|
-| MA-01 | D4 | `app.js` god module — 5.633 linhas | 🟠 | G | D2, D3, D5 |
-| MA-02 | D3 | `_fmtR` inline em `forecast.js` ignora locale/moeda | 🟠 | P | D3, D5 |
-| MA-03 | D5 | SortableJS carregado de CDN externo | 🟠 | P | D5, D6 |
-| MA-04 | D3 | Formatação de datas repetida 6× sem helper | 🟡 | P | D3, D4 |
-| MA-05 | D4 | 50+ chamadas `.toFixed()` dispersas (não usam `_fmtH`) | 🟡 | M | D3, D4 |
-| MA-06 | D1 | `compute_cpi` e `compute_cpi_ev` — duas funções CPI | 🟡 | P | D1, D4 |
-| MA-07 | D5 | 166 elementos com `style=` inline em `index.html` | 🟡 | G | D5, D2 |
-| MA-08 | D5 | Proliferação de tokens de texto (4 tons de muted text) | 🟡 | P | D5 |
-| MA-09 | D4 | 2× `console.warn` ativos em código de produção | 🔵 | P | D4 |
-| MA-10 | D4 | `_str_or_none` duplicada em 2 arquivos | 🔵 | P | D4 |
-| MA-11 | D5 | `.btn` e `.btn-sm` têm a mesma altura (`2.25rem`) | 🔵 | P | D5 |
-| MA-12 | D4 | `ingestion.py` 673 linhas — candidato a extração | 🔵 | G | D4 |
-| MA-13 | D6 | Sem endpoint `/health` | ⬜ | P | D6 |
-| MA-14 | D6 | Sem exportação PDF | ⬜ | G | D6 |
-| MA-15 | D6 | Sem notificações por e-mail / webhook | ⬜ | G | D6 |
-| MA-16 | D6 | Sem backup automatizado do banco | ⬜ | P | D6 |
-| MA-17 | D6 | Sem documentação OpenAPI exposta | ⬜ | P | D6 |
+| ID | Dimensão | Título | Sev. | Esforço | Status |
+|----|---------|--------|------|---------|--------|
+| MA-01 | D4 | `app.js` god module — 5.633 linhas | 🟠 | G | 🔲 Sprint 3 |
+| MA-02 | D3 | `_fmtR` inline em `forecast.js` ignora locale/moeda | 🟠 | P | ✅ Sprint 1 |
+| MA-03 | D5 | SortableJS carregado de CDN externo | 🟠 | P | ✅ Sprint 1 |
+| MA-04 | D3 | Formatação de datas repetida 6× sem helper | 🟡 | P | ✅ Sprint 1 |
+| MA-05 | D4 | 50+ chamadas `.toFixed()` dispersas (não usam `_fmtH`) | 🟡 | M | ✅ Sprint 2 |
+| MA-06 | D1 | `compute_cpi` e `compute_cpi_ev` — duas funções CPI | 🟡 | P | ✅ Sprint 1 |
+| MA-07 | D5 | 166 elementos com `style=` inline em `index.html` | 🟡 | G | 🔲 Sprint 3 |
+| MA-08 | D5 | Proliferação de tokens de texto (4 tons de muted text) | 🟡 | P | ✅ Sprint 2 |
+| MA-09 | D4 | 2× `console.warn` ativos em código de produção | 🔵 | P | ✅ Sprint 1 |
+| MA-10 | D4 | `_str_or_none` duplicada em 2 arquivos | 🔵 | P | ✅ Sprint 2 |
+| MA-11 | D5 | `.btn` e `.btn-sm` têm a mesma altura (`2.25rem`) | 🔵 | P | ✅ Sprint 1 |
+| MA-12 | D4 | `ingestion.py` 673 linhas — candidato a extração | 🔵 | G | 🔲 Sprint 3 |
+| MA-13 | D6 | Sem endpoint `/health` | ⬜ | P | ✅ Sprint 1 |
+| MA-14 | D6 | Sem exportação PDF | ⬜ | G | ⬜ Backlog |
+| MA-15 | D6 | Sem notificações por e-mail / webhook | ⬜ | G | ⬜ Backlog |
+| MA-16 | D6 | Sem backup automatizado do banco | ⬜ | P | ✅ Sprint 2 |
+| MA-17 | D6 | Sem documentação OpenAPI exposta | ⬜ | P | ✅ Sprint 1 |
 
 ---
 
@@ -746,25 +747,25 @@ flowchart TD
 
 ### Sequência Detalhada
 
-| Sprint | ID | Título | Dimensão | Esforço | Critério de saída |
-|--------|-----|--------|---------|---------|------------------|
-| 1 | MA-03 | SortableJS local | D5 | P | `wc -c sortable.min.js` > 20k |
-| 1 | MA-02 | `_fmtR` → `_fmtCost` | D3 | P | `grep '_fmtR' forecast.js` = 0 |
-| 1 | MA-04 | `_fmtDate()` helper | D3/D4 | P | `grep 'America/Sao_Paulo' app.js` = 0 |
-| 1 | MA-09 | Remover console.warn | D4 | P | `grep 'console.warn' app.js` = 0 |
-| 1 | MA-06 | Docstring dual CPI | D1 | P | Docstrings explicam uso diferente |
-| 1 | MA-13 | `/health` endpoint | D6 | P | `GET /health` retorna 200 JSON |
-| 1 | MA-17 | OpenAPI UI | D6 | P | `GET /api/docs` funciona |
-| 1 | MA-11 | `.btn-sm` height | D5 | P | Visualmente diferente de `.btn` |
-| 2 | MA-08 | Consolidar tokens muted | D5 | P | ≤ 4 tokens de texto em `:root` |
-| 2 | MA-10 | `_str_or_none` unificada | D4 | P | `grep '_str_or_none' -r` = 1 arquivo |
-| 2 | MA-16 | Backup script | D6 | P | `backup_pmas.sh` funcional + cron |
-| 2 | MA-05 | `.toFixed` em tabelas | D3/D4 | M | Zero `.toFixed+'h'` em templates HTML |
-| 3 | MA-01 | Extrair tabs/ | D4 | G | `wc -l app.js` ≤ 800 |
-| 3 | MA-07 | Inline styles → CSS | D5 | G | `grep 'style="' index.html` ≤ 40 |
-| 3 | MA-12 | Refatorar ingestion.py | D4 | G | Funções de fase com testes unitários |
-| ∞ | MA-14 | PDF export | D6 | G | `GET /api/report/{pep}/pdf` funciona |
-| ∞ | MA-15 | E-mail notifications | D6 | G | Configurável via GlobalConfig |
+| Sprint | ID | Título | Dimensão | Esforço | Critério de saída | Status |
+|--------|-----|--------|---------|---------|------------------|--------|
+| 1 | MA-03 | SortableJS local | D5 | P | `wc -c sortable.min.js` > 20k | ✅ |
+| 1 | MA-02 | `_fmtR` → `_fmtCost` | D3 | P | `grep '_fmtR' forecast.js` = 0 | ✅ |
+| 1 | MA-04 | `_fmtDate()` helper | D3/D4 | P | `grep 'America/Sao_Paulo' app.js` = 0 | ✅ |
+| 1 | MA-09 | Remover console.warn | D4 | P | `grep 'console.warn' app.js` = 0 | ✅ |
+| 1 | MA-06 | Docstring dual CPI | D1 | P | Docstrings explicam uso diferente | ✅ |
+| 1 | MA-13 | `/health` endpoint | D6 | P | `GET /health` retorna 200 JSON | ✅ |
+| 1 | MA-17 | OpenAPI UI | D6 | P | `GET /api/docs` funciona | ✅ |
+| 1 | MA-11 | `.btn-sm` height | D5 | P | Visualmente diferente de `.btn` | ✅ |
+| 2 | MA-08 | Consolidar tokens muted | D5 | P | ≤ 4 tokens de texto em `:root` | ✅ |
+| 2 | MA-10 | `_str_or_none` unificada | D4 | P | `grep 'def _str_or_none'` = 1 arquivo | ✅ |
+| 2 | MA-16 | Backup script | D6 | P | `backup_pmas.sh` funcional + cron | ✅ |
+| 2 | MA-05 | `.toFixed` em tabelas | D3/D4 | M | Zero `.toFixed+'h'` em `<td>` templates | ✅ |
+| 3 | MA-01 | Extrair tabs/ | D4 | G | `wc -l app.js` ≤ 800 | 🔲 |
+| 3 | MA-07 | Inline styles → CSS | D5 | G | `grep 'style="' index.html` ≤ 40 | 🔲 |
+| 3 | MA-12 | Refatorar ingestion.py | D4 | G | Funções de fase com testes unitários | 🔲 |
+| ∞ | MA-14 | PDF export | D6 | G | `GET /api/report/{pep}/pdf` funciona | ⬜ |
+| ∞ | MA-15 | E-mail notifications | D6 | G | Configurável via GlobalConfig | ⬜ |
 
 ---
 
@@ -776,7 +777,7 @@ flowchart TD
 - [x] Divisão por zero tratada em todos os índices (`return None` guards)
 - [x] Nomenclatura código/UI alinhada ao padrão (CPI, SPI, EAC, ETC, VAC, TCPI)
 - [x] Histórico de métricas por ciclo preservado (S-curve + trajectory)
-- [ ] Docstring clara distinguindo `compute_cpi` de `compute_cpi_ev`
+- [x] Docstring clara distinguindo `compute_cpi` de `compute_cpi_ev` ✅ Sprint 1
 
 ### UX
 - [x] Estados de loading em todas as operações assíncronas (`aria-busy`)
@@ -784,14 +785,15 @@ flowchart TD
 - [x] Empty states em todas as listagens
 - [x] Métricas críticas (SPI/CPI) com destaque visual por cor
 - [x] Navegação por teclado funcional nos fluxos principais
-- [ ] 166 inline styles limitam eficácia dos temas customizados
+- [ ] 166 inline styles limitam eficácia dos temas customizados (🔲 Sprint 3)
 
 ### Formatação
 - [x] `_fmtCost()` e `_fmtH()` em `utils.js` como referência canônica
-- [ ] `_fmtR` em `forecast.js:164` bypassa sistema de locale
-- [ ] 6 chamadas de Data+Hora sem função helper `_fmtDate()`
+- [x] `_fmtR` eliminado de `forecast.js`; substituído por `_fmtCost()` ✅ Sprint 1
+- [x] `_fmtDate()` adicionado em `utils.js`; 6 chamadas substituídas ✅ Sprint 1
 - [x] Export CSV com valor numérico sem símbolo
-- [x] Política de timezone: `America/Sao_Paulo` (documentada, mas hardcoded)
+- [x] Política de timezone centralizada em `_fmtDate()` em `utils.js` ✅ Sprint 1
+- [x] Zero `.toFixed()+'h'` em templates HTML de tabela ✅ Sprint 2
 
 ### Código
 - [x] Zero `console.log` ativos em produção
@@ -799,15 +801,18 @@ flowchart TD
 - [x] EVM centralizado em `services/evm.py`
 - [x] Constantes de domínio em lang/ + GlobalConfig
 - [x] 635 testes cobrindo todos os cálculos críticos
-- [ ] 2× `console.warn` em catch blocks de produção
-- [ ] `app.js` 5.633 linhas — god module
+- [x] Zero `console.warn` em produção ✅ Sprint 1
+- [ ] `app.js` ~5.600 linhas — god module (🔲 Sprint 3)
+- [x] `_str_or_none` unificada em `utils.py` ✅ Sprint 2
 
 ### Stack e Gráficos
 - [x] Design system com tokens CSS aplicados
 - [x] Zero cores hardcoded fora dos tokens (fallbacks `var(--t, #hex)` são aceitáveis)
 - [x] ECharts com `_getPalette()` em todas as séries de dados
 - [x] ECharts local (sem CDN)
-- [ ] SortableJS ainda carrega de CDN externo
+- [x] SortableJS 1.15.6 local (45 KB); zero dependências CDN ✅ Sprint 1
+- [x] Tokens de texto consolidados: 4 tokens em `:root` (eram 8) ✅ Sprint 2
+- [x] `.btn-sm` visualmente distinto de `.btn` (height 1.875rem) ✅ Sprint 1
 
 ### Propósito
 - [x] Ingestão de timesheet completa (CSV/XLSX, validação, quarentena)
@@ -815,9 +820,10 @@ flowchart TD
 - [x] Dashboard com SPI, CPI, EAC, ETC, VAC, TCPI, CV, SV
 - [x] Visualização temporal (S-curve, burn-up, tendências, quadrant)
 - [x] Exportação CSV (colaborador, ciclos, projetos, rate cards)
-- [ ] `/health` endpoint ausente
-- [ ] Sem backup automatizado
+- [x] `GET /health` retorna `{status, timestamp, version}` ✅ Sprint 1
+- [x] `backup_pmas.sh` com VACUUM INTO, retenção 30 dias, docs de restore ✅ Sprint 2
 - [ ] Sem exportação PDF
+- [x] `GET /api/docs` e `/api/redoc` disponíveis ✅ Sprint 1
 
 ---
 

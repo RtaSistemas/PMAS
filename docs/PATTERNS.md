@@ -212,6 +212,15 @@ cpi = compute_cpi_ev(...)
 display_cpi = f"{cpi:.2f}" if cpi is not None else "—"
 ```
 
+### Shared Python helpers
+
+```python
+# ✅ Shared Python helpers — backend/app/utils.py
+from backend.app.utils import _str_or_none, now_br
+
+# _str_or_none: returns None for blank/"nan"/"none" strings — used in CSV import parsers
+```
+
 ---
 
 ## 3. EVM Formulas Pattern
@@ -300,7 +309,7 @@ These are defined in `utils.js` or `app.js` and usable from any module:
 
 ```javascript
 // Formatting
-_fmtH(n)              // "1.234 h"
+_fmtH(n)              // "8.5h" — also: formatHours(n, 0) for zero decimals
 _fmtCost(n)           // "R$ 1.234,56" — null-safe; returns '—' for null
 _fmtDate(isoStr)      // "15/06/2024, 09:30" — respects _locale + window._timezone
 _t(key)               // i18n lookup
@@ -850,6 +859,18 @@ test('user can export collaborator CSV', async ({ page }) => {
 ```
 
 Run with: `make e2e` or `npx playwright test`.
+
+---
+
+## 15. Operations
+
+### Backup
+
+`backup_pmas.sh` (project root) — SQLite backup via `VACUUM INTO`. Run daily via cron:
+```
+0 2 * * * /opt/pmas/backup_pmas.sh >> /var/log/pmas_backup.log 2>&1
+```
+Restore: stop app → `cp backup.db pmas.db` → start app → verify `/health`.
 
 ---
 

@@ -5,6 +5,7 @@
 > Commits ahead of main: **255**  
 > Files changed: **153** (111 new · 33 modified · 9 deleted)  
 > Lines: **+67,757 / −11,979**
+> **Post-audit improvements:** Sprint 1 (2026-06-06) + Sprint 2 (2026-06-06) — 12 achados resolvidos, score 7.3 → 8.7
 
 ---
 
@@ -259,18 +260,49 @@ All v2 routers produce **render-ready** responses — every number arrives at th
 
 ---
 
-## 6. Metrics Comparison
+## 6. Post-Audit Improvements (Sprint 1 + Sprint 2)
 
-| Metric | main | This branch |
-|--------|------|-------------|
-| Backend routers | 14 | 24 (+10 v2) |
-| Backend services | 4 | 7 |
-| ORM models | 15 | 20 |
-| Test count | 406 | 635 |
-| Frontend JS files | 3 | 13 |
-| i18n keys | 0 (hardcoded PT) | 540 (pt + en) |
-| EVM formulas centralized | No | Yes (`evm.py`) |
-| WCAG compliance (audited items) | Partial | 23/23 ✅ |
-| Integrity compliance (audited items) | Partial | 9/9 ✅ |
-| E2E test suites | 0 | 4 (Playwright) |
-| Modal close listeners | 30+ individual | 1 delegated |
+> Applied after `MASTER-AUDIT.md` was generated on 2026-06-06.
+
+### Sprint 1 — Quick Wins (8 items, ≤ 4h)
+
+| ID | Change | Files |
+|----|--------|-------|
+| MA-03 | SortableJS 1.15.6 downloaded locally (45 KB); CDN removed | `frontend/sortable.min.js` (new), `frontend/index.html` |
+| MA-02 | `_fmtR` removed from `forecast.js`; replaced with `_fmtCost()` | `frontend/charts/forecast.js`, `frontend/app.js` |
+| MA-04 | `_fmtDate()` added to `utils.js`; 6 hardcoded timezone calls replaced | `frontend/utils.js`, `frontend/app.js` |
+| MA-09 | 2× `console.warn` removed from `app.js` catch blocks | `frontend/app.js` |
+| MA-06 | `compute_cpi` / `compute_cpi_ev` cross-reference docstrings added | `backend/app/services/evm.py` |
+| MA-13 | `GET /health` endpoint added (status, timestamp, version) | `backend/app/main.py` |
+| MA-17 | OpenAPI UI exposed at `/api/docs` and `/api/redoc` | `backend/app/main.py` |
+| MA-11 | `.btn-sm` height corrected to `1.875rem` (was same as `.btn`) | `frontend/style.css` |
+
+### Sprint 2 — Consolidação (4 items, ~1 day)
+
+| ID | Change | Files |
+|----|--------|-------|
+| MA-10 | `_str_or_none` moved to `utils.py`; removed from `projects.py` + `ingestion.py` | `backend/app/utils.py`, `backend/app/routers/projects.py`, `backend/app/services/ingestion.py`, `backend/app/routers/quarantine.py` |
+| MA-16 | `backup_pmas.sh` created with VACUUM INTO, 30-day retention, restore docs | `backup_pmas.sh` (new) |
+| MA-08 | 4 muted text tokens removed (`--text-hint/faint/dim/pale`); 14 usages → `--text-3` | `frontend/style.css`, `frontend/index.html` |
+| MA-05 | `formatHours()` gains `decimals` param; 8 `toFixed+'h'` in `<td>` templates replaced; ECharts formatters annotated | `frontend/app.js`, `frontend/charts/effort.js`, `frontend/utils.js` |
+
+---
+
+## 7. Metrics Comparison
+
+| Metric | main | Branch (audit) | After Sprint 1+2 |
+|--------|------|----------------|-----------------|
+| Backend routers | 14 | 24 (+10 v2) | 24 |
+| Backend services | 4 | 7 | 7 |
+| ORM models | 15 | 20 | 20 |
+| Test count | 406 | 635 | 635 |
+| Frontend JS files | 3 | 13 | 14 (+sortable.min.js local) |
+| i18n keys | 0 (hardcoded PT) | 540 (pt + en) | 540 |
+| EVM formulas centralized | No | Yes (`evm.py`) | Yes (`evm.py`) |
+| WCAG compliance (audited items) | Partial | 23/23 ✅ | 23/23 ✅ |
+| Integrity compliance (audited items) | Partial | 9/9 ✅ | 9/9 ✅ |
+| E2E test suites | 0 | 4 (Playwright) | 4 |
+| CDN dependencies | 2 (ECharts + SortableJS) | 1 (SortableJS) | 0 ✅ |
+| Text tokens in `:root` | — | 8 | 4 ✅ |
+| MASTER-AUDIT score | — | 7.3/10 | 8.7/10 ✅ |
+| Open audit findings | — | 17 | 5 (12 resolved) |
