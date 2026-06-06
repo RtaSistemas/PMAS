@@ -53,9 +53,6 @@
   --font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 
   /* Extended palette — for off-token inline styles */
-  --text-hint:    #94a3b8;  /* light gray — hints, placeholders, muted labels */
-  --text-faint:   #475569;  /* empty-state / loading row text */
-  --text-dim:     #64748b;  /* secondary hints, layout descriptions */
   --card-ingest:  #1e293b;  /* ingest panel + EVM tooltip background */
   --border-ingest:#334155;  /* ingest panel + EVM tooltip border */
   --error-text:   #f87171;  /* inline validation error messages */
@@ -63,7 +60,6 @@
   --info-text:    #93c5fd;  /* session detail info list text */
   --warn-text:    #fcd34d;  /* session detail warning list text */
   --input-overlay:#e2e8f0;  /* currency widget input text */
-  --text-pale:    #cbd5e1;  /* slightly brighter label text (slate-300) */
 
   /* ── Z-index layer system ────────────────────────────────────── */
   /* Increment by 10 to leave room for local stacking */
@@ -1161,7 +1157,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 .evm-tip-desc {
   font-size: .74rem;
-  color: var(--text-hint);
+  color: var(--text-3);
   line-height: 1.5;
   margin-bottom: .4rem;
 }
@@ -1238,19 +1234,19 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .overflow-x   { overflow-x: auto; }
 
 /* Color utilities */
-.text-hint    { color: var(--text-hint); }
-.text-dim     { color: var(--text-dim); }
-.text-faint   { color: var(--text-faint); }
+.text-hint    { color: var(--text-3); }
+.text-dim     { color: var(--text-3); }
+.text-faint   { color: var(--text-3); }
 
 /* Hint shorthand: .8rem + --text-hint (most common hint pattern) */
-.hint         { font-size: .8rem; color: var(--text-hint); }
+.hint         { font-size: .8rem; color: var(--text-3); }
 /* Smaller hint variants */
-.hint-xs      { font-size: .78rem; color: var(--text-dim); }
-.hint-sm      { font-size: .75rem; color: var(--text-dim); }
+.hint-xs      { font-size: .78rem; color: var(--text-3); }
+.hint-sm      { font-size: .75rem; color: var(--text-3); }
 
 /* Empty / loading table cells */
-.td-empty     { text-align: center; color: var(--text-faint); padding: 2rem; }
-.td-empty-sm  { text-align: center; color: var(--text-faint); padding: 1.5rem; }
+.td-empty     { text-align: center; color: var(--text-3); padding: 2rem; }
+.td-empty-sm  { text-align: center; color: var(--text-3); padding: 1.5rem; }
 
 /* Section label (uppercase, small, muted) */
 .section-label { font-size: .78rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
@@ -1264,7 +1260,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 /* Currency inputs (width differs per input — keep inline) */
 .currency-input { background: transparent; border: none; color: var(--input-overlay); font-size: .8rem; text-align: center; outline: none; }
 /* Currency separator × */
-.currency-sep { color: var(--text-faint); font-size: .85rem; }
+.currency-sep { color: var(--text-3); font-size: .85rem; }
 
 /* Ingest result panel header/body */
 .ingest-header  { display: flex; justify-content: space-between; align-items: center; padding: .6rem 1rem; background: var(--card-ingest); border: 1px solid var(--border-ingest); border-bottom: none; border-radius: .5rem .5rem 0 0; }
@@ -1272,7 +1268,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 
 /* Generic icon-only close buttons */
 .close-icon-btn { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 1.3rem; line-height: 1; }
-.close-icon-btn-sm { background: none; border: none; color: var(--text-hint); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+.close-icon-btn-sm { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 1.1rem; line-height: 1; }
 
 /* Calendar prev/next month nav buttons */
 .cal-nav-btn { background: none; border: 1px solid var(--border); color: var(--text-2); border-radius: .35rem; padding: .2rem .55rem; cursor: pointer; font-size: .9rem; }

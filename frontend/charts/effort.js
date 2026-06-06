@@ -116,7 +116,7 @@ function _buildHoursBarOption({
       position:  'inside',
       fontSize:  10,
       color:     _cssVar('--text'),
-      formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '',
+      formatter: p => p.value >= 10 ? `${p.value.toFixed(1)}h` : '', // intentional: ECharts label formatters don't support locale HTML
     },
   });
 
@@ -155,7 +155,7 @@ function _buildHoursBarOption({
       position:  isHoriz ? 'right' : 'top',
       fontSize:  10,
       color:     _totalColor,
-      formatter: p => {
+      formatter: p => { // intentional: ECharts rich-text labels don't support locale HTML
         const v = typeof p.value === 'number' ? p.value : (p.data?.value ?? 0);
         if (v === 0) return '';
         return v === maxTotal

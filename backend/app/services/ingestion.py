@@ -26,6 +26,7 @@ from backend.app.services.quarantine_svc import create_quarantine_record
 from backend.app.services.rule_engine import evaluate_aggregate_rules, evaluate_row_rules
 from backend.app.services.summaries import refresh_collaborator_cycle, refresh_pep_cycle
 from backend.app.services.upload_session_svc import create_upload_session
+from backend.app.utils import _str_or_none
 
 log = logging.getLogger(__name__)
 
@@ -607,11 +608,6 @@ def _is_yes(value) -> bool:
     return str(value).strip().lower() in {"sim", "yes", "s", "y", "true", "1"}
 
 
-def _str_or_none(value) -> str | None:
-    if value is None:
-        return None
-    s = str(value).strip()
-    return None if s.lower() in {"nan", "none", ""} else s
 
 
 def _safe_hours(value) -> float | None:

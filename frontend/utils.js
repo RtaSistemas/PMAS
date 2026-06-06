@@ -19,9 +19,9 @@ export function fmtDateBR(iso) {
   return `${d}/${m}/${y}`;
 }
 
-export function formatHours(h) {
+export function formatHours(h, decimals = 1) {
   if (h == null || isNaN(Number(h))) return '—';
-  return Number(h).toFixed(1) + 'h';
+  return Number(h).toFixed(decimals) + 'h';
 }
 
 export function formatCost(raw, factor = 1, symbol = 'R$', locale = 'pt-BR') {

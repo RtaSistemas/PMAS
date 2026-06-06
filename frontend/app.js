@@ -734,7 +734,7 @@ function _drawRunwayRows(data) {
 
     const absLabel = _evmMode
       ? _fmtCost(item.actual_cost, 0)
-      : `${item.consumed_hours.toFixed(1)}h`;
+      : formatHours(item.consumed_hours);
     const pctLabel = rawPct != null ? `${rawPct.toFixed(1)}% (${absLabel})` : '—';
     const bar = `<div style="background:${_cssVar('--bg')};border-radius:3px;height:6px;width:120px">` +
       `<div style="height:6px;border-radius:3px;background:${color};width:${pct}%"></div></div>` +
@@ -852,7 +852,7 @@ function _renderConcentrationPanel(concentration) {
 
     const totalDisplay = _evmMode
       ? _fmtCost(item.total_cost, 0)
-      : `${item.total_hours.toFixed(0)}h`;
+      : formatHours(item.total_hours, 0);
 
     const row = document.createElement('div');
     row.style.cssText = `display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
@@ -1417,7 +1417,7 @@ function _drawAllocMatrix() {
 
   const fmt = v => _evmMode
     ? _fmtCost(v, 0)
-    : `${v.toFixed(1)}h`;
+    : formatHours(v);
 
   const cellBg = v => {
     if (!v) return '';
@@ -1493,7 +1493,7 @@ document.getElementById('forecastPepSelect').addEventListener('change', () => {
 });
 
 function _buildForecastKpis(fc) {
-  const fmtH = h => `${(+h).toFixed(1)}h`;
+  const fmtH = formatHours;
   const fmtR = v => _fmtCost(v);
 
   const pctH = fc.budget_hours
@@ -1767,13 +1767,13 @@ function _renderForecastBaseline(fc) {
 
   const hasHours = history.some(h => h.planned_hours != null);
   const hasCost  = history.some(h => h.planned_cost  != null);
-  const fmtH = v => v != null ? (+v).toFixed(1) + 'h' : '—';
+  const fmtH = formatHours;
   const fmtC = v => v != null ? _fmtCost(v) : '—';
   const delta = (plan, real) => {
     if (plan == null || real == null) return '—';
     const d = real - plan;
     const cls = d > 0 ? 'red' : d < 0 ? 'green' : 'neutral';
-    return `<span style="color:var(--${cls})">${d >= 0 ? '+' : ''}${(+d).toFixed(1)}h</span>`;
+    return `<span style="color:var(--${cls})">${d >= 0 ? '+' : ''}${formatHours(d)}</span>`;
   };
 
   let html = `<div class="table-responsive"><table class="data-table">
@@ -1912,7 +1912,7 @@ async function _runWhatIf() {
         tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
           formatter: params => {
             let html = `<b>${params[0]?.axisValue}</b><br>`;
-            params.forEach(p => p.value != null && (html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`));
+            params.forEach(p => p.value != null && (html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`)); // intentional: ECharts tooltip formatters don't support locale HTML
             return html;
           },
         },
@@ -2213,7 +2213,7 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
       const a = (0.08 + (v / max) * 0.72).toFixed(2);
       return `style="background:rgba(14,165,233,${a})"`;
     };
-    const fmt = v => v > 0 ? `${v.toFixed(1)}h` : '—';
+    const fmt = v => v > 0 ? formatHours(v) : '—';
 
     const totNormal  = collabs.reduce((s, [, v]) => s + v.normal,  0);
     const totExtra   = collabs.reduce((s, [, v]) => s + v.extra,   0);
@@ -2625,7 +2625,7 @@ function _renderScatterBrushResult(indices, items) {
       <td style="${dim};font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.name || '—')}</td>
       <td style="${cC};font-weight:700;text-align:right">${d.cpi.toFixed(2)}</td>
       <td style="${sC};font-weight:700;text-align:right">${d.spi.toFixed(2)}</td>
-      <td style="text-align:right;${dim};font-size:10px">${d.total_hours != null ? d.total_hours.toFixed(0) + 'h' : '—'}</td>
+      <td style="text-align:right;${dim};font-size:10px">${d.total_hours != null ? formatHours(d.total_hours, 0) : '—'}</td>
     </tr>`;
   }).join('');
 
@@ -3279,7 +3279,7 @@ const _overAllocPag = _makePaginator(
     <tr>
       <td>${escHtml(it.collaborator)}</td>
       <td>${fmtDateBR(it.date)}</td>
-      <td class="text-right" style="color:var(--red);font-weight:600">${it.total_hours.toFixed(1)}h</td>
+      <td class="text-right" style="color:var(--red);font-weight:600">${formatHours(it.total_hours)}</td>
       <td style="font-size:.8rem;color:var(--text-2)">${it.pep_list.map(escHtml).join(', ') || '—'}</td>
     </tr>`,
   })
