@@ -46,7 +46,7 @@ def _save_rejected_session(db, user, fname: str, reason: str) -> None:
 
 
 @router.post("/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
-@limiter.limit("10/minute")
+@limiter.limit(os.getenv("PMAS_UPLOAD_RATE_LIMIT", "60/minute"))
 def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_user: CurrentUser):
     fname = Path(file.filename or "").name or "upload"
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
@@ -85,39 +85,7 @@ def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_
         log.exception("Erro inesperado durante ingestão.")
         raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
 
-    fname = Path(file.filename or "").name or "upload"
-    if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
-    contents = file.file.read(_MAX_UPLOAD_BYTES + 1)
-    if len(contents) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Arquivo excede o limite de 20 MB.")
-    try:
-        summary = ingest_file(
-            contents, fname, db,
-            user_role=current_user.role,
-            user_id=current_user.id,
-            username=current_user.username,
-            current_user=current_user,
-        )
-    except HTTPException:
-        raise
-    except (ClosedCycleError, ArchivedCycleError) as exc:
-        db.rollback()
-        _save_rejected_session(db, current_user, fname, str(exc))
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except LockedProjectError as exc:
-        db.rollback()
-        _save_rejected_session(db, current_user, fname, str(exc))
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except ValueError as exc:
-        db.rollback()
-        _save_rejected_session(db, current_user, fname, str(exc))
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        db.rollback()
-        _save_rejected_session(db, current_user, fname, "Erro interno durante ingestão.")
-        log.exception("Erro inesperado durante ingestão.")
-        raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
+
 
     accepted = summary.get("records_inserted", 0)
     quarantined = summary.get("quarantine_records_added", 0)
@@ -130,6 +98,32 @@ def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_
     db.commit()
 
     return summary
+
+
+@router.get("/summaries/status", summary="Estado de sincronização das summaries analíticas")
+def summaries_status(db: DbSession, _current_user: AdminUser):
+    """Returns whether PepCycleSummary is up-to-date with the latest upload."""
+    from backend.app.models import PepCycleSummary, CollaboratorCycleSummary
+    from sqlalchemy import func
+
+    latest_upload = db.query(func.max(UploadSession.uploaded_at)).scalar()
+    oldest_pep_refresh = db.query(func.min(PepCycleSummary.refreshed_at)).scalar()
+    oldest_collab_refresh = db.query(func.min(CollaboratorCycleSummary.refreshed_at)).scalar()
+
+    if latest_upload is None:
+        return {"stale": False, "reason": None}
+
+    stale_pep = oldest_pep_refresh is None or oldest_pep_refresh < latest_upload
+    stale_collab = oldest_collab_refresh is None or oldest_collab_refresh < latest_upload
+    stale = stale_pep or stale_collab
+
+    return {
+        "stale": stale,
+        "latest_upload_at": latest_upload.isoformat() if latest_upload else None,
+        "oldest_pep_refresh_at": oldest_pep_refresh.isoformat() if oldest_pep_refresh else None,
+        "oldest_collab_refresh_at": oldest_collab_refresh.isoformat() if oldest_collab_refresh else None,
+        "reason": "Summaries mais antigas que o último upload" if stale else None,
+    }
 
 
 @router.get("/upload-history", response_model=list[UploadSessionOut])

@@ -3359,9 +3359,10 @@ const _projectsPag = _makePaginator(
 async function loadProjectsTable() {
   _projectsPag.reset();
   try {
-    const [projects, health] = await Promise.all([
+    const [projects, health, summaryStatus] = await Promise.all([
       apiFetch('/api/projects'),
       apiFetch('/api/v2/portfolio').catch(() => []),
+      _isAdmin() ? apiFetch('/api/summaries/status').catch(() => null) : Promise.resolve(null),
     ]);
     _allProjects   = projects;
     _consumedByPep = Object.fromEntries(health.map(h => [h.pep_wbs, { hours: h.total_hours, health: h.health_hours }]));
@@ -3380,7 +3381,19 @@ async function loadProjectsTable() {
 
     _renderProjectsTable(_applySort('projectsTable', projects));
     _renderProjectStats();
+    _renderSummaryStaleWarning(summaryStatus);
   } catch (e) { notify(_friendlyError(e), 'error'); }
+}
+
+function _renderSummaryStaleWarning(status) {
+  const el = document.getElementById('summaryStaleWarning');
+  if (!el) return;
+  if (status?.stale) {
+    el.textContent = '⚠ ' + _t('summaries.stale');
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
 }
 
 function _renderProjectStats() {

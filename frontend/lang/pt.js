@@ -529,5 +529,6 @@ window._LANG_PT = {
     'err.conflict': 'Conflito: o registro já existe.',
     'err.validation': 'Dados inválidos. Verifique os campos e tente novamente.',
     'err.rate_limit': 'Muitas requisições. Aguarde um momento.',
+    'summaries.stale': 'Analytics desatualizados — execute um novo upload para sincronizar.',
     'err.server': 'Erro no servidor. Tente novamente em instantes.',
 };
