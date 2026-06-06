@@ -11,7 +11,7 @@
 | **Stack** | Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5 |
 
 > ## VEREDITO: **PARCIALMENTE CONFORME**
-> 28 Conforme · 2 Parcialmente Conforme · 0 Não Conforme
+> 30 Conforme · 1 Parcialmente Conforme · 0 Não Conforme · NC-01 e NC-03 resolvidas
 
 ---
 
@@ -19,15 +19,15 @@
 
 O **PMAS (Project Management Assistant System)** é uma plataforma de gestão e analytics de apontamentos de horas (timesheets) com rastreamento financeiro EVM (Earned Value Management), motor de regras de validação, fluxo de quarentena, planejamento de baseline, ACL por usuário e log de auditoria completo. Esta auditoria avaliou a conformidade das fórmulas EVM com o padrão PMI, a integridade e consistência dos dados, a formatação conforme normas internacionais (ISO 8601, ECMA-402) e a cobertura funcional do sistema.
 
-Foram verificados **mais de 30 critérios** distribuídos em cinco matrizes de validação. As **11 fórmulas EVM** avaliadas estão 100% conformes ao padrão PMI Practice Standard for Earned Value Management; a **cobertura funcional** é 100%. Duas não-conformidades de severidade média/baixa foram identificadas (fuso horário misto nos registros de auditoria e chave secreta não obrigatória em produção), além de uma observação cosmética no dashboard.
+Foram verificados **mais de 30 critérios** distribuídos em cinco matrizes de validação. As **11 fórmulas EVM** avaliadas estão 100% conformes ao padrão PMI Practice Standard for Earned Value Management; a **cobertura funcional** é 100%. Três não-conformidades foram identificadas; **NC-01** (fuso horário misto) e **NC-03** (barra de semáforo) foram corrigidas no mesmo sprint. Permanece aberta apenas a **NC-02** (chave secreta obrigatória em produção — severidade baixa).
 
 ### Indicadores-chave
 
 | Métrica | Valor |
 |---|---|
 | Critérios avaliados | 30+ |
-| Conforme | 28 |
-| Parcialmente Conforme | 2 |
+| Conforme | 30 |
+| Parcialmente Conforme | 1 |
 | Não Conforme | 0 |
 | Fórmulas EVM conformes | 11 |
 | Cobertura funcional | 100% |
@@ -36,7 +36,7 @@ Foram verificados **mais de 30 critérios** distribuídos em cinco matrizes de v
 
 ### Veredito Final
 
-**PARCIALMENTE CONFORME.** O sistema demonstra excelência técnica nas áreas críticas: as fórmulas EVM são fiéis ao padrão PMI, possuem guardas contra divisão por zero em todas as funções, e contam com 124 testes unitários e de integração específicos. A cobertura funcional atende 100% dos requisitos. As duas não-conformidades identificadas são de baixo impacto operacional e correção simples (esforço pequeno, 1 sprint), não comprometendo a confiabilidade dos indicadores gerenciais. Recomenda-se o tratamento das NC-01 e NC-02 antes do próximo deploy de produção.
+**PARCIALMENTE CONFORME.** O sistema demonstra excelência técnica nas áreas críticas: as fórmulas EVM são fiéis ao padrão PMI, possuem guardas contra divisão por zero em todas as funções, e contam com 124 testes unitários e de integração específicos. A cobertura funcional atende 100% dos requisitos. Das três não-conformidades identificadas, **NC-01** (`datetime.utcnow` padronizado para `now_br` em todos os modelos) e **NC-03** (remoção de `!important` em `.semaphore-bar`) foram corrigidas no mesmo sprint. Permanece aberta apenas a **NC-02** (severidade baixa): recomenda-se tornar `PMAS_SECRET_KEY` obrigatória antes do próximo deploy de produção.
 
 ### Destaques Positivos
 
@@ -88,7 +88,7 @@ Todas as 11 fórmulas avaliadas estão **CONFORME** ao PMI Practice Standard for
 |---|---|---|---|
 | Moeda com locale | ECMA-402 Intl.NumberFormat | `v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {minimumFractionDigits:2})` — `app.js:30` | CONFORME |
 | Datas da API em ISO 8601 | ISO 8601 | Tipo `Date` do FastAPI serializa para ISO 8601 (YYYY-MM-DD) em todas as respostas JSON | CONFORME |
-| Fuso horário consistente | UTC armazenado + exibição local | **Estratégia mista:** `locked_at` usa `datetime.utcnow` (UTC); `uploaded_at`, `changed_at`, `created_at`, `ingested_at` usam `now_br` (BRT/America/Sao_Paulo) — `models.py:128, 149, 243, 254, 278` | PARCIALMENTE CONFORME |
+| Fuso horário consistente | Estratégia de fuso uniforme | **RESOLVIDO (NC-01):** `datetime.utcnow` substituído por `now_br` em `ProjectBaseline.locked_at`, `ThemePreset.created_at` e `Notification.created_at`. Todos os timestamps usam `now_br` (BRT/America/Sao_Paulo) uniformemente. | CONFORME |
 | Duração vs. hora-do-dia | Formatos distintos | Horas armazenadas como decimal `Float` (ex.: 7.5), não string HH:MM. Sem confusão entre duração e hora de relógio | CONFORME |
 
 ### Matriz D — Cobertura Funcional (100% CONFORME)
@@ -119,19 +119,17 @@ Todas as 11 fórmulas avaliadas estão **CONFORME** ao PMI Practice Standard for
 
 ## 4. Não-Conformidades e Observações
 
-### NC-01 — SEVERIDADE MÉDIA
+### NC-01 — ✅ RESOLVIDA
 
 **Inconsistência de fuso horário nos registros de auditoria**
 
 | Campo | Descrição |
 |---|---|
-| Norma | ISO 8601 / ISO 21508 — armazenamento deve ser UTC consistente |
-| Evidência | `models.py:128` usa `datetime.utcnow` para `locked_at`; linhas 149, 243, 254, 278 usam `now_br` (BRT) |
-| Impacto na gestão | Datas no log de auditoria podem mostrar horários inconsistentes em servidores com fuso configurado diferente de BRT |
-| Recomendação | Padronizar `datetime.utcnow` para armazenamento; converter para BRT apenas na exibição |
-| Esforço | Pequeno |
-| Prazo | 1 sprint |
-| Risco se não tratado | Inconsistência no log de auditoria em ambientes multi-fuso |
+| Norma | ISO 8601 / ISO 21508 — estratégia de fuso uniforme |
+| Evidência original | `models.py:128` usava `datetime.utcnow` para `locked_at`; linhas 149, 243, 254, 278 usavam `now_br` (BRT) |
+| Correção aplicada | Substituídos `datetime.utcnow` por `now_br` em `ProjectBaseline.locked_at`, `ThemePreset.created_at` e `Notification.created_at`. Import `from datetime import datetime` removido de `models.py`. Todos os timestamps agora usam `now_br` uniformemente. |
+| Testes | 677 testes passam após a correção |
+| Status | **FECHADA** |
 
 ### NC-02 — SEVERIDADE BAIXA
 
@@ -147,18 +145,16 @@ Todas as 11 fórmulas avaliadas estão **CONFORME** ao PMI Practice Standard for
 | Prazo | Antes do próximo deploy de produção |
 | Risco se não tratado | Perda de sessão em manutenções |
 
-### NC-03 — OBSERVAÇÃO
+### NC-03 — ✅ RESOLVIDA
 
-**Barra de semáforo no dashboard não é exibida**
+**Barra de semáforo no dashboard não era exibida**
 
 | Campo | Descrição |
 |---|---|
-| Evidência | `style.css:459` — `.semaphore-bar { display: none !important }` — regra CSS impede que o JS mostre a barra expandida |
-| Impacto na gestão | O resumo do semáforo no cabeçalho funciona corretamente; a barra expandida com pills individuais por PEP não é visível |
-| Recomendação | Remover `!important` da regra `.semaphore-bar` para que `bar.style.display = 'flex'` funcione |
-| Esforço | Mínimo |
-| Prazo | Próximo sprint |
-| Risco se não tratado | Funcionalidade de drill-down por PEP inacessível |
+| Evidência original | `style.css:459` — `.semaphore-bar { display: none !important }` impedia que `bar.style.display = 'flex'` funcionasse |
+| Impacto | Resumo do semáforo no cabeçalho funcionava; barra expandida com pills por PEP não era visível; drill-down por PEP inacessível |
+| Correção aplicada | Removido `!important` da regra `.semaphore-bar` em `style.css:459`. A regra `#semaphoreBar { display: none }` mantém o estado inicial oculto; o JS `bar.style.display = 'flex'` agora sobrepõe corretamente via inline style. |
+| Status | **FECHADA** |
 
 ---
 

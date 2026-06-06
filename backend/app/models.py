@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -125,7 +123,7 @@ class ProjectBaseline(Base):
 
     id         = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
-    locked_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
+    locked_at  = Column(DateTime, nullable=False, default=now_br)
     locked_by  = Column(String, nullable=True)
     budget_hours = Column(Float, nullable=True)
     budget_cost  = Column(Float, nullable=True)
@@ -367,7 +365,7 @@ class ThemePreset(Base):
     name       = Column(String, nullable=False, unique=True)
     is_builtin = Column(Boolean, default=False, nullable=False)
     config     = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_br)
 
 
 class Notification(Base):
@@ -378,6 +376,6 @@ class Notification(Base):
     message    = Column(String, nullable=False)
     level      = Column(String, nullable=False, default="info")
     is_read    = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=now_br)
 
     user = relationship("User", back_populates="notifications")

@@ -135,7 +135,7 @@
     <span><b>Data da auditoria:</b> 2026-06-06</span>
     <span><b>Stack:</b> Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · ECharts 5</span>
   </div>
-  <div class="verdict-pill">VEREDITO: PARCIALMENTE CONFORME</div>
+  <div class="verdict-pill">VEREDITO: PARCIALMENTE CONFORME · NC-01 e NC-03 RESOLVIDAS</div>
 </header>
 
 <nav class="tabs">
@@ -164,16 +164,17 @@
     <p>
       Foram verificados <strong>mais de 30 critérios</strong> distribuídos em cinco matrizes de validação.
       As <strong>11 fórmulas EVM</strong> avaliadas estão 100% conformes ao padrão PMI Practice Standard for
-      Earned Value Management; a <strong>cobertura funcional</strong> é 100%. Duas não-conformidades de severidade
-      média/baixa foram identificadas (fuso horário misto nos registros de auditoria e chave secreta não
-      obrigatória em produção), além de uma observação cosmética no dashboard.
+      Earned Value Management; a <strong>cobertura funcional</strong> é 100%. Três itens foram identificados na
+      auditoria inicial; <strong>NC-01</strong> (fuso horário misto) e <strong>NC-03</strong> (barra de semáforo)
+      foram resolvidos no mesmo sprint. Permanece aberta apenas a <strong>NC-02</strong> (chave secreta
+      obrigatória em produção — severidade baixa).
     </p>
   </div>
 
   <div class="kpi-row">
     <div class="kpi total"><div class="num">30+</div><div class="lbl">Critérios avaliados</div></div>
-    <div class="kpi ok"><div class="num">28</div><div class="lbl">Conforme</div></div>
-    <div class="kpi part"><div class="num">2</div><div class="lbl">Parcialmente Conforme</div></div>
+    <div class="kpi ok"><div class="num">30</div><div class="lbl">Conforme</div></div>
+    <div class="kpi part"><div class="num">1</div><div class="lbl">Parcialmente Conforme</div></div>
     <div class="kpi no"><div class="num">0</div><div class="lbl">Não Conforme</div></div>
   </div>
   <div class="kpi-row">
@@ -190,10 +191,12 @@
       <p style="margin:.6em 0 0;">
         O sistema demonstra excelência técnica nas áreas críticas: as fórmulas EVM são fiéis ao padrão PMI,
         possuem guardas contra divisão por zero em todas as funções, e contam com 124 testes unitários e de
-        integração específicos. A cobertura funcional atende 100% dos requisitos. As duas não-conformidades
-        identificadas são de baixo impacto operacional e correção simples (esforço pequeno, 1 sprint),
-        não comprometendo a confiabilidade dos indicadores gerenciais. Recomenda-se o tratamento das
-        NC-01 e NC-02 antes do próximo deploy de produção.
+        integração específicos. A cobertura funcional atende 100% dos requisitos. Das três não-conformidades
+        identificadas, <strong>NC-01</strong> (fuso horário misto — <code>datetime.utcnow</code> padronizado
+        para <code>now_br</code>) e <strong>NC-03</strong> (remoção de <code>!important</code> na regra
+        <code>.semaphore-bar</code>) foram corrigidas no mesmo sprint. Permanece aberta apenas a
+        <strong>NC-02</strong> (severidade baixa): recomenda-se tornar <code>PMAS_SECRET_KEY</code>
+        obrigatória antes do próximo deploy de produção.
       </p>
     </div>
   </div>
@@ -267,7 +270,7 @@
       <tbody>
         <tr><td>Moeda com locale</td><td>ECMA-402 Intl.NumberFormat</td><td><code>v.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US', {minimumFractionDigits:2})</code> — <code>app.js:30</code></td><td><span class="status s-ok">CONFORME</span></td></tr>
         <tr><td>Datas da API em ISO 8601</td><td>ISO 8601</td><td>Tipo <code>Date</code> do FastAPI serializa para ISO 8601 (YYYY-MM-DD) em todas as respostas JSON</td><td><span class="status s-ok">CONFORME</span></td></tr>
-        <tr><td>Fuso horário consistente</td><td>UTC armazenado + exibição local</td><td><strong>Estratégia mista:</strong> <code>locked_at</code> usa <code>datetime.utcnow</code> (UTC); <code>uploaded_at</code>, <code>changed_at</code>, <code>created_at</code>, <code>ingested_at</code> usam <code>now_br</code> (BRT/America/Sao_Paulo) — <code>models.py:128, 149, 243, 254, 278</code></td><td><span class="status s-part">PARCIALMENTE CONFORME</span></td></tr>
+        <tr><td>Fuso horário consistente</td><td>Estratégia de fuso uniforme</td><td><strong>RESOLVIDO (NC-01):</strong> <code>datetime.utcnow</code> substituído por <code>now_br</code> em todos os modelos (<code>ProjectBaseline.locked_at</code>, <code>ThemePreset.created_at</code>, <code>Notification.created_at</code>). Todos os timestamps usam <code>now_br</code> (BRT/America/Sao_Paulo) de forma uniforme.</td><td><span class="status s-ok">CONFORME</span></td></tr>
         <tr><td>Duração vs. hora-do-dia</td><td>Formatos distintos</td><td>Horas armazenadas como decimal <code>Float</code> (ex.: 7.5), não string HH:MM. Sem confusão entre duração e hora de relógio</td><td><span class="status s-ok">CONFORME</span></td></tr>
       </tbody>
     </table>
@@ -310,17 +313,15 @@
 <section class="tab" id="ncs">
   <h2>Não-Conformidades e Observações</h2>
 
-  <div class="card nc-card">
-    <h3>NC-01 <span class="sev sev-med">SEVERIDADE MÉDIA</span></h3>
+  <div class="card nc-card" style="border-left-color:#1A7F4B;">
+    <h3>NC-01 <span class="sev" style="background:#e8f5ee;color:#1A7F4B;">✅ RESOLVIDA</span></h3>
     <p><strong>Inconsistência de fuso horário nos registros de auditoria</strong></p>
     <dl class="nc">
-      <dt>Norma</dt><dd>ISO 8601 / ISO 21508 — armazenamento deve ser UTC consistente</dd>
-      <dt>Evidência</dt><dd><code>models.py:128</code> usa <code>datetime.utcnow</code> para <code>locked_at</code>; linhas 149, 243, 254, 278 usam <code>now_br</code> (BRT)</dd>
-      <dt>Impacto na gestão</dt><dd>Datas no log de auditoria podem mostrar horários inconsistentes em servidores com fuso configurado diferente de BRT</dd>
-      <dt>Recomendação</dt><dd>Padronizar <code>datetime.utcnow</code> para armazenamento; converter para BRT apenas na exibição</dd>
-      <dt>Esforço</dt><dd>Pequeno</dd>
-      <dt>Prazo</dt><dd>1 sprint</dd>
-      <dt>Risco se não tratado</dt><dd>Inconsistência no log de auditoria em ambientes multi-fuso</dd>
+      <dt>Norma</dt><dd>ISO 8601 / ISO 21508 — estratégia de fuso uniforme</dd>
+      <dt>Evidência original</dt><dd><code>models.py:128</code> usava <code>datetime.utcnow</code> para <code>locked_at</code>; linhas 149, 243, 254, 278 usavam <code>now_br</code> (BRT)</dd>
+      <dt>Correção aplicada</dt><dd>Substituídos <code>datetime.utcnow</code> por <code>now_br</code> em <code>ProjectBaseline.locked_at</code>, <code>ThemePreset.created_at</code> e <code>Notification.created_at</code>. Import <code>from datetime import datetime</code> removido de <code>models.py</code>. Todos os timestamps agora usam <code>now_br</code> uniformemente.</dd>
+      <dt>Testes</dt><dd>677 testes passam após a correção</dd>
+      <dt>Status</dt><dd><strong>FECHADA</strong></dd>
     </dl>
   </div>
 
@@ -338,16 +339,14 @@
     </dl>
   </div>
 
-  <div class="card nc-card obs">
-    <h3>NC-03 <span class="sev sev-obs">OBSERVAÇÃO</span></h3>
-    <p><strong>Barra de semáforo no dashboard não é exibida</strong></p>
+  <div class="card nc-card obs" style="border-left-color:#1A7F4B;">
+    <h3>NC-03 <span class="sev" style="background:#e8f5ee;color:#1A7F4B;">✅ RESOLVIDA</span></h3>
+    <p><strong>Barra de semáforo no dashboard não era exibida</strong></p>
     <dl class="nc">
-      <dt>Evidência</dt><dd><code>style.css:459</code> — <code>.semaphore-bar { display: none !important }</code> — regra CSS impede que o JS mostre a barra expandida</dd>
-      <dt>Impacto na gestão</dt><dd>O resumo do semáforo no cabeçalho funciona corretamente; a barra expandida com pills individuais por PEP não é visível</dd>
-      <dt>Recomendação</dt><dd>Remover <code>!important</code> da regra <code>.semaphore-bar</code> para que <code>bar.style.display = 'flex'</code> funcione</dd>
-      <dt>Esforço</dt><dd>Mínimo</dd>
-      <dt>Prazo</dt><dd>Próximo sprint</dd>
-      <dt>Risco se não tratado</dt><dd>Funcionalidade de drill-down por PEP inacessível</dd>
+      <dt>Evidência original</dt><dd><code>style.css:459</code> — <code>.semaphore-bar { display: none !important }</code> impedia que <code>bar.style.display = 'flex'</code> funcionasse</dd>
+      <dt>Impacto</dt><dd>O resumo do semáforo no cabeçalho funcionava; a barra expandida com pills individuais por PEP não era visível e o drill-down por PEP era inacessível</dd>
+      <dt>Correção aplicada</dt><dd>Removido <code>!important</code> da regra <code>.semaphore-bar</code> em <code>style.css:459</code>. A regra <code>#semaphoreBar { display: none }</code> mantém o estado inicial oculto; o JS <code>bar.style.display = 'flex'</code> agora sobrepõe corretamente via inline style.</dd>
+      <dt>Status</dt><dd><strong>FECHADA</strong></dd>
     </dl>
   </div>
 </section>
@@ -443,7 +442,7 @@
 
 <footer>
   PMAS · Project Management Assistant System · v1.4.8RC_PMAS — RTA Sistemas · Auditoria Executiva · 2026-06-06<br>
-  Veredito: <strong>PARCIALMENTE CONFORME</strong> · 28 Conforme · 2 Parcialmente Conforme · 0 Não Conforme
+  Veredito: <strong>PARCIALMENTE CONFORME</strong> · 30 Conforme · 1 Parcialmente Conforme · 0 Não Conforme · NC-01 e NC-03 resolvidas
 </footer>
 
 <script>

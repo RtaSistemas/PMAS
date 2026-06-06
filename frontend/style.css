@@ -457,7 +457,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 
 /* ── Portfolio semaphore ─────────────────────────────────────── */
 .semaphore-bar {
-  display: none !important;
+  display: none;
 }
 .sem-summary {
   display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;
