@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
+> **Implementation patterns** — all coding conventions, design tokens, EVM formula rules, modal/pagination/CRUD/i18n/accessibility patterns are documented in [`docs/PATTERNS.md`](docs/PATTERNS.md). Read it before adding any feature.
+
 ## Golden Rules — Architectural Constraints
 
 These rules are non-negotiable. They encode decisions made at the product level and must never be violated by any implementation, refactor, or feature addition.
