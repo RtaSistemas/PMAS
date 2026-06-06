@@ -95,13 +95,16 @@ _ECHARTS_HEX_RE = re.compile(
 
 def test_gr3_no_hex_in_chart_color_properties():
     """GR-3: ECharts option color properties must not use hardcoded hex literals."""
-    app_js = FRONTEND / "app.js"
-    source = _read(app_js)
+    files_to_check = [FRONTEND / "app.js"] + list((FRONTEND / "crud").glob("*.js"))
     violations = []
-    for m in _ECHARTS_HEX_RE.finditer(source):
-        line_no = source[: m.start()].count("\n") + 1
-        ctx = source[max(0, m.start() - 60) : m.end() + 60].replace("\n", " ")
-        violations.append(f"app.js:{line_no}: …{ctx.strip()}…")
+    for path in files_to_check:
+        if not path.exists():
+            continue
+        source = _read(path)
+        for m in _ECHARTS_HEX_RE.finditer(source):
+            line_no = source[: m.start()].count("\n") + 1
+            ctx = source[max(0, m.start() - 60) : m.end() + 60].replace("\n", " ")
+            violations.append(f"{path.name}:{line_no}: …{ctx.strip()}…")
 
     assert not violations, (
         "GR-3 violation — hardcoded hex in ECharts color property "
@@ -121,13 +124,20 @@ _HARDCODED_PTBR_RE = re.compile(r"\.toLocaleString\(['\"]pt-BR['\"]")
 
 def test_no_hardcoded_pt_br_locale_in_app_js():
     """All toLocaleString calls must use the _locale variable, not 'pt-BR'."""
-    app_js = FRONTEND / "app.js"
-    source = _read(app_js)
+    files_to_check = [
+        FRONTEND / "app.js",
+        FRONTEND / "crud" / "cycles.js",
+        FRONTEND / "crud" / "projects.js",
+    ]
     violations = []
-    for m in _HARDCODED_PTBR_RE.finditer(source):
-        line_no = source[: m.start()].count("\n") + 1
-        ctx = source[max(0, m.start() - 40) : m.end() + 40].replace("\n", " ")
-        violations.append(f"app.js:{line_no}: …{ctx.strip()}…")
+    for path in files_to_check:
+        if not path.exists():
+            continue
+        source = _read(path)
+        for m in _HARDCODED_PTBR_RE.finditer(source):
+            line_no = source[: m.start()].count("\n") + 1
+            ctx = source[max(0, m.start() - 40) : m.end() + 40].replace("\n", " ")
+            violations.append(f"{path.name}:{line_no}: …{ctx.strip()}…")
 
     assert not violations, (
         "Locale bypass — hardcoded 'pt-BR' in toLocaleString "
