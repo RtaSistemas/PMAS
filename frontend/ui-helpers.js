@@ -62,7 +62,7 @@ async function _withLoading(btn, asyncFn) {
 // ---------------------------------------------------------------------------
 function _confirmDelete(entityName, asyncFn) {
   confirmDialog(
-    `Excluir ${entityName}? Esta ação não pode ser desfeita.`,
+    _t('confirm.delete_msg').replace('{entity}', entityName),
     asyncFn,
     true
   );
@@ -156,8 +156,18 @@ function _makePaginator(ids, onPage) {
     pg.hidden = total <= 1;
     document.getElementById(ids.label).textContent =
       `${_t('page.label')} ${_page + 1} ${_t('page.of')} ${total}`;
-    document.getElementById(ids.prev).disabled  = _page === 0;
-    document.getElementById(ids.next).disabled  = _page >= total - 1;
+    const prevBtn = document.getElementById(ids.prev);
+    const nextBtn = document.getElementById(ids.next);
+    if (prevBtn) {
+      prevBtn.disabled = _page === 0;
+      const entityLabel = ids.entity ? ` — ${_t(ids.entity)}` : '';
+      prevBtn.setAttribute('aria-label', `${_t('page.prev')}${entityLabel}`);
+    }
+    if (nextBtn) {
+      nextBtn.disabled = _page >= total - 1;
+      const entityLabel = ids.entity ? ` — ${_t(ids.entity)}` : '';
+      nextBtn.setAttribute('aria-label', `${_t('page.next')}${entityLabel}`);
+    }
   }
 
   function render(rows) {

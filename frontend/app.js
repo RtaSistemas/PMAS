@@ -124,7 +124,8 @@ function _makeSortable(tableId, colDefs, getDataFn, renderFn) {
     th.classList.add('sortable');
     th.setAttribute('role', 'columnheader');
     th.setAttribute('aria-sort', 'none');
-    th.addEventListener('click', () => {
+    th.setAttribute('tabindex', '0');
+    const _sortHandler = () => {
       const st = _tableSortState[tableId];
       if (st.col === def.key) { st.dir *= -1; }
       else { st.col = def.key; st.type = def.type; st.dir = 1; }
@@ -132,7 +133,9 @@ function _makeSortable(tableId, colDefs, getDataFn, renderFn) {
       th.classList.add(st.dir === 1 ? 'sort-asc' : 'sort-desc');
       th.setAttribute('aria-sort', st.dir === 1 ? 'ascending' : 'descending');
       renderFn(_applySort(tableId, getDataFn()));
-    });
+    };
+    th.addEventListener('click', _sortHandler);
+    th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _sortHandler(); } });
   });
 }
 
@@ -329,12 +332,22 @@ function _markFiltersDirty() {
   if (_filtersDirty) return;
   _filtersDirty = true;
   const btn = document.getElementById('loadBtn');
-  if (btn) { btn.classList.add('btn-dirty'); btn.title = 'Filtros alterados — clique para atualizar'; }
+  if (btn) {
+    btn.classList.add('btn-dirty');
+    btn.setAttribute('aria-description', _t('filter.dirty_hint'));
+    const span = btn.querySelector('[data-i18n="btn.load"]');
+    if (span) span.textContent = _t('btn.load_update');
+  }
 }
 function _clearFiltersDirty() {
   _filtersDirty = false;
   const btn = document.getElementById('loadBtn');
-  if (btn) { btn.classList.remove('btn-dirty'); btn.title = ''; }
+  if (btn) {
+    btn.classList.remove('btn-dirty');
+    btn.removeAttribute('aria-description');
+    const span = btn.querySelector('[data-i18n="btn.load"]');
+    if (span) span.textContent = _t('btn.load');
+  }
 }
 
 const loadBtn  = document.getElementById('loadBtn');
@@ -1101,7 +1114,14 @@ function _computeTrendsWindow(cycleIds, dateFrom, dateTo) {
 function _setChartLoading(ids, on) {
   ids.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.toggleAttribute('data-chart-loading', on);
+    if (!el) return;
+    el.toggleAttribute('data-chart-loading', on);
+    if (on) {
+      el.setAttribute('aria-busy', 'true');
+      el.setAttribute('aria-label', _t('loading'));
+    } else {
+      el.removeAttribute('aria-busy');
+    }
   });
 }
 
@@ -3620,7 +3640,11 @@ function _friendlyError(e) {
   if (s === 401 || s === 403) return _t('err.unauthorized');
   if (s === 404)              return _t('err.not_found');
   if (s === 409)              return _t('err.conflict');
-  if (s === 422)              return _t('err.validation');
+  if (s === 422) {
+    const detail = e.message;
+    if (detail && typeof detail === 'string' && detail.length < 200 && !detail.includes('traceback')) return detail;
+    return _t('err.validation');
+  }
   if (s === 429)              return _t('err.rate_limit');
   if (s != null && s >= 500)  return _t('err.server');
   return e.message || _t('msg.err_generic');
@@ -3656,19 +3680,36 @@ async function apiFetchJSON(url, method, body) {
   return res.status === 204 ? null : res.json();
 }
 
+const _notifQueue = [];
+let _notifShowing = false;
+
 function notify(msg, type = 'info') {
+  _notifQueue.push({ msg, type });
+  if (!_notifShowing) _processNotifQueue();
+}
+
+function _processNotifQueue() {
+  if (!_notifQueue.length) { _notifShowing = false; return; }
+  _notifShowing = true;
+  const { msg, type } = _notifQueue.shift();
   const el = document.getElementById('notification');
   const textEl = document.getElementById('notificationText');
-  clearTimeout(el._timer);
   textEl.textContent = msg;
   el.className = type;
   el.hidden = false;
-  el._timer = setTimeout(() => { el.hidden = true; }, type === 'error' ? 15000 : 6000);
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => {
+    el.hidden = true;
+    setTimeout(_processNotifQueue, 150);
+  }, type === 'error' ? 12000 : 5000);
 }
+
 document.getElementById('notificationClose').addEventListener('click', () => {
   const el = document.getElementById('notification');
   clearTimeout(el._timer);
   el.hidden = true;
+  _notifShowing = false;
+  setTimeout(_processNotifQueue, 150);
 });
 
 window.addEventListener('unhandledrejection', e => {
@@ -4132,16 +4173,38 @@ function _initMyArea() {
 // Chart layout drag-drop
 let _sortableLayout = null;
 const _panelSortables = {};
+
+function _addKeyboardReorder(list) {
+  list.addEventListener('keydown', e => {
+    const item = e.target.closest('.sortable-item');
+    if (!item || !list.contains(item)) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    const sibling = e.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+    if (sibling) {
+      if (e.key === 'ArrowUp') list.insertBefore(item, sibling);
+      else list.insertBefore(sibling, item);
+      item.focus();
+      list.dispatchEvent(new Event('sortable-keyboard-update', { bubbles: true }));
+    }
+  });
+  list.querySelectorAll('.sortable-item').forEach(item => {
+    if (!item.hasAttribute('tabindex')) item.setAttribute('tabindex', '0');
+  });
+}
+
 function _initChartLayout() {
   const list = document.getElementById('chartLayoutList');
   if (!list || typeof Sortable === 'undefined') return;
   if (_sortableLayout) _sortableLayout.destroy();
   _sortableLayout = Sortable.create(list, { animation: 150, handle: '.tab-handle', ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen' });
+  _addKeyboardReorder(list);
   ['effort', 'portfolio', 'forecast'].forEach(tabId => {
     const pList = document.getElementById(`panelList-${tabId}`);
     if (!pList) return;
     if (_panelSortables[tabId]) _panelSortables[tabId].destroy();
     _panelSortables[tabId] = Sortable.create(pList, { animation: 120, handle: '.panel-handle', ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen' });
+    _addKeyboardReorder(pList);
   });
 }
 
@@ -4526,6 +4589,7 @@ function _renderRulesList() {
       } catch (e) { notify(_friendlyError(e), 'error'); }
     },
   });
+  _addKeyboardReorder(ul);
 }
 
 const _AGGREGATE_RULE_FIELDS = new Set(['soma_diaria', 'soma_semanal']);

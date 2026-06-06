@@ -344,6 +344,23 @@ function _initEvmTips() {
     clearTimeout(_evmTipTimer);
     _hideEvmTip();
   });
+  // Keyboard accessibility: focus/blur mirrors mouseenter/mouseleave
+  document.addEventListener('focusin', e => {
+    const el = e.target.closest('[data-evm]');
+    if (!el) return;
+    clearTimeout(_evmTipTimer);
+    _evmTipTimer = setTimeout(() => _showEvmTip(el), 200);
+  });
+  document.addEventListener('focusout', e => {
+    if (!e.target.closest('[data-evm]')) return;
+    clearTimeout(_evmTipTimer);
+    _hideEvmTip();
+  });
+  // Make [data-evm] elements keyboard reachable
+  document.querySelectorAll('[data-evm]').forEach(el => {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('keydown', e => { if (e.key === 'Escape') _hideEvmTip(); });
+  });
 }
 
 _initEvmTips();

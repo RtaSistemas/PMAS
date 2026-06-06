@@ -6,7 +6,7 @@ window._LANG_PT = {
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
     'filter.dfrom':'Data início','filter.dto':'Data fim',
-    'btn.load':'Carregar','btn.clear':'Limpar',
+    'btn.load':'Carregar','btn.load_update':'Atualizar ↻','btn.clear':'Limpar',
     'btn.last_month':'Últ. mês','btn.last_quarter':'Últ. trimestre','btn.this_year':'Este ano',
     'atab.effort':'Esforço da Equipe','atab.portfolio':'Saúde do Portfólio','atab.trends':'Tendências','atab.allocation':'Alocação','atab.forecast':'Previsão',
     'allocation.empty':'Nenhum dado encontrado para os filtros selecionados.',
@@ -531,5 +531,9 @@ window._LANG_PT = {
     'err.rate_limit': 'Muitas requisições. Aguarde um momento.',
     'summaries.stale': 'Analytics desatualizados — execute um novo upload para sincronizar.',
     'err.server': 'Erro no servidor. Tente novamente em instantes.',
+    'err.required': 'Campo obrigatório.',
+    'filter.dirty_hint': 'Filtros alterados — clique para atualizar',
+    'confirm.delete_msg': 'Excluir {entity}? Esta ação não pode ser desfeita.',
+    'over_alloc.filter.threshold_lbl': 'Limite de horas/dia',
     'auth.session_expiring_soon': 'Sua sessão expira em menos de 10 minutos. Salve seu trabalho.',
 };

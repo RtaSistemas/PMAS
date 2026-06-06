@@ -230,8 +230,8 @@
       </button>
       <button type="button" id="printReportBtn" class="btn btn-ghost btn-sm" onclick="window.print()"
               style="margin-left:auto;align-self:center;padding:.3rem .65rem;font-size:.78rem"
-              title="Imprimir relatório" data-i18n-title="btn.print_report">
-        🖨
+              aria-label="Imprimir relatório" data-i18n-aria="btn.print_report">
+        <span aria-hidden="true">🖨</span>
       </button>
     </nav>
 
@@ -749,8 +749,11 @@
       <div class="section-header">
         <h2 class="card-title" data-i18n="over_alloc.title">Detecção de Sobre-alocação</h2>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-          <input type="date" id="overAllocFrom" class="input-sm" title="Data início">
-          <input type="date" id="overAllocTo"   class="input-sm" title="Data fim">
+          <label for="overAllocFrom" class="sr-only" data-i18n="filter.dfrom">Data início</label>
+          <input type="date" id="overAllocFrom" class="input-sm">
+          <label for="overAllocTo" class="sr-only" data-i18n="filter.dto">Data fim</label>
+          <input type="date" id="overAllocTo"   class="input-sm">
+          <label for="overAllocThreshold" class="sr-only" data-i18n="over_alloc.filter.threshold_lbl">Limite de horas/dia</label>
           <input type="number" id="overAllocThreshold" class="input-sm" min="0" step="0.5" style="width:80px"
                  data-i18n-ph="over_alloc.filter.threshold">
           <button type="button" class="btn btn-secondary btn-sm" onclick="_loadOverAllocation()" data-i18n="btn.load">Carregar</button>
@@ -1182,16 +1185,16 @@
       <div class="form-grid cols-1">
         <div class="form-group">
           <label for="cycleNameInput" data-i18n="cm.name_lbl">Nome *</label>
-          <input type="text" id="cycleNameInput" data-i18n-ph="cm.name_ph" placeholder="Ex: Janeiro/2026" />
+          <input type="text" id="cycleNameInput" required aria-required="true" data-i18n-ph="cm.name_ph" placeholder="Ex: Janeiro/2026" />
         </div>
         <div class="form-grid">
           <div class="form-group">
             <label for="cycleStartInput" data-i18n="cm.start_lbl">Data início *</label>
-            <input type="date" id="cycleStartInput" />
+            <input type="date" id="cycleStartInput" required aria-required="true" />
           </div>
           <div class="form-group">
             <label for="cycleEndInput" data-i18n="cm.end_lbl">Data fim *</label>
-            <input type="date" id="cycleEndInput" />
+            <input type="date" id="cycleEndInput" required aria-required="true" />
           </div>
         </div>
       </div>
@@ -1217,7 +1220,7 @@
     <div class="form-grid">
       <div class="form-group">
         <label for="projectPepInput" data-i18n="pm.pep_lbl">Código PEP *</label>
-        <input type="text" id="projectPepInput" data-i18n-ph="pm.pep_ph" placeholder="Ex: 60OP-03333" />
+        <input type="text" id="projectPepInput" required aria-required="true" data-i18n-ph="pm.pep_ph" placeholder="Ex: 60OP-03333" />
       </div>
       <div class="form-group">
         <label for="projectStatusInput" data-i18n="pm.status_lbl">Status</label>
@@ -1286,7 +1289,7 @@
       <div class="form-grid cols-1">
         <div class="form-group">
           <label for="seniorityNameInput" data-i18n="sm.name_lbl">Nome *</label>
-          <input type="text" id="seniorityNameInput" data-i18n-ph="sm.name_ph" placeholder="Ex: Pleno, Sênior" />
+          <input type="text" id="seniorityNameInput" required aria-required="true" data-i18n-ph="sm.name_ph" placeholder="Ex: Pleno, Sênior" />
         </div>
       </div>
       <div class="error-msg" id="seniorityError"></div>
@@ -1315,11 +1318,11 @@
         </div>
         <div class="form-group">
           <label for="rateCardRateInput" data-i18n="rm.rate_lbl">Valor/hora (R$) *</label>
-          <input type="number" id="rateCardRateInput" data-i18n-ph="rm.rate_ph" placeholder="Ex: 120.00" min="0" step="0.01" />
+          <input type="number" id="rateCardRateInput" required aria-required="true" data-i18n-ph="rm.rate_ph" placeholder="Ex: 120.00" min="0" step="0.01" />
         </div>
         <div class="form-group">
           <label for="rateCardFromInput" data-i18n="rm.from_lbl">Vigência início *</label>
-          <input type="date" id="rateCardFromInput" />
+          <input type="date" id="rateCardFromInput" required aria-required="true" />
         </div>
         <div class="form-group">
           <label for="rateCardToInput" data-i18n="rm.to_lbl">Vigência fim (opcional)</label>
@@ -1377,11 +1380,11 @@
       <div class="form-grid cols-1">
         <div class="form-group">
           <label for="userUsernameInput" data-i18n="um.user_lbl">Usuário *</label>
-          <input type="text" id="userUsernameInput" data-i18n-ph="um.user_ph" placeholder="mínimo 3 caracteres" autocomplete="off" />
+          <input type="text" id="userUsernameInput" required aria-required="true" data-i18n-ph="um.user_ph" placeholder="mínimo 3 caracteres" autocomplete="off" />
         </div>
         <div class="form-group">
           <label for="userPasswordInput" data-i18n="um.pwd_lbl">Senha *</label>
-          <input type="password" id="userPasswordInput" data-i18n-ph="um.pwd_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+          <input type="password" id="userPasswordInput" required aria-required="true" data-i18n-ph="um.pwd_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
         </div>
         <div class="form-group">
           <label for="userRoleSelect" data-i18n="um.role_lbl">Perfil</label>
