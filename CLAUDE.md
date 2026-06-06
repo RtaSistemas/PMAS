@@ -223,21 +223,21 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
-## Pendências de Produção
+## Known Production Gaps
 
-Itens auditados e adiados conscientemente. Não implementar sem decisão explícita do responsável.
+Audited items deliberately deferred. Do not implement without an explicit decision from the responsible party.
 
-| # | Item | Onde | O que fazer |
+| # | Item | Where | What to do |
 |---|---|---|---|
-| P1 | `PMAS_SECRET_KEY` obrigatória em produção | `backend/app/deps.py:17-26` | Se `PMAS_ENV=production` e a variável não estiver definida, lançar `RuntimeError` no startup em vez de gerar chave aleatória silenciosamente |
-| P2 | Endpoint `/health` (e opcionalmente `/ready`) | `backend/app/main.py` | `GET /health` retorna `{"status":"ok","timestamp":...,"version":...}` com 200; `/ready` faz `SELECT 1` no banco e retorna 503 se falhar |
-| P3 | Script de backup do banco | inexistente | `backup_pmas.sh` usando `sqlite3 "$DB_PATH" "VACUUM INTO '${DEST}'"` (cópia consistente com WAL ativo); cron diário às 02:00; retenção de 30 dias; procedimento de restore documentado e testado |
-| P4 | Lock file de dependências | `requirements.txt` | Gerar `requirements.lock.txt` com `pip freeze` das versões em uso agora (fastapi 0.136.3, sqlalchemy 2.0.49, etc.); usar o lock no deploy de produção |
-| P5 | Arquivo de deploy systemd | inexistente | `pmas.service` com `uvicorn --workers 2 --host 127.0.0.1`, `Restart=on-failure`, `EnvironmentFile=/opt/pmas/.env`, `PrivateTmp=true`; instruções de operação (start/stop/logs/deploy de nova versão) |
+| P1 | `PMAS_SECRET_KEY` mandatory in production | `backend/app/deps.py:17-26` | If `PMAS_ENV=production` and the variable is not set, raise `RuntimeError` at startup instead of silently generating a random key |
+| P2 | `/health` (and optionally `/ready`) endpoint | `backend/app/main.py` | `GET /health` returns `{"status":"ok","timestamp":...,"version":...}` with 200; `/ready` runs `SELECT 1` against the database and returns 503 if it fails |
+| P3 | Database backup script | does not exist | `backup_pmas.sh` using `sqlite3 "$DB_PATH" "VACUUM INTO '${DEST}'"` (consistent copy with WAL active); daily cron at 02:00; 30-day retention; restore procedure documented and tested |
+| P4 | Dependency lock file | `requirements.txt` | Generate `requirements.lock.txt` with `pip freeze` of versions currently in use; use the lock file in production deployments |
+| P5 | systemd deployment unit | does not exist | `pmas.service` with `uvicorn --workers 2 --host 127.0.0.1`, `Restart=on-failure`, `EnvironmentFile=/opt/pmas/.env`, `PrivateTmp=true`; operating instructions (start/stop/logs/deploy new version) |
 
-**Riscos adicionais conhecidos** (não bloqueantes, mas registrados):
-- HTTPS não forçado — app deve rodar atrás de reverse proxy (nginx/caddy) com TLS; sem middleware de redirect interno
-- Brute force no login — `POST /api/token` tem `30/minute` mas sem lockout por usuário e sem logging de falhas de autenticação
-- Rate limiting ausente em rotas de escrita (`/projects`, `/cycles`, `/users`) além de upload e login
-- `must_change_password` forçado apenas no frontend — sem bloqueio hard no backend
-- Migrations manuais (`_migrate_columns()`) sem versionamento nem rollback strategy
+**Additional known risks** (non-blocking, but on record):
+- HTTPS not enforced — the app must run behind a reverse proxy (nginx/caddy) with TLS; no internal redirect middleware
+- Login brute force — `POST /api/token` is rate-limited at 30/minute but has no per-user lockout and no logging of authentication failures
+- Rate limiting absent on write routes (`/projects`, `/cycles`, `/users`) beyond upload and login
+- `must_change_password` enforced only in the frontend — no hard block in the backend
+- Manual migrations (`_migrate_columns()`) with no versioning or rollback strategy

@@ -1,7 +1,7 @@
 <h1 align="center">PMAS — Project Management Assistant System</h1>
 
 <p align="center">
-  <em>Dashboard analítico de timesheets: horas, custos, EVM e saúde do portfólio em tempo real.</em>
+  <em>Timesheet analytics dashboard: hours, costs, EVM, and portfolio health — in real time.</em>
 </p>
 
 <p align="center">
@@ -9,141 +9,260 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/testes-590%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-635%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
 
-## Sumário
+## Table of Contents
 
-1. [Visão Geral](#visão-geral)
+1. [Overview](#overview)
 2. [Stack](#stack)
-3. [Arquitetura](#arquitetura)
-4. [Modelo de Dados](#modelo-de-dados)
-5. [Pipeline de Ingestão](#pipeline-de-ingestão)
-6. [Motor EVM](#motor-evm)
-7. [Motor de Regras de Validação](#motor-de-regras-de-validação)
-8. [Ciclo de Vida da Quarentena](#ciclo-de-vida-da-quarentena)
-9. [Semáforo de Portfólio](#semáforo-de-portfólio)
-10. [Frontend](#frontend)
-11. [API REST](#api-rest)
-12. [Instalação e Execução](#instalação-e-execução)
-13. [Dados de Amostra](#dados-de-amostra)
-14. [Configuração](#configuração)
-15. [Testes](#testes)
-16. [Estrutura do Projeto](#estrutura-do-projeto)
-17. [Build Standalone](#build-standalone)
+3. [Quick Start](#quick-start)
+4. [Sample Data](#sample-data)
+5. [Configuration](#configuration)
+6. [Architecture](#architecture)
+7. [Data Model](#data-model)
+8. [Ingestion Pipeline](#ingestion-pipeline)
+9. [EVM Engine](#evm-engine)
+10. [Validation Rule Engine](#validation-rule-engine)
+11. [Quarantine Lifecycle](#quarantine-lifecycle)
+12. [Portfolio Semaphore](#portfolio-semaphore)
+13. [Frontend](#frontend)
+14. [REST API Reference](#rest-api-reference)
+15. [Tests](#tests)
+16. [Project Structure](#project-structure)
+17. [Standalone Build](#standalone-build)
 
 ---
 
-## Visão Geral
+## Overview
 
-O PMAS transforma exports de timesheet (CSV ou XLSX) em dashboards interativos de gestão de projetos. Gestores importam planilhas de horas mensais, definem ciclos de apuração e projetos com orçamento, e visualizam em tempo real o consumo de horas por colaborador, por PEP e por ciclo — com custo real calculado via Rate Card congelado no momento da ingestão.
+PMAS transforms timesheet exports (CSV or XLSX) into interactive project management dashboards. Project managers import monthly hour sheets, register billing cycles and budgeted projects, and visualise in real time the consumption of hours per collaborator, per PEP (project code) and per cycle — with actual cost calculated via a Rate Card frozen at ingestion time.
 
-O sistema cobre três necessidades centrais de um PMO:
+The system addresses three core PMO needs:
 
-| Necessidade | Como o PMAS atende |
+| Need | How PMAS addresses it |
 |---|---|
-| **Rastreabilidade** | Cada upload gera um `UploadSession` imutável com contagens por outcome; todo CRUD vai para o `AuditLog` |
-| **Confiabilidade de custo** | Padrão EVM freeze: `cost_per_hour` resolvido na ingestão, imune a reajustes futuros de Rate Card |
-| **Saúde do portfólio** | CPI, SPI, EAC, TCPI, VAC, CV, SV calculados server-side via `services/evm.py`; semáforo macro visual |
+| **Traceability** | Every upload creates an immutable `UploadSession` with row counts by outcome; all CRUD operations write to `AuditLog` |
+| **Cost reliability** | EVM freeze pattern: `cost_per_hour` resolved at ingestion and immune to future Rate Card changes |
+| **Portfolio health** | CPI, SPI, EAC, TCPI, VAC, CV, SV computed server-side via `services/evm.py`; visual macro traffic-light semaphore |
+
+### What PMAS produces
+
+**Human effort** — who did what and when:
+- Hours per collaborator (normal / overtime / standby)
+- Monthly timeline and daily activity heatmap per collaborator
+- Month-by-month consumption trend
+- Allocation matrix: collaborator × PEP
+
+**Project financial health** — how much it costs and how much is left:
+- Actual cumulative cost per project (AC), calculated with rates frozen at ingestion
+- Consumed vs planned budget (bullet chart)
+- Cost breakdown: normal hours, overtime, standby
+- Concentration risk: which collaborators dominate each project's cost
+
+**EVM performance** — whether projects are delivering value for what they spend:
+- CPI, SPI, EAC, VAC, TCPI, CV, SV per project
+- CPI and SPI history over cycles
+- EVM quadrant: project positions in cost × schedule space
+- Forecast: when it will finish and what the final cost will be
+
+**Governance and traceability:**
+- Quarantine workflow (pending → approved/rejected)
+- Upload history with exact row counts per outcome
+- Full audit log with before/after JSON snapshots
+- Per-user access control by PEP
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Backend | Python 3.11+ · FastAPI 0.111 · SQLAlchemy 2.0 |
-| Banco de dados | SQLite embutido (`pmas.db`) |
-| Autenticação | JWT (python-jose) · bcrypt |
-| Frontend | HTML5 · CSS3 · JavaScript Vanilla |
-| Gráficos | Apache ECharts 5 |
+| Database | Embedded SQLite (`pmas.db`, WAL mode) |
+| Authentication | JWT (python-jose) · bcrypt |
+| Frontend | HTML5 · CSS3 · Vanilla JavaScript |
+| Charts | Apache ECharts 5 |
 | Parsing | pandas · openpyxl |
-| Testes | pytest · httpx · FastAPI TestClient |
+| Tests | pytest · httpx · FastAPI TestClient |
 | Build | PyInstaller (Linux x64 + Windows x64) |
 | CI | GitHub Actions (Python 3.11 / 3.12) |
 
 ---
 
-## Arquitetura
+## Quick Start
+
+### Prerequisites
+
+- Python **3.11** or **3.12**
+- pip
+
+### Run
+
+```bash
+git clone https://github.com/RtaSistemas/PMAS.git
+cd PMAS
+pip install -r requirements.txt
+python -m uvicorn backend.app.main:app --reload
+```
+
+Open **http://127.0.0.1:8000** — default login: `admin` / `admin`.
+
+> **Change the default password immediately.** The admin account is created on first startup with a warning logged to the console.
+
+The database `pmas.db` is created automatically on first run. New columns are applied non-destructively via `_migrate_columns()` (`ALTER TABLE`) on every startup — existing databases are never dropped.
+
+### Other start options
+
+```bash
+# Expose on local network
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8080
+
+# Production mode (no auto-reload)
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+### Makefile shortcuts
+
+```bash
+make serve        # start dev server
+make test         # run all tests (backend + unit + e2e)
+make test-backend # pytest only
+```
+
+---
+
+## Sample Data
+
+```bash
+python amostras/generate_portfolio.py
+```
+
+Generates in `amostras/`:
+- `ciclos.csv` — 29 monthly cycles (Jan/2024 – May/2026)
+- `projetos.csv` — 10 PEPs with `60IT-XXX-01` codes
+- `senioridade_rate_card.csv` — seniority levels and rates
+- `timesheets/YYYY-MM.csv` — one timesheet file per cycle, ready to import
+
+```bash
+# Large portfolio simulation (optional)
+python amostras/generate_grande_sim.py
+# Generates amostras/grande_sim/: 5 years of history, multiple teams
+```
+
+---
+
+## Configuration
+
+### Environment variables (`.env`)
+
+Copy `.env.example` to `.env` and set the values:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PMAS_SECRET_KEY` | *(random)* | JWT signing secret. **Required in production.** Generate with: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `PMAS_PORT` | `8765` | Listening port |
+| `PMAS_HOST` | `127.0.0.1` | Network interface |
+| `PMAS_ENV` | `development` | `development` (auto-reload) or `production` |
+| `PMAS_ALLOWED_ORIGINS` | *(empty)* | Additional CORS origins, comma-separated |
+| `PMAS_DB_PATH` | *(project root)* | Path to `pmas.db` |
+| `PMAS_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
+
+> Without `PMAS_SECRET_KEY`, a random key is generated at startup. All existing sessions are invalidated on restart. Set it for persistent sessions.
+
+### GlobalConfig (singleton — Admin → Global Config)
+
+| Parameter | Default | Description |
+|---|---|---|
+| `extra_hours_multiplier` | `1.5` | Cost multiplier for overtime hours |
+| `standby_hours_multiplier` | `0.33` | Cost multiplier for standby hours |
+| `budget_warning_threshold` | `0.9` | Warning badge threshold ⚠ (yellow) |
+| `budget_critical_threshold` | `1.0` | Critical badge threshold 🔴 (red) |
+| `anomaly_max_daily_hours` | `24.0` | Daily hours ceiling for the anomaly rule |
+| `timezone` | `America/Sao_Paulo` | Timezone for display |
+
+### User roles
+
+| Role | Permissions |
+|---|---|
+| `admin` | Full access: all PEPs, all management routes |
+| `user` | Filtered read access per ACL; timesheet upload; own upload history / quarantine |
+
+### Per-PEP ACL
+
+`UserProjectAccess` whitelists specific PEPs per user. Empty whitelist = access to all PEPs. Enforced in `/api/v2/portfolio`, `/api/v2/effort`, `/api/v2/runway`, `/api/v2/forecast`, and upload.
+
+---
+
+## Architecture
 
 ```mermaid
 graph TD
-    Browser["🌐 Browser\nHTML · CSS · Vanilla JS"]
+    Browser["Browser\nHTML · CSS · Vanilla JS"]
 
     subgraph FE["Frontend (static files)"]
         AppJS["app.js\nCRUD · i18n · Auth · ECharts"]
-        Charts["charts/\neffort.js · portfolio.js\nforecast.js"]
-        UIHelpers["ui-helpers.js\nPaginação · Tabelas"]
-        MS["multiselect.js\nDropdowns cascata"]
+        CrudFiles["crud/cycles.js\ncrud/projects.js"]
+        Charts["charts/\neffort.js · portfolio.js · forecast.js"]
+        UIHelpers["ui-helpers.js\nPagination · Tables"]
+        MS["multiselect.js\nCascading dropdowns"]
     end
 
     subgraph API["FastAPI — main.py"]
         direction TB
-        subgraph Auth["Autenticação"]
-            JWT["POST /api/token\n(JWT Bearer)"]
+        subgraph V1["Routers v1 — CRUD"]
+            Auth["auth.py · users.py · auditlog.py"]
+            Data["cycles.py · projects.py · plans.py · baselines.py"]
+            Ops["upload.py · quarantine.py · validation_rules.py"]
+            UX["my.py · notifications.py · theme.py · acl.py"]
         end
-        subgraph V1["Routers v1"]
-            Auth2["auth.py"]
-            Cycles["cycles.py"]
-            Projects["projects.py"]
-            Plans["plans.py"]
-            Baselines["baselines.py"]
-            Dashboard["dashboard.py"]
-            Ratecard["ratecard.py"]
-            Users["users.py"]
-            Quarantine["quarantine.py"]
-            Rules["validation_rules.py"]
-            Upload["upload.py"]
-            My["my.py"]
-            Theme["theme.py"]
-            ACL["acl.py"]
-            Audit["auditlog.py"]
-        end
-        subgraph V2["Routers v2 (analytics)"]
-            Filters["v2/filters.py"]
-            Effort["v2/effort.py"]
-            Portfolio["v2/portfolio.py"]
-            Forecast["v2/forecast.py"]
-            Runway["v2/runway.py"]
-            Trends["v2/trends.py"]
-            Alloc["v2/allocation.py"]
-            Conc["v2/concentration.py"]
+        subgraph V2["Routers v2 — Analytics"]
+            direction LR
+            Filters["filters.py"]
+            Effort["effort.py"]
+            Portfolio["portfolio.py"]
+            Forecast["forecast.py"]
+            Runway["runway.py"]
+            Trends["trends.py"]
+            Alloc["allocation.py"]
+            Conc["concentration.py"]
+            OA["over_allocation.py"]
+            Sim["simulate.py"]
+            MC["monte_carlo.py"]
         end
     end
 
     subgraph SVC["Services"]
-        Ingestion["ingestion.py\nPipeline 6 fases"]
-        EVM["evm.py\nFórmulas EVM"]
-        RuleEng["rule_engine.py\nMotor de regras"]
-        Summaries["summaries.py\nTabelas pré-computadas"]
-        QSvc["quarantine_svc.py"]
+        Ingestion["ingestion.py\n6-phase pipeline"]
+        EVM["evm.py\nSingle source of truth\nfor all EVM formulas"]
+        RuleEng["rule_engine.py"]
+        Summaries["summaries.py\nPre-computed tables"]
     end
 
     subgraph DB["SQLite — pmas.db"]
-        Models["20 modelos ORM\n(SQLAlchemy 2.0)"]
-        Summary["PepCycleSummary\nCollaboratorCycleSummary\n(escrito na ingestão)"]
+        Models["20 ORM models\n(SQLAlchemy 2.0)"]
+        Summary["PepCycleSummary\nCollaboratorCycleSummary"]
     end
 
     Browser --> FE
     FE -->|JWT Bearer| API
-    Upload --> Ingestion
+    V1 --> Ingestion
     Ingestion --> EVM
     Ingestion --> RuleEng
     Ingestion --> Summaries
-    Ingestion --> QSvc
     V2 --> EVM
     V2 --> Summary
     API --> Models
     Summaries --> Summary
 ```
 
-### Fluxo de dados de alto nível
+### High-level data flow
 
 ```mermaid
 sequenceDiagram
-    participant PM as Gestor
+    participant PM as Project Manager
     participant UI as Frontend
     participant API as FastAPI
     participant ING as ingestion.py
@@ -153,28 +272,28 @@ sequenceDiagram
     PM->>UI: Upload CSV/XLSX
     UI->>API: POST /api/upload-timesheet multipart
     API->>ING: ingest_file(bytes, db)
-    ING->>DB: Le RateCard, GlobalConfig, ValidationRules
-    ING->>EVM: freeze_costs - hours, rate, multipliers
+    ING->>DB: Read RateCard, GlobalConfig, ValidationRules
+    ING->>EVM: freeze_costs(hours, rate, multipliers)
     EVM-->>ING: normal_cost, extra_cost, standby_cost
-    ING->>DB: DELETE pep+cycle e INSERT TimesheetRecord
+    ING->>DB: DELETE pep+cycle then INSERT TimesheetRecord
     ING->>DB: Upsert PepCycleSummary + CollaboratorCycleSummary
     ING->>DB: INSERT UploadSession + QuarantineRecord
     ING-->>API: inserted, skipped, quarantine, warnings
     API-->>UI: UploadOut JSON
 
-    PM->>UI: Abre aba Previsao
+    PM->>UI: Opens Forecast tab
     UI->>API: GET /api/v2/forecast?pep_wbs=X
     API->>EVM: compute_cpi, compute_spi, compute_eac
-    EVM-->>API: metricas calculadas
-    API-->>UI: JSON render-ready com labels e colors
-    UI->>UI: Renderiza curva-S + KPIs
+    EVM-->>API: computed metrics
+    API-->>UI: render-ready JSON with labels and colors
+    UI->>UI: Renders S-curve + KPI cards
 ```
 
 ---
 
-## Modelo de Dados
+## Data Model
 
-### Diagrama ER completo
+### ER Diagram
 
 ```mermaid
 erDiagram
@@ -240,18 +359,32 @@ erDiagram
         string label
         bool is_active
     }
+    BudgetRevision {
+        int id PK
+        int project_id FK
+        float old_budget_hours
+        float old_budget_cost
+        float new_budget_hours
+        float new_budget_cost
+        string reason
+        string changed_by
+        datetime changed_at
+    }
     ProjectCyclePlan {
         int id PK
         int project_id FK
         int cycle_id FK
         float planned_hours
         float planned_cost
+        float physical_pct
+        string physical_note
     }
     User {
         int id PK
         string username UK
         string hashed_password
         string role
+        bool must_change_password
     }
     UserProjectAccess {
         int id PK
@@ -289,18 +422,13 @@ erDiagram
         int records_skipped
         int quarantine_added
         int warning_count
-        int info_count
         string status
-        json warnings_detail
-        json infos_detail
     }
     QuarantineRecord {
         int id PK
         int upload_session_id FK
-        int uploaded_by_user_id FK
         json raw_data
         string quarantine_reason
-        int rule_id FK
         string review_status
         string reviewed_by
         datetime reviewed_at
@@ -310,13 +438,7 @@ erDiagram
         string pep_wbs
         int cycle_id FK
         float total_hours
-        float normal_hours
-        float extra_hours
-        float standby_hours
         float total_cost
-        float normal_cost
-        float extra_cost
-        float standby_cost
     }
     CollaboratorCycleSummary {
         int id PK
@@ -334,211 +456,190 @@ erDiagram
         string detail
         datetime timestamp
     }
-    UserPreference {
-        int id PK
-        int user_id FK
-        json dashboard
-    }
 
-    SeniorityLevel ||--o{ RateCard : "taxas"
-    SeniorityLevel ||--o{ Collaborator : "nível"
-    Collaborator ||--o{ TimesheetRecord : "registros"
-    Cycle ||--o{ TimesheetRecord : "período"
-    Cycle ||--o{ ProjectCyclePlan : "planos"
-    Cycle ||--o{ PepCycleSummary : "sumário PEP"
-    Cycle ||--o{ CollaboratorCycleSummary : "sumário colaborador"
-    Project ||--o{ ProjectCyclePlan : "baseline"
-    Project ||--o{ ProjectBaseline : "revisões"
-    Project ||--o{ UserProjectAccess : "ACL"
-    User ||--o{ UserProjectAccess : "acesso"
-    User ||--o| UserPreference : "prefs"
-    User ||--o{ UploadSession : "uploads"
-    UploadSession ||--o{ QuarantineRecord : "quarentena"
-    ValidationRule ||--o{ QuarantineRecord : "regra"
-    Collaborator ||--o{ CollaboratorCycleSummary : "sumário"
+    SeniorityLevel ||--o{ RateCard : rates
+    SeniorityLevel ||--o{ Collaborator : level
+    Collaborator ||--o{ TimesheetRecord : records
+    Cycle ||--o{ TimesheetRecord : period
+    Cycle ||--o{ ProjectCyclePlan : plans
+    Cycle ||--o{ PepCycleSummary : pep-summary
+    Cycle ||--o{ CollaboratorCycleSummary : collab-summary
+    Project ||--o{ ProjectCyclePlan : baseline
+    Project ||--o{ ProjectBaseline : revisions
+    Project ||--o{ BudgetRevision : history
+    Project ||--o{ UserProjectAccess : acl
+    User ||--o{ UserProjectAccess : access
+    User ||--o{ UploadSession : uploads
+    UploadSession ||--o{ QuarantineRecord : quarantine
+    ValidationRule ||--o{ QuarantineRecord : rule
+    Collaborator ||--o{ CollaboratorCycleSummary : summary
 ```
 
-### Tabelas de sumário pré-computadas
+### Pre-computed summary tables
 
-`PepCycleSummary` e `CollaboratorCycleSummary` são atualizadas atomicamente na mesma transação de cada `ingest_file()`. Os endpoints `/api/v2/*` leem dessas tabelas em vez dos `TimesheetRecord` brutos — consultas O(1) por PEP/ciclo em vez de full-scan.
+`PepCycleSummary` and `CollaboratorCycleSummary` are updated atomically within each `ingest_file()` transaction. The `/api/v2/*` endpoints read from these tables instead of raw `TimesheetRecord` rows — O(1) queries per PEP/cycle instead of full-scans.
 
 ---
 
-## Pipeline de Ingestão
+## Ingestion Pipeline
 
 ```mermaid
 flowchart TD
     A([POST /api/upload-timesheet]) --> P0
 
-    subgraph P0["Fase 0 — Estrutura"]
-        B[Carrega CSV/XLSX com pandas]
-        C{Colunas obrigatórias\npresentes?}
+    subgraph P0["Phase 0 — Structure"]
+        B[Load CSV/XLSX with pandas]
+        C{Required columns\npresent?}
         B --> C
-        C -- não --> ERR([HTTP 422])
-        C -- sim --> D[Verifica ACL PEP\npara usuários não-admin]
+        C -- no --> ERR([HTTP 422])
+        C -- yes --> D[Verify PEP ACL\nfor non-admin users]
     end
 
     D --> P0B
 
-    subgraph P0B["Fase 0b — Pré-scan de datas"]
-        E[Coleta todas as datas parseáveis]
-        F{Data sem ciclo ativo?}
+    subgraph P0B["Phase 0b — Date pre-scan"]
+        E[Collect all parseable dates]
+        F{Date with no active cycle?}
         E --> F
-        F -- sim --> G[Auto-cria ciclo de quarentena\nis_active=False]
-        F -- não --> H[OK]
+        F -- yes --> G[Auto-create quarantine cycle\nis_active=False]
+        F -- no --> H[OK]
     end
 
     G & H --> P1
 
-    subgraph P1["Fase 1 — Validação estrutural por linha"]
-        I1[1a Q8: nome inválido ou vazio]
-        I2[1b Q1: data não parseável]
-        I3[1c Q2: data futura]
-        I4[1d: sem ciclo ativo para a data]
-        I5[1e: horas inválidas ou ausentes]
-        I1 -- inválido --> QR
+    subgraph P1["Phase 1 — Structural validation per row"]
+        I1[Q8: invalid or empty name]
+        I2[Q1: unparseable date]
+        I3[Q2: future date]
+        I4[No active cycle for date]
+        I5[Invalid or missing hours]
+        I1 -- invalid --> QR
         I1 -- ok --> I2
-        I2 -- inválido --> QR
+        I2 -- invalid --> QR
         I2 -- ok --> I3
-        I3 -- futura --> QR
+        I3 -- future --> QR
         I3 -- ok --> I4
-        I4 -- sem ciclo --> QR
-        I4 -- ciclo ok --> I5
-        I5 -- inválido --> QR
+        I4 -- no cycle --> QR
+        I4 -- cycle ok --> I5
+        I5 -- invalid --> QR
         I5 -- ok --> RBAC
-        RBAC[Verifica ciclo fechado\ne projeto suspenso/encerrado]
-        RBAC -- bloqueado --> ERR([HTTP 400 / ClosedCycleError\nLockedProjectError])
+        RBAC[Check closed cycle\nand suspended/completed project]
+        RBAC -- blocked --> ERR2([HTTP 400 ClosedCycleError\nor LockedProjectError])
     end
 
     QR[(QuarantineRecord\nstatus=pending)]
 
     RBAC -- ok --> P2
 
-    subgraph P2["Fase 2 — Motor de ValidationRules (por linha)"]
-        L[Avalia regras ativas\nordenadas por order ASC]
-        M{Ação de maior rank?}
+    subgraph P2["Phase 2 — ValidationRule engine (per row)"]
+        L[Evaluate active rules\nordered by order ASC]
+        M{Highest-rank action?}
         L --> M
-        M -- quarentena --> QR
-        M -- descarte --> SKIP[Linha descartada\nskipped++]
-        M -- warning --> N[Acumula ingest_warnings]
-        M -- info --> NI[Acumula ingest_infos]
-        M -- nenhuma --> N
+        M -- quarantine --> QR
+        M -- discard --> SKIP[Row discarded\nskipped++]
+        M -- warning --> N[Accumulate ingest_warnings]
+        M -- info --> NI[Accumulate ingest_infos]
+        M -- none --> N
     end
 
     N & NI --> PN1
 
-    subgraph PN1["Fase N1 — Colaboradores"]
-        O[Resolve ou cria Collaborator\nauto-create se nome novo]
+    subgraph PN1["Phase N1 — Collaborators"]
+        O[Resolve or create Collaborator\nauto-create for new names]
     end
 
     O --> P3
 
-    subgraph P3["Fase 3 — Regras de agregação"]
-        P[Calcula soma_diaria e soma_semanal\npor colaborador]
-        PA{Regra soma_diaria\nou soma_semanal viola?}
+    subgraph P3["Phase 3 — Aggregate rules"]
+        P[Compute daily and weekly totals\nper collaborator]
+        PA{Daily or weekly\nrule violated?}
         P --> PA
-        PA -- warning --> NW[Acumula ingest_warnings]
-        PA -- info --> NI2[Acumula ingest_infos]
-        PA -- não viola --> R[OK]
+        PA -- warning --> NW[Accumulate ingest_warnings]
+        PA -- info --> NI2[Accumulate ingest_infos]
+        PA -- no violation --> R[OK]
     end
 
     R --> P4
 
-    subgraph P4["Fase 4 — Persistência (transação)"]
-        S[DELETE TimesheetRecord\npor pep_wbs + cycle_id]
-        T[_lookup_rate: busca RateCard\npor senioridade + data]
-        U[freeze_costs: congela\nnormal/extra/standby cost]
-        V[INSERT TimesheetRecord\ncom cost_per_hour frozen]
+    subgraph P4["Phase 4 — Persistence (transaction)"]
+        S[DELETE TimesheetRecord\nby pep_wbs + cycle_id]
+        T[_lookup_rate: find RateCard\nby seniority + date]
+        U[freeze_costs: freeze\nnormal/extra/standby cost]
+        V[INSERT TimesheetRecord\nwith frozen cost_per_hour]
         W[Upsert PepCycleSummary\nUpsert CollaboratorCycleSummary]
         S --> T --> U --> V --> W
     end
 
     W --> P5
 
-    subgraph P5["Fase 5 — Finalização"]
-        X[Persistir QuarantineRecords]
-        Y[Criar UploadSession\ncom contagens por outcome]
-        Z[Commit da transação]
+    subgraph P5["Phase 5 — Finalisation"]
+        X[Persist QuarantineRecords]
+        Y[Create UploadSession\nwith row counts by outcome]
+        Z[Commit transaction]
         X --> Y --> Z
     end
 
     Z --> P6
 
-    subgraph P6["Fase 6 — Auditoria"]
-        AA[Escreve AuditLog\nusuário · ação · entidade · JSON diff]
+    subgraph P6["Phase 6 — Audit"]
+        AA[Write AuditLog entry\nuser · action · entity · JSON diff]
     end
 
     AA --> RES([UploadOut: inserted · skipped\nquarantine · warnings · infos])
 ```
 
-### Formato de entrada esperado (CSV/XLSX)
+### Expected input format (CSV/XLSX)
 
-| Coluna | Obrigatório | Tipo | Notas |
+| Column | Required | Type | Notes |
 |---|:---:|---|---|
-| `Colaborador` | ✅ | Texto | Nome completo; inválidos vão para quarentena (Q8) |
-| `Data` | ✅ | DD/MM/AAAA | Datas futuras → quarentena (Q2) |
-| `Horas totais (decimal)` | ✅ | Float | Ex: `8.5` |
-| `Hora extra` | — | `Sim`/`Não` | Sem coluna = `Não` |
-| `Hora sobreaviso` | — | `Sim`/`Não` | Sem coluna = `Não` |
-| `Código PEP` | — | Texto | Ex: `60IT-001-01` |
-| `PEP` | — | Texto | Descrição legível do PEP |
-| `Hora Inicial [H]` | — | HH:MM | Desambigua múltiplos lançamentos no mesmo dia/PEP |
+| `Colaborador` | ✅ | Text | Full name; invalid entries go to quarantine (Q8) |
+| `Data` | ✅ | DD/MM/YYYY | Future dates → quarantine (Q2) |
+| `Horas totais (decimal)` | ✅ | Float | e.g. `8.5` |
+| `Hora extra` | — | `Sim`/`Não` | No column = `Não` |
+| `Hora sobreaviso` | — | `Sim`/`Não` | No column = `Não` |
+| `Código PEP` | — | Text | e.g. `60IT-001-01` |
+| `PEP` | — | Text | Human-readable PEP description |
+| `Hora Inicial [H]` | — | HH:MM | Disambiguates multiple entries on same day/PEP |
 
 ---
 
-## Motor EVM
+## EVM Engine
 
-O módulo `services/evm.py` é a **única fonte de verdade** para todas as fórmulas EVM do sistema. Nenhum outro arquivo pode reimplementar essas equações.
+The module `services/evm.py` is the **single source of truth** for every EVM formula in the system. No other file may re-implement these equations.
 
-### O padrão EVM Freeze
+### The EVM Freeze Pattern
 
-```mermaid
-sequenceDiagram
-    participant CSV as Arquivo CSV
-    participant ING as ingestion.py
-    participant DB_RC as RateCard DB
-    participant DB_CFG as GlobalConfig DB
-    participant EVM as evm.freeze_costs
-    participant DB_TR as TimesheetRecord DB
+At ingestion, `_lookup_rate(db, collab, record_date)` finds the `RateCard` matching the collaborator's seniority level and the record date. `freeze_costs()` then computes and stores the costs:
 
-    CSV->>ING: normal_hours=8, extra_hours=2, standby_hours=0
-    ING->>DB_RC: _lookup_rate(collaborator, record_date)
-    Note over DB_RC: Busca RateCard onde<br/>valid_from <= record_date <= valid_to<br/>e seniority_level = colaborador
-    DB_RC-->>ING: cost_per_hour = R$ 120,00
-    ING->>DB_CFG: extra_multiplier=1.5, standby_multiplier=0.33
-    ING->>EVM: freeze_costs(8, 2, 0, 120.00, 1.5, 0.33)
-    Note over EVM: normal_cost  = 8 x 120,00 = R$ 960,00<br/>extra_cost   = 2 x 120,00 x 1,5 = R$ 360,00<br/>standby_cost = 0 x 120,00 x 0,33 = R$ 0,00
-    EVM-->>ING: 960.00, 360.00, 0.00
-    ING->>DB_TR: INSERT cost_per_hour=120 normal_cost=960 extra_cost=360 standby=0
-
-    Note over DB_TR: IMUTAVEL apos commit.<br/>Reajustes futuros de Rate Card<br/>NAO alteram registros historicos.
+```
+normal_cost  = normal_hours  × cost_per_hour
+extra_cost   = extra_hours   × cost_per_hour × extra_multiplier
+standby_cost = standby_hours × cost_per_hour × standby_multiplier
 ```
 
-**Por que congelar?** Se a taxa de um colaborador sênior subir de R$ 120 para R$ 150 em março, os relatórios de janeiro e fevereiro devem continuar mostrando o custo original. O PMAS garante isso armazenando o custo calculado junto com cada `TimesheetRecord`.
+Costs are immutable after commit. Future Rate Card changes do NOT retroactively alter stored costs.
 
-### Resolução de orçamento efetivo
+### Effective budget resolution
 
 ```mermaid
 flowchart LR
-    A([Projeto selecionado]) --> B{Existe Baseline\nativa ativa?}
-    B -- sim --> C[budget_hours = baseline.budget_hours\nbudget_cost  = baseline.budget_cost]
-    B -- não --> D[budget_hours = project.budget_hours\nbudget_cost  = project.budget_cost]
-    C & D --> E([Orçamento efetivo\nusado em todos os cálculos EVM])
+    A([Project selected]) --> B{Active baseline\nexists?}
+    B -- yes --> C[budget_hours = baseline.budget_hours\nbudget_cost = baseline.budget_cost]
+    B -- no --> D[budget_hours = project.budget_hours\nbudget_cost = project.budget_cost]
+    C & D --> E([Effective budget\nused in all EVM calculations])
 ```
 
-`ProjectBaseline` registra revisões de orçamento (re-baseline). Enquanto há uma baseline ativa, ela tem precedência sobre os campos diretos do `Project`. Isso preserva rastreabilidade: o histórico de baselines mostra quando e por quem o orçamento foi revisado.
+`ProjectBaseline` records budget revisions (re-baselines). While an active baseline exists, it takes precedence over the project's direct fields.
 
-### Métricas EVM — referência completa
+### EVM metrics reference
 
 #### Earned Value (EV)
-
-O **Earned Value** mede quanto trabalho foi realizado em termos monetários, limitado ao orçamento (BAC).
 
 ```
 EV = min(consumed_hours / budget_hours, 1.0) × BAC
 ```
 
-> O cap em `1.0` impede que um projeto "ganhe" mais valor do que seu orçamento permite — conforme PMBoK.
+EV is capped at BAC — a project cannot "earn" more than its budget allows (per PMBoK).
 
 #### Cost Performance Index (CPI)
 
@@ -546,682 +647,460 @@ EV = min(consumed_hours / budget_hours, 1.0) × BAC
 CPI = EV / AC
 ```
 
-| Valor | Significado | Cor |
+| Value | Meaning | Colour |
 |---|---|---|
-| ≥ 1,00 | Dentro do orçamento | 🟢 success |
-| 0,90 – 0,99 | Atenção | 🟡 warning |
-| < 0,90 | Acima do orçamento | 🔴 danger |
+| ≥ 1.00 | Within budget | 🟢 success |
+| 0.90 – 0.99 | Warning | 🟡 warning |
+| < 0.90 | Over budget | 🔴 danger |
 
 #### Schedule Performance Index (SPI)
 
-O PMAS usa o **proxy AgileEVM de horas** (preferível quando só há baseline de horas, sem custo por ciclo):
+PMAS uses the **AgileEVM hours proxy** (preferable when only a hours baseline exists, without per-cycle costs):
 
 ```
 SPI = cumulative_actual_hours / cumulative_planned_hours
 ```
 
-O SPI é **congelado na última fronteira de avanço do plano** (`freeze_spi_boundary`): se o plano terminou mas o projeto ainda consome horas, o SPI não regride artificialmente — permanece no valor do último ciclo onde `cumulative_planned_hours` avançou.
-
-| Valor | Significado | Cor |
-|---|---|---|
-| ≥ 1,00 | No prazo | 🟢 success |
-| 0,90 – 0,99 | Atenção | 🟡 warning |
-| < 0,90 | Atrasado | 🔴 danger |
+SPI is **frozen at the last planning-advance boundary** (`freeze_spi_boundary`): when the plan ends but the project is still consuming hours, SPI does not artificially regress — it stays at the value from the last cycle where `cumulative_planned_hours` advanced.
 
 #### Estimate at Completion (EAC)
 
-Dois métodos disponíveis:
-
-**EAC padrão (baseado em CPI):**
+**Standard EAC (CPI-based):**
 ```
 EAC = BAC / CPI
 ```
 
-**EAC sensível ao prazo (CPI × SPI):**
+**Schedule-sensitive EAC (CPI × SPI):**
 ```
 EAC_schedule = AC + (BAC − EV) / (CPI × SPI)
 ```
 
-Quando `SPI < 1` (atraso), o `EAC_schedule` é maior — reflete o custo adicional projetado pelo atraso. O campo `eac_method` na resposta indica qual variante foi calculada (`"cpi"` ou `"cpi_spi"`).
+The `eac_method` field in the response indicates which variant was used (`"cpi"` or `"cpi_spi"`).
 
 #### To-Complete Performance Index (TCPI)
-
-Mede a eficiência necessária para terminar dentro do orçamento original:
 
 ```
 TCPI = (BAC − EV) / (BAC − AC)
 ```
 
-| Valor | Significado | Cor |
+| Value | Meaning | Colour |
 |---|---|---|
-| ≤ 1,00 | Meta alcançável | 🟢 success |
-| 1,00 – 1,10 | Meta apertada | 🟡 warning |
-| > 1,10 | Meta inviável no ritmo atual | 🔴 danger |
+| ≤ 1.00 | Goal achievable | 🟢 success |
+| 1.00 – 1.10 | Goal tight | 🟡 warning |
+| > 1.10 | Goal infeasible at current rate | 🔴 danger |
 
-#### Variance at Completion (VAC)
-
-```
-VAC = BAC − EAC
-```
-
-Positivo → economia projetada. Negativo → estouro projetado.
-
-#### Cost Variance (CV)
+#### VAC, CV, SV
 
 ```
-CV = EV − AC
+VAC = BAC − EAC        (positive = projected saving; negative = projected overrun)
+CV  = EV  − AC         (positive = under budget; negative = over budget)
+SV  = cumulative_actual_hours − cumulative_planned_hours
 ```
 
-Positivo → abaixo do orçamento. Negativo → acima do orçamento.
+#### Earned Schedule
 
-#### Schedule Variance (SV — horas)
+For projects with a time-phased plan, PMAS also computes:
+- **ES** (Earned Schedule in cycles)
+- **SPI(t)** = ES / AT (time-based schedule efficiency)
+- **SV(t)** = ES − AT
+- **IEAC(t)** = planned duration / SPI(t)
 
-```
-SV = cumulative_actual_hours − cumulative_planned_hours
-```
+#### Velocity windows
 
-Positivo → adiantado. Negativo → atrasado.
+Three distinct windows govern average hours/cost per cycle. They are intentionally different:
 
-### Diagrama de cálculo do Forecast
+| Context | Window | File | Notes |
+|---|---|---|---|
+| **Forecast** — completion estimate + uncertainty band | last **3** cycles | `v2/forecast.py` | Reactive to recent rhythm; all cycles in window |
+| **Runway** — avg/cycle column + cycles-to-complete | last **3** non-zero cycles | `v2/runway.py` | Zero-hour cycles excluded from denominator |
+| **Simulate (What-If)** — `avg_velocity` baseline | last **min(6, N)** cycles | `v2/simulate.py` | Smoother base for scenario planning; zeros included |
+| **Monte Carlo** — Gaussian μ and σ | **all** cycles with h > 0 | `v2/monte_carlo.py` | Full history needed to model variance |
+| **Sparkline (frontend)** — avg3 reference line | last **3** non-zero cycles | `app.js` | Computed client-side; aligns with Forecast |
 
-```mermaid
-flowchart TD
-    A(["GET /api/v2/forecast?pep_wbs=X"]) --> L1
-
-    subgraph LOAD["1 — Carregamento"]
-        L1["Busca Project + pep_description"]
-        L2["ProjectCyclePlan por ciclo\nplan_by_cycle_start / plan_cost_by_cycle_start"]
-        L3["ProjectBaseline ativa\nresolve_effective_budget\nbaseline tem precedência sobre campos do projeto"]
-        L4["blended_rate = budget_cost / budget_hours\nusado quando plan_cost não está explícito"]
-        L1 --> L2 --> L3 --> L4
-    end
-
-    L4 --> CD["_load_cycle_data\nPepCycleSummary se disponível\nsenão TimesheetRecord bruto agrupado por ciclo"]
-    CD -->|"404 se vazio"| ERR(["HTTP 404"])
-    CD --> LL1
-
-    subgraph LOOP["2 — Loop cronológico sobre os ciclos"]
-        LL1["cum_h += period_h\ncum_c += period_c"]
-        LL2["cum_ph = soma planned_hours dos ciclos ate cyc_start\npc_period = plan_cost explícito\n  ou planned_h x blended_rate se ausente\ncum_pc += pc_period"]
-        LL3["ev_cost_cum = compute_ev_capped\n  = min(cum_h / budget_h, 1.0) x BAC"]
-        LL4["spi_cum = compute_spi(cum_ph, cum_h) se has_plan\nsv_period = compute_sv(cum_h, cum_ph)\ncv_period = compute_cv(ev_cost_cum, cum_c)"]
-        LL5["h_delta / h_delta_pct\nc_delta / c_delta_pct"]
-        LL6["Append history item\nperiod / cumulative / planned / EV\nspi_cum / sv / cv + labels/colors"]
-        LL1 --> LL2 --> LL3 --> LL4 --> LL5 --> LL6
-        LL6 -->|"próximo ciclo"| LL1
-    end
-
-    LL6 -->|"fim dos ciclos"| P1
-
-    subgraph POST["3 — Pos-loop"]
-        P1["consumed_hours = cum_h\nactual_cost = cum_c"]
-        P2["freeze_spi_boundary\nWalk ciclos em ordem, rastreia ultimo ciclo\nonde cum_planned_h avancou\nretorna last_actual_h e last_planned_h"]
-        P3["avg_hours = media das horas\ndos ultimos 3 ciclos com dados"]
-        P1 --> P2 --> P3
-    end
-
-    P3 --> E1
-
-    subgraph EVM["4 — Indicadores EVM finais"]
-        EV_COND(["somente se budget_hours / budget_cost / consumed_hours > 0"])
-        E1["ev_val = compute_ev_capped(consumed_h, budget_h, budget_cost)\nEV capped em BAC"]
-        E2["SPI: compute_spi(last_planned_h, last_actual_h) — boundary frozen\nSV: compute_sv(last_actual_h, last_planned_h)"]
-        E3["somente se actual_cost > 0\nCPI = compute_cpi(ev_val, actual_cost)\nCV  = compute_cv(ev_val, actual_cost)\nTCPI = compute_tcpi(budget_cost, actual_cost, ev_val)"]
-        E4["EAC = compute_eac(budget_cost, cpi)\n  default_to_bac=True: retorna BAC se CPI=null\nEAC_schedule = AC + (BAC-EV) / (CPI x SPI)\nVAC = compute_vac(budget_cost, eac)"]
-        EV_COND --> E1 --> E2 --> E3 --> E4
-    end
-
-    E4 --> CLOSED_CHECK["is_closed = project.status == encerrado\n  AND project.completion_date IS NOT NULL"]
-
-    CLOSED_CHECK --> REM["remaining_hours = max(budget_h - consumed_h, 0)\nremaining_cost  = eac - actual_cost"]
-
-    REM --> C1
-
-    subgraph EST["5 — Estimativa de conclusao"]
-        EST_COND(["somente se NOT is_closed / remaining_h > 0 / avg_hours > 0"])
-        C1["est_cycles = remaining_hours / avg_hours"]
-        C2["Busca proximos N ciclos cadastrados\napos o ultimo ciclo com dados\n(N = ceil(est_cycles))"]
-        C3["est_completion = nome do N-esimo ciclo futuro"]
-        EST_COND --> C1 --> C2 --> C3
-    end
-
-    C3 --> B1
-
-    subgraph BAND["6 — Banda de incerteza"]
-        BAND_COND(["somente se est_cycles calculado / remaining_h > 0"])
-        B1["Ultimas 3 ciclos com dados:\nh_vals = horas por ciclo nao-zero\nrates  = custo/hora por ciclo nao-zero"]
-        B2["Se len(h_vals) >= 2:\nest_cycles_optimistic  = remaining / max(h_vals)\nest_cycles_pessimistic = remaining / min(h_vals)"]
-        B3["Se len(rates) >= 2:\neac_low  = AC + remaining x min(rate)\neac_high = AC + remaining x max(rate)"]
-        BAND_COND --> B1 --> B2 --> B3
-    end
-
-    B3 --> F1
-
-    subgraph FREEZE["7 — Congelamento para projeto encerrado"]
-        F1["remaining_hours = 0 / remaining_cost = 0\ntcpi = null / eac_schedule = null\nest_cycles = null / est_completion = null\nbanda de incerteza = null"]
-        F2["Se actual_cost > 0:\neac = actual_cost — custo real final, nao projecao\nvac = compute_vac(budget_cost, eac)\ncv  = compute_cv(ev_val, actual_cost)"]
-        F1 --> F2
-    end
-
-    F2 --> OUT(["JSON render-ready\nCPI / SPI / EAC / eac_schedule / eac_method\nTCPI / VAC / CV / SV\neac_low / eac_high\nest_cycles / est_cycles_optimistic/pessimistic\nest_completion / avg_hours_per_cycle\nis_closed / using_baseline\nhealth_hours / health_cost\nhistory com EV / SV / CV por ciclo"])
-```
-
-### Banda de incerteza (R-12)
-
-Nas últimas 3 ciclos com dados, o sistema calcula:
-- `est_cycles_optimistic` — usando a maior velocidade observada
-- `est_cycles_pessimistic` — usando a menor velocidade
-- `eac_low` / `eac_high` — AC + horas_restantes × (menor/maior taxa de custo por hora)
-
-Isso produz um intervalo de confiança para o término, sem depender de modelos estatísticos.
-
-### Classificação de saúde (`classify_health`)
-
-Usada no Semáforo, Portfolio Health, Runway e alertas de budget:
+#### Health classification (`classify_health`)
 
 ```
 ratio = consumed / budget
 
 ratio ≥ critical_threshold → "overrun"   🔴
 ratio ≥ warning_threshold  → "warning"   🟡
-caso contrário              → "ok"        🟢
-budget ausente              → "no_budget" ⚫
+otherwise                  → "ok"        🟢
+no budget defined          → "no_budget" ⚫
 ```
 
-Os limiares (`budget_warning_threshold`, `budget_critical_threshold`) são configuráveis via `GlobalConfig` (padrão: 0,9 e 1,0).
+Thresholds are configurable via `GlobalConfig` (defaults: 0.9 and 1.0).
 
 ---
 
-## Motor de Regras de Validação
+## Validation Rule Engine
 
-```mermaid
-flowchart TD
-    Row[Linha do CSV] --> EVAL
+Rules are evaluated per row in `order ASC`. Each rule has a `field`, `operator`, `value`, `action`, and `is_active` flag. System rules (`is_system=True`) cannot be deleted, only toggled.
 
-    subgraph EVAL["evaluate_row_rules - regras por linha (order ASC)"]
-        R1["Regra N\nex: horas_individuais gt 12\naction: quarentena"]
-        R2["Regra N+1\nex: hora_extra eq Sim\naction: warning"]
-        RN["proximas regras..."]
-        R1 -->|falha| M1[RuleMatch: quarentena]
-        R1 -->|passa| R2
-        R2 -->|falha| M2[RuleMatch: warning]
-        R2 -->|passa| RN
-        RN --> ENDR[Fim das regras]
-    end
+### Available fields (per-row)
 
-    M1 & M2 --> RANK["Seleciona acao de maior rank\ninfo=0, warning=1\nquarentena=2, descarte=3"]
-    ENDR --> RANK
-
-    RANK -->|quarentena| QR[(QuarantineRecord)]
-    RANK -->|descarte| SKIP[skipped++]
-    RANK -->|warning| WARN[ingest_warnings]
-    RANK -->|info| INFO[ingest_infos]
-    RANK -->|nenhuma| OK[Linha aceita]
-
-    subgraph AGG["evaluate_aggregate_rules - soma_diaria e soma_semanal (Fase 3)"]
-        AG1["soma_diaria gt 24 -> warning"]
-        AG2["soma_semanal gt 60 -> warning"]
-        AG3["Acao maxima: info ou warning\nquarentena e descarte nao permitidos"]
-    end
-```
-
-**Campos disponíveis por linha (`row_fields`):**
-
-| Campo | Tipo | Descrição |
+| Field | Type | Description |
 |---|---|---|
-| `horas_individuais` | float | Total de horas do lançamento |
-| `hora_extra` | string | `"Sim"` / `"Não"` — indicador da coluna CSV |
-| `hora_sobreaviso` | string | `"Sim"` / `"Não"` — indicador da coluna CSV |
-| `hora_extra_horas` | float | Horas numéricas se `hora_extra=Sim`, senão `0.0` |
-| `hora_sobreaviso_horas` | float | Horas numéricas se `hora_sobreaviso=Sim`, senão `0.0` |
-| `pep_wbs` | string | Código PEP do lançamento (pode ser `None`) |
-| `dia_semana` | int | 0=Segunda … 6=Domingo |
+| `horas_individuais` | float | Total hours for this entry |
+| `hora_extra` | string | `"Sim"` / `"Não"` |
+| `hora_sobreaviso` | string | `"Sim"` / `"Não"` |
+| `hora_extra_horas` | float | Numeric hours if `hora_extra=Sim`, else `0.0` |
+| `hora_sobreaviso_horas` | float | Numeric hours if `hora_sobreaviso=Sim`, else `0.0` |
+| `pep_wbs` | string | PEP code (may be `None`) |
+| `dia_semana` | int | 0=Monday … 6=Sunday |
 
-**Campos de agregação (`soma_diaria`/`soma_semanal` — Fase 3):**
+### Available fields (aggregate — Phase 3)
 
-| Campo | Tipo | Descrição |
+| Field | Type | Description |
 |---|---|---|
-| `soma_diaria` | float | Total de horas do colaborador no dia |
-| `soma_semanal` | float | Total de horas do colaborador na semana ISO |
+| `soma_diaria` | float | Total hours for this collaborator on this day |
+| `soma_semanal` | float | Total hours for this collaborator in this ISO week |
 
-> Regras com `soma_diaria` ou `soma_semanal` só aceitam ações `info` ou `warning`. Tentativas de usar `quarentena` ou `descarte` são rebaixadas para `warning` automaticamente.
+### Operators
 
-**Operadores disponíveis:**
-
-| Operador | Tipo | Comportamento |
+| Operator | Type | Behaviour |
 |---|---|---|
-| `gt` / `gte` / `lt` / `lte` | numérico | Comparação maior/maior-igual/menor/menor-igual |
-| `eq` / `neq` | numérico ou string | Igualdade (tenta float primeiro, cai para string) |
-| `vazio` | qualquer | Campo é `None` ou string vazia |
-| `nao_vazio` | qualquer | Campo tem conteúdo |
-| `contem` | string | Subcadeia (case-insensitive) |
-| `nao_contem` | string | Ausência de subcadeia (case-insensitive) |
-| `in_lista` | string | Valor está na lista separada por vírgulas no `value` |
+| `gt` / `gte` / `lt` / `lte` | numeric | Greater/greater-equal/less/less-equal |
+| `eq` / `neq` | numeric or string | Equality (tries float first, falls back to string) |
+| `vazio` | any | Field is `None` or empty string |
+| `nao_vazio` | any | Field has content |
+| `contem` | string | Substring (case-insensitive) |
+| `nao_contem` | string | Absence of substring (case-insensitive) |
+| `in_lista` | string | Value is in comma-separated list in `value` |
 
-**Ações e rank de prioridade:**
+### Actions and priority rank
 
-| Ação | Rank | Efeito |
+| Action | Rank | Effect |
 |---|---|---|
-| `info` | 0 | Registra em `ingest_infos` (visível no histórico) |
-| `warning` | 1 | Registra em `ingest_warnings`; linha aceita |
-| `quarentena` | 2 | Linha vai para `QuarantineRecord` |
-| `descarte` | 3 | Linha ignorada silenciosamente (`skipped++`) |
+| `info` | 0 | Recorded in `ingest_infos` (visible in history) |
+| `warning` | 1 | Recorded in `ingest_warnings`; row accepted |
+| `quarentena` | 2 | Row goes to `QuarantineRecord` |
+| `descarte` | 3 | Row silently ignored (`skipped++`) |
 
-> Quando múltiplas regras atingem a mesma linha, a ação de **maior rank** prevalece. Regras com `is_system=True` não podem ser excluídas, apenas desativadas.
+When multiple rules match the same row, the **highest-rank action** prevails. Aggregate rules (`soma_diaria`, `soma_semanal`) only accept `info` or `warning` — any attempt to use `quarantena` or `descarte` is downgraded to `warning` automatically.
 
 ---
 
-## Ciclo de Vida da Quarentena
+## Quarantine Lifecycle
 
 ```mermaid
 stateDiagram-v2
     direction LR
 
-    [*] --> pending : falha validacao (Q1/Q2/Q8 ou regra)
+    [*] --> pending : validation failure (Q1/Q2/Q8 or rule)
 
-    pending --> approved : Admin aprova - re-ingestao automatica
-    pending --> rejected : Admin rejeita com motivo
-    pending --> deleted : Admin exclui registro
+    pending --> approved : Admin approves — automatic re-ingestion
+    pending --> rejected : Admin rejects with reason
+    pending --> deleted : Admin deletes record
 
     approved --> [*]
     rejected --> [*]
     deleted --> [*]
 ```
 
-**Visibilidade por papel:**
-
-| Papel | Rota | Dados visíveis |
+| Role | Route | Visible data |
 |---|---|---|
-| `admin` | `GET /api/quarantine` | Todos os registros |
-| `user` | `GET /api/my/quarantine` | Apenas seus próprios uploads |
+| `admin` | `GET /api/quarantine` | All records |
+| `user` | `GET /api/my/quarantine` | Own uploads only |
 
 ---
 
-## Semáforo de Portfólio
+## Portfolio Semaphore
 
-O semáforo é uma barra macro no topo da página Dashboard, atualizada a cada carregamento da aplicação.
+The semaphore is a macro bar at the top of the Dashboard tab, refreshed on every application load.
 
-```mermaid
-flowchart TD
-    A([GET /api/v2/portfolio]) --> B["Por PEP: consumed_hours\nbudget_hours, actual_cost, budget_cost"]
-    B --> C{"budget_hours\ndefinido?"}
-    C -- nao --> GREY["Cinza - sem orcamento"]
-    C -- sim --> D{"consumed/budget\n>= critical?"}
-    D -- sim --> RED["Vermelho >= 100%"]
-    D -- nao --> E{"consumed/budget\n>= warning?"}
-    E -- sim --> YELLOW["Amarelo 90-99%"]
-    E -- nao --> GREEN["Verde < 90%"]
-
-    RED & YELLOW & GREEN & GREY --> F["Agrega contagens por cor"]
-    F --> G["Renderiza barra com dot e contagem por status"]
-    G --> H["Pill por projeto com nome e cor"]
 ```
+ratio = consumed_hours / budget_hours
+
+ratio ≥ critical_threshold → Red    (overrun ≥ 100%)
+ratio ≥ warning_threshold  → Yellow (90–99%)
+otherwise                  → Green  (< 90%)
+no budget defined          → Grey
+```
+
+Each project is shown as a coloured pill. Clicking a pill filters the Portfolio tab to that PEP.
 
 ---
 
 ## Frontend
 
-### Estrutura de abas
+### Tab structure
 
-```mermaid
-graph TD
-    App([PMAS]) --> Dashboard
-    App --> Ciclos
-    App --> Projetos
-    App --> Equipe
-    App --> MinhaArea["Minha Área"]
-    App --> Admin
-
-    Dashboard --> Esforco["Esforço da Equipe\n(barras · radar · timeline)"]
-    Dashboard --> Saude["Saúde do Portfólio\n(treemap · bullet chart)"]
-    Dashboard --> Previsao["Previsão\n(curva-S · EVM KPIs)"]
-
-    Admin --> UsuariosAdmin["Gestão de Usuários"]
-    Admin --> RegrasAdmin["Regras de Validação"]
-    Admin --> QuarentenaAdmin["Quarentena Global"]
-    Admin --> HistoricoAdmin["Histórico de Imports"]
-    Admin --> AuditAdmin["Log de Auditoria"]
-
-    MinhaArea --> MinhaPrefs["Preferências\n(drag-to-reorder)"]
-    MinhaArea --> MeuHistorico["Meu Histórico"]
-    MinhaArea --> MinhaQuarentena["Minha Quarentena"]
-    MinhaArea --> MeusAlertas["Alertas de Budget"]
+```
+PMAS
+├── Dashboard
+│   ├── Team Effort  (bars · radar · timeline)
+│   ├── Portfolio Health  (treemap · bullet chart)
+│   └── Forecast  (S-curve · EVM KPIs)
+├── Ciclos  (billing cycles CRUD)
+├── Projetos  (projects/PEPs CRUD + plans + baselines + ACL)
+├── Equipe  (seniority levels · rate cards · collaborator assignment)
+├── Minha Área
+│   ├── Preferences  (drag-to-reorder charts)
+│   ├── My History
+│   ├── My Quarantine
+│   └── Budget Alerts
+└── Admin
+    ├── Users
+    ├── Validation Rules
+    ├── Global Quarantine
+    ├── Import History
+    └── Audit Log
 ```
 
-### Gerenciamento de gráficos ECharts
+### Key front-end patterns
 
-```mermaid
-flowchart LR
-    A[Usuário navega\npara sub-aba] --> B{Gráfico\nja criado?}
-    B -- não --> C[_getOrCreateChart\necharts.init no container]
-    B -- sim --> C2[Reutiliza instância]
-    C & C2 --> D[Carrega dados via API]
-    D --> E[chart.setOption]
-
-    F[Usuário sai\nda sub-aba] --> G[_disposeTabCharts\nchart.dispose]
-
-    H[ResizeObserver\nem main] --> I[chart.resize\npara todas as instâncias ativas]
-```
-
-**Registry `CHARTS_PER_TAB`:** cada sub-aba declara quais `chart_id` gerencia. `_disposeTabCharts(tab)` libera memória ao sair, evitando acúmulo de instâncias ECharts.
-
-### i18n
-
-531 chaves por idioma (`pt.js` e `en.js`). `_t(key)` retorna a tradução do idioma ativo. `_applyI18n()` percorre todos os elementos `[data-i18n]` e substitui `textContent`, `placeholder`, `title` e `aria-label`. Toggle de idioma persiste em `localStorage`.
+- **Auth:** JWT Bearer token in `sessionStorage`. `_getTokenPayload()` decodes it. `_isAdmin()` gates the Admin tab. `_bootApp()` is the central init called after login and on page load.
+- **ECharts lifecycle:** `CHARTS_PER_TAB` registry; `_disposeTabCharts()` on sub-tab leave; `_getOrCreateChart()` on enter; single `ResizeObserver` on `<main>` for responsiveness.
+- **i18n:** 531 keys per language (`pt.js` / `en.js`). `_t(key)` returns the active language translation. `_applyI18n()` walks all `[data-i18n]` elements. Language toggle persists in `localStorage`.
+- **Color rules (GR-3):** Chart data-series colors must use `_getPalette()`. Semantic/status colors (health alerts, thresholds) may use `_cssVar()`. Hardcoded hex literals in chart options are **forbidden**.
+- **Locale pattern:** `_locale === 'pt' ? 'pt-BR' : 'en-US'` — never hardcode `'pt-BR'` directly in `toLocaleString`.
+- **Currency pattern:** Always format through `_fmtCost()` — never raw `toLocaleString` with `minimumFractionDigits: 2`.
+- **Script loading order:** `app.js` → `crud/cycles.js` → `crud/projects.js` → `charts/*.js`. Later scripts share `window` scope with earlier ones (plain `<script>` tags, not ES modules).
+- **Global error handler:** `window.addEventListener('unhandledrejection', ...)` catches unhandled Promise rejections and surfaces them via `notify()`.
+- **Session expiry warning:** `_checkTokenExpiry()` runs every 5 minutes and warns the user when fewer than 10 minutes remain.
+- **Visibility refresh:** `document.addEventListener('visibilitychange', ...)` reloads stale data when the tab is brought back into focus.
 
 ---
 
-## API REST
+## REST API Reference
 
-### Upload e ingestão
+### Upload and ingestion
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `POST` | `/api/upload-timesheet` | Ingestão CSV/XLSX (pipeline 6 fases) |
-| `GET` | `/api/upload-history` | Histórico de uploads (admin) |
-| `GET` | `/api/upload-history/{id}` | Detalhes de um upload específico |
+| `POST` | `/api/upload-timesheet` | CSV/XLSX ingestion (6-phase pipeline) |
+| `GET` | `/api/upload-history` | Upload history (admin) |
+| `GET` | `/api/upload-history/{id}` | Details of a specific upload |
 
-### Dashboard e Analytics (v2)
+### Dashboard and Analytics (v2)
 
-| Método | Rota | Descrição | Filtros principais |
+| Method | Route | Description | Main filters |
 |---|---|---|---|
-| `GET` | `/api/v2/filters` | Colaboradores, PEPs e ciclos em uma única chamada | — |
-| `GET` | `/api/v2/effort` | Esforço por colaborador (horas + custo) | `cycle_id` · `pep_wbs` · `pep_description` · `collaborator_id` · `date_from` · `date_to` |
-| `GET` | `/api/v2/portfolio` | Saúde do portfólio por PEP (EVM + hours) | idem |
-| `GET` | `/api/v2/forecast` | Previsão EVM completa por PEP (curva-S + CPI/SPI/EAC) | `pep_wbs` · `date_from` · `date_to` |
-| `GET` | `/api/v2/runway` | Runway e risco por PEP (ciclos restantes, cost_risk) | idem effort |
-| `GET` | `/api/v2/trends` | Queima de horas/custo por ciclo (cronológico) | `pep_wbs` · `date_from` · `date_to` |
-| `GET` | `/api/v2/allocation` | Alocação: horas e custo por colaborador × PEP | idem effort |
-| `GET` | `/api/v2/concentration` | Concentração: top contribuidores por PEP | idem effort |
-| `GET` | `/api/v2/over-allocation` | Over-allocation: colaboradores acima da capacidade | `cycle_id` · `date_from` · `date_to` · `sort` |
-| `POST` | `/api/v2/projects/{id}/simulate` | What-If: multiplica velocidade + horas extras → EAC projetado | body: `velocity_multiplier`, `extra_hours_per_cycle` |
-| `GET` | `/api/v2/projects/{id}/monte-carlo` | Monte Carlo: P10/P50/P90 de conclusão + histograma | `iterations` · `date_from` · `date_to` · `seed` |
+| `GET` | `/api/v2/filters` | Collaborators, PEPs and cycles in one call | — |
+| `GET` | `/api/v2/effort` | Effort by collaborator (hours + cost) | `cycle_id` · `pep_wbs` · `pep_description` · `collaborator_id` · `date_from` · `date_to` |
+| `GET` | `/api/v2/portfolio` | Portfolio health by PEP (EVM + hours) | same as effort |
+| `GET` | `/api/v2/forecast` | Full EVM forecast per PEP (S-curve + CPI/SPI/EAC) | `pep_wbs` · `date_from` · `date_to` |
+| `GET` | `/api/v2/runway` | Runway and risk per PEP (remaining cycles, cost_risk) | same as effort |
+| `GET` | `/api/v2/trends` | Hours/cost burn per cycle (chronological) | `pep_wbs` · `date_from` · `date_to` |
+| `GET` | `/api/v2/allocation` | Allocation matrix: hours and cost per collaborator × PEP | same as effort |
+| `GET` | `/api/v2/concentration` | Concentration risk: top contributors per PEP | same as effort |
+| `GET` | `/api/v2/over-allocation` | Over-allocation: collaborators exceeding capacity | `cycle_id` · `date_from` · `date_to` · `sort` |
+| `POST` | `/api/v2/projects/{id}/simulate` | What-If: multiply velocity + extra hours → projected EAC | body: `velocity_multiplier`, `extra_hours_per_cycle` |
+| `GET` | `/api/v2/projects/{id}/monte-carlo` | Monte Carlo: P10/P50/P90 completion + histogram | `iterations` · `date_from` · `date_to` · `seed` |
 
-### Dashboard legado (v1)
+### Cycles
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/dashboard/collaborator-timeline` | Evolução de horas por colaborador ao longo dos ciclos |
-
-### Ciclos
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET/POST` | `/api/cycles` | Listar / criar |
-| `PUT/DELETE` | `/api/cycles/{id}` | Atualizar / excluir |
-| `PATCH` | `/api/cycles/{id}/toggle-status` | Bloquear / desbloquear |
+| `GET/POST` | `/api/cycles` | List / create |
+| `PUT/DELETE` | `/api/cycles/{id}` | Update / delete |
+| `PATCH` | `/api/cycles/{id}/toggle-status` | Lock / unlock |
 | `POST/GET` | `/api/cycles/import` · `/api/cycles/export` | CSV import/export |
 
-### Projetos e Planos
+### Projects and Plans
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `GET/POST` | `/api/projects` | Listar / criar |
-| `PUT/DELETE` | `/api/projects/{id}` | Atualizar / excluir |
+| `GET/POST` | `/api/projects` | List / create |
+| `PUT/DELETE` | `/api/projects/{id}` | Update / delete |
 | `POST/GET` | `/api/projects/import` · `/api/projects/export` | CSV import/export |
-| `GET/POST` | `/api/projects/{id}/plans` | Planos de ciclo (baseline S-curve) |
-| `PUT/DELETE` | `/api/projects/{id}/plans/{plan_id}` | Atualizar / excluir plano |
-| `GET/POST` | `/api/plans/export` · `/api/plans/import` | CSV de planos |
-| `GET/POST/DELETE` | `/api/projects/{id}/access` | ACL por usuário (admin) |
-| `POST` | `/api/projects/{id}/baseline` | Cria nova revisão de baseline (congela budget atual) |
-| `GET` | `/api/projects/{id}/baselines` | Lista revisões de baseline do projeto |
-| `DELETE` | `/api/projects/{id}/baselines/{bl_id}` | Exclui uma revisão (admin) |
-| `POST` | `/api/projects/{id}/baselines/{bl_id}/activate` | Reativa um baseline histórico |
+| `GET/POST` | `/api/projects/{id}/plans` | Cycle plans (baseline S-curve) |
+| `PUT/DELETE` | `/api/projects/{id}/plans/{plan_id}` | Update / delete plan |
+| `GET/POST` | `/api/plans/export` · `/api/plans/import` | Plans CSV |
+| `GET/POST/DELETE` | `/api/projects/{id}/access` | Per-user ACL (admin) |
+| `POST` | `/api/projects/{id}/baseline` | Lock current budget as a new baseline revision |
+| `GET` | `/api/projects/{id}/baselines` | List baseline revisions |
+| `DELETE` | `/api/projects/{id}/baselines/{bl_id}` | Delete a revision (admin) |
+| `POST` | `/api/projects/{id}/baselines/{bl_id}/activate` | Reactivate a historical baseline |
+| `GET` | `/api/projects/{id}/budget-history` | Budget revision log (sparkline data) |
 
-### Equipe e Rate Card
+### Team and Rate Card
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `GET/POST/PUT/DELETE` | `/api/seniority-levels[/{id}]` | CRUD de níveis de senioridade |
-| `GET/POST/PUT/DELETE` | `/api/rate-cards[/{id}]` | CRUD de taxas com vigência |
-| `GET` | `/api/team` | Colaboradores com senioridade e taxa atual |
-| `PUT` | `/api/team/{id}/seniority` | Atribuir senioridade individual |
-| `PUT` | `/api/team/bulk-seniority` | Atribuir senioridade em lote |
-| `GET/PUT` | `/api/config` | Multiplicadores EVM e limiares globais |
+| `GET/POST/PUT/DELETE` | `/api/seniority-levels[/{id}]` | Seniority level CRUD |
+| `GET/POST/PUT/DELETE` | `/api/rate-cards[/{id}]` | Rate cards CRUD (with date ranges) |
+| `GET` | `/api/team` | Collaborators with current seniority and rate |
+| `PUT` | `/api/team/{id}/seniority` | Assign seniority to one collaborator |
+| `PUT` | `/api/team/bulk-seniority` | Bulk seniority assignment |
+| `GET/PUT` | `/api/config` | Global EVM multipliers and thresholds |
 
-### Quarentena e Regras
+### Quarantine and Rules
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/quarantine` | Listar registros (admin) |
-| `POST` | `/api/quarantine/{id}/approve` | Aprovar e re-ingestar |
-| `POST` | `/api/quarantine/{id}/reject` | Rejeitar |
-| `DELETE` | `/api/quarantine/{id}` | Excluir |
-| `GET/POST` | `/api/validation-rules` | Listar / criar regras |
-| `PUT/DELETE` | `/api/validation-rules/{id}` | Atualizar / excluir |
-| `PATCH` | `/api/validation-rules/{id}/toggle` | Ativar / desativar |
-| `POST` | `/api/validation-rules/reorder` | Reordenar |
+| `GET` | `/api/quarantine` | List records (admin) |
+| `POST` | `/api/quarantine/{id}/approve` | Approve and re-ingest |
+| `POST` | `/api/quarantine/{id}/reject` | Reject |
+| `DELETE` | `/api/quarantine/{id}` | Delete |
+| `GET/POST` | `/api/validation-rules` | List / create rules |
+| `PUT/DELETE` | `/api/validation-rules/{id}` | Update / delete |
+| `PATCH` | `/api/validation-rules/{id}/toggle` | Enable / disable |
+| `POST` | `/api/validation-rules/reorder` | Reorder |
 
-### Usuários, Audit e Tema
+### Users, Audit and Theme
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| `POST` | `/api/token` | Login — retorna JWT (exp: 8h) |
-| `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | CRUD de usuários (admin) |
-| `PUT` | `/api/users/{id}/password` | Alterar senha |
-| `GET` | `/api/audit-log` | Log de auditoria (admin) |
-| `GET/PUT` | `/api/theme` | Tema global |
-| `POST/DELETE` | `/api/theme/logo` | Upload / remoção de logo |
-| `GET/PUT` | `/api/my/preferences` | Preferências do usuário logado |
-| `GET` | `/api/my/upload-history` | Histórico de uploads do usuário |
-| `GET` | `/api/my/quarantine` | Quarentena do usuário |
-| `GET` | `/api/my/budget-alerts` | Alertas de budget acessíveis ao usuário |
-| `GET` | `/api/collaborators` | Lista colaboradores com registros |
-| `GET` | `/api/peps` | Lista PEPs com descrições agrupadas |
+| `POST` | `/api/token` | Login — returns JWT (exp: 8h) |
+| `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | User CRUD (admin) |
+| `PUT` | `/api/users/{id}/password` | Change password |
+| `GET` | `/api/audit-log` | Audit log (admin) |
+| `GET/PUT` | `/api/theme` | Global theme |
+| `POST/DELETE` | `/api/theme/logo` | Logo upload / removal |
+| `GET/PUT` | `/api/my/preferences` | Logged-in user preferences |
+| `GET` | `/api/my/upload-history` | User's own upload history |
+| `GET` | `/api/my/quarantine` | User's own quarantine |
+| `GET` | `/api/my/budget-alerts` | Budget alerts accessible to the user |
 
 ---
 
-## Instalação e Execução
-
-### Pré-requisitos
-
-- Python **3.11** ou **3.12**
-- pip
-
-### Execução direta
-
-```bash
-git clone https://github.com/RtaSistemas/PMAS.git
-cd PMAS
-pip install -r requirements.txt
-python -m uvicorn backend.app.main:app --reload
-```
-
-Acesse **http://127.0.0.1:8000** — login padrão: `admin` / `admin`.
-
-O banco `pmas.db` é criado automaticamente na primeira execução. Novas colunas são aplicadas via `_migrate_columns()` (`ALTER TABLE`) no startup — bancos existentes nunca perdem dados.
-
-### Opções de inicialização
-
-```bash
-# Expor na rede local
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8080
-
-# Sem reload automático (produção)
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 1
-```
-
----
-
-## Dados de Amostra
-
-```bash
-python amostras/generate_portfolio.py
-```
-
-Gera em `amostras/`:
-- `ciclos.csv` — 29 ciclos mensais (Jan/2024 – Mai/2026)
-- `projetos.csv` — 10 PEPs com códigos `60IT-XXX-01`
-- `senioridade_rate_card.csv` — níveis e taxas
-- `timesheets/AAAA-MM.csv` — timesheet mensal por ciclo, pronto para import
-
-```bash
-# Simulação de portfólio grande (opcional)
-python amostras/generate_grande_sim.py
-# Gera em amostras/grande_sim/: 5 anos de histórico, múltiplas equipes
-```
-
----
-
-## Configuração
-
-### GlobalConfig (singleton — Admin → Configuração Global)
-
-| Parâmetro | Padrão | Descrição |
-|---|---|---|
-| `extra_hours_multiplier` | `1.5` | Multiplicador de custo para horas extras |
-| `standby_hours_multiplier` | `0.33` | Multiplicador de custo para horas sobreaviso |
-| `budget_warning_threshold` | `0.9` | Limite para alerta ⚠ (amarelo) |
-| `budget_critical_threshold` | `1.0` | Limite para alerta 🔴 (vermelho) |
-| `anomaly_max_daily_hours` | `24.0` | Teto de horas diárias para regra de anomalia |
-| `timezone` | `America/Sao_Paulo` | Fuso horário |
-
-### Roles de usuário
-
-| Role | Permissões |
-|---|---|
-| `admin` | Acesso total: todos os PEPs, todas as rotas de gestão |
-| `user` | Leitura filtrada por ACL; upload de timesheets; visualização de próprios uploads/quarentena |
-
-### ACL por PEP
-
-`UserProjectAccess` define uma whitelist de PEPs por usuário. Whitelist vazia = acesso a todos os PEPs. Enforced em `/api/v2/portfolio`, `/api/v2/effort`, `/api/v2/runway`, `/api/v2/forecast` e no próprio upload.
-
----
-
-## Testes
+## Tests
 
 ```bash
 pip install pytest httpx
 pytest tests/ -v
 ```
 
-590 testes em 20 arquivos. Todos usam SQLite em memória (`StaticPool`) — nenhum `pmas.db` é tocado.
+635 tests across 21 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
-| Arquivo | Testes | Cobertura |
+| File | Tests | Coverage |
 |---|---:|---|
-| `test_evm_service.py` | 104 | Unitários de todas as funções de `services/evm.py` (happy/boundary/None) |
-| `test_full_sample.py` | 83 | Pipeline end-to-end com dados de amostra completos |
-| `test_ingestion.py` | 64 | Parse CSV/XLSX, quarentena, motor de regras |
-| `test_v2_endpoints.py` | 64 | Todos endpoints `/api/v2` (filters, portfolio, effort, trends, forecast, allocation, concentration) |
-| `test_ratecard.py` | 35 | SeniorityLevel, RateCard, EVM freeze |
-| `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, avaliação por linha |
-| `test_projects.py` | 27 | CRUD projetos + campos EVM (datas, status) |
-| `test_theme.py` | 24 | CRUD tema UI + presets de tema |
-| `test_quarantine.py` | 23 | Workflow approve/reject/delete |
-| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` (janela de velocidade, SPI/CPI, risco top-1) |
-| `test_users.py` | 22 | CRUD usuários, troca de senha, restrição de roles |
-| `test_cycles.py` | 20 | CRUD ciclos |
-| `test_evm_integrity.py` | 20 | EVM HTTP integration — respostas render-ready, EV capped at BAC, CPI=EV/AC |
-| `test_over_allocation.py` | 13 | Detecção de over-allocation (filtros, sort, CSV) |
-| `test_validation_rules.py` | 10 | API de regras de validação |
-| `test_monte_carlo.py` | 8 | Monte Carlo P10/P50/P90, histograma, guard de dados insuficientes |
-| `test_simulate.py` | 7 | What-If: janela de velocidade, EAC projetado, burn-up |
-| `test_auth.py` | 5 | Login JWT, validação de token |
-| `test_my.py` | 5 | Endpoints `/api/my/*` per-user |
-| `test_simulation.py` | 1 | Smoke test end-to-end de simulação de portfólio |
+| `test_evm_service.py` | 104 | Unit tests for every function in `services/evm.py` (happy/boundary/None) |
+| `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
+| `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints |
+| `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
+| `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
+| `test_projects.py` | 27 | Project CRUD + EVM fields (dates, status) |
+| `test_theme.py` | 24 | UI theme CRUD + theme presets |
+| `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
+| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` |
+| `test_users.py` | 22 | User CRUD, password change, role enforcement |
+| `test_cycles.py` | 20 | Cycle CRUD |
+| `test_evm_integrity.py` | 20 | EVM HTTP integration — render-ready responses, EV capped at BAC |
+| `test_over_allocation.py` | 13 | Over-allocation detection (filters, sort, CSV) |
+| `test_upload_guards.py` | 11 | Upload rate-limiting and auth guards |
+| `test_validation_rules.py` | 10 | ValidationRule API |
+| `test_monte_carlo.py` | 8 | Monte Carlo P10/P50/P90, histogram, insufficient-data guard |
+| `test_simulate.py` | 7 | What-If: velocity window, projected EAC, burn-up |
+| `test_auth.py` | 5 | JWT login, token validation |
+| `test_my.py` | 5 | `/api/my/*` per-user endpoints |
+| `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test |
 
-O fixture `clean_db` em `conftest.py` limpa todas as tabelas **antes** de cada teste (setup, não teardown), garantindo estado inicial conhecido.
+The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup, not teardown) so every test starts from a known empty state.
+
+### Golden rules tests (`test_golden_rules.py`)
+
+Automated checks that enforce architectural constraints on every CI run:
+- No EVM formulas outside `services/evm.py` (GR-2)
+- No hardcoded hex literals in chart color properties (GR-3)
+- No hardcoded `'pt-BR'` locale in `app.js`, `crud/cycles.js`, `crud/projects.js`
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 PMAS/
 ├── backend/
 │   └── app/
-│       ├── main.py              # FastAPI: CORS, routers, static, init_db
-│       ├── models.py            # 20 modelos ORM (SQLAlchemy 2.0)
-│       ├── schemas.py           # Pydantic I/O
-│       ├── database.py          # Engine SQLite, get_db(), _migrate_columns()
+│       ├── main.py              # FastAPI: CORS, routers, static mount, init_db
+│       ├── models.py            # 20 ORM models (SQLAlchemy 2.0)
+│       ├── schemas.py           # Pydantic I/O models
+│       ├── database.py          # SQLite engine, get_db(), _migrate_columns()
 │       ├── deps.py              # JWT: get_current_user, require_admin
 │       ├── audit.py             # log_audit() helper
-│       ├── limiter.py           # Rate limiter
-│       ├── utils.py             # now_br(), helpers
+│       ├── limiter.py           # Rate limiter (slowapi)
+│       ├── utils.py             # now_br(), misc helpers
 │       ├── routers/
 │       │   ├── auth.py          # POST /api/token
-│       │   ├── cycles.py        # CRUD + CSV ciclos
-│       │   ├── projects.py      # CRUD + CSV projetos
-│       │   ├── plans.py         # Baseline S-curve
-│       │   ├── baselines.py     # Revisões de baseline
-│       │   ├── ratecard.py      # Rate cards + equipe
-│       │   ├── upload.py        # Upload de timesheet
-│       │   ├── quarantine.py    # Fluxo de quarentena
+│       │   ├── cycles.py        # CRUD + CSV for billing cycles
+│       │   ├── projects.py      # CRUD + CSV for projects
+│       │   ├── plans.py         # Baseline S-curve (cycle plans)
+│       │   ├── baselines.py     # Budget baseline revisions
+│       │   ├── ratecard.py      # Rate cards + team seniority
+│       │   ├── upload.py        # Timesheet upload
+│       │   ├── quarantine.py    # Quarantine workflow
 │       │   ├── validation_rules.py
 │       │   ├── users.py
-│       │   ├── my.py            # Endpoints per-user
-│       │   ├── acl.py           # ACL por PEP
+│       │   ├── my.py            # Per-user endpoints
+│       │   ├── acl.py           # Per-PEP ACL
 │       │   ├── auditlog.py
 │       │   ├── theme.py
 │       │   └── v2/
-│       │       ├── effort.py         # Esforço por colaborador
-│       │       ├── portfolio.py      # Saúde do portfólio
-│       │       ├── forecast.py       # EVM completo por PEP
-│       │       ├── runway.py         # Runway + risco
-│       │       ├── trends.py         # Queima de horas por ciclo
-│       │       ├── allocation.py
-│       │       ├── concentration.py
-│       │       ├── over_allocation.py # Over-allocation por colaborador
-│       │       ├── simulate.py        # What-If: cenário de velocidade + horas extras
-│       │       ├── monte_carlo.py     # Monte Carlo: P10/P50/P90 + histograma
+│       │       ├── effort.py         # Effort by collaborator
+│       │       ├── portfolio.py      # Portfolio health (EVM-aware)
+│       │       ├── forecast.py       # Full EVM forecast per PEP
+│       │       ├── runway.py         # Runway + schedule risk
+│       │       ├── trends.py         # Hour/cost burn per cycle
+│       │       ├── allocation.py     # Allocation matrix
+│       │       ├── concentration.py  # Concentration risk
+│       │       ├── over_allocation.py
+│       │       ├── simulate.py       # What-If scenario
+│       │       ├── monte_carlo.py    # Monte Carlo P10/P50/P90
 │       │       └── filters.py
 │       └── services/
-│           ├── evm.py           # ← Fonte única de todas as fórmulas EVM
-│           ├── ingestion.py     # Pipeline 6 fases + _lookup_rate()
-│           ├── rule_engine.py   # Motor de ValidationRules
+│           ├── evm.py           # ← Single source of truth for all EVM formulas
+│           ├── ingestion.py     # 6-phase pipeline + _lookup_rate()
+│           ├── rule_engine.py   # ValidationRule engine
 │           ├── summaries.py     # Upsert PepCycleSummary / CollaboratorCycleSummary
 │           ├── quarantine_svc.py
 │           ├── upload_session_svc.py
 │           └── theme_svc.py
 ├── frontend/
-│   ├── index.html               # 6 abas + 3 sub-abas analíticas + modais
-│   ├── style.css                # Design system: Dark Navy + Sky Blue
-│   ├── app.js                   # Toda a lógica cliente (i18n · CRUD · charts · auth)
+│   ├── index.html               # 6 tabs + 3 analytics sub-tabs + modals
+│   ├── style.css                # Dark Navy + Sky Blue design system
+│   ├── app.js                   # Auth · i18n · ECharts lifecycle · Equipe/Admin CRUD
+│   ├── crud/
+│   │   ├── cycles.js            # Billing cycles CRUD (split from app.js)
+│   │   └── projects.js          # Projects/PEPs CRUD + plans + baselines + ACL
 │   ├── ui-helpers.js            # _makePaginator · _renderTable · _buildTableRow
-│   ├── multiselect.js           # Componente MultiSelect cascata
-│   ├── evm-glossary.js          # Glossário EVM (tooltips)
-│   ├── echarts.min.js           # ECharts 5 (bundle local)
+│   ├── multiselect.js           # Self-contained MultiSelect cascading component
+│   ├── evm-glossary.js          # EVM glossary (tooltips)
+│   ├── echarts.min.js           # ECharts 5 (local bundle)
 │   └── charts/
-│       ├── effort.js            # Barras de esforço por colaborador
+│       ├── effort.js            # Effort bar charts
 │       ├── portfolio.js         # Treemap + Bullet chart
-│       └── forecast.js          # Curva-S + KPIs EVM
+│       └── forecast.js          # S-curve + EVM KPI cards
 ├── frontend/lang/
-│   ├── pt.js                    # 531 chaves PT-BR
-│   └── en.js                    # 531 chaves EN
-├── tests/                       # 20 arquivos, 590 testes
-├── amostras/                    # Gerador de portfólio + CSVs prontos
-├── assets/                      # Ícones para executável Windows
-├── static/assets/logos/         # Logos enviados via /api/theme/logo
+│   ├── pt.js                    # 531 keys — pt-BR
+│   └── en.js                    # 531 keys — en
+├── tests/                       # 21 files, 635 tests
+│   └── frontend/e2e/            # Playwright E2E tests
+├── amostras/                    # Portfolio generator + ready-to-import CSVs
+├── assets/                      # Icons for Windows executable
+├── static/assets/logos/         # Logos uploaded via /api/theme/logo
 ├── .github/workflows/
-│   ├── tests.yml                # CI: pytest Python 3.11 e 3.12
-│   └── release.yml              # Build PyInstaller Linux + Windows
-├── CLAUDE.md                    # Guia de desenvolvimento para IA
-├── MANUAL.md                    # Manual do usuário
+│   ├── tests.yml                # CI: pytest on Python 3.11 and 3.12
+│   └── release.yml              # Build: PyInstaller Linux + Windows
+├── CLAUDE.md                    # AI development guidance
+├── CHANGELOG.md                 # Version history
+├── Makefile                     # Shortcuts: serve, test, test-backend
 ├── requirements.txt
-├── requirements-lock.txt
-└── run.py                       # Entrypoint PyInstaller
+├── .env.example
+└── run.py                       # PyInstaller entrypoint
 ```
 
 ---
 
-## Build Standalone
+## Standalone Build
 
-O PMAS pode ser distribuído como executável único (sem Python instalado):
+PMAS can be distributed as a single executable (no Python required):
 
 ```bash
-# Disparar build via GitHub Actions (publica em Releases)
-git tag v1.2.0
-git push origin v1.2.0
+# Trigger build via GitHub Actions (publishes to Releases)
+git tag v2.0.0
+git push origin v2.0.0
 
-# Build local — Linux
+# Local build — Linux
 pip install pyinstaller
 pyinstaller --onefile --name pmas-linux-x64 \
   --add-data "frontend:frontend" \
   --add-data "static:static" \
   run.py
 
-# Build local — Windows
+# Local build — Windows
 pyinstaller --onefile --name pmas-windows-x64 \
   --icon assets\icon.ico \
   --add-data "frontend;frontend" \
@@ -1229,10 +1108,10 @@ pyinstaller --onefile --name pmas-windows-x64 \
   run.py
 ```
 
-O workflow `.github/workflows/release.yml` executa ambos os builds em paralelo (runner Linux para x64, runner Windows para x64) e anexa os binários ao GitHub Release automaticamente.
+The workflow `.github/workflows/release.yml` runs both builds in parallel (Linux runner for x64, Windows runner for x64) and attaches the binaries to the GitHub Release automatically.
 
 ---
 
-## Licença
+## License
 
-Distribuído sob licença MIT. Consulte [`LICENSE`](LICENSE) para detalhes.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
