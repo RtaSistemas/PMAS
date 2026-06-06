@@ -76,12 +76,195 @@ def ingest_file(
     current_user=None,
 ) -> dict:
     # Phase 0: Load and validate structure
-    df = _load_dataframe(file_bytes, filename)
-    ingest_warnings: list[str] = []
+    df = _phase_load_and_validate(file_bytes, filename)
+
+    # Authorization filter (Phase 0 — read-only, outside transaction)
+    df, ingest_warnings = _phase_authorize_peps(df, db, user_id, user_role)
+
     ingest_infos: list[str] = []
 
-    # Item 2: non-admin with ACL restrictions must supply a PEP column so the
-    # authorization filter has something to evaluate.
+    if len(df) > _MAX_ROWS_WARNING:
+        ingest_warnings.append(
+            f"Arquivo com volume elevado: {len(df)} linhas. "
+            f"Verifique se o período exportado está correto."
+        )
+
+    # Load active ValidationRules once for the entire ingest
+    rules = (
+        db.query(ValidationRule)
+        .filter(ValidationRule.is_active == True)  # noqa: E712
+        .order_by(ValidationRule.order)
+        .all()
+    )
+
+    # Phase 0b: pre-scan all unique parseable dates
+    collab_cache: dict[str, Collaborator] = {}
+    cycle_cache = _phase_prescan_dates(df, db)
+
+    # Phase 1 + 2: Per-row structural validation and rule evaluation
+    valid_rows, quarantine_buffer, row_warnings, row_infos, new_collaborators, skipped = (
+        _phase_validate_rows(df, db, rules, cycle_cache, collab_cache)
+    )
+    ingest_warnings.extend(row_warnings)
+    ingest_infos.extend(row_infos)
+
+    # N1: new collaborators info
+    if new_collaborators:
+        ingest_infos.append(
+            f"Novo(s) colaborador(es) criado(s): {', '.join(new_collaborators)}."
+        )
+
+    # RBAC check on valid rows' cycles
+    if user_role != "admin":
+        closed_names: list[str] = []
+        seen_cycle_ids: set[int] = set()
+        for vr in valid_rows:
+            c = vr["cycle"]
+            if c.id not in seen_cycle_ids and c.is_closed:
+                closed_names.append(c.name)
+            seen_cycle_ids.add(c.id)
+        if closed_names:
+            raise ClosedCycleError(closed_names)
+
+    # Locked project check
+    pep_codes_in_file: set[str] = {
+        _str_or_none(vr["row"].get(_COL_PEP_CODE))
+        for vr in valid_rows
+    } - {None}
+    if pep_codes_in_file:
+        locked = (
+            db.query(Project)
+            .filter(
+                Project.pep_wbs.in_(pep_codes_in_file),
+                Project.status.in_(["encerrado", "suspenso"]),
+            )
+            .all()
+        )
+        if locked:
+            raise LockedProjectError([p.name or p.pep_wbs for p in locked])
+
+    # Phase 3: Aggregate rules — compute daily/weekly sums and evaluate
+    agg_warnings, agg_infos = _phase_aggregate_rules(valid_rows, rules)
+    ingest_warnings.extend(agg_warnings)
+    ingest_infos.extend(agg_infos)
+
+    # Load GlobalConfig multipliers once — used for freeze_costs
+    cfg = db.get(GlobalConfig, 1)
+    extra_multiplier   = cfg.extra_hours_multiplier   if cfg else 1.5
+    standby_multiplier = cfg.standby_hours_multiplier if cfg else 0.33
+
+    try:
+        # Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records
+        inserted, skipped_phase4, phase4_warnings, phase4_infos, pep_cycle_scope = (
+            _phase_upsert_records(db, valid_rows, extra_multiplier, standby_multiplier)
+        )
+        skipped += skipped_phase4
+        ingest_warnings.extend(phase4_warnings)
+        ingest_infos.extend(phase4_infos)
+
+        # Refresh pre-computed summary tables for the affected (pep, cycle) pairs
+        touched_peps    = list({pep for pep, _ in pep_cycle_scope})
+        touched_cycles  = list({cid for _, cid in pep_cycle_scope})
+        touched_collabs = list({vr["collab"].id for vr in valid_rows})
+        db.flush()  # make inserted records visible to summary queries
+        refresh_pep_cycle(db, touched_peps, touched_cycles)
+        refresh_collaborator_cycle(db, touched_collabs, touched_cycles)
+
+        # Phase 5: QuarantineRecords + UploadSession + commit
+        upload_session = create_upload_session(
+            db,
+            user_id=user_id,
+            username=username,
+            source_file=filename,
+            status=("quarantine" if quarantine_buffer else "warnings" if ingest_warnings else "ok"),
+            inserted=inserted,
+            skipped=skipped,
+            quarantine=len(quarantine_buffer),
+            warning_count=len(ingest_warnings),
+            info_count=len(ingest_infos),
+            warnings=ingest_warnings,
+            infos=ingest_infos,
+        )
+
+        for qr_data in quarantine_buffer:
+            create_quarantine_record(
+                db,
+                upload_session_id=upload_session.id,
+                user_id=user_id,
+                username=username,
+                raw_data=qr_data["raw_data"],
+                reason=qr_data["reason"],
+                rule_id=qr_data.get("rule_id"),
+            )
+
+        # Phase 6: AuditLog — inside the same transaction so data + audit are atomic
+        _status = (
+            "quarantine" if quarantine_buffer
+            else "warnings" if ingest_warnings
+            else "ok"
+        )
+        if current_user is not None:
+            log_audit(db, current_user, "import", "timesheet", detail={
+                "file": filename,
+                "status": _status,
+                "records_inserted": inserted,
+                "records_skipped": skipped,
+                "quarantine_records_added": len(quarantine_buffer),
+            })
+
+        session_id = upload_session.id
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    log.info(
+        "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas.",
+        inserted, skipped, len(quarantine_buffer),
+    )
+
+    return {
+        "status": _status,
+        "records_inserted": inserted,
+        "records_skipped": skipped,
+        "quarantine_records_added": len(quarantine_buffer),
+        "warning_count": len(ingest_warnings),
+        "info_count": len(ingest_infos),
+        "warnings": ingest_warnings,
+        "infos": ingest_infos,
+        "upload_session_id": session_id,
+        "affected_peps": sorted(pep_codes_in_file),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase functions — extracted from ingest_file() for independent testability
+# ---------------------------------------------------------------------------
+
+
+def _phase_load_and_validate(file_bytes: bytes, filename: str) -> pd.DataFrame:
+    """Phase 0: Load file bytes into a DataFrame and validate required columns.
+
+    Returns the validated DataFrame.
+    Raises ValueError for missing required columns or empty file.
+    """
+    return _load_dataframe(file_bytes, filename)
+
+
+def _phase_authorize_peps(
+    df: pd.DataFrame,
+    db: Session,
+    user_id: int | None,
+    user_role: str,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Phase 0 (authorization): Filter DataFrame rows by user's PEP ACL.
+
+    Returns (filtered_df, warnings).
+    Raises HTTPException(403) when user has no access to any PEP in the file.
+    """
+    warnings: list[str] = []
+
+    # Non-admin with ACL restrictions must supply a PEP column.
     if user_role != "admin" and user_id is not None and _COL_PEP_CODE not in df.columns:
         has_acl = (
             db.query(UserProjectAccess)
@@ -98,7 +281,6 @@ def ingest_file(
                 ),
             )
 
-    # Authorization filter (read-only, outside transaction)
     pep_codes_raw: set[str] = set()
     if _COL_PEP_CODE in df.columns:
         pep_codes_raw = {_str_or_none(v) for v in df[_COL_PEP_CODE]} - {None}
@@ -124,35 +306,27 @@ def ingest_file(
             df = df[mask].copy()
             top = sorted(unauthorized)[:5]
             suffix = f" e {len(unauthorized) - 5} outros." if len(unauthorized) > 5 else "."
-            ingest_warnings.append(
+            warnings.append(
                 f"{n_discarded} linha(s) descartadas — sem permissão nos PEPs: "
                 f"{', '.join(top)}{suffix}"
             )
 
-    if len(df) > _MAX_ROWS_WARNING:
-        ingest_warnings.append(
-            f"Arquivo com volume elevado: {len(df)} linhas. "
-            f"Verifique se o período exportado está correto."
-        )
+    return df, warnings
 
-    # Load active ValidationRules once for the entire ingest
-    rules = (
-        db.query(ValidationRule)
-        .filter(ValidationRule.is_active == True)  # noqa: E712
-        .order_by(ValidationRule.order)
-        .all()
-    )
 
-    # Phase 0b: pre-scan all unique parseable dates.
-    # Dates without an active cycle are cached as None and quarantined per-row
-    # (Phase 1d). The file is only rejected if ALL rows lack a cycle.
-    collab_cache: dict[str, Collaborator] = {}
+def _phase_prescan_dates(
+    df: pd.DataFrame,
+    db: Session,
+) -> dict[date, "Cycle | None"]:
+    """Phase 0b: Pre-scan all unique parseable past dates in the DataFrame.
+
+    Returns a cycle_cache mapping each unique past date to its active Cycle
+    (or None if no active cycle covers that date).
+    """
     cycle_cache: dict[date, Cycle | None] = {}
-    quarantine_buffer: list[dict] = []
-    valid_rows: list[dict] = []
-
     _today = date.today()
     _unique_dates: set[date] = set()
+
     for v in df[_COL_DATE]:
         d = _parse_date_safe(v)
         if d is not None and d <= _today:
@@ -164,9 +338,27 @@ def ingest_file(
         except ArchivedCycleError:
             cycle_cache[d] = None  # quarantined individually in Phase 1d
 
-    # Phase 1 + 2: Per-row structural validation and rule evaluation
-    skipped = 0
+    return cycle_cache
+
+
+def _phase_validate_rows(
+    df: pd.DataFrame,
+    db: Session,
+    rules: list,
+    cycle_cache: dict,
+    collab_cache: dict,
+) -> tuple[list[dict], list[dict], list[str], list[str], list[str], int]:
+    """Phase 1+2: Per-row structural validation and rule evaluation.
+
+    Returns (valid_rows, quarantine_buffer, warnings, infos, new_collaborators, skipped).
+    Mutates collab_cache in place (adds newly resolved collaborators).
+    """
+    quarantine_buffer: list[dict] = []
+    valid_rows: list[dict] = []
+    warnings: list[str] = []
+    infos: list[str] = []
     new_collaborators: list[str] = []
+    skipped = 0
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
         name = str(row[_COL_COLLABORATOR]).strip()
@@ -258,9 +450,9 @@ def ingest_file(
             continue
 
         if result.final_action == "warning":
-            ingest_warnings.append(f"{result.reason} [{name}, {record_date}]")
+            warnings.append(f"{result.reason} [{name}, {record_date}]")
         elif result.final_action == "info":
-            ingest_infos.append(f"{result.reason} [{name}, {record_date}]")
+            infos.append(f"{result.reason} [{name}, {record_date}]")
 
         valid_rows.append({
             "row_idx": row_idx,
@@ -271,42 +463,20 @@ def ingest_file(
             "row": row,
         })
 
-    # N1: new collaborators info
-    if new_collaborators:
-        ingest_infos.append(
-            f"Novo(s) colaborador(es) criado(s): {', '.join(new_collaborators)}."
-        )
+    return valid_rows, quarantine_buffer, warnings, infos, new_collaborators, skipped
 
-    # RBAC check on valid rows' cycles
-    if user_role != "admin":
-        closed_names: list[str] = []
-        seen_cycle_ids: set[int] = set()
-        for vr in valid_rows:
-            c = vr["cycle"]
-            if c.id not in seen_cycle_ids and c.is_closed:
-                closed_names.append(c.name)
-            seen_cycle_ids.add(c.id)
-        if closed_names:
-            raise ClosedCycleError(closed_names)
 
-    # Locked project check
-    pep_codes_in_file: set[str] = {
-        _str_or_none(vr["row"].get(_COL_PEP_CODE))
-        for vr in valid_rows
-    } - {None}
-    if pep_codes_in_file:
-        locked = (
-            db.query(Project)
-            .filter(
-                Project.pep_wbs.in_(pep_codes_in_file),
-                Project.status.in_(["encerrado", "suspenso"]),
-            )
-            .all()
-        )
-        if locked:
-            raise LockedProjectError([p.name or p.pep_wbs for p in locked])
+def _phase_aggregate_rules(
+    valid_rows: list[dict],
+    rules: list,
+) -> tuple[list[str], list[str]]:
+    """Phase 3: Compute daily/weekly sums and evaluate aggregate rules.
 
-    # Phase 3: Aggregate rules — compute daily/weekly sums and evaluate
+    Returns (warnings, infos).
+    """
+    warnings: list[str] = []
+    infos: list[str] = []
+
     daily_sums: dict[tuple, float] = {}
     weekly_sums: dict[tuple, float] = {}
     for vr in valid_rows:
@@ -322,190 +492,129 @@ def ingest_file(
         weekly_total = weekly_sums.get(key_w, 0.0)
         for m in evaluate_aggregate_rules(rules, daily_total, weekly_total):
             if m.action == "warning":
-                ingest_warnings.append(f"{collab_name} em {d}: {m.message}")
+                warnings.append(f"{collab_name} em {d}: {m.message}")
             elif m.action == "info":
-                ingest_infos.append(f"{collab_name} em {d}: {m.message}")
+                infos.append(f"{collab_name} em {d}: {m.message}")
 
-    # Load GlobalConfig multipliers once — used for freeze_costs
-    cfg = db.get(GlobalConfig, 1)
-    extra_multiplier   = cfg.extra_hours_multiplier   if cfg else 1.5
-    standby_multiplier = cfg.standby_hours_multiplier if cfg else 0.33
+    return warnings, infos
 
-    try:
-        # Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records
-        pep_cycle_scope: set[tuple[str | None, int]] = set()
-        for vr in valid_rows:
-            pep = _str_or_none(vr["row"].get(_COL_PEP_CODE))
-            pep_cycle_scope.add((pep, vr["cycle"].id))
 
-        for scope_pep, cycle_id in pep_cycle_scope:
-            if scope_pep is not None:
-                db.query(TimesheetRecord).filter(
-                    TimesheetRecord.pep_wbs == scope_pep,
-                    TimesheetRecord.cycle_id == cycle_id,
-                ).delete(synchronize_session=False)
+def _phase_upsert_records(
+    db: Session,
+    valid_rows: list[dict],
+    extra_multiplier: float,
+    standby_multiplier: float,
+) -> tuple[int, int, list[str], list[str], set[tuple]]:
+    """Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records.
 
-        null_by_cycle: dict[int, set[int]] = {}
-        for vr in valid_rows:
-            if _str_or_none(vr["row"].get(_COL_PEP_CODE)) is None:
-                null_by_cycle.setdefault(vr["cycle"].id, set()).add(vr["collab"].id)
-        for cycle_id, collab_ids in null_by_cycle.items():
-            for collab_id in collab_ids:
-                db.query(TimesheetRecord).filter(
-                    TimesheetRecord.collaborator_id == collab_id,
-                    TimesheetRecord.cycle_id == cycle_id,
-                    TimesheetRecord.pep_wbs.is_(None),
-                ).delete(synchronize_session=False)
+    Returns (inserted, skipped, warnings, infos, pep_cycle_scope).
+    Does NOT commit — the caller owns the transaction.
+    """
+    warnings: list[str] = []
+    infos: list[str] = []
 
-        seen_keys: set[tuple] = set()
-        inserted = 0
-        warned_zero_rate: set[str] = set()
+    pep_cycle_scope: set[tuple[str | None, int]] = set()
+    for vr in valid_rows:
+        pep = _str_or_none(vr["row"].get(_COL_PEP_CODE))
+        pep_cycle_scope.add((pep, vr["cycle"].id))
 
-        for vr in valid_rows:
-            collab = vr["collab"]
-            record_date = vr["record_date"]
-            cycle = vr["cycle"]
-            total_h = vr["total_h"]
-            row = vr["row"]
-            row_idx = vr["row_idx"]
+    for scope_pep, cycle_id in pep_cycle_scope:
+        if scope_pep is not None:
+            db.query(TimesheetRecord).filter(
+                TimesheetRecord.pep_wbs == scope_pep,
+                TimesheetRecord.cycle_id == cycle_id,
+            ).delete(synchronize_session=False)
 
-            if total_h == 0.0:
-                skipped += 1
-                continue
+    null_by_cycle: dict[int, set[int]] = {}
+    for vr in valid_rows:
+        if _str_or_none(vr["row"].get(_COL_PEP_CODE)) is None:
+            null_by_cycle.setdefault(vr["cycle"].id, set()).add(vr["collab"].id)
+    for cycle_id, collab_ids in null_by_cycle.items():
+        for collab_id in collab_ids:
+            db.query(TimesheetRecord).filter(
+                TimesheetRecord.collaborator_id == collab_id,
+                TimesheetRecord.cycle_id == cycle_id,
+                TimesheetRecord.pep_wbs.is_(None),
+            ).delete(synchronize_session=False)
 
-            is_extra = _is_yes(row.get(_COL_EXTRA, ""))
-            is_standby = _is_yes(row.get(_COL_STANDBY, ""))
+    seen_keys: set[tuple] = set()
+    inserted = 0
+    skipped = 0
+    warned_zero_rate: set[str] = set()
 
-            if is_extra and is_standby:
-                ingest_warnings.append(
-                    f"Linha {row_idx}: colaborador '{collab.name}' em {record_date} "
-                    f"marcado como Extra E Sobreaviso simultaneamente → classificado como Extra."
-                )
+    for vr in valid_rows:
+        collab = vr["collab"]
+        record_date = vr["record_date"]
+        cycle = vr["cycle"]
+        total_h = vr["total_h"]
+        row = vr["row"]
+        row_idx = vr["row_idx"]
 
-            if is_extra:
-                extra_h = total_h; normal_h = standby_h = 0.0; hour_type = "extra"
-            elif is_standby:
-                standby_h = total_h; normal_h = extra_h = 0.0; hour_type = "standby"
-            else:
-                normal_h = total_h; extra_h = standby_h = 0.0; hour_type = "normal"
+        if total_h == 0.0:
+            skipped += 1
+            continue
 
-            pep_code = _str_or_none(row.get(_COL_PEP_CODE))
-            pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
-            start_time = _str_or_none(row.get(_COL_START_TIME))
+        is_extra = _is_yes(row.get(_COL_EXTRA, ""))
+        is_standby = _is_yes(row.get(_COL_STANDBY, ""))
 
-            key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
-            if key in seen_keys:
-                pep_label = f" | PEP {pep_code}" if pep_code else ""
-                ingest_infos.append(
-                    f"Linha {row_idx}: duplicata ignorada — {collab.name} em {record_date}{pep_label} "
-                    f"({hour_type}, {total_h:.2f}h)"
-                )
-                skipped += 1
-                continue
-            seen_keys.add(key)
-
-            rate = _lookup_rate(db, collab, record_date)
-            if rate == 0.0 and collab.name not in warned_zero_rate:
-                ingest_warnings.append(
-                    f"Colaborador '{collab.name}' sem taxa cadastrada para {record_date} "
-                    f"→ custo registrado como R$0,00."
-                )
-                warned_zero_rate.add(collab.name)
-
-            nc, ec, sc = freeze_costs(
-                normal_h, extra_h, standby_h,
-                rate, extra_multiplier, standby_multiplier,
+        if is_extra and is_standby:
+            warnings.append(
+                f"Linha {row_idx}: colaborador '{collab.name}' em {record_date} "
+                f"marcado como Extra E Sobreaviso simultaneamente → classificado como Extra."
             )
 
-            db.add(TimesheetRecord(
-                collaborator_id=collab.id,
-                cycle_id=cycle.id,
-                record_date=record_date,
-                pep_wbs=pep_code,
-                pep_description=pep_desc,
-                normal_hours=normal_h,
-                extra_hours=extra_h,
-                standby_hours=standby_h,
-                cost_per_hour=rate,
-                normal_cost=nc,
-                extra_cost=ec,
-                standby_cost=sc,
-            ))
-            inserted += 1
+        if is_extra:
+            extra_h = total_h; normal_h = standby_h = 0.0; hour_type = "extra"
+        elif is_standby:
+            standby_h = total_h; normal_h = extra_h = 0.0; hour_type = "standby"
+        else:
+            normal_h = total_h; extra_h = standby_h = 0.0; hour_type = "normal"
 
-        # Refresh pre-computed summary tables for the affected (pep, cycle) pairs
-        touched_peps    = list({pep for pep, _ in pep_cycle_scope})
-        touched_cycles  = list({cid for _, cid in pep_cycle_scope})
-        touched_collabs = list({vr["collab"].id for vr in valid_rows})
-        db.flush()  # make inserted records visible to summary queries
-        refresh_pep_cycle(db, touched_peps, touched_cycles)
-        refresh_collaborator_cycle(db, touched_collabs, touched_cycles)
+        pep_code = _str_or_none(row.get(_COL_PEP_CODE))
+        pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
+        start_time = _str_or_none(row.get(_COL_START_TIME))
 
-        # Phase 5: QuarantineRecords + UploadSession + commit
-        upload_session = create_upload_session(
-            db,
-            user_id=user_id,
-            username=username,
-            source_file=filename,
-            status=("quarantine" if quarantine_buffer else "warnings" if ingest_warnings else "ok"),
-            inserted=inserted,
-            skipped=skipped,
-            quarantine=len(quarantine_buffer),
-            warning_count=len(ingest_warnings),
-            info_count=len(ingest_infos),
-            warnings=ingest_warnings,
-            infos=ingest_infos,
-        )
-
-        for qr_data in quarantine_buffer:
-            create_quarantine_record(
-                db,
-                upload_session_id=upload_session.id,
-                user_id=user_id,
-                username=username,
-                raw_data=qr_data["raw_data"],
-                reason=qr_data["reason"],
-                rule_id=qr_data.get("rule_id"),
+        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
+        if key in seen_keys:
+            pep_label = f" | PEP {pep_code}" if pep_code else ""
+            infos.append(
+                f"Linha {row_idx}: duplicata ignorada — {collab.name} em {record_date}{pep_label} "
+                f"({hour_type}, {total_h:.2f}h)"
             )
+            skipped += 1
+            continue
+        seen_keys.add(key)
 
-        # Phase 6: AuditLog — inside the same transaction so data + audit are atomic
-        _status = (
-            "quarantine" if quarantine_buffer
-            else "warnings" if ingest_warnings
-            else "ok"
+        rate = _lookup_rate(db, collab, record_date)
+        if rate == 0.0 and collab.name not in warned_zero_rate:
+            warnings.append(
+                f"Colaborador '{collab.name}' sem taxa cadastrada para {record_date} "
+                f"→ custo registrado como R$0,00."
+            )
+            warned_zero_rate.add(collab.name)
+
+        nc, ec, sc = freeze_costs(
+            normal_h, extra_h, standby_h,
+            rate, extra_multiplier, standby_multiplier,
         )
-        if current_user is not None:
-            log_audit(db, current_user, "import", "timesheet", detail={
-                "file": filename,
-                "status": _status,
-                "records_inserted": inserted,
-                "records_skipped": skipped,
-                "quarantine_records_added": len(quarantine_buffer),
-            })
 
-        session_id = upload_session.id
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
+        db.add(TimesheetRecord(
+            collaborator_id=collab.id,
+            cycle_id=cycle.id,
+            record_date=record_date,
+            pep_wbs=pep_code,
+            pep_description=pep_desc,
+            normal_hours=normal_h,
+            extra_hours=extra_h,
+            standby_hours=standby_h,
+            cost_per_hour=rate,
+            normal_cost=nc,
+            extra_cost=ec,
+            standby_cost=sc,
+        ))
+        inserted += 1
 
-    log.info(
-        "Ingestão concluída: %d inseridos, %d duplicatas, %d quarentenas.",
-        inserted, skipped, len(quarantine_buffer),
-    )
-
-    return {
-        "status": _status,
-        "records_inserted": inserted,
-        "records_skipped": skipped,
-        "quarantine_records_added": len(quarantine_buffer),
-        "warning_count": len(ingest_warnings),
-        "info_count": len(ingest_infos),
-        "warnings": ingest_warnings,
-        "infos": ingest_infos,
-        "upload_session_id": session_id,
-        "affected_peps": sorted(pep_codes_in_file),
-    }
+    return inserted, skipped, warnings, infos, pep_cycle_scope
 
 
 def ingest_csv(file_bytes: bytes, db: Session) -> dict:
