@@ -290,19 +290,60 @@ All v2 routers produce **render-ready** responses — every number arrives at th
 
 ## 7. Metrics Comparison
 
-| Metric | main | Branch (audit) | After Sprint 1+2 |
-|--------|------|----------------|-----------------|
-| Backend routers | 14 | 24 (+10 v2) | 24 |
-| Backend services | 4 | 7 | 7 |
-| ORM models | 15 | 20 | 20 |
-| Test count | 406 | 635 | 635 |
-| Frontend JS files | 3 | 13 | 14 (+sortable.min.js local) |
-| i18n keys | 0 (hardcoded PT) | 540 (pt + en) | 540 |
-| EVM formulas centralized | No | Yes (`evm.py`) | Yes (`evm.py`) |
-| WCAG compliance (audited items) | Partial | 23/23 ✅ | 23/23 ✅ |
-| Integrity compliance (audited items) | Partial | 9/9 ✅ | 9/9 ✅ |
-| E2E test suites | 0 | 4 (Playwright) | 4 |
-| CDN dependencies | 2 (ECharts + SortableJS) | 1 (SortableJS) | 0 ✅ |
-| Text tokens in `:root` | — | 8 | 4 ✅ |
-| MASTER-AUDIT score | — | 7.3/10 | 8.7/10 ✅ |
-| Open audit findings | — | 17 | 5 (12 resolved) |
+| Metric | main | Branch (audit) | After Sprint 1+2 | After Sprint 3 |
+|--------|------|----------------|-----------------|----------------|
+| Backend routers | 14 | 24 (+10 v2) | 24 | 24 |
+| Backend services | 4 | 7 | 7 | 7 |
+| ORM models | 15 | 20 | 20 | 20 |
+| Test count | 406 | 635 | 635 | 677 (+42 phase tests) |
+| Frontend JS files | 3 | 13 | 14 (+sortable.min.js local) | 19 (+5 tab modules) |
+| `app.js` lines | — | 5634 | 5634 | 720 (−87%) ✅ |
+| `index.html` inline `style=` | — | 166 | 166 | 0 ✅ |
+| `ingestion.py` lines | — | 669 | 669 | 778 (refactored phases) |
+| i18n keys | 0 (hardcoded PT) | 540 (pt + en) | 540 | 540 |
+| EVM formulas centralized | No | Yes (`evm.py`) | Yes (`evm.py`) | Yes (`evm.py`) |
+| WCAG compliance (audited items) | Partial | 23/23 ✅ | 23/23 ✅ | 23/23 ✅ |
+| Integrity compliance (audited items) | Partial | 9/9 ✅ | 9/9 ✅ | 9/9 ✅ |
+| E2E test suites | 0 | 4 (Playwright) | 4 | 4 |
+| CDN dependencies | 2 (ECharts + SortableJS) | 1 (SortableJS) | 0 ✅ | 0 ✅ |
+| Text tokens in `:root` | — | 8 | 4 ✅ | 4 ✅ |
+| MASTER-AUDIT score | — | 7.3/10 | 8.7/10 ✅ | 9.1/10 ✅ |
+| Open audit findings | — | 17 | 5 (12 resolved) | 2 (15 resolved) ✅ |
+
+---
+
+## 8. Sprint 3 Changes
+
+### MA-01 — `app.js` god module → tab modules
+
+| File | Before | After | Delta |
+|------|--------|-------|-------|
+| `frontend/app.js` | 5634 lines | 720 lines | −4914 (−87%) |
+| `frontend/tabs/dashboard.js` | — | 2969 lines | new |
+| `frontend/tabs/equipe.js` | — | 436 lines | new |
+| `frontend/tabs/admin.js` | — | 911 lines | new |
+| `frontend/tabs/minha-area.js` | — | 391 lines | new |
+| `frontend/tabs/header.js` | — | 220 lines | new |
+| `frontend/crud/cycles.js` | 167 lines | 177 lines | +10 (_makeSortable) |
+| `frontend/crud/projects.js` | 606 lines | 616 lines | +10 (_makeSortable) |
+
+**What stays in app.js:** core globals (i18n, currency, modals, table sort, theme helpers, tab nav, chart registry) + auth/fetch/notify + preferences/theme loading + `_bootApp`.
+
+**_makeSortable colocation:** Each `_makeSortable` call moved to the file that defines its render function — eliminates the cross-file forward-reference bug at old app.js line 5438.
+
+### MA-07 — 166 inline `style=` → 0
+
+- **21 utility CSS classes** added to `style.css` (`.pagination-bar`, `.pagination-label`, `.mb-0`–`.mb-4`, `.mt-2`, `.m-0`, `.chevron`, `.chevron-open`, `.label-strong`, `.col-flex-sm`, `.field-hint-block`, `.collapsible-trigger`, `.clickable`, `.w-full`, `.mw-520`, `.flex-wrap-sm`, `.input-sel-sm`)
+- **10 modal max-widths** moved to CSS rules targeting `#modalId .modal-box`
+- **40+ element-specific rules** added targeting elements by ID (`#sessionDetailMeta`, `#qrApproveBtn`, `#themeFont`, `#presetSelect`, etc.)
+- **JS-controlled hidden elements** (`#headerSemaphore`, `#notifBadge`, `#semaphoreBar`) initial state moved to CSS; JS still overrides via `element.style.display`
+
+### MA-12 — `ingestion.py` phase refactor + unit tests
+
+| Item | Detail |
+|------|--------|
+| Phase functions extracted | 6: `_phase_load_and_validate`, `_phase_authorize_peps`, `_phase_prescan_dates`, `_phase_validate_rows`, `_phase_aggregate_rules`, `_phase_upsert_records` |
+| `ingest_file()` | Now an orchestrator calling phases in sequence |
+| Public API | Unchanged (same signature, same return dict) |
+| New test file | `tests/test_ingestion_phases.py` — 42 unit tests |
+| Total tests | 677 (all passing) |

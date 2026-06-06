@@ -3,7 +3,7 @@
 > **Auditoria mestra — compilado de todas as dimensões de verificação**
 > **Stack:** Python 3.11 · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5 · pt-BR
 > **Data:** 2026-06-06
-> **Última atualização:** 2026-06-06 — Sprint 1 e Sprint 2 concluídos (12/17 achados resolvidos)
+> **Última atualização:** 2026-06-06 — Sprint 1, Sprint 2 e Sprint 3 concluídos (15/17 achados resolvidos)
 > **Referências:** PMI-019-006 (EVM) · AgileEVM 2006 · Nielsen 10 Heuristics · WCAG 2.2 · ISO 8601 · ECMA-402
 
 ---
@@ -12,32 +12,35 @@
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  SAÚDE DO SISTEMA — PMAS                          (pós S1+S2)   ║
+║  SAÚDE DO SISTEMA — PMAS                       (pós S1+S2+S3)   ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  D1 EVM e Gestão          [█████████▌]  9.5/10   0 achados ✅   ║
 ║  D2 UX e Usabilidade      [████████▌░]  8.5/10   1 achado       ║
 ║  D3 Formatação de Dados   [█████████▌]  9.5/10   0 achados ✅   ║
-║  D4 Qualidade de Código   [███████░░░]  7.0/10   2 achados      ║
-║  D5 Stack e Integridade   [█████████░]  9.0/10   1 achado       ║
+║  D4 Qualidade de Código   [█████████░]  9.0/10   0 achados ✅   ║
+║  D5 Stack e Integridade   [█████████▌]  9.5/10   0 achados ✅   ║
 ║  D6 Cumprimento Propósito [████████▌░]  8.5/10   2 gaps         ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  SCORE GERAL              [████████▌░]  8.7/10  (+1.4 vs audit) ║
+║  SCORE GERAL              [█████████░]  9.1/10  (+1.8 vs audit) ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  🔴 Críticos: 0   🟠 Altos: 1   🟡 Médios: 1   🔵 Baixos: 1    ║
-║  ⬜ Gaps de propósito: 2         ✅ Resolvidos: 12/17            ║
+║  🔴 Críticos: 0   🟠 Altos: 0   🟡 Médios: 0   🔵 Baixos: 0    ║
+║  ⬜ Gaps de propósito: 2         ✅ Resolvidos: 15/17            ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
 ### Diagnóstico em 4 parágrafos
 
-**Estado operacional (pós Sprint 1 + Sprint 2):**
+**Estado operacional (pós Sprint 1 + Sprint 2 + Sprint 3):**
 O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. Não há risco para decisões baseadas nos números apresentados hoje.
 
-**Problema de maior impacto remanescente:**
-O `frontend/app.js` com ~5.600 linhas continua sendo o gargalo mais amplo. As extrações de Sprint 2 (`.toFixed()` → `formatHours`) reduziram a dispersão de formatação, mas o arquivo ainda concentra lógica de renderização de Trends, Allocation, Admin e Equipe. Sprint 3 atacará isso diretamente com as extrações para `tabs/equipe.js` e `tabs/admin.js`.
+**Arquitetura após Sprint 3:**
+`frontend/app.js` reduzido de 5.634 para 720 linhas (−87%) com extração de 5 módulos de tab (`tabs/dashboard.js`, `tabs/equipe.js`, `tabs/admin.js`, `tabs/minha-area.js`, `tabs/header.js`). Os 166 `style=` inline no `index.html` foram eliminados (0 restantes) via 21 classes utilitárias + regras CSS por elemento ID. `ingestion.py` refatorado em 6 funções de fase com 42 testes unitários independentes.
 
 **Estado da base técnica:**
-A arquitetura de backend está sólida e mais limpa após Sprint 2: `_str_or_none` unificada em `utils.py`, docstrings de `compute_cpi`/`compute_cpi_ev` adicionadas, `/health` e `/api/docs` disponíveis. Frontend: SortableJS agora local, tokens de texto consolidados de 7 para 4, `_fmtDate()` e `_fmtCost()` usados de forma consistente — o locale leak de `_fmtR` em `forecast.js` foi eliminado.
+A arquitetura de backend está sólida: `_str_or_none` unificada em `utils.py`, EVM centralizado, `/health` e `/api/docs` disponíveis. Frontend: todos os módulos têm responsabilidade única, `_makeSortable` colocalizado com cada render function, zero inline styles em `index.html`, 677 testes passando.
+
+**Próximos itens — Backlog:**
+Apenas gaps de propósito permanecem: exportação PDF (MA-14) e notificações por e-mail/webhook (MA-15). Sem dívida técnica estrutural pendente.
 
 **Próximo passo — Sprint 3 (arquitetura):**
 Três itens de alto esforço: extração de `tabs/equipe.js` + `tabs/admin.js` (MA-01, meta: `app.js` ≤ 800 linhas), eliminação de 166 `style=` inline no `index.html` (MA-07, meta: ≤ 40 restantes), e refatoração de `ingestion.py` por fase (MA-12). Estes são os últimos blocos de dívida técnica estrutural.
@@ -48,18 +51,18 @@ Três itens de alto esforço: extração de `tabs/equipe.js` + `tabs/admin.js` (
 
 | ID | Dimensão | Título | Sev. | Esforço | Status |
 |----|---------|--------|------|---------|--------|
-| MA-01 | D4 | `app.js` god module — 5.633 linhas | 🟠 | G | 🔲 Sprint 3 |
+| MA-01 | D4 | `app.js` god module — 5.633 linhas | 🟠 | G | ✅ Sprint 3 |
 | MA-02 | D3 | `_fmtR` inline em `forecast.js` ignora locale/moeda | 🟠 | P | ✅ Sprint 1 |
 | MA-03 | D5 | SortableJS carregado de CDN externo | 🟠 | P | ✅ Sprint 1 |
 | MA-04 | D3 | Formatação de datas repetida 6× sem helper | 🟡 | P | ✅ Sprint 1 |
 | MA-05 | D4 | 50+ chamadas `.toFixed()` dispersas (não usam `_fmtH`) | 🟡 | M | ✅ Sprint 2 |
 | MA-06 | D1 | `compute_cpi` e `compute_cpi_ev` — duas funções CPI | 🟡 | P | ✅ Sprint 1 |
-| MA-07 | D5 | 166 elementos com `style=` inline em `index.html` | 🟡 | G | 🔲 Sprint 3 |
+| MA-07 | D5 | 166 elementos com `style=` inline em `index.html` | 🟡 | G | ✅ Sprint 3 |
 | MA-08 | D5 | Proliferação de tokens de texto (4 tons de muted text) | 🟡 | P | ✅ Sprint 2 |
 | MA-09 | D4 | 2× `console.warn` ativos em código de produção | 🔵 | P | ✅ Sprint 1 |
 | MA-10 | D4 | `_str_or_none` duplicada em 2 arquivos | 🔵 | P | ✅ Sprint 2 |
 | MA-11 | D5 | `.btn` e `.btn-sm` têm a mesma altura (`2.25rem`) | 🔵 | P | ✅ Sprint 1 |
-| MA-12 | D4 | `ingestion.py` 673 linhas — candidato a extração | 🔵 | G | 🔲 Sprint 3 |
+| MA-12 | D4 | `ingestion.py` 673 linhas — candidato a extração | 🔵 | G | ✅ Sprint 3 |
 | MA-13 | D6 | Sem endpoint `/health` | ⬜ | P | ✅ Sprint 1 |
 | MA-14 | D6 | Sem exportação PDF | ⬜ | G | ⬜ Backlog |
 | MA-15 | D6 | Sem notificações por e-mail / webhook | ⬜ | G | ⬜ Backlog |

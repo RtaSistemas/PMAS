@@ -164,3 +164,12 @@ document.getElementById('importCyclesInput').addEventListener('change', async e 
   } catch (err) { notify(_friendlyError(err), 'error'); }
   e.target.value = '';
 });
+
+// ---------------------------------------------------------------------------
+// Sortable column headers (moved here so _renderCyclesTable is already defined)
+// ---------------------------------------------------------------------------
+_makeSortable('cyclesTable',
+  [{key:'name',type:'str'}, {key:'start_date',type:'date'}, {key:'end_date',type:'date'}, null, {key:'record_count',type:'num'}, null],
+  () => { const q = document.getElementById('cycleSearch')?.value?.toLowerCase(); return q ? _allCycles.filter(c => c.name.toLowerCase().includes(q)) : _allCycles; },
+  _renderCyclesTable
+);

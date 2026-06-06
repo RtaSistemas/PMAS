@@ -604,3 +604,12 @@ document.getElementById('importProjectsInput').addEventListener('change', async 
   } catch (err) { notify(_friendlyError(err), 'error'); }
   e.target.value = '';
 });
+
+// ---------------------------------------------------------------------------
+// Sortable column headers (moved here so _renderProjectsTable is already defined)
+// ---------------------------------------------------------------------------
+_makeSortable('projectsTable',
+  [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'client',type:'str'}, {key:'manager',type:'str'}, {key:'budget_hours',type:'num'}, {key:'status',type:'str'}, null],
+  () => { const q = document.getElementById('projectSearch')?.value?.toLowerCase(); return q ? _allProjects.filter(p => (p.pep_wbs||'').toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.client||'').toLowerCase().includes(q)) : _allProjects; },
+  _renderProjectsTable
+);
