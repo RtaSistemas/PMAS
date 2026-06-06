@@ -53,11 +53,13 @@ def client():
         limiter._storage.reset()
     except Exception:
         pass
+    saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = lambda: _MockAdmin()
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
     app.dependency_overrides.clear()
+    app.dependency_overrides.update(saved)
 
 
 # ── helpers ──────────────────────────────────────────────���────────────────────
