@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.limiter import limiter
 from backend.app.models import UploadSession
 from backend.app.schemas import UploadOut, UploadSessionOut
 from backend.app.services.ingestion import (
@@ -26,7 +28,8 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 
-_MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+_MAX_UPLOAD_MB = int(os.getenv("PMAS_MAX_UPLOAD_MB", "20"))
+_MAX_UPLOAD_BYTES = _MAX_UPLOAD_MB * 1024 * 1024
 
 
 def _save_rejected_session(db, user, fname: str, reason: str) -> None:
@@ -43,7 +46,45 @@ def _save_rejected_session(db, user, fname: str, reason: str) -> None:
 
 
 @router.post("/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
-def upload_timesheet(file: UploadFile, db: DbSession, current_user: CurrentUser):
+@limiter.limit("10/minute")
+def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_user: CurrentUser):
+    fname = Path(file.filename or "").name or "upload"
+    if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
+    contents = file.file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Arquivo excede o limite de {_MAX_UPLOAD_MB} MB.",
+        )
+    try:
+        summary = ingest_file(
+            contents, fname, db,
+            user_role=current_user.role,
+            user_id=current_user.id,
+            username=current_user.username,
+            current_user=current_user,
+        )
+    except HTTPException:
+        raise
+    except (ClosedCycleError, ArchivedCycleError) as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LockedProjectError as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, str(exc))
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        _save_rejected_session(db, current_user, fname, "Erro interno durante ingestão.")
+        log.exception("Erro inesperado durante ingestão.")
+        raise HTTPException(status_code=500, detail="Erro interno durante ingestão.") from exc
+
     fname = Path(file.filename or "").name or "upload"
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
