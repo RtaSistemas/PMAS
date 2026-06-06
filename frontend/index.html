@@ -7,12 +7,13 @@
   <link rel="icon" type="image/png" href="/static/assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="/frontend/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js"></script>
+  <script src="/frontend/sortable.min.js"></script>
+  <script type="module" src="/frontend/utils.js"></script>
 </head>
 <body>
 
 <!-- SVG icon sprite (reutilizado no header e login) -->
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<svg class="svg-sprite-defs" xmlns="http://www.w3.org/2000/svg">
   <symbol id="ico-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="12" width="4" height="9" rx="0.5"/>
     <rect x="10" y="7"  width="4" height="14" rx="0.5"/>
@@ -39,7 +40,7 @@
       <p class="login-sub">Project Management Assistant System</p>
     </div>
     <div class="login-divider"></div>
-    <form id="loginForm" autocomplete="on" style="display:flex;flex-direction:column;gap:1rem">
+    <form id="loginForm" autocomplete="on">
       <div class="login-field">
         <label for="loginUsername" data-i18n="login.user_lbl">Usuário</label>
         <input id="loginUsername" type="text" autocomplete="username" required data-i18n-ph="login.user_ph" placeholder="usuário" />
@@ -74,15 +75,20 @@
   </div>
   <div class="header-sep"></div>
   <span class="header-sub" id="headerUserInfo">—</span>
-  <div id="headerSemaphore" class="header-semaphore" style="display:none"></div>
+  <div id="headerSemaphore" class="header-semaphore"></div>
   <div class="header-actions">
     <div class="header-widget">
+      <label for="currencySymbol" class="sr-only" data-i18n="currency.symbol_label">Símbolo da moeda</label>
       <input type="text" id="currencySymbol" value="R$" maxlength="4"
-        class="currency-input" style="width:3.5rem" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
+        class="currency-input" data-i18n-title="currency.symbol_title" title="Símbolo da moeda" />
       <span class="currency-sep">×</span>
+      <label for="currencyFactor" class="sr-only" data-i18n="currency.factor_label">Fator de conversão</label>
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
-        class="currency-input" style="width:6.5rem" data-i18n-title="currency.factor_title" title="Fator de conversão" />
+        class="currency-input" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
+    <button id="notifBtn" class="btn btn-ghost icon-btn" aria-label="Notificações" title="Notificações">
+      🔔 <span id="notifBadge" class="notif-badge">0</span>
+    </button>
     <button type="button" id="langToggleBtn" class="btn btn-secondary btn-sm">EN</button>
     <button type="button" id="logoutBtn" class="btn btn-secondary btn-sm" data-i18n="btn.logout">Sair</button>
   </div>
@@ -104,29 +110,29 @@
 
 <!-- Session detail modal -->
 <div id="sessionDetailModal" class="modal-backdrop" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sessionDetailTitle" style="max-width:600px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sessionDetailTitle">
     <div class="modal-header">
       <h3 id="sessionDetailTitle" data-i18n="session.title">Detalhes da Importação</h3>
-      <button type="button" class="modal-close" onclick="closeModal('sessionDetailModal')">✕</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" data-modal-close="sessionDetailModal">✕</button>
     </div>
     <div class="flex-col gap-lg">
-      <div id="sessionDetailMeta" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.82rem"></div>
+      <div id="sessionDetailMeta"></div>
       <div id="sessionDetailCounts" class="flex-center gap-sm flex-wrap"></div>
       <div id="sessionDetailWarnings" hidden>
-        <div id="sessionDetailWarningsHeader" class="flex-center gap-sm" style="margin-bottom:.35rem">
-          <p class="font-xs font-600" style="color:var(--amber);margin:0" data-i18n="session.warnings">⚠ Avisos</p>
+        <div id="sessionDetailWarningsHeader" class="flex-center gap-sm mb-1">
+          <p class="font-xs font-600" data-i18n="session.warnings">⚠ Avisos</p>
         </div>
-        <ul id="sessionDetailWarningsList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:var(--warn-text);display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
+        <ul id="sessionDetailWarningsList"></ul>
       </div>
       <div id="sessionDetailInfos" hidden>
-        <div id="sessionDetailInfosHeader" class="flex-center gap-sm" style="margin-bottom:.35rem">
-          <p class="font-xs font-600" style="color:var(--primary);margin:0" data-i18n="session.infos">ℹ Informações</p>
+        <div id="sessionDetailInfosHeader" class="flex-center gap-sm mb-1">
+          <p class="font-xs font-600" data-i18n="session.infos">ℹ Informações</p>
         </div>
-        <ul id="sessionDetailInfosList" style="margin:0;padding-left:1.2rem;font-size:.8rem;color:var(--info-text);display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto"></ul>
+        <ul id="sessionDetailInfosList"></ul>
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('sessionDetailModal')" data-i18n="btn.close">Fechar</button>
+      <button type="button" class="btn btn-secondary btn-sm" data-modal-close="sessionDetailModal" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -141,6 +147,11 @@
           role="tab" aria-selected="false" aria-controls="tab-projects" id="tab-btn-projects">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
     <span data-i18n="tab.projects">Projetos</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="cycles"
+          role="tab" aria-selected="false" aria-controls="tab-cycles" id="tab-btn-cycles">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span data-i18n="tab.cycles">Ciclos</span>
   </button>
   <button type="button" class="tab-btn" data-tab="team"
           role="tab" aria-selected="false" aria-controls="tab-team" id="tab-btn-team">
@@ -169,16 +180,17 @@
   <section id="tab-dashboard" class="tab-section" role="tabpanel" aria-labelledby="tab-btn-dashboard" tabindex="0">
 
     <div class="card">
-      <div class="section-header" id="filterToggle" style="cursor:pointer;user-select:none">
+      <div class="section-header clickable" id="filterToggle" role="button" tabindex="0"
+           aria-expanded="true" aria-controls="filterBody">
         <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
-        <span id="filterChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        <span id="filterChevron" class="chevron">▼</span>
       </div>
       <div id="filterBody">
         <div class="filter-grid">
-          <div class="field"><label data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
-          <div class="field"><label data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
-          <div class="field"><label data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
-          <div class="field"><label data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+          <div class="field"><label for="cycleMs-toggle" data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+          <div class="field"><label for="pepMs-toggle" data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+          <div class="field"><label for="pepDescMs-toggle" data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+          <div class="field"><label for="collaboratorMs-toggle" data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
           <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
           <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
           <div class="field btn-group">
@@ -193,7 +205,7 @@
     </div>
 
     <!-- Portfolio semaphore — macro health overview -->
-    <div id="semaphoreBar" class="card semaphore-bar" style="display:none"></div>
+    <div id="semaphoreBar" class="card semaphore-bar"></div>
 
     <!-- Analytics sub-tab navigation -->
     <nav class="analytics-tabs" id="analyticsTabsNav" role="tablist" data-i18n-aria="nav.analytics_label">
@@ -211,6 +223,10 @@
               role="tab" aria-selected="false" aria-controls="atab-forecast" id="atab-btn-forecast">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         <span data-i18n="atab.forecast">Previsão</span>
+      </button>
+      <button type="button" id="printReportBtn" class="btn btn-ghost btn-sm" onclick="window.print()"
+              aria-label="Imprimir relatório" data-i18n-aria="btn.print_report">
+        <span aria-hidden="true">🖨</span>
       </button>
     </nav>
 
@@ -232,32 +248,40 @@
         </div>
         <div id="effortChart" role="img" data-i18n-aria="chart.effortChart"></div>
       </div>
-      <div id="collabDetailPanel" class="card" hidden style="padding:0;overflow:hidden">
+      <div id="collabDetailPanel" class="card" hidden>
         <div class="detail-panel-header">
-          <span id="collabDetailName" class="font-600" style="font-size:.95rem;color:var(--text)"></span>
-          <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
+          <span id="collabDetailName" class="font-600"></span>
+          <div class="flex-center gap-sm">
+            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
+            <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
+          </div>
         </div>
         <!-- Section 1: horas por ciclo -->
-        <div style="padding:1rem 1.25rem .5rem">
-          <div class="section-label" style="margin-bottom:.5rem" data-i18n="collab.section_cycles">Horas por Ciclo</div>
+        <div>
+          <div class="section-label mb-2" data-i18n="collab.section_cycles">Horas por Ciclo</div>
           <div id="collabInlineTimelineEmpty" class="chart-empty" hidden data-i18n="collab.timeline_empty">Nenhum dado encontrado para este colaborador.</div>
           <div id="collabInlineTimelineChart" role="img" data-i18n-aria="chart.collabInlineTimelineChart"></div>
         </div>
+        <!-- Section 1.5: radar de perfil -->
+        <div id="collabRadarSection">
+          <div class="section-label mb-2" data-i18n="collab.section_radar">Perfil do Colaborador</div>
+          <div id="collabRadarChart" role="img" data-i18n-aria="chart.collabRadarChart"></div>
+        </div>
         <!-- Section 2: heatmap calendário -->
-        <div style="padding:.5rem 1.25rem 1.25rem;border-top:1px solid var(--border)">
-          <div class="flex-center gap-md" style="margin-bottom:.75rem">
+        <div>
+          <div class="flex-center gap-md mb-3">
             <div class="section-label flex-1">
               <span data-i18n="collab.section_calendar">Atividade Diária</span>
-              <span style="font-size:.7rem;font-weight:400;color:var(--text-3);margin-left:.35rem;text-transform:none;letter-spacing:0" data-i18n="cal.week_range">(Domingo - Sábado)</span>
+              <span data-i18n="cal.week_range">(Domingo - Sábado)</span>
             </div>
             <button id="calPrevMonth" class="cal-nav-btn">&#8249;</button>
-            <input type="month" id="calMonthInput" style="font-size:.92rem;font-weight:600;text-align:center;width:13rem;flex-shrink:0;cursor:pointer;color-scheme:dark" />
+            <input type="month" id="calMonthInput" />
             <button id="calNextMonth" class="cal-nav-btn">&#8250;</button>
           </div>
           <div id="collabCalendarEmpty" class="chart-empty" hidden data-i18n="collab.calendar_empty">Sem atividade neste mês.</div>
-          <div id="calDayHeader" style="display:none;margin:0 auto 2px"></div>
+          <div id="calDayHeader"></div>
           <div id="collabCalendarChart" role="img" data-i18n-aria="chart.collabCalendarChart"></div>
-          <div id="collabCalendarStats" class="flex-center gap-xl flex-wrap" style="margin-top:.75rem"></div>
+          <div id="collabCalendarStats" class="flex-center gap-xl flex-wrap"></div>
         </div>
       </div>
       <div class="card chart-panel" data-chart-id="trendsChart" data-panel-id="effort-trends">
@@ -270,7 +294,7 @@
         </div>
         <div id="trendsChart" role="img" data-i18n-aria="chart.trendsChart"></div>
       </div>
-      <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" data-panel-id="effort-pepcpi" hidden style="margin-top:0">
+      <div class="card chart-panel" id="pepCpiPanel" data-chart-id="pepCpiChart" data-panel-id="effort-pepcpi" hidden>
         <div class="panel-header">
           <span class="panel-title" data-i18n="pepcpi.title" data-evm="CPI">CPI por PEP ao longo dos Ciclos</span>
           <span class="panel-note"  data-i18n="pepcpi.note">Budget / Custo Real por ciclo · Linha de referência em 1.0 · Requer budget_cost nos projetos</span>
@@ -301,6 +325,7 @@
           <div class="flex-center gap-sm">
             <span class="panel-note" data-i18n="portfolio.note">Blocos cinzas = PEP sem projeto cadastrado</span>
             <button type="button" id="evmToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_hours">Vista: Horas</button>
+            <button type="button" id="timelineToggleBtn" class="btn btn-secondary btn-sm">Por Ciclo</button>
           </div>
         </div>
         <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
@@ -310,7 +335,7 @@
       </div>
       <div class="card chart-panel" id="bulletPanel" data-chart-id="bulletChart" data-panel-id="portfolio-bullet" hidden>
         <div class="panel-title" data-i18n="bullet.title">Orçado vs. Realizado — Bullet Chart</div>
-        <div class="panel-note" style="margin-bottom:.75rem">
+        <div class="panel-note mb-3">
           <span class="threshold-dot blue"></span> <span id="bulletOkLabel"></span>&nbsp;
           <span class="threshold-dot amber"></span> <span id="bulletWarnLabel"></span>&nbsp;
           <span class="threshold-dot red"></span> <span id="bulletCritLabel"></span>
@@ -326,6 +351,7 @@
           Nenhum dado de PEP disponível para os filtros selecionados.
         </div>
         <div id="scatterChart" role="img" data-i18n-aria="chart.scatterChart"></div>
+        <div id="scatterBrushResult" hidden></div>
       </div>
       <div class="card" id="concentrationPanel" data-panel-id="portfolio-concentration" hidden>
         <div class="panel-header">
@@ -342,7 +368,7 @@
         <div id="allocationEmpty" class="chart-empty" hidden data-i18n="allocation.empty">
           Nenhum dado encontrado.
         </div>
-        <div id="allocationMatrix" class="overflow-x" style="padding:.5rem 0"></div>
+        <div id="allocationMatrix" class="overflow-x"></div>
       </div>
       <div class="card" id="runwayPanel" data-panel-id="portfolio-runway">
         <div class="panel-header">
@@ -380,7 +406,7 @@
           <span class="panel-title" data-i18n="forecast.title" data-evm="EVM">Previsão de Conclusão</span>
           <div class="flex-center gap-sm">
             <label for="forecastPepSelect" class="hint nowrap" data-i18n="trends.pep_lbl">PEP:</label>
-            <select id="forecastPepSelect" class="form-select" style="font-size:.8rem;padding:.2rem .5rem;min-width:200px">
+            <select id="forecastPepSelect" class="form-select">
               <option value="" data-i18n="forecast.select_pep">— selecione um PEP —</option>
             </select>
           </div>
@@ -388,14 +414,14 @@
         <div id="forecastEmpty" class="chart-empty" hidden data-i18n="forecast.empty">
           Selecione um PEP para visualizar a previsão de conclusão.
         </div>
-        <div id="forecastKpis" style="margin:.75rem 0" hidden></div>
-        <div id="forecastPhysicalBadge" hidden style="margin-bottom:.5rem">
-          <span class="badge" style="background:var(--color-accent);color:#fff;font-size:.78rem;padding:.2rem .6rem;border-radius:1rem"
+        <div id="forecastKpis" hidden></div>
+        <div id="forecastPhysicalBadge" hidden class="mb-2">
+          <span class="badge"
             data-i18n="forecast.physical_badge" data-i18n-title="forecast.physical_badge_title">Modo: % Físico</span>
         </div>
         <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
-        <div id="velocitySparklineChart" style="height:110px;margin-top:.25rem" hidden></div>
-        <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden style="padding:.75rem 1rem 0;border-top:1px solid var(--border);margin-top:.5rem"></div>
+        <div id="velocitySparklineChart" hidden></div>
+        <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden></div>
       </div>
 
       <!-- Burn-Up de Custo + Earned Schedule KPIs + Baseline de Planejamento -->
@@ -404,13 +430,14 @@
           <h2 class="card-title" data-i18n="burnup.title">Burn-Up de Custo (R$)</h2>
         </div>
         <!-- Earned Schedule KPI strip — only when ES data is available -->
-        <div id="burnUpEsKpis" hidden style="margin-bottom:.75rem"></div>
+        <div id="burnUpEsKpis" hidden class="mb-3"></div>
         <div id="burnUpChart" role="img" data-i18n-aria="chart.burnUpChart"></div>
         <!-- Baseline de Planejamento sub-section -->
         <div id="burnUpBaselineSection" hidden>
-          <div class="section-header" id="burnUpBaselineToggle" style="cursor:pointer;user-select:none;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
-            <span style="font-size:.85rem;font-weight:600;color:var(--text)" data-i18n="plan.title">Baseline de Planejamento</span>
-            <span id="burnUpBaselineChevron" style="font-size:.9rem;transition:transform .25s;display:inline-block">▼</span>
+          <div class="section-header" id="burnUpBaselineToggle" role="button" tabindex="0"
+               aria-expanded="true" aria-controls="burnUpBaselineBody">
+            <span data-i18n="plan.title">Baseline de Planejamento</span>
+            <span id="burnUpBaselineChevron">▼</span>
           </div>
           <div id="burnUpBaselineBody"></div>
         </div>
@@ -418,13 +445,14 @@
 
       <!-- Alocação por Colaborador — unified card with Horas / Custo toggle -->
       <div class="card" id="forecastAllocCard" data-panel-id="forecast-alloc" hidden>
-        <div class="section-header" id="forecastAllocToggle" style="cursor:pointer;user-select:none">
+        <div class="section-header clickable" id="forecastAllocToggle" role="button" tabindex="0"
+             aria-expanded="true" aria-controls="forecastAllocBody">
           <h2 class="card-title" data-i18n="forecast.alloc.title_unified">Alocação por Colaborador</h2>
-          <div class="flex-center gap-sm" style="margin-left:auto;margin-right:.5rem" onclick="event.stopPropagation()">
+          <div class="flex-center gap-sm" onclick="event.stopPropagation()">
             <button id="allocBtnHours" class="btn btn-sm btn-primary" onclick="_setAllocMode('hours')" data-i18n="lbl.hours">Horas</button>
             <button id="allocBtnCost"  class="btn btn-sm btn-secondary" onclick="_setAllocMode('cost')" data-i18n="lbl.cost">Custo</button>
           </div>
-          <span id="forecastAllocChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+          <span id="forecastAllocChevron" class="chevron">▼</span>
         </div>
         <div id="forecastAllocBody">
           <div id="forecastAllocTableHours"></div>
@@ -439,45 +467,47 @@
         </div>
 
         <!-- What-If sub-section -->
-        <div style="border-top:1px solid var(--border);margin-top:.25rem;padding-top:.75rem">
-          <div class="section-header" id="whatIfToggle" style="cursor:pointer;user-select:none;padding:0 0 .5rem">
-            <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="sim.title">Simulação What-If</span>
-            <span id="whatIfChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        <div>
+          <div class="section-header collapsible-trigger" id="whatIfToggle" role="button" tabindex="0"
+               aria-expanded="false" aria-controls="whatIfBody">
+            <span class="label-strong" data-i18n="sim.title">Simulação What-If</span>
+            <span id="whatIfChevron" class="chevron-open">▼</span>
           </div>
           <div id="whatIfBody">
-            <p class="hint" style="margin-bottom:.75rem" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
-            <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
-              <div class="form-group" style="flex:0 0 180px">
+            <p class="hint mb-3" data-i18n="sim.hint">Ajuste os parâmetros para projetar diferentes cenários de velocidade.</p>
+            <div>
+              <div class="form-group">
                 <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
-                <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" style="width:100%" />
-                <span id="whatIfVelocityHint" class="hint" style="font-size:.72rem;display:block;margin-top:.25rem;min-height:1.1em"></span>
+                <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" class="w-full" />
+                <span id="whatIfVelocityHint" class="hint"></span>
               </div>
-              <div class="form-group" style="flex:0 0 150px">
+              <div class="form-group">
                 <label for="whatIfExtraHours" data-i18n="sim.extra_lbl">Horas extras/ciclo</label>
-                <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" style="width:100%" />
-                <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+                <input type="number" id="whatIfExtraHours" value="0" min="0" step="1" class="w-full" />
+                <span class="field-hint-block"></span>
               </div>
-              <div class="form-group" style="flex:0 0 auto">
-                <label style="visibility:hidden" aria-hidden="true">&nbsp;</label>
+              <div class="form-group">
+                <label aria-hidden="true">&nbsp;</label>
                 <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
-                <span style="display:block;min-height:1.1em;margin-top:.25rem"></span>
+                <span class="field-hint-block"></span>
               </div>
             </div>
             <div id="whatIfResult"></div>
-            <div id="whatIfBurnUpChart" style="height:180px;margin-top:.75rem" hidden></div>
+            <div id="whatIfBurnUpChart" hidden></div>
           </div>
         </div>
 
         <!-- Monte Carlo sub-section -->
-        <div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.75rem">
-          <div class="section-header" id="mcToggle" style="cursor:pointer;user-select:none;padding:0 0 .5rem">
-            <span style="font-size:.88rem;font-weight:600;color:var(--text)" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</span>
-            <span id="mcChevron" style="font-size:1rem;transition:transform .25s;display:inline-block">▼</span>
+        <div>
+          <div class="section-header collapsible-trigger" id="mcToggle" role="button" tabindex="0"
+               aria-expanded="false" aria-controls="mcBody">
+            <span class="label-strong" data-i18n="mc.title">Monte Carlo — Previsão Probabilística</span>
+            <span id="mcChevron" class="chevron-open">▼</span>
           </div>
           <div id="mcBody">
-            <p class="hint" style="margin-bottom:.75rem" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
+            <p class="hint mb-3" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
             <div id="mcResult"></div>
-            <div id="mcHistogramChart" style="height:200px;margin-top:.75rem" hidden></div>
+            <div id="mcHistogramChart" hidden></div>
           </div>
         </div>
       </div>
@@ -501,6 +531,8 @@
           <button type="button" class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
         </div>
       </div>
+      <div id="projectsStats" class="stats-strip" hidden></div>
+      <div id="summaryStaleWarning" class="alert-banner alert-banner--warning" hidden></div>
       <input type="text" id="projectSearch" class="table-search-input" data-i18n-ph="projects.search_ph" placeholder="Buscar por PEP, nome ou cliente…" />
       <div class="table-responsive">
       <table class="data-table" id="projectsTable">
@@ -510,7 +542,7 @@
             <th data-i18n="projects.th.name">Nome do Projeto</th>
             <th data-i18n="projects.th.client">Cliente</th>
             <th data-i18n="projects.th.mgr">Gerente</th>
-            <th class="text-right" data-i18n="projects.th.budget">Budget (h)</th>
+            <th class="text-right" data-i18n="projects.th.budget" data-i18n-title="projects.th.budget_tip">Budget (h)</th>
             <th data-i18n="projects.th.dates">Datas</th>
             <th data-i18n="projects.th.status">Status</th>
             <th></th>
@@ -519,48 +551,19 @@
         <tbody id="projectsBody"><tr><td colspan="8" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="projectsPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="projectsPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="projectsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="projectsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="projectsPageLabel" class="hint"></span>
         <button type="button" id="projectsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
     </div>
-    <!-- Plan panel: inline below projects table, revealed per project -->
-    <div id="projectPlanPanel" hidden>
-      <div class="card" id="planCard">
-        <div class="section-header">
-          <div style="display:flex;flex-direction:column;gap:.15rem">
-            <h2 class="card-title" data-i18n="plan.title">Baseline de Planejamento (Horas e Custo/Ciclo)</h2>
-            <span id="planProjectName" style="font-size:.82rem;color:var(--color-accent);font-weight:600"></span>
-          </div>
-          <div class="flex-center gap-sm flex-wrap">
-            <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
-            <label class="btn btn-secondary btn-sm cursor-pointer" id="importPlanLabel" style="margin:0">
-              <span data-i18n="plan.btn_import">↑ Importar CSV</span>
-              <input type="file" id="importPlanFile" accept=".csv" hidden />
-            </label>
-            <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
-            <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="closePlanPanelBtn" data-i18n="plan.panel.close">✕ Fechar</button>
-          </div>
-        </div>
-        <p class="hint text-dim" style="margin-bottom:.75rem" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
-        <div class="table-responsive">
-        <table class="data-table" id="planTable">
-          <thead><tr>
-            <th data-i18n="plan.th.cycle">Ciclo</th>
-            <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
-            <th class="text-right" data-i18n="plan.th.cost">Custo Planejado (R$)</th>
-            <th class="text-right" data-i18n="plan.th.physical_pct">% Físico</th>
-            <th></th>
-          </tr></thead>
-          <tbody id="planBody"></tbody>
-        </table>
-        </div><!-- /.table-responsive -->
-      </div>
-    </div>
+  </section>
 
+  <!-- ================================================================== -->
+  <!-- TAB: Ciclos                                                         -->
+  <!-- ================================================================== -->
+  <section id="tab-cycles" class="tab-section" hidden role="tabpanel" aria-labelledby="tab-btn-cycles" tabindex="0">
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
@@ -573,9 +576,9 @@
           <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
-      <div class="flex-center gap-lg" style="margin-bottom:.5rem">
-        <input type="text" id="cycleSearch" class="table-search-input flex-1" style="margin-bottom:0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
-        <label class="flex-center hint font-body nowrap cursor-pointer" style="gap:.4rem">
+      <div class="flex-center gap-lg mb-2">
+        <input type="text" id="cycleSearch" class="table-search-input flex-1 mb-0" data-i18n-ph="cycles.search_ph" placeholder="Buscar por nome de ciclo…" />
+        <label class="flex-center hint font-body nowrap cursor-pointer">
           <input type="checkbox" id="showArchivedCycles" />
           <span data-i18n="cycles.show_archived">Mostrar arquivados</span>
         </label>
@@ -595,8 +598,8 @@
         <tbody id="cyclesBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="cyclesPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="cyclesPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="cyclesPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="cyclesPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="cyclesPageLabel" class="hint"></span>
         <button type="button" id="cyclesNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -641,7 +644,7 @@
           <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
         </div>
       </div>
-      <p id="configMsg" class="hint" style="margin-top:.5rem"></p>
+      <p id="configMsg" class="hint mt-2"></p>
     </div>
 
     <div class="card">
@@ -649,7 +652,7 @@
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer" style="margin:0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importSeniorityInput" accept=".csv" hidden />
           </label>
@@ -662,8 +665,8 @@
         <tbody id="seniorityBody"><tr><td colspan="2" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="seniorityPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="seniorityPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="seniorityPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="seniorityPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="seniorityPageLabel" class="hint"></span>
         <button type="button" id="seniorityNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -675,7 +678,7 @@
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer" style="margin:0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importRateCardInput" accept=".csv" hidden />
           </label>
@@ -696,8 +699,8 @@
         <tbody id="rateCardBody"><tr><td colspan="5" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="rateCardPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="rateCardPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="rateCardPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="rateCardPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="rateCardPageLabel" class="hint"></span>
         <button type="button" id="rateCardNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -708,7 +711,7 @@
       <div class="section-header">
         <h2 class="card-title" data-i18n="team.title">Colaboradores</h2>
         <div class="flex-center gap-sm">
-          <select id="bulkSenioritySelect" class="form-select" style="min-width:180px"></select>
+          <select id="bulkSenioritySelect" class="form-select"></select>
           <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
@@ -726,28 +729,34 @@
         <tbody id="teamBody"><tr><td colspan="4" class="td-empty-sm" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="teamPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="teamPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="teamPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="teamPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="teamPageLabel" class="hint"></span>
         <button type="button" id="teamNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
     </div>
 
-    <!-- F5: Over-allocation Detection -->
+    <!-- F5: Over-allocation Detection (admin only — hint shown to non-admins) -->
+    <p id="overAllocHint" class="panel-note" data-i18n="over_alloc.admin_hint">
+      ℹ Administradores têm acesso à detecção de sobre-alocação nesta aba.
+    </p>
     <div class="card" id="overAllocCard" hidden>
       <div class="section-header">
         <h2 class="card-title" data-i18n="over_alloc.title">Detecção de Sobre-alocação</h2>
-        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-          <input type="date" id="overAllocFrom" class="input-sm" title="Data início">
-          <input type="date" id="overAllocTo"   class="input-sm" title="Data fim">
-          <input type="number" id="overAllocThreshold" class="input-sm" min="0" step="0.5" style="width:80px"
+        <div>
+          <label for="overAllocFrom" class="sr-only" data-i18n="filter.dfrom">Data início</label>
+          <input type="date" id="overAllocFrom" class="input-sm">
+          <label for="overAllocTo" class="sr-only" data-i18n="filter.dto">Data fim</label>
+          <input type="date" id="overAllocTo"   class="input-sm">
+          <label for="overAllocThreshold" class="sr-only" data-i18n="over_alloc.filter.threshold_lbl">Limite de horas/dia</label>
+          <input type="number" id="overAllocThreshold" class="input-sm" min="0" step="0.5"
                  data-i18n-ph="over_alloc.filter.threshold">
           <button type="button" class="btn btn-secondary btn-sm" onclick="_loadOverAllocation()" data-i18n="btn.load">Carregar</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="_exportOverAllocCsv()" data-i18n="btn.export_csv">⬇ Exportar CSV</button>
         </div>
       </div>
-      <p class="hint" style="margin-bottom:.5rem" data-i18n="over_alloc.hint">Colaboradores com horas diárias totais acima do limite configurado.</p>
+      <p class="hint mb-2" data-i18n="over_alloc.hint">Colaboradores com horas diárias totais acima do limite configurado.</p>
       <div class="table-responsive">
       <table class="data-table" id="overAllocTable">
         <thead><tr>
@@ -759,8 +768,8 @@
         <tbody id="overAllocBody"><tr><td colspan="4" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="overAllocPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="overAllocPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="overAllocPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="overAllocPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="overAllocPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="overAllocPageLabel" class="hint"></span>
         <button type="button" id="overAllocNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -788,17 +797,17 @@
         <!-- Profile card -->
         <div class="card">
           <h2 class="card-title" data-i18n="myarea.profile_title">Meu Perfil</h2>
-          <p id="myProfileUsername" class="text-hint" style="font-size:.9rem;margin-bottom:1rem"></p>
+          <p id="myProfileUsername" class="text-hint"></p>
           <button type="button" class="btn btn-secondary btn-sm" id="myChangePwdBtn" data-i18n="myarea.change_pwd">Alterar senha</button>
         </div>
 
         <!-- Dashboard layout customization -->
         <div class="card">
-          <div class="section-header" style="margin-bottom:.75rem">
-            <h2 class="card-title" style="margin-bottom:0" data-i18n="myarea.layout_title">Layout do Dashboard</h2>
+          <div class="section-header mb-3">
+            <h2 class="card-title mb-0" data-i18n="myarea.layout_title">Layout do Dashboard</h2>
             <button type="button" class="btn btn-primary btn-sm" id="saveLayoutBtn" data-i18n="myarea.layout_save">Salvar layout</button>
           </div>
-          <p class="hint-sm" style="margin-bottom:.75rem" data-i18n="myarea.layout_hint">Arraste para reordenar os painéis do dashboard.</p>
+          <p class="hint-sm mb-3" data-i18n="myarea.layout_hint">Arraste para reordenar os painéis do dashboard.</p>
           <ul class="sortable-list" id="chartLayoutList">
             <li class="sortable-item layout-tab-item" data-chart="effort">
               <div class="sortable-item-row">
@@ -888,14 +897,14 @@
 
     <!-- Sub-tab: Upload (includes History and Quarantine inline) -->
     <div id="my-tab-upload" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-upload" tabindex="0">
-      <div class="card" style="max-width:520px">
+      <div class="card mw-520">
         <h2 class="card-title" data-i18n="myarea.upload">Upload</h2>
-        <p class="font-body text-hint" style="margin-bottom:1rem" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
-        <label class="btn btn-primary cursor-pointer" style="display:inline-flex;align-items:center;gap:.5rem">
+        <p class="font-body text-hint mb-4" data-i18n="myarea.upload_hint">Importe um arquivo CSV ou XLSX de timesheets.</p>
+        <label class="btn btn-primary cursor-pointer">
           <span data-i18n="btn.import_ts">⬆ Importar</span>
           <input type="file" id="myAreaCsvInput" accept=".csv,.xlsx,.xls" hidden />
         </label>
-        <div id="myAreaUploadResult" class="font-body text-hint" style="margin-top:1rem"></div>
+        <div id="myAreaUploadResult" class="font-body text-hint"></div>
       </div>
 
       <!-- History -->
@@ -903,7 +912,7 @@
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.history">Histórico de Importações</h2>
           <div class="flex-center gap-sm">
-            <select id="myHistoryFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
+            <select id="myHistoryFilter" class="form-select input-sel-sm">
               <option value="" data-i18n="history.filter.all">Todos os registros</option>
               <option value="ok" data-i18n="history.status.ok">✅ OK</option>
               <option value="warnings" data-i18n="history.status.warnings">⚠️ Com avisos</option>
@@ -913,7 +922,7 @@
             <button type="button" class="btn btn-secondary btn-sm" id="myHistoryExportBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p class="hint-xs" style="margin:.25rem 0 .75rem" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
+        <p class="hint-xs" data-i18n="myarea.history_hint">Clique em uma linha para ver o detalhe completo de avisos e informações.</p>
         <div class="table-responsive">
         <table class="data-table" id="myHistoryTable">
           <thead><tr>
@@ -930,8 +939,8 @@
           <tbody id="myHistoryBody"><tr><td colspan="9" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
         </div><!-- /.table-responsive -->
-        <div id="myHistoryPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <div id="myHistoryPagination" hidden class="pagination-bar">
+          <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="myHistoryPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myHistoryPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myHistoryPageLabel" class="hint"></span>
           <button type="button" id="myHistoryNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -943,7 +952,7 @@
         <div class="section-header">
           <h2 class="card-title" data-i18n="myarea.quarantine">Quarentena</h2>
           <div class="flex-center gap-sm">
-            <select id="myQrFilter" class="form-select" style="min-width:160px;height:2rem;font-size:.8rem">
+            <select id="myQrFilter" class="form-select input-sel-sm">
               <option value="" data-i18n="qr.filter.all">Todos os registros</option>
               <option value="pending" data-i18n="qr.filter.pending_opt">⏳ Pendentes</option>
               <option value="approved" data-i18n="qr.filter.approved_opt">✅ Aprovados</option>
@@ -952,7 +961,7 @@
             <button type="button" class="btn btn-secondary btn-sm" id="myQrExportBtn" data-i18n="qr.btn.export">⬇ Exportar CSV</button>
           </div>
         </div>
-        <p style="font-size:.78rem;color:var(--text-hint);margin:.25rem 0 .75rem" data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
+        <p data-i18n="myarea.quarantine_hint">Registros em quarentena. Clique para ver detalhes.</p>
         <div class="table-responsive">
         <table class="data-table" id="myQrTable">
           <thead><tr>
@@ -967,8 +976,8 @@
           <tbody id="myQrBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
         </div><!-- /.table-responsive -->
-        <div id="myQrPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-          <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <div id="myQrPagination" hidden class="pagination-bar">
+          <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="myQrPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="myQrPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
           <span id="myQrPageLabel" class="hint"></span>
           <button type="button" id="myQrNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -1000,8 +1009,8 @@
         <tbody id="usersBody"><tr><td colspan="3" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="usersPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="usersPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="usersPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="usersPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="usersPageLabel" class="hint"></span>
         <button type="button" id="usersNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -1014,9 +1023,9 @@
         <h2 class="card-title" data-i18n="vr.title">Regras de Validação</h2>
         <button type="button" class="btn btn-primary btn-sm" id="newRuleBtn" data-i18n="vr.btn.new">+ Nova Regra</button>
       </div>
-      <p class="hint-sm" style="margin-bottom:.75rem" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
+      <p class="hint-sm mb-3" data-i18n="vr.system_hint">Regras de sistema (🔒) não podem ser editadas ou excluídas, mas podem ser ativadas/desativadas.</p>
       <ul class="sortable-list" id="rulesList">
-        <li style="text-align:center;color:var(--text-faint);padding:1rem;font-size:.85rem" data-i18n="loading">Carregando…</li>
+        <li data-i18n="loading">Carregando…</li>
       </ul>
     </div>
 
@@ -1024,27 +1033,16 @@
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
-        <div class="flex-center gap-sm flex-wrap">
-          <label class="btn btn-secondary btn-sm cursor-pointer" title="Enviar logo" data-i18n="appearance.logo_upload">
-            📷 Logo
-            <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
-          </label>
-          <button type="button" class="btn btn-danger btn-sm" id="deleteLogoBtn" data-i18n="appearance.logo_remove">✕ Remover logo</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="restoreDefaultThemeBtn" data-i18n="appearance.restore">Restaurar padrões</button>
-          <button type="button" class="btn btn-primary btn-sm" id="saveThemeBtn" data-i18n="appearance.save">Salvar aparência</button>
-        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="openThemeModalBtn" data-i18n="appearance.open_btn">🎨 Personalizar Aparência</button>
       </div>
-      <div id="themePreviewBar" class="theme-preview-bar" style="margin-bottom:1rem"></div>
-      <div class="theme-color-grid" id="themeColorGrid">
-        <!-- populated by JS -->
-      </div>
+      <div id="themePreviewBar" class="theme-preview-bar mt-2"></div>
     </div>
 
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="auditlog.title">Log de Auditoria</h2>
         <div class="flex-center gap-sm">
-          <select id="auditEntityFilter" class="form-select" style="min-width:150px;height:2rem;font-size:.8rem">
+          <select id="auditEntityFilter" class="form-select">
             <option value="" data-i18n="auditlog.filter.all_entity">Todas entidades</option>
             <option value="cycle">cycle</option>
             <option value="project">project</option>
@@ -1059,7 +1057,7 @@
             <option value="theme">theme</option>
             <option value="global_config">global_config</option>
           </select>
-          <select id="auditActionFilter" class="form-select" style="min-width:170px;height:2rem;font-size:.8rem">
+          <select id="auditActionFilter" class="form-select">
             <option value="" data-i18n="auditlog.filter.all_action">Todas ações</option>
             <option value="create">create</option>
             <option value="update">update</option>
@@ -1090,8 +1088,8 @@
         <tbody id="auditBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
       </table>
       </div><!-- /.table-responsive -->
-      <div id="auditPagination" hidden style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
-        <label class="hint" style="display:flex;align-items:center;gap:.3rem">Itens: <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+      <div id="auditPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="auditPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
         <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="auditPageLabel" class="hint"></span>
         <button type="button" id="auditNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
@@ -1105,26 +1103,28 @@
 <!-- Modal: Budget Revision History (F7)                                  -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="budgetHistoryModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="budgetHistoryTitle" style="max-width:720px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="budgetHistoryTitle">
     <div class="modal-header">
       <h3 id="budgetHistoryTitle" data-i18n="budget.history.title">Histórico de Revisões de Budget</h3>
-      <button type="button" class="modal-close" onclick="closeModal('budgetHistoryModal')">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" data-modal-close="budgetHistoryModal">×</button>
     </div>
-    <div id="budgetSparkline" style="height:120px;margin-bottom:.5rem" hidden></div>
-    <div class="table-responsive" style="max-height:400px;overflow-y:auto">
-      <table class="data-table" id="budgetHistoryTable">
-        <thead><tr>
-          <th data-i18n="budget.history.th.when">Quando</th>
-          <th data-i18n="budget.history.th.by">Por</th>
-          <th class="text-right" data-i18n="budget.history.th.hours">Horas</th>
-          <th class="text-right" data-i18n="budget.history.th.cost">Custo (R$)</th>
-          <th data-i18n="budget.history.th.reason">Motivo</th>
-        </tr></thead>
-        <tbody id="budgetHistoryBody"></tbody>
-      </table>
+    <div class="modal-body">
+      <div id="budgetSparkline" hidden></div>
+      <div class="table-responsive">
+        <table class="data-table" id="budgetHistoryTable">
+          <thead><tr>
+            <th data-i18n="budget.history.th.when">Quando</th>
+            <th data-i18n="budget.history.th.by">Por</th>
+            <th class="text-right" data-i18n="budget.history.th.hours">Horas</th>
+            <th class="text-right" data-i18n="budget.history.th.cost">Custo (R$)</th>
+            <th data-i18n="budget.history.th.reason">Motivo</th>
+          </tr></thead>
+          <tbody id="budgetHistoryBody"></tbody>
+        </table>
+      </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closeModal('budgetHistoryModal')" data-i18n="btn.close">Fechar</button>
+      <button type="button" class="btn btn-secondary" data-modal-close="budgetHistoryModal" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -1132,31 +1132,72 @@
 <!-- ================================================================== -->
 <!-- Modal: Ciclo                                                         -->
 <!-- ================================================================== -->
+<!-- ================================================================== -->
+<!-- Modal: Baseline de Planejamento                                   -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="planModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="planModalTitleTxt">
+    <div class="modal-header">
+      <div>
+        <h3 id="planModalTitleTxt" data-i18n="plan.title">Baseline de Planejamento</h3>
+        <span id="planProjectName"></span>
+      </div>
+      <button type="button" class="modal-close" id="planModalClose" aria-label="Fechar" data-i18n-aria="btn.close" data-modal-close="planModal">×</button>
+    </div>
+    <div class="flex-center gap-sm flex-wrap">
+      <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
+      <label class="btn btn-secondary btn-sm cursor-pointer m-0" id="importPlanLabel">
+        <span data-i18n="plan.btn_import">↑ Importar CSV</span>
+        <input type="file" id="importPlanFile" accept=".csv" hidden />
+      </label>
+      <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
+      <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+    </div>
+    <p class="hint text-dim plan-hint" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
+    <div class="modal-body">
+      <div class="table-responsive">
+      <table class="data-table" id="planTable">
+        <thead><tr>
+          <th data-i18n="plan.th.cycle">Ciclo</th>
+          <th class="text-right" data-i18n="plan.th.hours">Horas Planejadas</th>
+          <th class="text-right" data-i18n="plan.th.cost">Custo Planejado (R$)</th>
+          <th class="text-right" data-i18n="plan.th.physical_pct">% Físico</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="planBody"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="cycleModal" hidden>
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cycleModalTitle">
     <div class="modal-header">
       <h3 id="cycleModalTitle" data-i18n="cm.title_new">Novo Ciclo</h3>
-      <button type="button" class="modal-close" id="cycleModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="cycleModalClose" data-modal-close="cycleModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <div class="form-group">
-        <label for="cycleNameInput" data-i18n="cm.name_lbl">Nome *</label>
-        <input type="text" id="cycleNameInput" data-i18n-ph="cm.name_ph" placeholder="Ex: Janeiro/2026" />
-      </div>
-      <div class="form-grid">
+    <div class="modal-body">
+      <div class="form-grid cols-1">
         <div class="form-group">
-          <label for="cycleStartInput" data-i18n="cm.start_lbl">Data início *</label>
-          <input type="date" id="cycleStartInput" />
+          <label for="cycleNameInput" data-i18n="cm.name_lbl">Nome *</label>
+          <input type="text" id="cycleNameInput" required aria-required="true" data-i18n-ph="cm.name_ph" placeholder="Ex: Janeiro/2026" />
         </div>
-        <div class="form-group">
-          <label for="cycleEndInput" data-i18n="cm.end_lbl">Data fim *</label>
-          <input type="date" id="cycleEndInput" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="cycleStartInput" data-i18n="cm.start_lbl">Data início *</label>
+            <input type="date" id="cycleStartInput" required aria-required="true" />
+          </div>
+          <div class="form-group">
+            <label for="cycleEndInput" data-i18n="cm.end_lbl">Data fim *</label>
+            <input type="date" id="cycleEndInput" required aria-required="true" />
+          </div>
         </div>
       </div>
+      <div class="error-msg" id="cycleError"></div>
     </div>
-    <div class="error-msg" id="cycleError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="cycleCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="cycleCancelBtn" data-modal-close="cycleModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="cycleSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1169,12 +1210,13 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
     <div class="modal-header">
       <h3 id="projectModalTitle" data-i18n="pm.title_new">Novo Projeto</h3>
-      <button type="button" class="modal-close" id="projectModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="projectModalClose" data-modal-close="projectModal">×</button>
     </div>
+    <div class="modal-body">
     <div class="form-grid">
       <div class="form-group">
         <label for="projectPepInput" data-i18n="pm.pep_lbl">Código PEP *</label>
-        <input type="text" id="projectPepInput" data-i18n-ph="pm.pep_ph" placeholder="Ex: 60OP-03333" />
+        <input type="text" id="projectPepInput" required aria-required="true" data-i18n-ph="pm.pep_ph" placeholder="Ex: 60OP-03333" />
       </div>
       <div class="form-group">
         <label for="projectStatusInput" data-i18n="pm.status_lbl">Status</label>
@@ -1222,8 +1264,9 @@
       </div>
     </div>
     <div class="error-msg" id="projectError"></div>
+    </div><!-- /.modal-body -->
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="projectCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="projectCancelBtn" data-modal-close="projectModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="projectSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1236,17 +1279,19 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="seniorityModalTitle">
     <div class="modal-header">
       <h3 id="seniorityModalTitle" data-i18n="sm.title_new">Novo Nível de Senioridade</h3>
-      <button type="button" class="modal-close" id="seniorityModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="seniorityModalClose" data-modal-close="seniorityModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <div class="form-group">
-        <label for="seniorityNameInput" data-i18n="sm.name_lbl">Nome *</label>
-        <input type="text" id="seniorityNameInput" data-i18n-ph="sm.name_ph" placeholder="Ex: Pleno, Sênior" />
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label for="seniorityNameInput" data-i18n="sm.name_lbl">Nome *</label>
+          <input type="text" id="seniorityNameInput" required aria-required="true" data-i18n-ph="sm.name_ph" placeholder="Ex: Pleno, Sênior" />
+        </div>
       </div>
+      <div class="error-msg" id="seniorityError"></div>
     </div>
-    <div class="error-msg" id="seniorityError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="seniorityCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="seniorityCancelBtn" data-modal-close="seniorityModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="senioritySaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1259,29 +1304,31 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rateCardModalTitle">
     <div class="modal-header">
       <h3 id="rateCardModalTitle" data-i18n="rm.title_new">Nova Taxa</h3>
-      <button type="button" class="modal-close" id="rateCardModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="rateCardModalClose" data-modal-close="rateCardModal">×</button>
     </div>
-    <div class="form-grid">
-      <div class="form-group full">
-        <label for="rateCardLevelInput" data-i18n="rm.level_lbl">Nível de Senioridade *</label>
-        <select class="form-select" id="rateCardLevelInput"></select>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label for="rateCardLevelInput" data-i18n="rm.level_lbl">Nível de Senioridade *</label>
+          <select class="form-select" id="rateCardLevelInput"></select>
+        </div>
+        <div class="form-group">
+          <label for="rateCardRateInput" data-i18n="rm.rate_lbl">Valor/hora (R$) *</label>
+          <input type="number" id="rateCardRateInput" required aria-required="true" data-i18n-ph="rm.rate_ph" placeholder="Ex: 120.00" min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label for="rateCardFromInput" data-i18n="rm.from_lbl">Vigência início *</label>
+          <input type="date" id="rateCardFromInput" required aria-required="true" />
+        </div>
+        <div class="form-group">
+          <label for="rateCardToInput" data-i18n="rm.to_lbl">Vigência fim (opcional)</label>
+          <input type="date" id="rateCardToInput" />
+        </div>
       </div>
-      <div class="form-group">
-        <label for="rateCardRateInput" data-i18n="rm.rate_lbl">Valor/hora (R$) *</label>
-        <input type="number" id="rateCardRateInput" data-i18n-ph="rm.rate_ph" placeholder="Ex: 120.00" min="0" step="0.01" />
-      </div>
-      <div class="form-group">
-        <label for="rateCardFromInput" data-i18n="rm.from_lbl">Vigência início *</label>
-        <input type="date" id="rateCardFromInput" />
-      </div>
-      <div class="form-group">
-        <label for="rateCardToInput" data-i18n="rm.to_lbl">Vigência fim (opcional)</label>
-        <input type="date" id="rateCardToInput" />
-      </div>
+      <div class="error-msg" id="rateCardError"></div>
     </div>
-    <div class="error-msg" id="rateCardError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="rateCardCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="rateCardCancelBtn" data-modal-close="rateCardModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="rateCardSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1294,17 +1341,19 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="assignSeniorityTitle">
     <div class="modal-header">
       <h3 id="assignSeniorityTitle" data-i18n="as.title">Atribuir Senioridade</h3>
-      <button type="button" class="modal-close" id="assignSeniorityClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="assignSeniorityClose" data-modal-close="assignSeniorityModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <div class="form-group">
-        <label for="assignSenioritySelect" data-i18n="as.level_lbl">Nível de Senioridade</label>
-        <select class="form-select" id="assignSenioritySelect">
-          <option value="" data-i18n="as.none_opt">— Sem senioridade —</option>
-        </select>
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label for="assignSenioritySelect" data-i18n="as.level_lbl">Nível de Senioridade</label>
+          <select class="form-select" id="assignSenioritySelect">
+            <option value="" data-i18n="as.none_opt">— Sem senioridade —</option>
+          </select>
+        </div>
       </div>
+      <div class="error-msg" id="assignSeniorityError"></div>
     </div>
-    <div class="error-msg" id="assignSeniorityError"></div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="assignSeniorityCancelBtn" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="assignSenioritySaveBtn" data-i18n="btn.save">Salvar</button>
@@ -1321,28 +1370,30 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
     <div class="modal-header">
       <h3 id="userModalTitle" data-i18n="um.title">Novo Usuário</h3>
-      <button type="button" class="modal-close" id="userModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="userModalClose" data-modal-close="userModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <div class="form-group">
-        <label for="userUsernameInput" data-i18n="um.user_lbl">Usuário *</label>
-        <input type="text" id="userUsernameInput" data-i18n-ph="um.user_ph" placeholder="mínimo 3 caracteres" autocomplete="off" />
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label for="userUsernameInput" data-i18n="um.user_lbl">Usuário *</label>
+          <input type="text" id="userUsernameInput" required aria-required="true" data-i18n-ph="um.user_ph" placeholder="mínimo 3 caracteres" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="userPasswordInput" data-i18n="um.pwd_lbl">Senha *</label>
+          <input type="password" id="userPasswordInput" required aria-required="true" data-i18n-ph="um.pwd_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="userRoleSelect" data-i18n="um.role_lbl">Perfil</label>
+          <select class="form-select" id="userRoleSelect">
+            <option value="user" data-i18n="opt.user">Usuário</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="userPasswordInput" data-i18n="um.pwd_lbl">Senha *</label>
-        <input type="password" id="userPasswordInput" data-i18n-ph="um.pwd_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
-      </div>
-      <div class="form-group">
-        <label for="userRoleSelect" data-i18n="um.role_lbl">Perfil</label>
-        <select class="form-select" id="userRoleSelect">
-          <option value="user" data-i18n="opt.user">Usuário</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+      <div class="error-msg" id="userError"></div>
     </div>
-    <div class="error-msg" id="userError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="userCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="userCancelBtn" data-modal-close="userModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="userSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1355,18 +1406,20 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pwdModalTitle">
     <div class="modal-header">
       <h3 id="pwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
-      <button type="button" class="modal-close" id="pwdModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="pwdModalClose" data-modal-close="pwdModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <input type="hidden" id="pwdTargetId" />
-      <div class="form-group">
-        <label for="pwdNewInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
-        <input type="password" id="pwdNewInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <input type="hidden" id="pwdTargetId" />
+        <div class="form-group">
+          <label for="pwdNewInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
+          <input type="password" id="pwdNewInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
       </div>
+      <div class="error-msg" id="pwdError"></div>
     </div>
-    <div class="error-msg" id="pwdError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="pwdCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="pwdCancelBtn" data-modal-close="pwdModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="pwdSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1379,70 +1432,72 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ruleModalTitle">
     <div class="modal-header">
       <h3 id="ruleModalTitle">Nova Regra de Validação</h3>
-      <button type="button" class="modal-close" id="ruleModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="ruleModalClose" data-modal-close="ruleModal">×</button>
     </div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label data-i18n="vr.th.field">Campo</label>
-        <select class="form-select" id="ruleFieldInput">
-          <option value="horas_individuais">horas_individuais</option>
-          <option value="hora_extra_horas">hora_extra_horas</option>
-          <option value="hora_sobreaviso_horas">hora_sobreaviso_horas</option>
-          <option value="soma_diaria">soma_diaria</option>
-          <option value="soma_semanal">soma_semanal</option>
-          <option value="dia_semana">dia_semana</option>
-          <option value="pep_wbs">pep_wbs</option>
-        </select>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="vr.th.field">Campo</label>
+          <select class="form-select" id="ruleFieldInput">
+            <option value="horas_individuais">horas_individuais</option>
+            <option value="hora_extra_horas">hora_extra_horas</option>
+            <option value="hora_sobreaviso_horas">hora_sobreaviso_horas</option>
+            <option value="soma_diaria">soma_diaria</option>
+            <option value="soma_semanal">soma_semanal</option>
+            <option value="dia_semana">dia_semana</option>
+            <option value="pep_wbs">pep_wbs</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="vr.th.operator">Operador</label>
+          <select class="form-select" id="ruleOperatorInput">
+            <option value="gt">gt (&gt;)</option>
+            <option value="gte">gte (≥)</option>
+            <option value="lt">lt (&lt;)</option>
+            <option value="lte">lte (≤)</option>
+            <option value="eq">eq (=)</option>
+            <option value="neq">neq (≠)</option>
+            <option value="vazio">vazio</option>
+            <option value="nao_vazio">nao_vazio</option>
+            <option value="contem">contem</option>
+            <option value="nao_contem">nao_contem</option>
+            <option value="in_lista">in_lista</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="vr.th.value">Valor</label>
+          <input type="text" id="ruleValueInput" data-i18n-ph="vr.value_ph" placeholder="Ex: 24 ou 5,6" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="vr.th.action">Ação</label>
+          <select class="form-select" id="ruleActionInput">
+            <option value="info">info</option>
+            <option value="warning">warning</option>
+            <option value="quarentena">quarentena</option>
+            <option value="descarte">descarte</option>
+          </select>
+          <p id="ruleAggregateHint" hidden data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
+        </div>
+        <div class="form-group">
+          <label data-i18n="vr.th.order">Ordem</label>
+          <input type="number" id="ruleOrderInput" value="10" min="1" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="vr.th.active">Ativa</label>
+          <select class="form-select" id="ruleActiveInput">
+            <option value="true" data-i18n="opt.yes">Sim</option>
+            <option value="false" data-i18n="opt.no">Não</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label data-i18n="vr.th.description">Descrição</label>
+          <input type="text" id="ruleDescInput" data-i18n-ph="vr.desc_ph" placeholder="Descrição legível da regra" />
+        </div>
       </div>
-      <div class="form-group">
-        <label data-i18n="vr.th.operator">Operador</label>
-        <select class="form-select" id="ruleOperatorInput">
-          <option value="gt">gt (&gt;)</option>
-          <option value="gte">gte (≥)</option>
-          <option value="lt">lt (&lt;)</option>
-          <option value="lte">lte (≤)</option>
-          <option value="eq">eq (=)</option>
-          <option value="neq">neq (≠)</option>
-          <option value="vazio">vazio</option>
-          <option value="nao_vazio">nao_vazio</option>
-          <option value="contem">contem</option>
-          <option value="nao_contem">nao_contem</option>
-          <option value="in_lista">in_lista</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="vr.th.value">Valor</label>
-        <input type="text" id="ruleValueInput" data-i18n-ph="vr.value_ph" placeholder="Ex: 24 ou 5,6" />
-      </div>
-      <div class="form-group">
-        <label data-i18n="vr.th.action">Ação</label>
-        <select class="form-select" id="ruleActionInput">
-          <option value="info">info</option>
-          <option value="warning">warning</option>
-          <option value="quarentena">quarentena</option>
-          <option value="descarte">descarte</option>
-        </select>
-        <p id="ruleAggregateHint" hidden style="margin:.25rem 0 0;font-size:.75rem;color:var(--amber)" data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
-      </div>
-      <div class="form-group">
-        <label data-i18n="vr.th.order">Ordem</label>
-        <input type="number" id="ruleOrderInput" value="10" min="1" />
-      </div>
-      <div class="form-group">
-        <label data-i18n="vr.th.active">Ativa</label>
-        <select class="form-select" id="ruleActiveInput">
-          <option value="true" data-i18n="opt.yes">Sim</option>
-          <option value="false" data-i18n="opt.no">Não</option>
-        </select>
-      </div>
-      <div class="form-group full">
-        <label data-i18n="vr.th.description">Descrição</label>
-        <input type="text" id="ruleDescInput" data-i18n-ph="vr.desc_ph" placeholder="Descrição legível da regra" />
-      </div>
+      <div class="error-msg" id="ruleError"></div>
     </div>
-    <div class="error-msg" id="ruleError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="ruleCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="ruleCancelBtn" data-modal-close="ruleModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="ruleSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1455,21 +1510,23 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="myPwdModalTitle">
     <div class="modal-header">
       <h3 id="myPwdModalTitle" data-i18n="pwdm.title">Alterar Senha</h3>
-      <button type="button" class="modal-close" id="myPwdModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="myPwdModalClose" data-modal-close="myPwdModal">×</button>
     </div>
-    <div class="form-grid cols-1">
-      <div class="form-group">
-        <label for="myCurrentPwdInput" data-i18n="pwdm.current_lbl">Senha atual *</label>
-        <input type="password" id="myCurrentPwdInput" data-i18n-ph="pwdm.current_ph" placeholder="senha atual" autocomplete="current-password" />
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label for="myCurrentPwdInput" data-i18n="pwdm.current_lbl">Senha atual *</label>
+          <input type="password" id="myCurrentPwdInput" data-i18n-ph="pwdm.current_ph" placeholder="senha atual" autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label for="myNewPwdInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
+          <input type="password" id="myNewPwdInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
       </div>
-      <div class="form-group">
-        <label for="myNewPwdInput" data-i18n="pwdm.new_lbl">Nova senha *</label>
-        <input type="password" id="myNewPwdInput" data-i18n-ph="pwdm.new_ph" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
-      </div>
+      <div class="error-msg" id="myPwdError"></div>
     </div>
-    <div class="error-msg" id="myPwdError"></div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="myPwdCancelBtn" data-modal-close="myPwdModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="myPwdSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1477,36 +1534,36 @@
 
 <!-- Modal: Detalhe de Quarentena -->
 <div class="modal-backdrop" id="qrDetailModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle" style="max-width:680px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle">
     <div class="modal-header">
       <h3 id="qrModalTitle">Registro em Quarentena</h3>
-      <button type="button" class="modal-close" id="qrModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="qrModalClose" data-modal-close="qrDetailModal">×</button>
     </div>
     <div class="modal-body">
-      <table class="data-table" style="margin-bottom:1rem">
+      <table class="data-table mb-4">
         <tbody>
-          <tr><th class="text-left" style="width:160px" data-i18n="qr.modal.collab">Colaborador</th><td id="qrDCollab">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.collab">Colaborador</th><td id="qrDCollab">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.date">Data</th><td id="qrDDate">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.hours">Horas</th><td id="qrDHours">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.pep">PEP</th><td id="qrDPep">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.extra">Hora Extra</th><td id="qrDExtra">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.standby">Sobreaviso</th><td id="qrDStandby">—</td></tr>
-          <tr><th class="text-left" data-i18n="qr.modal.reason">Motivo</th><td id="qrDReason" style="color:var(--amber)">—</td></tr>
+          <tr><th class="text-left" data-i18n="qr.modal.reason">Motivo</th><td id="qrDReason">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.rule">Regra violada</th><td id="qrDRule">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.session">Upload Session</th><td id="qrDSession">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.status">Status</th><td id="qrDStatus">—</td></tr>
           <tr><th class="text-left" data-i18n="qr.modal.reviewed_by">Revisado por</th><td id="qrDReviewedBy">—</td></tr>
         </tbody>
       </table>
-      <details style="margin-bottom:.5rem">
+      <details class="mb-2">
         <summary class="hint cursor-pointer" data-i18n="qr.modal.raw">Dados brutos (raw data)</summary>
         <pre id="qrDRawData" class="raw-pre"></pre>
       </details>
     </div>
     <div class="modal-footer">
-      <button type="button" id="qrApproveBtn" class="btn btn-primary" style="background:var(--green);border-color:var(--green)" data-i18n="qr.btn.approve">✅ Aprovar</button>
-      <button type="button" id="qrRejectBtn"  class="btn btn-primary" style="background:var(--red);border-color:var(--red)" data-i18n="qr.btn.reject">❌ Rejeitar</button>
-      <button type="button" id="qrModalCloseBtn" class="btn btn-secondary" data-i18n="btn.close">Fechar</button>
+      <button type="button" id="qrApproveBtn" class="btn btn-primary" data-i18n="qr.btn.approve">✅ Aprovar</button>
+      <button type="button" id="qrRejectBtn"  class="btn btn-primary" data-i18n="qr.btn.reject">❌ Rejeitar</button>
+      <button type="button" id="qrModalCloseBtn" class="btn btn-secondary" data-modal-close="qrDetailModal" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
@@ -1514,28 +1571,28 @@
 <!-- Modal: ACL de Projeto                                               -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="aclModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="aclModalTitle" style="max-width:520px">
+  <div class="modal-box mw-520" role="dialog" aria-modal="true" aria-labelledby="aclModalTitle">
     <div class="modal-header">
       <h3 id="aclModalTitle" data-i18n="acl.title">Controle de Acesso</h3>
-      <button type="button" class="modal-close" id="aclModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="aclModalClose" data-modal-close="aclModal">×</button>
     </div>
-    <div class="modal-form-body">
-      <p class="hint" style="margin:0" data-i18n="acl.hint">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
+    <div class="modal-body">
+      <p class="hint m-0" data-i18n="acl.hint">Usuários com permissão explícita para importar timesheets neste projeto. Admins têm acesso irrestrito.</p>
 
       <!-- Existing grants -->
       <div>
-        <p style="font-size:.78rem;font-weight:600;color:var(--text-pale);margin:0 0 .5rem" data-i18n="acl.granted">Acessos concedidos</p>
-        <table class="data-table" id="aclEntriesTable" style="font-size:.8rem">
+        <p data-i18n="acl.granted">Acessos concedidos</p>
+        <table class="data-table" id="aclEntriesTable">
           <thead><tr><th data-i18n="user.th.user">Usuário</th><th></th></tr></thead>
-          <tbody id="aclEntriesBody"><tr><td colspan="2" style="text-align:center;color:var(--text-faint);padding:1rem" data-i18n="loading">Carregando…</td></tr></tbody>
+          <tbody id="aclEntriesBody"><tr><td colspan="2" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
       </div>
 
       <!-- Add new grant (admin only) -->
       <div id="aclAddRow" class="flex-bottom gap-sm">
         <div class="flex-1">
-          <label class="text-hint" style="font-size:.78rem;display:block;margin-bottom:.25rem" data-i18n="acl.add_user">Adicionar usuário</label>
-          <select id="aclUserSelect" class="form-select" style="height:2rem;font-size:.82rem;width:100%">
+          <label class="text-hint" data-i18n="acl.add_user">Adicionar usuário</label>
+          <select id="aclUserSelect" class="form-select">
             <option value="" data-i18n="ms.select_ph">— selecione —</option>
           </select>
         </div>
@@ -1544,20 +1601,20 @@
       <div id="aclError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="aclModalCloseBtn" data-i18n="btn.close">Fechar</button>
+      <button type="button" class="btn btn-secondary" id="aclModalCloseBtn" data-modal-close="aclModal" data-i18n="btn.close">Fechar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="physicalProgressModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="physicalProgressModalTitle" style="max-width:640px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="physicalProgressModalTitle">
     <div class="modal-header">
       <h3 id="physicalProgressModalTitle" data-i18n="plan.physical.title">Atualizar Avanço Físico de Conclusão</h3>
-      <button type="button" class="modal-close" id="physicalProgressModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="physicalProgressModalClose" data-modal-close="physicalProgressModal">×</button>
     </div>
-    <div class="modal-body flex-col gap-sm">
-      <p class="hint" data-i18n="plan.physical.hint" style="margin:0 0 .5rem"></p>
-      <div style="overflow-x:auto">
+    <div class="modal-body">
+      <p class="hint" data-i18n="plan.physical.hint"></p>
+      <div>
         <table class="data-table" id="physicalProgressTable">
           <thead><tr>
             <th data-i18n="plan.physical.th_cycle">Ciclo</th>
@@ -1572,27 +1629,36 @@
       <div id="physicalProgressError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="physicalProgressCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="physicalProgressCancelBtn" data-modal-close="physicalProgressModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="physicalProgressSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="addPlanModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="addPlanModalTitle" style="max-width:480px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="addPlanModalTitle">
     <div class="modal-header">
       <h3 id="addPlanModalTitle" data-i18n="plan.modal_title">Adicionar ciclos ao baseline</h3>
-      <button type="button" class="modal-close" id="addPlanModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="addPlanModalClose" data-modal-close="addPlanModal">×</button>
     </div>
-    <div class="modal-form-body-sm">
-      <p class="hint" style="margin:0" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas e custo planejados. Ciclos já com baseline não são listados.</p>
-      <div id="addPlanRows" class="flex-col gap-sm"></div>
-      <button type="button" class="btn btn-secondary btn-sm" id="addPlanAddRowBtn" style="align-self:flex-start" data-i18n="plan.modal_add_row">+ Mais um ciclo</button>
+    <div class="modal-body">
+      <p class="hint" data-i18n="plan.modal_hint">Selecione os ciclos e defina as horas e custo planejados. Ciclos já com baseline não são listados.</p>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead><tr>
+            <th class="th-checkbox"><input type="checkbox" id="addPlanCheckAll" title="Selecionar todos" /></th>
+            <th data-i18n="plan.th.cycle">Ciclo</th>
+            <th class="text-right" data-i18n="plan.th.hours">Horas</th>
+            <th class="text-right" data-i18n="plan.th.cost">Custo (R$)</th>
+          </tr></thead>
+          <tbody id="addPlanRows"></tbody>
+        </table>
+      </div>
       <div id="addPlanError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="addPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar</button>
+      <button type="button" class="btn btn-secondary" id="addPlanCancelBtn" data-modal-close="addPlanModal" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="addPlanSaveBtn" data-i18n="btn.save">Salvar selecionados</button>
     </div>
   </div>
 </div>
@@ -1601,19 +1667,19 @@
 <!-- Modal: Editar ciclo do baseline                                       -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="editPlanModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="editPlanModalTitle" style="max-width:400px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="editPlanModalTitle">
     <div class="modal-header">
       <h3 id="editPlanModalTitle" data-i18n="plan.edit_title">Editar baseline do ciclo</h3>
-      <button type="button" class="modal-close" id="editPlanModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="editPlanModalClose" data-modal-close="editPlanModal">×</button>
     </div>
-    <div class="modal-form-body-sm">
-      <p id="editPlanCycleName" style="font-weight:600;margin:0 0 .75rem"></p>
-      <div style="display:flex;gap:.75rem">
-        <label style="flex:1;display:flex;flex-direction:column;gap:.25rem;font-size:.82rem">
+    <div class="modal-body">
+      <p id="editPlanCycleName"></p>
+      <div>
+        <label class="col-flex-sm">
           <span data-i18n="plan.th.hours">Horas Planejadas</span>
           <input type="number" id="editPlanHours" min="0" step="0.5" class="form-input" />
         </label>
-        <label style="flex:1;display:flex;flex-direction:column;gap:.25rem;font-size:.82rem">
+        <label class="col-flex-sm">
           <span data-i18n="plan.th.cost">Custo Planejado (R$)</span>
           <input type="number" id="editPlanCost" min="0" step="0.01" class="form-input" placeholder="opcional" />
         </label>
@@ -1621,7 +1687,7 @@
       <div id="editPlanError" class="error-msg"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="editPlanCancelBtn" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="editPlanCancelBtn" data-modal-close="editPlanModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="editPlanSaveBtn" data-i18n="btn.save">Salvar</button>
     </div>
   </div>
@@ -1631,28 +1697,135 @@
 <!-- Modal: Confirmação                                                   -->
 <!-- ================================================================== -->
 <div class="modal-backdrop" id="confirmModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="max-width:420px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
     <div class="modal-header">
       <h3 id="confirmModalTitle" data-i18n="confirm.modal_title">Confirmar ação</h3>
-      <button type="button" class="modal-close" id="confirmModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="confirmModalClose" data-modal-close="confirmModal">×</button>
     </div>
-    <div class="modal-body" style="padding:1.5rem 1.25rem">
+    <div class="modal-body">
       <p id="confirmModalMsg"></p>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" id="confirmModalCancel" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="confirmModalCancel" data-modal-close="confirmModal" data-i18n="btn.cancel">Cancelar</button>
       <button type="button" class="btn btn-danger" id="confirmModalOk" data-i18n="btn.confirm">Confirmar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="baselineModal" hidden>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="baselineModalTitle" style="max-width:620px">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="baselineModalTitle">
     <div class="modal-header">
       <h3 id="baselineModalTitle">Baseline do Projeto</h3>
-      <button type="button" class="modal-close" id="baselineModalClose">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="baselineModalClose" data-modal-close="baselineModal">×</button>
     </div>
-    <div class="modal-body" style="padding:1.25rem" id="baselineModalBody">
+    <div class="modal-body" id="baselineModalBody">
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- Modal: Aparência do Sistema                                          -->
+<!-- ================================================================== -->
+<div class="modal-backdrop" id="themeModal" hidden>
+  <div class="modal-box theme-modal-box" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+    <div class="modal-header">
+      <h3 id="themeModalTitle" data-i18n="appearance.modal_title">Personalizar Aparência</h3>
+      <button type="button" class="modal-close" aria-label="Fechar" id="closeThemeModalBtn" data-modal-close="themeModal">×</button>
+    </div>
+
+    <div class="modal-body">
+
+    <!-- Presets row -->
+    <div class="theme-preset-row">
+      <select id="presetSelect" onchange="_updatePresetDeleteBtn()">
+        <option value="" data-i18n="appearance.preset_select_placeholder">Selecione um perfil...</option>
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="_loadSelectedPreset()" data-i18n="appearance.preset_load">Carregar</button>
+      <button type="button" id="presetDeleteBtn" class="btn btn-sm" disabled
+        onclick="_deleteSelectedPreset()" data-i18n="appearance.preset_delete">Excluir</button>
+      <div></div>
+      <input id="presetNameInput" type="text" data-i18n-ph="appearance.preset_name" placeholder="Nome do preset">
+      <button type="button" class="btn btn-primary btn-sm" onclick="_saveCurrentAsPreset()" data-i18n="appearance.save_preset">Salvar preset</button>
+      <div class="theme-preset-btns">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="_exportPresetsCSV()" data-i18n="appearance.preset_export">⬇ CSV</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('presetImportInput').click()" data-i18n="appearance.preset_import">⬆ CSV</button>
+        <input id="presetImportInput" type="file" accept=".csv" hidden onchange="_importPresetsCSV(this)">
+      </div>
+    </div>
+
+    <!-- Preview bar -->
+    <div id="themeModalPreviewBar" class="theme-preview-bar"></div>
+
+    <!-- 3-column color grid -->
+    <div class="theme-cols-grid">
+      <div class="theme-col" id="themeColStructure">
+        <div class="theme-col-title" data-i18n="appearance.col_structure">Estrutura</div>
+        <div class="theme-col-fields" id="themeColStructureFields"><!-- populated by JS --></div>
+      </div>
+      <div class="theme-col" id="themeColInteraction">
+        <div class="theme-col-title" data-i18n="appearance.col_interaction">Interação</div>
+        <div class="theme-col-fields" id="themeColInteractionFields"><!-- populated by JS --></div>
+      </div>
+      <div class="theme-col" id="themeColSemantic">
+        <div class="theme-col-title" data-i18n="appearance.col_semantic">Semântica</div>
+        <div class="theme-col-fields" id="themeColSemanticFields"><!-- populated by JS --></div>
+      </div>
+    </div>
+
+    <!-- Palette -->
+    <div class="theme-section" data-i18n="appearance.col_palette">Paleta de gráficos</div>
+    <div class="theme-palette-row" id="themeModalPalette"><!-- populated by JS --></div>
+
+    <!-- Layout & typography -->
+    <div class="theme-section" data-i18n="appearance.col_layout">Layout e tipografia</div>
+    <div class="theme-layout-row">
+      <div class="theme-field">
+        <label data-i18n="appearance.app_name">Nome do sistema</label>
+        <input type="text" id="themeAppName" placeholder="PMAS" />
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.font_family">Fonte</label>
+        <select id="themeFont">
+          <option value="">Padrão (sistema)</option>
+          <option value="'Roboto', sans-serif">Roboto</option>
+          <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
+          <option value="'Source Sans 3', sans-serif">Source Sans 3</option>
+        </select>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.density">Densidade</label>
+        <div id="themeDensityBtns" class="flex-wrap-sm">
+          <button class="btn btn-secondary btn-sm theme-density-btn" data-density="compact" type="button" data-i18n="appearance.density.compact">Compacto</button>
+          <button class="btn btn-secondary btn-sm theme-density-btn active" data-density="normal" type="button" data-i18n="appearance.density.normal">Normal</button>
+          <button class="btn btn-secondary btn-sm theme-density-btn" data-density="relaxed" type="button" data-i18n="appearance.density.relaxed">Espaçado</button>
+        </div>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.border_radius">Raio dos cantos</label>
+        <div id="themeRadiusBtns" class="flex-wrap-sm">
+          <button class="btn btn-secondary btn-sm theme-radius-btn" data-radius="sharp" type="button" data-i18n="appearance.radius_sharp">Reto</button>
+          <button class="btn btn-secondary btn-sm theme-radius-btn active" data-radius="normal" type="button" data-i18n="appearance.radius_normal">Normal</button>
+          <button class="btn btn-secondary btn-sm theme-radius-btn" data-radius="rounded" type="button" data-i18n="appearance.radius_rounded">Arredondado</button>
+        </div>
+      </div>
+      <div class="theme-field">
+        <label data-i18n="appearance.logo">Logo</label>
+        <div class="flex-wrap-sm">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-i18n="appearance.logo_upload">
+            📷 Enviar
+            <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,.webp" hidden />
+          </label>
+          <button type="button" class="btn btn-danger btn-sm" id="deleteLogoBtn" data-i18n="appearance.logo_remove">🗑 Remover</button>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /.modal-body -->
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-sm" id="restoreDefaultThemeBtn" data-i18n="appearance.restore">Restaurar padrões</button>
+      <button type="button" class="btn btn-secondary" id="cancelThemeBtn" data-modal-close="themeModal" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="saveThemeBtn" data-i18n="appearance.save">Salvar aparência</button>
     </div>
   </div>
 </div>
@@ -1663,8 +1836,15 @@
 <script src="/frontend/ui-helpers.js"></script>
 <script src="multiselect.js"></script>
 <script src="app.js"></script>
+<script src="/frontend/crud/cycles.js"></script>
+<script src="/frontend/crud/projects.js"></script>
 <script src="/frontend/charts/effort.js"></script>
 <script src="/frontend/charts/portfolio.js"></script>
 <script src="/frontend/charts/forecast.js"></script>
+<script src="/frontend/tabs/dashboard.js"></script>
+<script src="/frontend/tabs/equipe.js"></script>
+<script src="/frontend/tabs/admin.js"></script>
+<script src="/frontend/tabs/minha-area.js"></script>
+<script src="/frontend/tabs/header.js"></script>
 </body>
 </html>

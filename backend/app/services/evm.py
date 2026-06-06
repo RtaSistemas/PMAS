@@ -35,11 +35,13 @@ def compute_cpi(
     ev_cost: Optional[float],
     actual_cost: float,
 ) -> Optional[float]:
-    """Cost Performance Index = EV / AC.
+    """Cost Performance Index = EV_cost / AC.
 
-    Pass true Earned Value (e.g. from compute_ev_capped), not BAC.
-    Using BAC as EV is only valid for a 100% complete project.
-    Returns None when actual_cost == 0 or ev_cost is undefined.
+    Use this when EV has already been computed (e.g. via compute_ev_capped or
+    from a pre-aggregated value).  Do NOT pass raw consumed_hours or BAC here —
+    use compute_cpi_ev() instead when EV must be derived from hours and budget.
+
+    Returns None when actual_cost == 0 or ev_cost is None/0.
     > 1.0 → under budget;  < 1.0 → over budget.
     """
     if not ev_cost or actual_cost == 0:
@@ -53,9 +55,12 @@ def compute_cpi_ev(
     budget_cost: Optional[float],
     actual_cost: float,
 ) -> Optional[float]:
-    """CPI = EV / AC using proper earned-value: EV = min(consumed/budget, 1.0) × BAC.
+    """CPI derived from hours: EV = min(consumed_hours/budget_hours, 1.0) × budget_cost.
 
-    Caps EV at BAC so a project cannot earn more value than its budget.
+    Use this when EV has NOT yet been computed and the inputs are raw hours +
+    budget figures.  Use compute_cpi() instead when EV is already available.
+
+    Caps EV at BAC so a project cannot earn more value than its total budget.
     Returns None when any required input is missing or zero.
     > 1.0 → under budget;  < 1.0 → over budget.
     """
@@ -152,6 +157,16 @@ def compute_vac(
     if not budget_cost or not eac:
         return None
     return round(budget_cost - eac, 2)
+
+
+def compute_etc(
+    eac: Optional[float],
+    actual_cost: Optional[float],
+) -> Optional[float]:
+    """Estimate to Complete = EAC − AC, zero-floored."""
+    if eac is None or actual_cost is None:
+        return None
+    return round(max(eac - actual_cost, 0.0), 2)
 
 
 def compute_cv(

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import calendar
+import csv
+import io
 from datetime import date as DateType, date
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, text as sa_text
 from sqlalchemy.orm import Session
 
@@ -144,3 +147,71 @@ def get_collaborator_daily(
                 "has_quarantine": has_q,
             })
     return result
+
+
+@router.get("/collaborator-export", summary="Exportar timesheets de um colaborador como CSV")
+def export_collaborator_timesheets(
+    db: DbSession,
+    collaborator_name: str,
+    date_from: Optional[DateType] = None,
+    date_to: Optional[DateType] = None,
+    pep_code: List[str] = Query(default=[]),
+):
+    rows = (
+        db.query(
+            TimesheetRecord.record_date,
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            TimesheetRecord.normal_hours,
+            TimesheetRecord.extra_hours,
+            TimesheetRecord.standby_hours,
+            TimesheetRecord.cost_per_hour,
+            (
+                (TimesheetRecord.normal_hours or 0.0)
+                + (TimesheetRecord.extra_hours or 0.0)
+                + (TimesheetRecord.standby_hours or 0.0)
+            ).label("total_hours"),
+        )
+        .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
+        .filter(Collaborator.name == collaborator_name)
+    )
+    if date_from:
+        rows = rows.filter(TimesheetRecord.record_date >= date_from)
+    if date_to:
+        rows = rows.filter(TimesheetRecord.record_date <= date_to)
+    if pep_code:
+        rows = rows.filter(TimesheetRecord.pep_wbs.in_(pep_code))
+    rows = rows.order_by(TimesheetRecord.record_date).all()
+
+    safe_name = collaborator_name.replace(" ", "_").replace("/", "-")
+
+    def _gen():
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow([
+            "Colaborador", "Data", "Código PEP", "PEP",
+            "Horas normais", "Hora extra", "Hora sobreaviso",
+            "Horas totais (decimal)", "Custo/hora",
+        ])
+        yield buf.getvalue()
+        for r in rows:
+            total = round((r.normal_hours or 0.0) + (r.extra_hours or 0.0) + (r.standby_hours or 0.0), 2)
+            buf = io.StringIO()
+            csv.writer(buf).writerow([
+                collaborator_name,
+                str(r.record_date),
+                r.pep_wbs or "",
+                r.pep_description or "",
+                round(r.normal_hours or 0.0, 2),
+                round(r.extra_hours or 0.0, 2),
+                round(r.standby_hours or 0.0, 2),
+                total,
+                round(r.cost_per_hour or 0.0, 2),
+            ])
+            yield buf.getvalue()
+
+    return StreamingResponse(
+        _gen(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="timesheets_{safe_name}.csv"'},
+    )

@@ -105,6 +105,12 @@ def clean_db(create_tables):
         _seed_system_rules(db)
     finally:
         db.close()
+    # Reset rate-limiter in-memory storage so upload tests don't bleed into each other.
+    try:
+        from backend.app.limiter import limiter
+        limiter._storage.reset()
+    except Exception:
+        pass
     yield
 
 

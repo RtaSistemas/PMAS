@@ -63,10 +63,11 @@ test.describe('App shell after login', () => {
     await expect(page.locator('#tab-projects')).not.toBeHidden();
   });
 
-  test('can switch to Ciclos tab', async ({ page }) => {
-    const ciclosTab = page.locator('.tab-btn', { hasText: /Ciclos/i });
-    await ciclosTab.click();
+  test('cycles section is visible in Ciclos tab', async ({ page }) => {
+    const cyclesTab = page.locator('.tab-btn', { hasText: /Ciclos/i });
+    await cyclesTab.click();
     await expect(page.locator('#tab-cycles')).not.toBeHidden();
+    await expect(page.locator('#cyclesTable')).toBeVisible();
   });
 
   test('admin tab is visible for admin user', async ({ page }) => {

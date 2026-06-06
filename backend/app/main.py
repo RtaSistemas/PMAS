@@ -5,6 +5,7 @@ import logging.config
 import os
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +19,7 @@ from backend.app.database import init_db
 from backend.app.limiter import limiter
 from backend.app.routers import (
     acl, auditlog, auth, baselines, cycles, dashboard,
-    my, plans, projects, quarantine, ratecard,
+    my, notifications, plans, projects, quarantine, ratecard,
     theme, upload, users, validation_rules,
 )
 from backend.app.routers.v2 import (
@@ -77,6 +78,8 @@ app = FastAPI(
     description="Project Management Assistant System — Timesheet Foundation",
     version="1.0.0",
     lifespan=_lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -120,6 +123,7 @@ app.include_router(upload.router)
 app.include_router(quarantine.router)
 app.include_router(validation_rules.router)
 app.include_router(my.router)
+app.include_router(notifications.router)
 app.include_router(theme.router)
 # v2 endpoints — consolidated, render-ready, ACL-enforced
 app.include_router(filters.router)
@@ -152,6 +156,15 @@ if os.path.isdir(_static_path):
     app.mount("/static", StaticFiles(directory=_static_path), name="static_assets")
 
 app.mount("/frontend", StaticFiles(directory=_frontend_dir(), html=True), name="frontend")
+
+
+@app.get("/health", tags=["ops"])
+def health():
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": app.version,
+    }
 
 
 @app.get("/", include_in_schema=False)

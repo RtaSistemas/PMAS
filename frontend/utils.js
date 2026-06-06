@@ -19,41 +19,29 @@ export function fmtDateBR(iso) {
   return `${d}/${m}/${y}`;
 }
 
-export function formatHours(h) {
+export function formatHours(h, decimals = 1) {
   if (h == null || isNaN(Number(h))) return '—';
-  return Number(h).toFixed(1) + 'h';
+  return Number(h).toFixed(decimals) + 'h';
 }
 
-export function formatCost(raw, factor = 1, symbol = 'R$') {
+export function formatCost(raw, factor = 1, symbol = 'R$', locale = 'pt-BR') {
   if (raw == null || isNaN(Number(raw))) return '—';
   const converted = Number(raw) * factor;
-  return `${symbol} ${converted.toLocaleString('pt-BR', {
+  return `${symbol} ${converted.toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
 
-export function riskColor(risk) {
-  const colors = {
-    ok:        'var(--primary, #4f8ef7)',
-    warning:   'var(--amber,   #d9b273)',
-    critical:  'var(--red,     #c56d76)',
-    overrun:   'var(--red,     #c56d76)',
-    no_budget: 'var(--text-3,  #818998)',
-  };
-  return colors[risk] || colors.no_budget;
-}
-
 /**
- * Classify budget consumption health.
- * @returns {'ok'|'warning'|'critical'|'no_budget'}
+ * Format an ISO timestamp for display. Respects the current locale (_locale global)
+ * and an optional window._timezone override (default: America/Sao_Paulo).
  */
-export function classifyBudgetHealth(consumed, budget, warnThreshold = 0.9, critThreshold = 1.0) {
-  if (budget == null || budget <= 0) return 'no_budget';
-  const ratio = consumed / budget;
-  if (ratio >= critThreshold) return 'critical';
-  if (ratio >= warnThreshold) return 'warning';
-  return 'ok';
+export function fmtDate(isoStr) {
+  if (!isoStr) return '—';
+  const tz = (typeof window !== 'undefined' && window._timezone) || 'America/Sao_Paulo';
+  const loc = (typeof _locale !== 'undefined' ? _locale : (typeof window !== 'undefined' ? window._locale : 'pt')) || 'pt';
+  return new Date(isoStr).toLocaleString(loc === 'pt' ? 'pt-BR' : 'en-US', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
 }
 
 /**
@@ -71,4 +59,16 @@ export function parseISODate(iso) {
   if (!iso) return null;
   const [y, m, d] = String(iso).split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
+}
+
+// Expose as browser globals when running outside a module context (Vitest runs via import)
+if (typeof window !== 'undefined') {
+  window.escHtml = escHtml;
+  window.fmtDateBR = fmtDateBR;
+  window.formatHours = formatHours;
+  window.formatCost = formatCost;
+  window.fmtDate = fmtDate;
+  window._fmtDate = fmtDate;
+  window.clamp = clamp;
+  window.parseISODate = parseISODate;
 }

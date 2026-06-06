@@ -16,12 +16,13 @@ function _healthColor(h) {
 // _buildEvmQuadrantOption — CPI × SPI scatter/bubble chart
 // ---------------------------------------------------------------------------
 function _buildEvmQuadrantOption(items) {
-  const AXIS_CAP = 2.0;   // values above this are clamped to the border
+  const AXIS_CAP = 2.0;
 
-  const red   = _cssVar('--red')    || '#ef4444';
-  const amber = _cssVar('--amber')  || '#f59e0b';
-  const green = _cssVar('--green')  || '#22c55e';
+  const red   = _cssVar('--red')     || '#ef4444';
+  const amber = _cssVar('--amber')   || '#f59e0b';
+  const green = _cssVar('--green')   || '#22c55e';
   const blue  = _cssVar('--primary') || '#4f8ef7';
+  const dim   = _cssVar('--text-3');
 
   const colorOf = d => {
     const spiOk = d.spi >= 1.0;
@@ -45,16 +46,55 @@ function _buildEvmQuadrantOption(items) {
   const yMin = +Math.max(0, Math.min(...rawCpis, 0.8) - 0.1).toFixed(2);
   const yMax = +Math.min(Math.max(...rawCpis, 1.2) + 0.1, AXIS_CAP + 0.08).toFixed(2);
 
-  const dim = _cssVar('--text-3');
+  // Trajectory connector lines — one per PEP that has ≥2 CPI+SPI snapshots
+  const trajectoryLines = items
+    .filter(d => Array.isArray(d.trajectory) && d.trajectory.length >= 2)
+    .map(d => ({
+      type: 'line',
+      name: `traj_${d.pep_wbs}`,
+      silent: true,
+      showSymbol: true,
+      symbolSize: 4,
+      z: 1,
+      lineStyle: { color: colorOf(d), opacity: 0.4, width: 1.5 },
+      itemStyle: { color: colorOf(d), opacity: 0.4 },
+      emphasis: { disabled: true },
+      tooltip: {
+        trigger: 'item',
+        formatter: p => {
+          const t = p.data._t;
+          if (!t) return null;
+          return `${escHtml(d.pep_wbs)} — ${escHtml(t.cycle_name)}<br/>SPI: ${t.spi.toFixed(2)}, CPI: ${t.cpi.toFixed(2)}`;
+        },
+      },
+      data: d.trajectory.map(t => ({
+        value: [Math.min(t.spi, AXIS_CAP), Math.min(t.cpi, AXIS_CAP)],
+        _t: t,
+      })),
+    }));
 
   return {
     ..._chartDefaults(),
-    toolbox: _toolbox({}, 'PMAS-EVM-Quadrant'),
+    brush: {
+      brushStyle: {
+        borderWidth: 1,
+        color:       'rgba(148,163,184,0.10)',
+        borderColor: _cssVar('--primary'),
+      },
+      outOfBrush: { colorAlpha: 0.15 },
+    },
+    toolbox: _toolbox({
+      brush: {
+        type:  ['rect', 'clear'],
+        title: { rect: _t('toolbox.brush_rect'), clear: _t('toolbox.brush_clear') },
+      },
+    }, 'PMAS-EVM-Quadrant'),
     tooltip: {
       trigger: 'item',
       ..._chartDefaults().tooltip,
       formatter: p => {
         const d = p.data._raw;
+        if (!d) return null;
         const _evmQ = { success: green, warning: amber, danger: red };
         const cC = _evmQ[d.cpi_color] || green;
         const sC = _evmQ[d.spi_color] || green;
@@ -86,64 +126,66 @@ function _buildEvmQuadrantOption(items) {
       splitLine: { show: false },
       min: yMin, max: yMax,
     },
-    series: [{
-      type: 'scatter',
-      symbolSize: (value, params) => _bubbleSize(params.data._raw?.total_cost || 0),
-      data: items.map(d => {
-        const spiCapped = d.spi > AXIS_CAP;
-        const cpiCapped = d.cpi > AXIS_CAP;
-        // Arrow direction: → for SPI only, ↑ for CPI only, ↗ for both
-        const symbol       = (spiCapped || cpiCapped) ? 'arrow' : 'circle';
-        const symbolRotate = spiCapped && cpiCapped ? 45 : spiCapped ? 90 : 0;
-        return {
-          value: [Math.min(d.spi, AXIS_CAP), Math.min(d.cpi, AXIS_CAP)],
-          symbol,
-          symbolRotate: (spiCapped || cpiCapped) ? symbolRotate : undefined,
-          itemStyle: {
-            color:       colorOf(d),
-            opacity:     0.9,
-            borderColor: (spiCapped || cpiCapped) ? _cssVar('--text') : _cssVar('--bg'),
-            borderWidth: 2,
-          },
-          label: {
-            show: true, formatter: d.pep_wbs,
-            position: 'top', distance: 6,
-            color: _cssVar('--text'), fontSize: 10, fontWeight: 600,
-          },
-          _raw: d,
-        };
-      }),
-      emphasis: { scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
-      markLine: {
-        silent: true, symbol: 'none',
-        lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
-        data: [
-          { xAxis: 1.0,      label: { formatter: 'SPI=1',        color: dim, fontSize: 9 } },
-          { yAxis: 1.0,      label: { formatter: 'CPI=1',        color: dim, fontSize: 9 } },
-          { xAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
-            label: { formatter: `→ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
-          { yAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
-            label: { formatter: `↑ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
-        ],
+    series: [
+      ...trajectoryLines,
+      {
+        type: 'scatter',
+        symbolSize: (value, params) => _bubbleSize(params.data._raw?.total_cost || 0),
+        data: items.map(d => {
+          const spiCapped = d.spi > AXIS_CAP;
+          const cpiCapped = d.cpi > AXIS_CAP;
+          const symbol       = (spiCapped || cpiCapped) ? 'arrow' : 'circle';
+          const symbolRotate = spiCapped && cpiCapped ? 45 : spiCapped ? 90 : 0;
+          return {
+            value: [Math.min(d.spi, AXIS_CAP), Math.min(d.cpi, AXIS_CAP)],
+            symbol,
+            symbolRotate: (spiCapped || cpiCapped) ? symbolRotate : undefined,
+            itemStyle: {
+              color:       colorOf(d),
+              opacity:     0.9,
+              borderColor: (spiCapped || cpiCapped) ? _cssVar('--text') : _cssVar('--bg'),
+              borderWidth: 2,
+            },
+            label: {
+              show: true, formatter: d.pep_wbs,
+              position: 'top', distance: 6,
+              color: _cssVar('--text'), fontSize: 10, fontWeight: 600,
+            },
+            _raw: d,
+          };
+        }),
+        emphasis: { focus: 'self', scale: 1.3, itemStyle: { borderWidth: 3, borderColor: _cssVar('--text') } },
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: _cssVar('--border'), type: 'dashed', width: 1.5 },
+          data: [
+            { xAxis: 1.0,      label: { formatter: 'SPI=1', color: dim, fontSize: 9 } },
+            { yAxis: 1.0,      label: { formatter: 'CPI=1', color: dim, fontSize: 9 } },
+            { xAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
+              label: { formatter: `→ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
+            { yAxis: AXIS_CAP, lineStyle: { type: 'dotted', width: 1, color: dim },
+              label: { formatter: `↑ ${AXIS_CAP}`, color: dim, fontSize: 10, position: 'insideEndTop' } },
+          ],
+        },
+        markArea: {
+          silent: true,
+          data: [
+            [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
+               label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
+             { coord: [1.0, 1.0] }],
+            [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
+               label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
+             { coord: [xMax + 1, 1.0] }],
+            [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
+               label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
+             { coord: [1.0, yMax + 1] }],
+            [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
+               label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
+             { coord: [xMax + 1, yMax + 1] }],
+          ],
+        },
       },
-      markArea: {
-        silent: true,
-        data: [
-          [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
-             label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
-           { coord: [1.0, 1.0] }],
-          [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
-             label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
-           { coord: [xMax + 1, 1.0] }],
-          [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
-             label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
-           { coord: [1.0, yMax + 1] }],
-          [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
-             label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
-           { coord: [xMax + 1, yMax + 1] }],
-        ],
-      },
-    }],
+    ],
   };
 }
 
@@ -183,7 +225,7 @@ function _buildTreemapOption(health, evmMode = false) {
       height: '100%',
       breadcrumb: { show: false },
       label: {
-        show: true, fontSize: 11, color: '#f1f5f9',
+        show: true, fontSize: 11, color: _cssVar('--text'),
         formatter: params => {
           const d = health.find(x => x.pep_wbs === params.name);
           const raw = d ? (evmMode ? d.total_cost : d.total_hours) : 0;
@@ -195,6 +237,7 @@ function _buildTreemapOption(health, evmMode = false) {
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
       },
+      emphasis: { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
       itemStyle: { gapWidth: 2, borderRadius: 4 },
       levels: [{
         itemStyle: { borderWidth: 0, gapWidth: 4 },
@@ -215,6 +258,121 @@ function _buildTreemapOption(health, evmMode = false) {
         };
       }),
     }],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// _buildTimelineTreemapOption — treemap with ECharts timeline scrubber
+// ---------------------------------------------------------------------------
+function _buildTimelineTreemapOption(snapshots, evmMode) {
+  const defaults = _chartDefaults();
+  const dim = _cssVar('--text-3');
+
+  function _makeData(health) {
+    return health.map(d => {
+      const consumed = evmMode ? d.total_cost : d.total_hours;
+      const hColor   = evmMode ? d.health_cost_color : d.health_hours_color;
+      return {
+        name:      d.pep_wbs,
+        value:     consumed,
+        itemStyle: {
+          color:       !d.is_registered ? _cssVar('--text-3') : _healthColor(hColor),
+          borderColor: _cssVar('--bg'),
+        },
+        _raw: d,
+      };
+    });
+  }
+
+  return {
+    baseOption: {
+      ...defaults,
+      toolbox: _toolbox({}, 'PMAS-Treemap-Timeline'),
+      tooltip: {
+        trigger: 'item',
+        ...defaults.tooltip,
+        formatter: params => {
+          const d = params.data?._raw;
+          if (!d) return escHtml(params.name);
+          const fmtVal = v => evmMode ? _fmtCost(v) : v.toFixed(1) + 'h';
+          const consumed = evmMode ? d.total_cost : d.total_hours;
+          const budget   = evmMode ? d.budget_cost : d.budget_hours;
+          let html = `<b>${escHtml(d.pep_wbs)}</b>`;
+          if (d.pep_description) html += `<br><span style="color:${dim}">${escHtml(d.pep_description)}</span>`;
+          if (d.name)            html += `<br>${_t('tt.project')}: ${escHtml(d.name)}`;
+          html += `<br>${evmMode ? _t('tt.actual_cost_lbl') : _t('tt.consumed')}: <b>${fmtVal(consumed)}</b>`;
+          if (budget != null) {
+            const pct = (consumed / budget * 100).toFixed(1);
+            html += `<br>${_t('ch.budget')}: ${fmtVal(budget)} (${pct}% ${_t('tt.utilized')})`;
+          }
+          if (!d.is_registered) html += `<br><span style="color:${_cssVar('--amber')}">${_t('tt.pep_not_reg')}</span>`;
+          return html;
+        },
+      },
+      timeline: {
+        axisType:     'category',
+        autoPlay:     false,
+        playInterval: 1500,
+        data:         snapshots.map(s => s.cycle_name),
+        left: 0, right: 0, bottom: 4,
+        height: 52,
+        padding: [4, 10, 4, 10],
+        currentIndex: snapshots.length - 1,
+        controlStyle: {
+          color:       _cssVar('--primary'),
+          borderColor: 'transparent',
+        },
+        checkpointStyle: {
+          color:       _cssVar('--primary'),
+          borderColor: _cssVar('--primary'),
+          symbol:      'circle',
+          symbolSize:  12,
+          animation:   false,
+        },
+        label: {
+          color:    dim,
+          fontSize: 9,
+          formatter: val => val.length > 9 ? val.slice(0, 8) + '…' : val,
+        },
+        lineStyle:    { color: _cssVar('--border') },
+        itemStyle:    { color: _cssVar('--border') },
+        emphasis: {
+          label:     { color: _cssVar('--text'), fontSize: 10 },
+          itemStyle: { color: _cssVar('--primary') },
+        },
+        tooltip: { show: false },
+        symbol:     'circle',
+        symbolSize: 7,
+      },
+      series: [{
+        type:  'treemap',
+        roam:  false,
+        left:  0,
+        right: 0,
+        top:   0,
+        bottom: 64,
+        breadcrumb: { show: false },
+        label: {
+          show: true, fontSize: 11, color: _cssVar('--text'),
+          formatter: params => {
+            const d = params.data._raw;
+            if (!d) return params.name;
+            const raw  = evmMode ? d.total_cost : d.total_hours;
+            const disp = evmMode ? raw * _currencyFactor : raw;
+            const valStr = evmMode
+              ? _currencySymbol + (disp / 1000 >= 1 ? (disp / 1000).toFixed(0) + 'k' : disp.toFixed(0))
+              : disp.toFixed(0) + 'h';
+            const nm = params.name.length > 16 ? params.name.slice(0, 15) + '…' : params.name;
+            return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
+          },
+        },
+        emphasis:  { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
+        itemStyle: { gapWidth: 2, borderRadius: 4 },
+        levels:    [{ itemStyle: { borderWidth: 0, gapWidth: 4 }, upperLabel: { show: false } }],
+        data: [],
+      }],
+    },
+    options: snapshots.map(s => ({ series: [{ data: _makeData(s.items) }] })),
   };
 }
 
@@ -277,6 +435,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         type: 'bar',
         barMaxWidth: 48,
         barGap: '-100%',
+        emphasis: { focus: 'series' },
         z: 1,
         data: budgets.map(b => ({
           value: b,
@@ -293,6 +452,7 @@ function _buildBulletOption(withBudget, evmMode = false) {
         type: 'bar',
         barMaxWidth: 28,
         barGap: '-100%',
+        emphasis: { focus: 'series' },
         z: 2,
         data: actuals,
         label: {

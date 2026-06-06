@@ -38,6 +38,7 @@ from backend.app.services.evm import (
     compute_sv,
     compute_sv_t,
     compute_tcpi,
+    compute_etc,
     compute_vac,
     cpi_color,
     cpi_label,
@@ -279,7 +280,7 @@ def get_forecast(
         remaining_hours = round(max((1.0 - last_physical_pct) * budget_hours, 0.0), 2)
     else:
         remaining_hours = round(max(budget_hours - consumed_hours, 0.0), 2) if budget_hours else None
-    remaining_cost  = round(eac - actual_cost, 2) if eac is not None else None
+    remaining_cost  = compute_etc(eac, actual_cost)
 
     est_cycles = None
     est_completion = None

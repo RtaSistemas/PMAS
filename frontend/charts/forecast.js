@@ -51,7 +51,7 @@ function _buildForecastOption(fc) {
     : null;
 
   const _fpal = _getPalette();
-  const _fC0  = _fpal[0] || '#0ea5e9';
+  const _fC0  = _fpal[0] || _cssVar('--primary');
   const series = [
     {
       name: _t('forecast.realized'),
@@ -61,6 +61,7 @@ function _buildForecastOption(fc) {
       lineStyle: { color: _fC0, width: 2.5 },
       itemStyle: { color: _fC0 },
       areaStyle: { color: _fC0 + '1a' },
+      emphasis:  { focus: 'series' },
       connectNulls: false,
       ...(lastHistoryCat ? {
         markLine: {
@@ -79,11 +80,12 @@ function _buildForecastOption(fc) {
       smooth: false, symbol: 'circle', symbolSize: 5,
       lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
       itemStyle: { color: _cssVar('--text-3') },
+      emphasis:  { focus: 'series' },
       connectNulls: false,
     },
   ];
   if (pvData) {
-    const _fC3 = _fpal[3] || '#a78bfa';
+    const _fC3 = _fpal[3] || _cssVar('--violet');
     series.push({
       name: _t('forecast.pv_line'),
       type: 'line', yAxisIndex: 0,
@@ -91,6 +93,7 @@ function _buildForecastOption(fc) {
       symbol: 'none',
       lineStyle: { color: _fC3, width: 2, type: 'dotted' },
       itemStyle: { color: _fC3 },
+      emphasis:  { focus: 'series' },
       connectNulls: true,
     });
   }
@@ -102,6 +105,7 @@ function _buildForecastOption(fc) {
       symbol: 'none',
       lineStyle: { color: _cssVar('--amber'), width: 1.5, type: 'dashed' },
       itemStyle: { color: _cssVar('--amber') },
+      emphasis:  { focus: 'series' },
     });
   }
 
@@ -157,8 +161,6 @@ function _buildBurnUpOption(fc) {
   const evData = history.map(h => h.cumulative_ev_cost      ?? null);
   const acData = history.map(h => h.cumulative_cost         ?? null);
 
-  const _fmtR = v => v == null ? '' : `R$ ${(+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-
   const eacColor = _cssVar('--amber') || '#f59e0b';
   const legendData = [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')];
   if (fc.eac != null) legendData.push(_t('burnup.eac'));
@@ -168,8 +170,9 @@ function _buildBurnUpOption(fc) {
       name: _t('burnup.pv'),
       type: 'line', data: pvData,
       symbol: 'none', connectNulls: true,
-      lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
-      itemStyle: { color: '#94a3b8' },
+      lineStyle: { color: _cssVar('--text-3'), width: 2, type: 'dashed' },
+      itemStyle: { color: _cssVar('--text-3') },
+      emphasis:  { focus: 'series' },
     },
     {
       name: _t('burnup.ev'),
@@ -178,6 +181,7 @@ function _buildBurnUpOption(fc) {
       lineStyle: { color: _cssVar('--green') || '#22c55e', width: 2.5 },
       itemStyle: { color: _cssVar('--green') || '#22c55e' },
       areaStyle: { color: (_cssVar('--green') || '#22c55e') + '18' },
+      emphasis:  { focus: 'series' },
     },
     {
       name: _t('burnup.ac'),
@@ -185,6 +189,7 @@ function _buildBurnUpOption(fc) {
       symbol: 'circle', symbolSize: 5, connectNulls: false,
       lineStyle: { color: _cssVar('--red') || '#ef4444', width: 2.5 },
       itemStyle: { color: _cssVar('--red') || '#ef4444' },
+      emphasis:  { focus: 'series' },
     },
   ];
   if (fc.eac != null) {
@@ -195,7 +200,8 @@ function _buildBurnUpOption(fc) {
       symbol: 'none',
       lineStyle: { color: eacColor, width: 1.5, type: 'dotted' },
       itemStyle: { color: eacColor },
-      tooltip: { formatter: () => `EAC: ${_fmtR(fc.eac)}` },
+      emphasis:  { focus: 'series' },
+      tooltip: { formatter: () => `EAC: ${_fmtCost(fc.eac)}` },
     });
   }
 
@@ -214,7 +220,7 @@ function _buildBurnUpOption(fc) {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
           if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${_fmtR(p.value)}</b><br>`;
+          html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value)}</b><br>`;
         });
         return html;
       },

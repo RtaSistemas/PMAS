@@ -27,8 +27,8 @@ from backend.app.services.ingestion import (
     _parse_date_safe,
     _resolve_cycle,
     _safe_hours,
-    _str_or_none,
 )
+from backend.app.utils import _str_or_none
 
 router = APIRouter(
     prefix="/api/quarantine",

@@ -8,6 +8,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
+> **Implementation patterns** — all coding conventions, design tokens, EVM formula rules, modal/pagination/CRUD/i18n/accessibility patterns are documented in [`docs/PATTERNS.md`](docs/PATTERNS.md). Read it before adding any feature.
+> **Project documentation** — audit reports, sprint records, and the branch diff live in [`docs/`](docs/README.md).
+
+## Golden Rules — Architectural Constraints
+
+These rules are non-negotiable. They encode decisions made at the product level and must never be violated by any implementation, refactor, or feature addition.
+
+**GR-1 — Data entry via ingestion only. Manual manipulation is forbidden.**
+The only pathway for timesheet data to enter PMAS is through the established CSV/XLSX ingestion pipeline (`POST /api/upload-timesheet` → `ingest_file()`). The upstream legacy system (the client's timekeeping platform) is the single source of truth. PMAS is a read-and-analyze layer on top of it. Consequently:
+- No `POST /api/timesheet-records` endpoint for individual row creation.
+- No `PUT` / `PATCH` / `DELETE` on individual `TimesheetRecord` rows outside the quarantine workflow.
+- Errors in imported data must be corrected at the source and re-imported, not patched in PMAS.
+- The quarantine workflow (approve / reject) is the only in-system intervention allowed on ingested rows.
+
+**GR-2 — EVM formulas live exclusively in `services/evm.py`.**
+No router, no frontend script, and no test may re-implement an EVM formula. All EVM computation (CPI, SPI, EAC, TCPI, VAC, CV, SV, Earned Schedule, etc.) must call the functions in `services/evm.py`. This is the single source of truth for every financial metric.
+
+**GR-3 — Chart data-series colors must use `_getPalette()`.**
+Colors for data series in ECharts charts must come from `_getPalette()` (admin-configured palette). Semantic/status colors (health alerts, thresholds, peaks) may use `_cssVar()`. Hardcoded hex literals in chart options are forbidden.
+
 ## Running the Project
 
 ```bash
@@ -24,7 +44,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-590 tests across 20 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+677 tests across 21 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -106,39 +126,35 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 
 ### Frontend (`frontend/`)
 
-- **`index.html`** — Six top-level tabs: **Dashboard**, **Ciclos**, **Projetos**, **Equipe**, **Minha Área**, **Admin** (hidden unless admin). Dashboard contains a shared filter card (date range + MultiSelect dropdowns) and three analytics sub-tabs (Esforço da Equipe, Saúde do Portfólio, Previsão). Admin tab has sections for users, validation rules, quarantine, upload history, and audit log.
-- **`style.css`** — Dark slate/blue theme. Key selectors: analytics sub-tabs (sticky at `top: 3.25rem`), treemap legend, bullet chart thresholds, empty states, `.table-search-input`, budget alert badges (`.badge-budget.critical`/`.warning`), semaphore bar (`.semaphore-bar`, `.sem-dot`, `.sem-project` pill variants).
+- **`index.html`** — Six top-level tabs: **Dashboard**, **Ciclos**, **Projetos**, **Equipe**, **Minha Área**, **Admin** (hidden unless admin). Dashboard contains a shared filter card (date range + MultiSelect dropdowns) and three analytics sub-tabs (Esforço da Equipe, Saúde do Portfólio, Previsão). Admin tab has sections for users, validation rules, quarantine, upload history, and audit log. **No `style=` inline attributes** — all presentation is in `style.css`.
+- **`style.css`** — Dark slate/blue theme. Key selectors: analytics sub-tabs (sticky at `top: 3.25rem`), treemap legend, bullet chart thresholds, empty states, `.table-search-input`, budget alert badges (`.badge-budget.critical`/`.warning`), semaphore bar (`.semaphore-bar`, `.sem-dot`, `.sem-project` pill variants). Includes utility classes (`.pagination-bar`, `.chevron`, `.mb-0`–`.mb-4`, etc.) and element-specific rules targeting IDs — see `docs/PATTERNS.md` §5.
 - **`multiselect.js`** — Self-contained `MultiSelect` component (cascading dropdowns for collaborator and PEP filters).
-- **`app.js`** — All client logic:
+- **`app.js`** — Core globals only (≤800 lines):
   - **Auth:** JWT Bearer token stored in `sessionStorage`. `_getTokenPayload()` decodes it. `_isAdmin()` gates admin UI. `_bootApp()` is the central init called after login and on page load with a valid token.
-  - **Header:** `_updateHeaderUser()` shows the logged-in username where "Gestão de Projetos" appears.
-  - **Semaphore:** `loadSemaphore()` fetches `/api/v2/portfolio` (no filters) and renders a macro traffic-light bar — green/yellow/red/grey per project, with dot + count summary and pill per project. Clicking a pill drills down into the Portfolio tab filtered by that PEP.
   - **ECharts lifecycle:** `CHARTS_PER_TAB` registry, `_disposeTabCharts()` on sub-tab leave, `_getOrCreateChart()` on enter, single `ResizeObserver` on `<main>` for responsiveness.
-  - **Analytics sub-tabs:** `_renderEffortTab()`, `_renderPortfolioTab()`, `_renderForecastTab()`. Chart builders: effort bars, treemap (EVM-aware), bullet chart (EVM-aware), trends line, S-curve forecast.
-  - **`_evmMode` boolean** — toggles Portfolio tab between hours and R$ views.
-  - **`_lastEffortData` cache** — used for client-side CSV export from Effort tab.
-  - **Cycles CRUD:** `_allCycles` cache, real-time search (`cycleSearch`), CSV import/export.
-  - **Projects CRUD:** `_allProjects` + `_consumedByPep` cache, real-time search (`projectSearch`), `_buildBudgetCell()` for alert badges, CSV import/export.
-  - **Equipe tab:** seniority levels CRUD + CSV import/export, rate cards CRUD + CSV import/export, collaborator seniority assignment.
-  - **Minha Área tab:** user preferences (chart layout drag-to-reorder), personal upload history, personal quarantine view, budget alerts.
-  - **Admin tab:** user management, validation rule engine (ordered list + toggle), global quarantine table, upload history, audit log.
-  - **i18n / theme:** `_t()` translation lookup, `_applyI18n()`, `_loadTheme()`, lang toggle (pt-BR / en).
+  - **Core globals:** i18n (`_t`, `_locale`, `_applyI18n`), currency, modal utilities, table sort (`_makeSortable`, `_applySort`), theme helpers, tab navigation, sub-tab state toggle buttons.
+  - **Auth/fetch:** `_authHeaders`, `apiFetch`, `apiFetchJSON`, `_friendlyError`, notify queue, `fmt`, login form, `_logout`, `_checkTokenExpiry`.
+  - **Preferences/theme:** `_loadPreferences`, `_DENSITY_MAP`, `_THEME_PRESETS`, `_getPalette`, `_resolveSeriesColor`, `_loadTheme`.
+- **`tabs/dashboard.js`** — Dashboard tab: filter state, MultiSelect instances, filter cascade helpers, `_renderActiveTab`, all analytics render functions (`_renderEffortTab`, `_renderPortfolioTab`, `_renderForecastTab`), collab detail panel, `_lastEffortData`/`_lastRunwayData` caches, `_evmMode` boolean.
+- **`tabs/equipe.js`** — Team tab: `_anomalyMaxHours`, `_budgetWarning`, `_budgetCritical`, seniority CRUD, rate card CRUD, over-alloc table, `loadGlobalConfig`.
+- **`tabs/admin.js`** — Admin tab: users CRUD, audit log, validation rules engine, quarantine table, session detail, theme editor.
+- **`tabs/minha-area.js`** — Minha Área tab: user preferences, chart layout drag-to-reorder, personal upload history, personal quarantine view, budget alerts.
+- **`tabs/header.js`** — `_updateHeaderUser`, `loadSemaphore` (macro traffic-light bar; clicking a pill drills to Portfolio), `_drillDownToPep`, `_refreshTabBadges`, `_initNotifications`.
 
 ### Ingestion Pipeline (`services/ingestion.py`)
 
-`ingest_file()` runs a multi-phase pipeline:
+`ingest_file()` is an orchestrator that calls six phase functions in sequence:
 
-| Phase | Description |
+| Phase function | Responsibility |
 |---|---|
-| **0** | Load file with pandas, validate required columns exist |
-| **0b** | Pre-scan all unique parseable dates; if any date has no active cycle, check whether to auto-create quarantine |
-| **1** | Per-row structural checks: **Q8** (invalid collaborator name) → quarantine; **Q1** (unparseable date) → quarantine; **Q2** (future date) → quarantine; active cycle lookup; hours parsing |
-| **2** | Per-row `ValidationRule` engine evaluation — configurable action (quarantine / warn / reject) |
-| **N1** | Resolve new collaborators (auto-create `Collaborator` rows) |
-| **3** | Aggregate rules — compute daily/weekly sums across rows |
-| **4** | Surgical `DELETE` by `(pep_wbs, cycle_id)` + `INSERT` fresh `TimesheetRecord` rows |
-| **5** | Persist `QuarantineRecord` rows, create `UploadSession`, commit transaction |
-| **6** | Write `AuditLog` entry |
+| `_phase_load_and_validate(file_bytes, filename)` | Load CSV/XLSX with pandas, validate required columns exist → `DataFrame` |
+| `_phase_authorize_peps(df, db, user_id, user_role)` | Filter rows to ACL-allowed PEPs for non-admin users |
+| `_phase_prescan_dates(df, db)` | Pre-scan unique parseable dates; build cycle cache; auto-create quarantine cycles for dates with no active cycle |
+| `_phase_validate_rows(df, db, rules, cycle_cache, collab_cache)` | Per-row structural checks (Q1/Q2/Q8) + `ValidationRule` engine; separates valid rows from quarantine buffer |
+| `_phase_aggregate_rules(valid_rows, rules)` | Compute daily/weekly sums across valid rows; emit aggregate-rule warnings/infos |
+| `_phase_upsert_records(db, valid_rows, extra_multiplier, standby_multiplier)` | Surgical `DELETE` by `(pep_wbs, cycle_id)` + bulk `INSERT` + cost freeze via `_lookup_rate` |
+
+After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `UploadSession`, commits the transaction, and writes the `AuditLog` entry. The public signature and return dict are unchanged.
 
 `_lookup_rate(db, collab, record_date)` freezes `cost_per_hour` at ingestion time by finding the `RateCard` matching the collaborator's seniority level and date range.
 
@@ -185,6 +201,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 | `test_evm_service.py` | 104 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None) |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
 | `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_ingestion_phases.py` | 42 | Unit tests per phase function (`_phase_load_and_validate`, `_phase_authorize_peps`, `_phase_prescan_dates`, `_phase_validate_rows`, `_phase_aggregate_rules`, `_phase_upsert_records`) |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints (filters, portfolio, effort, trends, forecast, allocation, concentration) |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
 | `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
@@ -202,6 +219,25 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **590** | |
+| **Total** | **677** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
+
+## Known Production Gaps
+
+Audited items deliberately deferred. Do not implement without an explicit decision from the responsible party.
+
+| # | Item | Where | What to do |
+|---|---|---|---|
+| P1 | `PMAS_SECRET_KEY` mandatory in production | `backend/app/deps.py:17-26` | If `PMAS_ENV=production` and the variable is not set, raise `RuntimeError` at startup instead of silently generating a random key |
+| P2 | `/health` (and optionally `/ready`) endpoint | `backend/app/main.py` | `GET /health` returns `{"status":"ok","timestamp":...,"version":...}` with 200; `/ready` runs `SELECT 1` against the database and returns 503 if it fails |
+| P3 | Database backup script | does not exist | `backup_pmas.sh` using `sqlite3 "$DB_PATH" "VACUUM INTO '${DEST}'"` (consistent copy with WAL active); daily cron at 02:00; 30-day retention; restore procedure documented and tested |
+| P4 | Dependency lock file | `requirements.txt` | Generate `requirements.lock.txt` with `pip freeze` of versions currently in use; use the lock file in production deployments |
+| P5 | systemd deployment unit | does not exist | `pmas.service` with `uvicorn --workers 2 --host 127.0.0.1`, `Restart=on-failure`, `EnvironmentFile=/opt/pmas/.env`, `PrivateTmp=true`; operating instructions (start/stop/logs/deploy new version) |
+
+**Additional known risks** (non-blocking, but on record):
+- HTTPS not enforced — the app must run behind a reverse proxy (nginx/caddy) with TLS; no internal redirect middleware
+- Login brute force — `POST /api/token` is rate-limited at 30/minute but has no per-user lockout and no logging of authentication failures
+- Rate limiting absent on write routes (`/projects`, `/cycles`, `/users`) beyond upload and login
+- `must_change_password` enforced only in the frontend — no hard block in the backend
+- Manual migrations (`_migrate_columns()`) with no versioning or rollback strategy

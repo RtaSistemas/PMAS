@@ -40,7 +40,8 @@ function _mkStatCard({ val, lbl, cls, evm, sublbl, delta }) {
     : escHtml(lbl);
   const sublblHtml = sublbl ? `<div class="sublbl">${escHtml(sublbl)}</div>` : '';
   const deltaHtml  = delta  ? delta : '';
-  return `<div class="stat-card ${cls}">${deltaHtml}<div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
+  const ariaLbl = [lbl, val != null ? String(val) : '—', sublbl].filter(Boolean).join(', ');
+  return `<div class="stat-card ${cls}" aria-label="${escHtml(ariaLbl)}">${deltaHtml}<div class="val">${val}</div><div class="lbl">${lblHtml}</div>${sublblHtml}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,9 +60,12 @@ async function _withLoading(btn, asyncFn) {
 // ---------------------------------------------------------------------------
 // C3 — Confirm-before-delete helper
 // ---------------------------------------------------------------------------
-async function _confirmDelete(entityName, asyncFn) {
-  if (!confirm(`Excluir ${entityName}? Esta ação não pode ser desfeita.`)) return;
-  return asyncFn();
+function _confirmDelete(entityName, asyncFn) {
+  confirmDialog(
+    _t('confirm.delete_msg').replace('{entity}', entityName),
+    asyncFn,
+    true
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +80,7 @@ function _chartDefaults() {
       borderColor:     _cssVar('--border'),
       textStyle:       { color: _cssVar('--text'), fontSize: 12 },
     },
+    aria: { enabled: true, decal: { show: true } },
   };
 }
 
@@ -151,8 +156,18 @@ function _makePaginator(ids, onPage) {
     pg.hidden = total <= 1;
     document.getElementById(ids.label).textContent =
       `${_t('page.label')} ${_page + 1} ${_t('page.of')} ${total}`;
-    document.getElementById(ids.prev).disabled  = _page === 0;
-    document.getElementById(ids.next).disabled  = _page >= total - 1;
+    const prevBtn = document.getElementById(ids.prev);
+    const nextBtn = document.getElementById(ids.next);
+    if (prevBtn) {
+      prevBtn.disabled = _page === 0;
+      const entityLabel = ids.entity ? ` — ${_t(ids.entity)}` : '';
+      prevBtn.setAttribute('aria-label', `${_t('page.prev')}${entityLabel}`);
+    }
+    if (nextBtn) {
+      nextBtn.disabled = _page >= total - 1;
+      const entityLabel = ids.entity ? ` — ${_t(ids.entity)}` : '';
+      nextBtn.setAttribute('aria-label', `${_t('page.next')}${entityLabel}`);
+    }
   }
 
   function render(rows) {

@@ -1,137 +1,158 @@
 # Changelog
 
-Todas as mudanças relevantes do PMAS (Project Management Assistant System) são registradas neste arquivo.
+All notable changes to PMAS (Project Management Assistant System) are recorded in this file.
 
-O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto adota versionamento por tag de release.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses release tags for versioning.
+
+---
+
+## [RC2.1] — 2026-06-06
+
+Resilience and documentation release. Focused on frontend robustness, test suite hygiene, and codebase maintainability.
+
+### Added
+
+- **Global unhandled rejection handler:** `window.addEventListener('unhandledrejection', ...)` surfaces all unhandled Promise rejections via `notify()` and logs to the console — previously they were silent.
+- **Session expiry warning:** `_checkTokenExpiry()` runs every 5 minutes and notifies the user when fewer than 10 minutes remain on the JWT.
+- **Visibility-change refresh:** `document.addEventListener('visibilitychange', ...)` reloads cached data when the browser tab is brought back into focus after being hidden.
+- **`frontend/crud/cycles.js`:** Billing-cycles CRUD extracted from `app.js` into its own file (~168 lines). Shares `window` scope with `app.js` (plain `<script>` tags, no bundler).
+- **`frontend/crud/projects.js`:** Projects/PEPs CRUD + plans + baselines + ACL extracted from `app.js` into its own file (~615 lines). Fixed hardcoded `'pt-BR'` locale to use `_locale === 'pt' ? 'pt-BR' : 'en-US'`.
+- **Playwright E2E tests (`tests/frontend/e2e/`):** resilience spec covering global error handler, `_logout()`, visibility listener, and `_checkTokenExpiry` registration.
+- **`Makefile`:** `serve`, `test`, `test-backend`, `test-unit`, `test-e2e` targets.
+- **`test_upload_guards.py`:** 11 tests for upload rate-limiting and auth guards.
+- **Golden rules tests extended:** `test_golden_rules.py` now checks `crud/*.js` for GR-3 (no hardcoded hex) and locale patterns.
+
+### Fixed
+
+- **Critical test ordering bug:** `test_upload_guards.py` called `app.dependency_overrides.clear()` without saving and restoring the session-scoped override set by `conftest.py`. Tests running alphabetically after it received 401 Unauthorized. Fixed with save/restore pattern: `saved = dict(app.dependency_overrides)` before, `app.dependency_overrides.update(saved)` after.
+- **Stale E2E test `login.spec.js:66`:** Test checked for `#cyclesTable` inside the Projetos tab, but the Ciclos/Projetos tab-split refactor moved cycles to a dedicated Ciclos tab. Updated to navigate to the correct tab.
+
+### Documentation
+
+- All documentation rewritten in English (official language from this release).
+- `README.md` fully rewritten in English with updated architecture diagrams, test count, project structure, and frontend patterns.
+- `CHANGELOG.md` rewritten in English.
+- `CLAUDE.md` — "Pendências de Produção" section translated to "Known Production Gaps".
+- Executed and obsolete internal report files removed from the repository.
 
 ---
 
 ## [RC2.0] — 2026-06-03
 
-Release de consolidação. Esta versão amadurece o produto para um candidato a release estável: toda a camada de análise (Saúde do Portfólio, Tendências, Previsão) passou a ser servida por uma API dedicada com os números de EVM já calculados no servidor, eliminando divergências de fórmula entre telas. Foram adicionadas ferramentas de projeção (What-If, Monte Carlo, Runway, Cronograma Conquistado) e o acabamento de dezenas de detalhes de interface.
+Consolidation release. The entire analytics layer (Portfolio Health, Trends, Forecast) is now served by a dedicated API with EVM numbers pre-computed server-side, eliminating formula divergences between screens. Projection tools (What-If, Monte Carlo, Runway, Earned Schedule) were added, and dozens of interface details polished.
 
-A suíte de testes passou de 406 para **590 testes** (todos verdes), com **188 testes dedicados a EVM**.
+Test suite grew from 406 to **590 tests** (all green), with **188 EVM-specific tests**.
 
 ### Added
 
-- **Previsão probabilística (Monte Carlo):** nova projeção que simula milhares de cenários de conclusão e apresenta os marcos otimista (P10), central (P50) e pessimista (P90), com histograma e curva de referência para apoiar o planejamento de buffer.
-- **Simulação What-If:** painel onde o gestor ajusta a velocidade da equipe e horas extras por ciclo e vê na hora quantos ciclos faltam, o custo projetado ao término e a curva de avanço (burn-up) resultante.
-- **Runway do portfólio:** tabela que estima, por PEP, quantos ciclos faltam para concluir, a média de horas/custo por ciclo e o risco de cronograma (SPI) e custo (CPI).
-- **Cronograma Conquistado (Earned Schedule):** novos indicadores de prazo baseados em tempo — Prazo Conquistado (ES), SPI(t), SV(t) e estimativa de duração ao término IEAC(t).
-- **Percentual Físico Concluído:** opção de informar o avanço físico real por ciclo, usado como base do Valor Agregado quando disponível (no lugar da proxy por horas).
-- **Linha de base (baseline) de orçamento:** é possível travar uma revisão aprovada de orçamento por projeto; quando ativa, ela passa a ser o orçamento autoritativo nas análises, com banner e selo indicando o uso.
-- **Histórico de revisões de orçamento:** registro de todas as mudanças de orçamento (horas/custo), exibido como minigráfico (sparkline) de evolução.
-- **Detecção de sobrealocação:** identificação de colaboradores que excedem a capacidade no período, com filtros, ordenação e exportação CSV.
-- **Datas e situação do projeto:** projetos agora têm data de início, data prevista de término, data de conclusão e situação (em andamento / encerrado); projetos encerrados têm suas métricas congeladas no estado final.
-- **Linha de tendência total** opcional no gráfico de esforço da equipe e melhorias de leitura nos cartões de indicadores.
-- **Paginação padronizada** em todas as tabelas (Ciclos, Projetos/PEPs, Usuários, Log de Auditoria, Histórico de Importações, Quarentena, Senioridade e Rate Card).
-- **Glossário EVM em tooltip** ampliado para os novos indicadores (What-If, Monte Carlo, ES/SPI(t)/SV(t)/IEAC(t), médias de velocidade).
-- Filtro de situação e exportação CSV no Histórico de Importações.
+- **Monte Carlo probabilistic forecast:** simulates thousands of completion scenarios and presents optimistic (P10), central (P50) and pessimistic (P90) milestones, with histogram and reference curve.
+- **What-If simulation:** panel where the manager adjusts team velocity and overtime hours per cycle and instantly sees remaining cycles, projected completion cost, and the resulting burn-up curve.
+- **Portfolio runway:** table estimating, per PEP, how many cycles remain to completion, average hours/cost per cycle, and schedule (SPI) and cost (CPI) risk.
+- **Earned Schedule:** new time-based schedule indicators — Earned Schedule (ES), SPI(t), SV(t), and IEAC(t).
+- **Physical Percent Complete:** option to enter real physical progress per cycle, used as the Earned Value basis when available (instead of the hours proxy).
+- **Budget baseline:** lock an approved budget revision per project; when active, it becomes the authoritative budget in all analyses, with a banner and badge.
+- **Budget revision history:** append-only log of all budget changes (hours/cost), shown as a sparkline.
+- **Over-allocation detection:** identifies collaborators exceeding capacity in the period, with filters, sorting and CSV export.
+- **Project dates and status:** projects now carry start date, planned end date, completion date and status (`em_andamento` / `encerrado`); completed projects have their metrics frozen at the final state.
+- **Total trend line** optional in the team effort chart, and improved readability on indicator cards.
+- **Standardised pagination** across all tables (Cycles, Projects/PEPs, Users, Audit Log, Import History, Quarantine, Seniority, Rate Card).
+- **Extended EVM tooltip glossary** for new indicators (What-If, Monte Carlo, ES/SPI(t)/SV(t)/IEAC(t), velocity averages).
+- Status filter and CSV export in Import History.
 
 ### Changed
 
-- **Toda a análise migrada para a API v2:** as telas de Esforço, Portfólio, Tendências e Previsão passaram a consumir endpoints `/api/v2/*`. As respostas chegam prontas para exibição — todos os índices de EVM (CPI, SPI, EAC, TCPI, VAC, CV, SV) são calculados uma única vez no servidor.
-- **Fonte única de verdade para EVM:** todas as fórmulas de Valor Agregado foram centralizadas em um único módulo no backend, eliminando cálculos duplicados e divergências entre telas. O frontend não recalcula mais nenhum índice de EVM.
-- **Semáforo do portfólio** passou a usar a API v2 e a permitir clique em um projeto para filtrar a aba Portfólio por aquele PEP.
-- Reorganização da arquitetura de informação da aba Previsão (ordem dos cartões e painéis, gestão de baseline movida para a aba Projetos).
-- Indicadores de variação (deltas) reposicionados como selo no canto superior dos cartões do portfólio.
-- Eixo dos gráficos de quadrante CPI×SPI limitado a 2,0 para melhor leitura.
-- Regras de janela de velocidade documentadas e padronizadas entre Previsão, Runway, What-If e Monte Carlo (cada uma usa uma janela própria, por desenho).
+- **All analytics migrated to API v2:** Effort, Portfolio, Trends and Forecast screens now consume `/api/v2/*` endpoints. Responses arrive render-ready — all EVM indices (CPI, SPI, EAC, TCPI, VAC, CV, SV) are computed once on the server.
+- **Single source of truth for EVM:** all Earned Value formulas centralised in a single backend module, eliminating duplicate calculations and cross-screen divergences. The frontend no longer recalculates any EVM index.
+- **Portfolio semaphore** migrated to API v2; clicking a project pill now filters the Portfolio tab to that PEP.
+- Forecast tab information architecture reorganised (card and panel order; baseline management moved to the Projects tab).
+- Variance indicators (deltas) repositioned as badges in the upper corner of portfolio cards.
+- EVM quadrant chart axes capped at 2.0 for better readability.
+- Velocity window rules documented and standardised across Forecast, Runway, What-If and Monte Carlo (each uses its own window, by design).
 
 ### Fixed
 
-- Cartão de Variação de Prazo (SV) na Previsão estava formatado como R$ quando o valor é em horas.
-- Indicadores de variação voltaram a aparecer nos cartões de hora extra/sobreaviso quando o período anterior era zero.
-- Representação dos percentis P10/P50/P90 no histograma de Monte Carlo corrigida, com rótulos escalonados para não se sobreporem.
-- Painel de quarentena pessoal (`Minha Área`) passou a filtrar corretamente pela situação de revisão.
-- Diversos ajustes de UX em gráficos e cartões das abas Portfólio e Previsão (fontes, cores, espaçamentos, rótulos e cores aderentes ao tema).
-- Remoção da linha de média móvel remanescente do gráfico de tendências (Queima de Horas).
-
-### Documentation
-
-- Adicionado o relatório de gate de release **RC2.0-GATE.md** (veredito GO, 0 bloqueadores) com auditoria completa de EVM e segurança.
-- `CLAUDE.md` atualizado para refletir a camada v2, o módulo de EVM, os 20 modelos de dados e a nova suíte de 590 testes.
-- Documentação das regras de janela de velocidade (Previsão / Runway / What-If / Monte Carlo).
+- Schedule Variance (SV) card in Forecast was formatted as currency (R$) when the value is in hours.
+- Variance indicators stopped appearing on overtime/standby cards when the prior period was zero — fixed.
+- P10/P50/P90 percentile representation in the Monte Carlo histogram corrected; labels scaled to avoid overlap.
+- Personal quarantine panel (My Area) now correctly filters by review status.
+- Various UX adjustments in Portfolio and Forecast charts and cards (fonts, colours, spacing, labels, theme-compliant colours).
+- Removed leftover moving-average line from the Trends (Hour Burn) chart.
 
 ### Security
 
-- Verificação de acesso por PEP (ACL) aplicada de forma consistente a todos os endpoints de análise v2 e ao histórico de orçamento/quarentena.
-
-### Known Issues
-
-- **D1 — Credencial padrão `admin/admin`:** o primeiro acesso ainda não força a troca da senha padrão (mitigado por aviso no log; ferramenta self-hosted). Previsto para RC2.1.
-- **D3 — Build apenas Windows:** o pipeline de release gera somente o executável Windows; Linux/macOS rodam a partir do código-fonte. Previsto para RC2.1.
+- Per-PEP access control (ACL) applied consistently to all v2 analytics endpoints and to budget history/quarantine.
 
 ---
 
-## [v1.4.8] — Paginação e refinamento de tabelas
+## [v1.4.8] — Pagination and table refinements
 
 ### Added
-- Paginação em todas as tabelas de dados (Ciclos, Projetos/PEPs, Usuários, Log de Auditoria, Histórico, Senioridade e Rate Card), centralizada em um componente único.
-- Filtro de situação e exportação CSV no Histórico de Importações.
-- Botão de recolher/expandir no cartão de filtros do Dashboard.
+- Pagination across all data tables (Cycles, Projects/PEPs, Users, Audit Log, History, Seniority, Rate Card), centralised in a single component.
+- Status filter and CSV export in Import History.
+- Collapse/expand button on the Dashboard filter card.
 
 ### Fixed
-- Modal de baseline alargado para melhor leitura.
-- Ordem das colunas da tabela de Projetos e padronização da paginação de quarentena.
-- Duplicidades dentro do mesmo arquivo passaram a ser registradas como informação (não erro).
+- Baseline modal widened for better readability.
+- Projects table column order standardised; quarantine pagination standardised.
+- Duplicates within the same file now recorded as info (not error).
 
 ---
 
-## [v1.4.6 / v1.4.7] — Coerência de métricas EVM e revisão de especialista
+## [v1.4.6 / v1.4.7] — EVM metric consistency and expert review
 
 ### Changed
-- Revisão de especialista (EVM/UX/implementação) endereçada em quatro frentes: base matemática, coerência de métricas, nomenclatura e polimento de UX.
-- Variância de Prazo (SV) e SPI passaram a ser calculados em horas, não em R$.
+- Expert review (EVM/UX/implementation) addressed across four fronts: mathematical foundation, metric consistency, nomenclature, and UX polish.
+- Schedule Variance (SV) and SPI now computed in hours, not currency.
 
 ### Added
-- Presets de tema customizados com CRUD e importação/exportação CSV.
-- Lógica de "fronteira de SPI congelado" extraída para o módulo de EVM (reuso entre Previsão e Runway).
+- Custom theme presets with CRUD and CSV import/export.
+- "SPI frozen boundary" logic extracted to the EVM module (reused between Forecast and Runway).
 
 ### Removed
-- Limpeza de documentos internos de trabalho (relatórios e propostas) que não pertenciam ao repositório do produto.
+- Internal working documents (reports and proposals) that did not belong in the product repository.
 
 ---
 
-## [v1.4.4 / v1.4.5] — Consolidação arquitetural e início do EVM centralizado
+## [v1.4.4 / v1.4.5] — Architectural consolidation and start of centralised EVM
 
 ### Changed
-- Centralização das fórmulas de EVM e da resolução de orçamento em um módulo único de serviço.
-- Classificação de saúde (verde/amarelo/vermelho) movida do frontend para o backend.
-- Frontend modularizado: construtores de gráfico (Esforço, Portfólio, Previsão), glossário EVM e helpers de UX separados em arquivos próprios; padronização de CRUD de tabelas.
+- EVM formulas and budget resolution centralised in a single service module.
+- Health classification (green/yellow/red) moved from frontend to backend.
+- Frontend modularised: chart builders (Effort, Portfolio, Forecast), EVM glossary and UX helpers split into separate files; table CRUD standardised.
 
 ---
 
-## [v1.4.1 → v1.4.3] — Acessibilidade, treemap dinâmico e auditoria EVM
+## [v1.4.1 → v1.4.3] — Accessibility, dynamic treemap and EVM audit
 
 ### Added
-- Auditoria completa de EVM e correções associadas: CV, TCPI, VAC e ETC adicionados à Previsão; CPI inline na Saúde do Portfólio; histórico de SPI por ciclo.
-- Acessibilidade (WCAG): navegação por teclado no MultiSelect, textos alternativos em gráficos, papéis ARIA em abas e tokens de cor.
-- Linha de base de planejamento (baseline S-curve) com importação/exportação CSV, modal, selo e banner.
-- Altura dinâmica do treemap proporcional ao número de PEPs.
+- Full EVM audit and associated corrections: CV, TCPI, VAC and ETC added to Forecast; inline CPI in Portfolio Health; per-cycle SPI history.
+- Accessibility (WCAG): keyboard navigation in MultiSelect, alternative text for charts, ARIA roles on tabs and colour tokens.
+- Planning baseline (S-curve) with CSV import/export, modal, badge and banner.
+- Dynamic treemap height proportional to the number of PEPs.
 
 ### Fixed
-- Ponderação correta de horas extras/sobreaviso no numerador do Valor Agregado.
-- Valor Agregado capado no orçamento (BAC), garantindo CPI < 1 em projetos estourados.
+- Correct weighting of overtime/standby hours in the Earned Value numerator.
+- Earned Value capped at budget (BAC), ensuring CPI < 1 for over-budget projects.
 
 ---
 
-## [v1.4.0] — Base do produto
+## [v1.4.0] — Product foundation
 
 ### Added
-- Importação de timesheets CSV/XLSX com pipeline de ingestão multi-fase e motor de regras de validação configurável.
-- Fluxo de quarentena para linhas que falham na validação (aprovar/rejeitar) e ciclos de quarentena automáticos para datas fora de período registrado.
-- Padrão "EVM Freeze": custo por hora congelado no momento da importação.
-- CRUD de Ciclos, Projetos/PEPs, Senioridade e Rate Cards, todos com importação/exportação CSV.
-- Análises: Esforço da Equipe, Saúde do Portfólio (treemap + bullet, horas/R$), Tendências e Previsão (curva S).
-- Autenticação JWT com bcrypt, controle de acesso por PEP (ACL), papéis admin/usuário e log de auditoria completo.
-- Área "Minha Área" (preferências, histórico próprio, quarentena própria, alertas de orçamento), tema de UI configurável e suporte a i18n (pt-BR / en).
+- CSV/XLSX timesheet import with a multi-phase ingestion pipeline and configurable validation rule engine.
+- Quarantine workflow for rows that fail validation (approve/reject) and automatic quarantine cycles for dates outside registered periods.
+- EVM Freeze pattern: cost per hour frozen at import time.
+- CRUD for Cycles, Projects/PEPs, Seniority and Rate Cards, all with CSV import/export.
+- Analytics: Team Effort, Portfolio Health (treemap + bullet, hours/R$), Trends and Forecast (S-curve).
+- JWT authentication with bcrypt, per-PEP access control (ACL), admin/user roles and full audit log.
+- My Area (preferences, personal history, personal quarantine, budget alerts), configurable UI theme and i18n support (pt-BR / en).
 
 ---
 
+[RC2.1]: #rc21--2026-06-06
 [RC2.0]: #rc20--2026-06-03
-[v1.4.8]: #v148--paginação-e-refinamento-de-tabelas
-[v1.4.6 / v1.4.7]: #v146--v147--coerência-de-métricas-evm-e-revisão-de-especialista
-[v1.4.4 / v1.4.5]: #v144--v145--consolidação-arquitetural-e-início-do-evm-centralizado
-[v1.4.1 → v1.4.3]: #v141--v143--acessibilidade-treemap-dinâmico-e-auditoria-evm
-[v1.4.0]: #v140--base-do-produto
+[v1.4.8]: #v148--pagination-and-table-refinements
+[v1.4.6 / v1.4.7]: #v146--v147--evm-metric-consistency-and-expert-review
+[v1.4.4 / v1.4.5]: #v144--v145--architectural-consolidation-and-start-of-centralised-evm
+[v1.4.1 → v1.4.3]: #v141--v143--accessibility-dynamic-treemap-and-evm-audit
+[v1.4.0]: #v140--product-foundation

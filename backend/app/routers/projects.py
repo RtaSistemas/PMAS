@@ -10,16 +10,9 @@ from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import BudgetRevision, Project, UserProjectAccess
 from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
-from backend.app.utils import now_br
+from backend.app.utils import _str_or_none, now_br
 
 router = APIRouter(prefix="/api/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
-
-
-def _str_or_none(value) -> str | None:
-    if value is None:
-        return None
-    s = str(value).strip()
-    return None if s.lower() in {"nan", "none", ""} else s
 
 
 def _float_or_none(value) -> float | None:

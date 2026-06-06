@@ -44,7 +44,7 @@ def get_over_allocation(
     current_user=Depends(get_current_user),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
-    threshold: Optional[float] = Query(default=None, gt=0),
+    threshold: Optional[float] = Query(default=None, gt=0, le=24.0),
 ):
     # Resolve effective threshold: param > GlobalConfig > hard default
     cfg = db.get(GlobalConfig, 1)

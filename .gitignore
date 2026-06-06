@@ -47,3 +47,4 @@ static/assets/logos/
 # Node.js (frontend test dependencies)
 node_modules/
 package-lock.json
+test-results/

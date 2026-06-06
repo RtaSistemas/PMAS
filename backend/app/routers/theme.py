@@ -109,7 +109,8 @@ _PRESET_CSV_COLUMNS = [
     "color_primary", "color_background", "color_surface", "color_accent",
     "color_success", "color_warning", "color_danger", "color_text",
     "color_text_muted", "density",
-    "pal_0", "pal_1", "pal_2", "pal_3", "pal_4", "pal_5",
+    "pal_0", "pal_1", "pal_2", "pal_3", "pal_4", "pal_5", "pal_6", "pal_7",
+    "color_card", "color_border", "color_text_hint", "color_violet", "border_radius",
 ]
 
 
@@ -143,6 +144,13 @@ def export_presets(db: DbSession, _user: CurrentUser):
             pal[3] if len(pal) > 3 else "",
             pal[4] if len(pal) > 4 else "",
             pal[5] if len(pal) > 5 else "",
+            pal[6] if len(pal) > 6 else "",
+            pal[7] if len(pal) > 7 else "",
+            cfg.get("color_card", "") or "",
+            cfg.get("color_border", "") or "",
+            cfg.get("color_text_hint", "") or "",
+            cfg.get("color_violet", "") or "",
+            cfg.get("border_radius", "") or "",
         ])
     return Response(
         content=buf.getvalue(),
@@ -194,11 +202,17 @@ def import_presets(file: UploadFile, db: DbSession, current_user: AdminUser):
 
         cfg["density"] = (row.get("density") or "normal").strip()
         palette = []
-        for i in range(6):
+        for i in range(8):
             c = (row.get(f"pal_{i}") or "").strip()
             if c:
                 palette.append(c)
         cfg["chart_palette"] = palette
+        # Optional new fields
+        for opt_key in ("color_card", "color_border", "color_text_hint", "color_violet"):
+            val = (row.get(opt_key) or "").strip() or None
+            cfg[opt_key] = val
+        br = (row.get("border_radius") or "").strip() or None
+        cfg["border_radius"] = br
 
         existing = db.query(ThemePreset).filter_by(name=name).first()
         if existing:

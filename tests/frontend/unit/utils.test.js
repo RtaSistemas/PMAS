@@ -4,8 +4,6 @@ import {
   fmtDateBR,
   formatHours,
   formatCost,
-  riskColor,
-  classifyBudgetHealth,
   clamp,
   parseISODate,
 } from '../../../frontend/utils.js';
@@ -126,70 +124,29 @@ describe('formatCost', () => {
   it('returns dash for undefined', () => {
     expect(formatCost(undefined)).toBe('—');
   });
-});
 
-// ── riskColor ─────────────────────────────────────────────────────────────────
-
-describe('riskColor', () => {
-  it('returns primary color for ok', () => {
-    expect(riskColor('ok')).toContain('#4f8ef7');
+  it('uses pt-BR locale by default (dot as thousands separator)', () => {
+    const result = formatCost(1000000);
+    // pt-BR: 1.000.000,00
+    expect(result).toContain('1.000.000');
   });
 
-  it('returns amber for warning', () => {
-    expect(riskColor('warning')).toContain('#d9b273');
+  it('accepts en-US locale (comma as thousands separator)', () => {
+    const result = formatCost(1000000, 1, '$', 'en-US');
+    // en-US: 1,000,000.00
+    expect(result).toContain('1,000,000');
   });
 
-  it('returns red for critical', () => {
-    expect(riskColor('critical')).toContain('#c56d76');
+  it('locale parameter affects decimal separator', () => {
+    const ptResult = formatCost(1.5, 1, 'R$', 'pt-BR');
+    const enResult = formatCost(1.5, 1, '$', 'en-US');
+    expect(ptResult).toContain('1,50');   // pt-BR uses comma for decimals
+    expect(enResult).toContain('1.50');   // en-US uses dot for decimals
   });
 
-  it('returns red for overrun (same as critical)', () => {
-    expect(riskColor('overrun')).toBe(riskColor('critical'));
-  });
-
-  it('returns muted color for no_budget', () => {
-    expect(riskColor('no_budget')).toContain('#818998');
-  });
-
-  it('returns no_budget color for unknown risk level', () => {
-    expect(riskColor('unknown')).toBe(riskColor('no_budget'));
-  });
-});
-
-// ── classifyBudgetHealth ──────────────────────────────────────────────────────
-
-describe('classifyBudgetHealth', () => {
-  it('returns no_budget when budget is null', () => {
-    expect(classifyBudgetHealth(100, null)).toBe('no_budget');
-  });
-
-  it('returns no_budget when budget is zero', () => {
-    expect(classifyBudgetHealth(100, 0)).toBe('no_budget');
-  });
-
-  it('returns ok when ratio is below warning threshold', () => {
-    expect(classifyBudgetHealth(80, 100)).toBe('ok');
-  });
-
-  it('returns warning at exactly the warning threshold', () => {
-    expect(classifyBudgetHealth(90, 100)).toBe('warning');
-  });
-
-  it('returns warning between thresholds', () => {
-    expect(classifyBudgetHealth(95, 100)).toBe('warning');
-  });
-
-  it('returns critical at exactly 100%', () => {
-    expect(classifyBudgetHealth(100, 100)).toBe('critical');
-  });
-
-  it('returns critical above 100%', () => {
-    expect(classifyBudgetHealth(110, 100)).toBe('critical');
-  });
-
-  it('uses custom thresholds', () => {
-    expect(classifyBudgetHealth(70, 100, 0.7, 0.8)).toBe('warning');
-    expect(classifyBudgetHealth(80, 100, 0.7, 0.8)).toBe('critical');
+  it('custom symbol appears in output regardless of locale', () => {
+    const result = formatCost(100, 1, '€', 'en-US');
+    expect(result).toContain('€');
   });
 });
 

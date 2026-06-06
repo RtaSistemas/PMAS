@@ -65,7 +65,7 @@ class TestThemePut:
             "color_text": "#ffffff",
             "color_text_muted": "#888888",
             "density": "compact",
-            "chart_palette": ["#ff0000", "#00ff00"],
+            "chart_palette": ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"],
         }
         r = client.put("/api/theme", json=payload)
         assert r.status_code == 200
@@ -342,3 +342,71 @@ class TestThemeLogo:
             files={"file": ("document.txt", io.BytesIO(b"not an image"), "text/plain")},
         )
         assert r.status_code == 400
+
+
+class TestThemeNewTokens:
+    """Tests for the new optional CSS token fields and expanded palette."""
+
+    _BASE = {
+        "app_name": "PMAS",
+        "color_primary": "#4f8ef7", "color_background": "#081122",
+        "color_surface": "#0e2038", "color_accent": "#07b3d7",
+        "color_success": "#5ad388", "color_warning": "#d9b273",
+        "color_danger": "#c56d76", "color_text": "#e0e0e0",
+        "color_text_muted": "#818998", "density": "normal",
+        "chart_palette": ["#4f8ef7", "#d9b273", "#a78bfa", "#35a1f3", "#5ad388", "#01c1b9"],
+    }
+
+    def test_new_color_tokens_saved(self, client):
+        """PUT with new color tokens → GET returns same values."""
+        payload = {
+            **self._BASE,
+            "color_card": "#112233",
+            "color_border": "#334455",
+            "color_text_hint": "#556677",
+            "color_violet": "#778899",
+        }
+        r = client.put("/api/theme", json=payload)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["color_card"] == "#112233"
+        assert data["color_border"] == "#334455"
+        assert data["color_text_hint"] == "#556677"
+        assert data["color_violet"] == "#778899"
+        data2 = client.get("/api/theme").json()
+        assert data2["color_card"] == "#112233"
+        assert data2["color_border"] == "#334455"
+
+    def test_border_radius_valid(self, client):
+        """'sharp', 'normal', 'rounded' are accepted."""
+        for value in ("sharp", "normal", "rounded"):
+            r = client.put("/api/theme", json={**self._BASE, "border_radius": value})
+            assert r.status_code == 200, f"border_radius='{value}' should be accepted"
+            assert r.json()["border_radius"] == value
+
+    def test_border_radius_invalid(self, client):
+        """Unsupported border_radius value returns 422."""
+        r = client.put("/api/theme", json={**self._BASE, "border_radius": "huge"})
+        assert r.status_code == 422
+
+    def test_chart_palette_8_colors(self, client):
+        """A palette with 8 colors is accepted."""
+        pal8 = ["#111111", "#222222", "#333333", "#444444", "#555555", "#666666", "#777777", "#888888"]
+        r = client.put("/api/theme", json={**self._BASE, "chart_palette": pal8})
+        assert r.status_code == 200
+        assert len(r.json()["chart_palette"]) == 8
+
+    def test_chart_palette_5_colors_rejected(self, client):
+        """A palette with 5 colors (non-empty, out of 6-8 range) returns 422."""
+        pal5 = ["#111111", "#222222", "#333333", "#444444", "#555555"]
+        r = client.put("/api/theme", json={**self._BASE, "chart_palette": pal5})
+        assert r.status_code == 422
+
+    def test_csv_export_includes_new_fields(self, client, db_session):
+        """CSV export header includes pal_6, pal_7, border_radius."""
+        _seed_builtins(db_session)
+        r = client.get("/api/theme/presets/export")
+        assert r.status_code == 200
+        header = r.text.strip().split("\n")[0]
+        for col in ("pal_6", "pal_7", "border_radius"):
+            assert col in header, f"Column '{col}' missing from CSV header"

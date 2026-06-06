@@ -35,7 +35,7 @@ def monte_carlo(
     project_id: int,
     db: DbSession,
     current_user=Depends(get_current_user),
-    iterations: int = Query(default=1000, ge=1, le=10000),
+    iterations: int = Query(default=1000, ge=100, le=10000),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
     seed: Optional[int] = None,
