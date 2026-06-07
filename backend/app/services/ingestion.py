@@ -479,6 +479,8 @@ def _phase_aggregate_rules(
 
     daily_sums: dict[tuple, float] = {}
     weekly_sums: dict[tuple, float] = {}
+    week_first_day: dict[tuple, object] = {}  # (collab_name, (year, week)) → earliest date with data
+
     for vr in valid_rows:
         collab_name = vr["collab"].name
         d = vr["record_date"]
@@ -486,15 +488,26 @@ def _phase_aggregate_rules(
         key_w = (collab_name, d.isocalendar()[:2])
         daily_sums[key_d] = daily_sums.get(key_d, 0.0) + vr["total_h"]
         weekly_sums[key_w] = weekly_sums.get(key_w, 0.0) + vr["total_h"]
+        if key_w not in week_first_day or d < week_first_day[key_w]:
+            week_first_day[key_w] = d
 
+    # Daily rules — one evaluation per (collaborator, day)
+    daily_rules = [r for r in rules if r.field == "soma_diaria"]
     for (collab_name, d), daily_total in daily_sums.items():
-        key_w = (collab_name, d.isocalendar()[:2])
-        weekly_total = weekly_sums.get(key_w, 0.0)
-        for m in evaluate_aggregate_rules(rules, daily_total, weekly_total):
-            if m.action == "warning":
-                warnings.append(f"{collab_name} em {d}: {m.message}")
-            elif m.action == "info":
-                infos.append(f"{collab_name} em {d}: {m.message}")
+        for m in evaluate_aggregate_rules(daily_rules, daily_total, 0.0):
+            (warnings if m.action == "warning" else infos).append(
+                f"{collab_name} em {d}: {m.message}"
+            )
+
+    # Weekly rules — one evaluation per (collaborator, ISO week); date shown is
+    # the earliest day with data in that week so the message points to a real entry.
+    weekly_rules = [r for r in rules if r.field == "soma_semanal"]
+    for (collab_name, key_w), weekly_total in weekly_sums.items():
+        first_day = week_first_day[(collab_name, key_w)]
+        for m in evaluate_aggregate_rules(weekly_rules, 0.0, weekly_total):
+            (warnings if m.action == "warning" else infos).append(
+                f"{collab_name} em {first_day}: {m.message}"
+            )
 
     return warnings, infos
 
