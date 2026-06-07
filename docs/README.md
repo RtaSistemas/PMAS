@@ -11,7 +11,7 @@ Project documentation organized by type.
 | [BRANCH-DIFF.md](BRANCH-DIFF.md) | Developer | Summary of every change introduced in the `claude/create-project-docs-qJaUo` branch vs `main` |
 | [EXECUTIVE-AUDIT.html](EXECUTIVE-AUDIT.html) | Management / Compliance | Compliance audit report — 30 Conforme, 1 Parcialmente Conforme, NC-01 and NC-03 resolved |
 | [EXECUTIVE-AUDIT.md](EXECUTIVE-AUDIT.md) | Management / Compliance | Markdown summary of the compliance audit (machine-readable version of EXECUTIVE-AUDIT.html) |
-| [VALUE-AUDIT.html](VALUE-AUDIT.html) | Executives / Directors | Decision value report — evaluates what the system enables for organizational decision-making (Maturity Level 4–5, 7/8 decisions with high confidence) |
+| [VALUE-AUDIT.html](VALUE-AUDIT.html) | Executives / Directors | Decision value report — evaluates what the system enables for organizational decision-making (Maturity Level 5, 8/8 decisions with high confidence) |
 
 Root-level documents:
 - `README.md` — Project overview, installation, and usage

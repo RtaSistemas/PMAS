@@ -76,7 +76,7 @@ async def _lifespan(app: FastAPI):
 app = FastAPI(
     title="PMAS API",
     description="Project Management Assistant System — Timesheet Foundation",
-    version="1.0.0",
+    version="2.0.0RC",
     lifespan=_lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",

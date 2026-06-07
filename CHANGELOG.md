@@ -6,6 +6,66 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [2.0.0RC_PMAS] — 2026-06-07
+
+Predictive alerting release. PMAS reaches **Maturity Level 5** (Predictive) with proactive
+schedule-risk detection and a persistent, queryable Alert Center. All 8 key management
+decisions now have high confidence. Test suite at **698 tests** (zero failures).
+
+### Added
+
+- **`ProjectAlert` model** — permanent, lifecycle-managed alert record per project:
+  `alert_type`, `level`, `message`, `metric_value`, `consecutive_cycles`, `created_at`,
+  `resolved_at`, `is_resolved`. Deduplication: same (project, alert_type, level) → skip;
+  level changes → resolves old, creates new. Auto-resolves on the next upload when the
+  triggering metric recovers.
+- **Schedule-risk detection (`notify_schedule_risk`)** — fires automatically after every
+  successful upload. Detects collaborator SPI below the configurable threshold (default 0.85)
+  for N consecutive cycles (default 2). Creates a `ProjectAlert` of type `schedule_risk` and
+  delivers a bell-tray notification to all users with access to the affected PEP.
+- **`GET /api/project-alerts`** (admin only) — lists all ProjectAlerts with filters: `pep_wbs`,
+  `alert_type`, `is_resolved`, `date_from`, `date_to`, `limit`, `offset`.
+- **`GET /api/my/alerts`** — per-user endpoint, ACL-filtered via `_allowed_peps`. Regular users
+  see only alerts for PEPs they can access; admins see all.
+- **Central de Alertas** (Admin tab) — paginated table with PEP, type, level, message, date and
+  status filters. PEP dropdown populated dynamically from current data.
+- **Alertas sub-tab** (Minha Área) — visible to non-admin users only (admins use the Admin tab
+  to avoid redundancy). Paginated table with active/resolved filter and refresh button.
+- **Forecast per-PEP alert card** — inline card inside the Forecast tab that loads
+  automatically when a PEP is selected, showing its active and resolved alerts. Hidden when
+  no alerts exist.
+- **Alert level styles** in `style.css` — `.alert-level-warning` (amber), `.alert-level-error`
+  (red), `.alert-level-info` (blue), `.alert-resolved` (dimmed row), `.forecast-alert-item`
+  border variants.
+- **`GlobalConfig` fields**: `spi_warning_threshold` (float, default 0.85) and
+  `spi_risk_consecutive_cycles` (integer, default 2) — configurable without code changes.
+  Safe `ALTER TABLE` migrations added to `_migrate_columns()`.
+- **19 new tests** in `tests/test_project_alerts.py`: deduplication logic, auto-resolution,
+  budget-warning trigger, overrun escalation, empty-list guard, admin endpoint filters,
+  my-alerts ACL filtering with a real regular-user override.
+
+### Fixed
+
+- **`soma_semanal` alert fired N times per week** instead of once. `_phase_aggregate_rules`
+  iterated over `daily_sums` (one entry per collaborator × day) and re-evaluated the weekly
+  rule on every iteration, producing as many warnings as there were days with entries in the
+  overloaded week. Fixed by splitting evaluation into two independent passes — daily rules
+  over `daily_sums`, weekly rules over `weekly_sums` (one entry per collaborator × ISO week).
+  The date shown in the weekly warning is now the **earliest day with actual data** in that
+  week, pointing to a real timesheet entry (Option C). Two new regression tests confirm
+  exactly one warning per week and correct first-day selection.
+
+### Documentation
+
+- **VALUE-AUDIT.html** updated to Maturity Level 5: verdict pill changed to 8/8 high-confidence
+  decisions; "Previsão de Entrega" row upgraded from Moderada to Alta; maturity step 5 marked
+  ✓; scope paragraph updated; Opportunity 1 marked as implemented; 15 evidence entries
+  (previously 14, the gap entry replaced by the implementation entry).
+- **`docs/README.md`** — VALUE-AUDIT description updated to Level 5, 8/8.
+- API `version` bumped to `2.0.0RC` in `main.py`.
+
+---
+
 ## [RC2.1] — 2026-06-06
 
 Resilience and documentation release. Focused on frontend robustness, test suite hygiene, and codebase maintainability.
@@ -149,6 +209,7 @@ Test suite grew from 406 to **590 tests** (all green), with **188 EVM-specific t
 
 ---
 
+[2.0.0RC_PMAS]: #200rc_pmas--2026-06-07
 [RC2.1]: #rc21--2026-06-06
 [RC2.0]: #rc20--2026-06-03
 [v1.4.8]: #v148--pagination-and-table-refinements
