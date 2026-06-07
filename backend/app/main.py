@@ -19,7 +19,7 @@ from backend.app.database import init_db
 from backend.app.limiter import limiter
 from backend.app.routers import (
     acl, auditlog, auth, baselines, cycles, dashboard,
-    my, notifications, plans, projects, quarantine, ratecard,
+    my, notifications, plans, project_alerts, projects, quarantine, ratecard,
     theme, upload, users, validation_rules,
 )
 from backend.app.routers.v2 import (
@@ -76,7 +76,7 @@ async def _lifespan(app: FastAPI):
 app = FastAPI(
     title="PMAS API",
     description="Project Management Assistant System — Timesheet Foundation",
-    version="1.0.0",
+    version="2.0.0RC",
     lifespan=_lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -124,6 +124,7 @@ app.include_router(quarantine.router)
 app.include_router(validation_rules.router)
 app.include_router(my.router)
 app.include_router(notifications.router)
+app.include_router(project_alerts.router)
 app.include_router(theme.router)
 # v2 endpoints — consolidated, render-ready, ACL-enforced
 app.include_router(filters.router)

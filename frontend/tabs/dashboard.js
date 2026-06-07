@@ -1359,6 +1359,7 @@ async function _renderForecastTab() {
     _renderForecastBaseline(fc);
     await _renderForecastAllocTable(pep, dateFrom, dateTo);
     await _renderForecastAllocCostTable(pep, dateFrom, dateTo);
+    await _loadForecastAlerts(pep);
   } catch (err) {
     _setChartLoading(['forecastChart', 'burnUpChart'], false);
     _showEmpty('forecastEmpty', true);
@@ -1367,10 +1368,44 @@ async function _renderForecastTab() {
     document.getElementById('burnUpCard').hidden = true;
     document.getElementById('forecastAllocCard').hidden = true;
     document.getElementById('simsCard').hidden = true;
+    const alertsCard = document.getElementById('forecastAlertsCard');
+    if (alertsCard) alertsCard.hidden = true;
     _disposeTabCharts('forecast');
     if (!err.message?.includes('404')) notify(_friendlyError(err), 'error');
   }
 }
+
+async function _loadForecastAlerts(pepWbs) {
+  const card = document.getElementById('forecastAlertsCard');
+  const list = document.getElementById('forecastAlertsList');
+  if (!card || !list) return;
+  const filterEl = document.getElementById('forecastAlertFilter');
+  const isResolved = filterEl ? filterEl.value : '';
+  try {
+    const params = new URLSearchParams({ alert_type: '' });
+    params.set('limit', '50');
+    if (isResolved !== '') params.set('is_resolved', isResolved);
+    const alerts = await apiFetch(`/api/my/alerts?${params}`);
+    const pepAlerts = alerts.filter(a => a.pep_wbs === pepWbs);
+    if (pepAlerts.length === 0) { card.hidden = true; return; }
+    card.hidden = false;
+    const _fmtType = t => ({ budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[t] || t);
+    list.innerHTML = `<div class="forecast-alerts-list">${pepAlerts.map(a => `
+      <div class="forecast-alert-item level-${a.level}${a.is_resolved ? ' is-resolved' : ''}">
+        <span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span>
+        <div>
+          <div class="forecast-alert-msg">${a.message}</div>
+          <div class="forecast-alert-meta">${_fmtType(a.alert_type)} · ${fmt.datetime ? fmt.datetime(a.created_at) : a.created_at.replace('T', ' ').slice(0,16)}${a.is_resolved ? ' · <span class="alert-status-resolved">Resolvido</span>' : ''}</div>
+        </div>
+      </div>`).join('')}</div>`;
+  } catch (_) {
+    if (card) card.hidden = true;
+  }
+}
+
+document.getElementById('forecastAlertFilter')?.addEventListener('change', () => {
+  if (_activeATab === 'forecast' && _currentForecastPep) _loadForecastAlerts(_currentForecastPep);
+});
 
 function _renderVelocitySparkline(fc) {
   const el = document.getElementById('velocitySparklineChart');

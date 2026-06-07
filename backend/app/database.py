@@ -187,6 +187,16 @@ def _migrate_columns() -> None:
                     "ALTER TABLE global_config"
                     " ADD COLUMN timezone VARCHAR NOT NULL DEFAULT 'America/Sao_Paulo'"
                 ))
+            if "spi_warning_threshold" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN spi_warning_threshold FLOAT NOT NULL DEFAULT 0.85"
+                ))
+            if "spi_risk_consecutive_cycles" not in gc_cols:
+                conn.execute(text(
+                    "ALTER TABLE global_config"
+                    " ADD COLUMN spi_risk_consecutive_cycles INTEGER NOT NULL DEFAULT 2"
+                ))
             pcp_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project_cycle_plan)"))}
             if "planned_cost" not in pcp_cols:
                 conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN planned_cost FLOAT"))

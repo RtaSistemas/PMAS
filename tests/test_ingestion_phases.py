@@ -516,6 +516,32 @@ class TestPhaseAggregateRules:
         warnings, infos = _phase_aggregate_rules(valid_rows, rules)
         assert any("60" in w or "Weekly" in w or "semanal" in w.lower() for w in warnings)
 
+    def test_weekly_sum_warning_fires_exactly_once_per_week(self, db_session, sample_cycle):
+        # 5 days in the same ISO week, all exceeding 60h total → exactly 1 warning
+        days_in_week = [date(2026, 1, 12), date(2026, 1, 13), date(2026, 1, 14),
+                        date(2026, 1, 15), date(2026, 1, 16)]
+        valid_rows = [
+            self._make_valid_row(db_session, sample_cycle, record_date=d, total_h=13.0)
+            for d in days_in_week
+        ]
+        rules = _rules(db_session)
+        warnings, _ = _phase_aggregate_rules(valid_rows, rules)
+        weekly_warnings = [w for w in warnings if "60" in w or "semanal" in w.lower() or "Weekly" in w]
+        assert len(weekly_warnings) == 1
+
+    def test_weekly_warning_shows_first_day_with_data(self, db_session, sample_cycle):
+        # Rows on Wed/Thu/Fri — first day with data is Wednesday (2026-01-14)
+        days = [date(2026, 1, 14), date(2026, 1, 15), date(2026, 1, 16)]
+        valid_rows = [
+            self._make_valid_row(db_session, sample_cycle, record_date=d, total_h=22.0)
+            for d in days
+        ]
+        rules = _rules(db_session)
+        warnings, _ = _phase_aggregate_rules(valid_rows, rules)
+        weekly_warnings = [w for w in warnings if "60" in w or "semanal" in w.lower() or "Weekly" in w]
+        assert len(weekly_warnings) == 1
+        assert "2026-01-14" in weekly_warnings[0]
+
     def test_empty_valid_rows_no_output(self, db_session, sample_cycle):
         rules = _rules(db_session)
         warnings, infos = _phase_aggregate_rules([], rules)

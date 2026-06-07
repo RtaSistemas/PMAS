@@ -9,8 +9,9 @@ from fastapi.responses import StreamingResponse
 
 from backend.app.database import DbSession
 from backend.app.deps import CurrentUser, get_current_user
-from backend.app.models import QuarantineRecord, UploadSession, UserPreference
+from backend.app.models import ProjectAlert, QuarantineRecord, UploadSession, UserPreference
 from backend.app.schemas import (
+    ProjectAlertOut,
     QuarantineRecordOut,
     UploadSessionOut,
     UserPreferenceIn,
@@ -90,6 +91,31 @@ def my_quarantine(
         q = q.join(UploadSession, QuarantineRecord.upload_session_id == UploadSession.id).filter(
             UploadSession.source_file.ilike(f"%{source_file}%")
         )
+    return q.offset(offset).limit(limit).all()
+
+
+# ── Project alerts ────────────────────────────────────────────────────────────
+
+@router.get("/alerts", response_model=list[ProjectAlertOut])
+def my_alerts(
+    db: DbSession,
+    current_user: CurrentUser,
+    is_resolved: bool | None = None,
+    alert_type: str | None = None,
+    limit: int = Query(default=100, le=500),
+    offset: int = 0,
+):
+    """Return ProjectAlerts for PEPs the current user can access (ACL-filtered)."""
+    from backend.app.routers.v2.portfolio import _allowed_peps
+
+    q = db.query(ProjectAlert).order_by(ProjectAlert.created_at.desc())
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None:
+        q = q.filter(ProjectAlert.pep_wbs.in_(allowed))
+    if is_resolved is not None:
+        q = q.filter(ProjectAlert.is_resolved == is_resolved)
+    if alert_type is not None:
+        q = q.filter(ProjectAlert.alert_type == alert_type)
     return q.offset(offset).limit(limit).all()
 
 

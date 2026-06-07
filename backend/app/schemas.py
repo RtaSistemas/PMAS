@@ -423,6 +423,23 @@ class UIThemeOut(UIThemeIn):
     logo_url: Optional[str] = None
 
 
+# ── Project alerts ────────────────────────────────────────────────────────────
+
+class ProjectAlertOut(BaseModel):
+    id: int
+    project_id: int
+    pep_wbs: str
+    alert_type: str
+    level: str
+    message: str
+    metric_value: float | None
+    consecutive_cycles: int | None
+    created_at: datetime
+    resolved_at: datetime | None
+    is_resolved: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Theme presets ─────────────────────────────────────────────────────────────
 
 class ThemePresetOut(BaseModel):

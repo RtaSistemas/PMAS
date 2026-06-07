@@ -460,6 +460,19 @@
         </div>
       </div>
 
+      <!-- Alertas do Projeto -->
+      <div class="card" id="forecastAlertsCard" data-panel-id="forecast-alerts" hidden>
+        <div class="section-header">
+          <h2 class="card-title">Alertas do Projeto</h2>
+          <select id="forecastAlertFilter" class="form-select input-sel-sm">
+            <option value="">Todos</option>
+            <option value="false">Ativos</option>
+            <option value="true">Resolvidos</option>
+          </select>
+        </div>
+        <div id="forecastAlertsList"></div>
+      </div>
+
       <!-- Simulações: What-If + Monte Carlo como sub-seções -->
       <div class="card" id="simsCard" data-panel-id="forecast-sims" hidden>
         <div class="section-header">
@@ -788,6 +801,8 @@
               role="tab" aria-selected="true" aria-controls="my-tab-profile" id="my-tab-btn-profile">Perfil</button>
       <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload"
               role="tab" aria-selected="false" aria-controls="my-tab-upload" id="my-tab-btn-upload">Upload</button>
+      <button type="button" class="my-tab-btn" data-my-tab="alerts"
+              role="tab" aria-selected="false" aria-controls="my-tab-alerts" id="my-tab-btn-alerts">Alertas</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
@@ -985,6 +1000,42 @@
       </div>
     </div>
 
+    <!-- Sub-tab: Alertas -->
+    <div id="my-tab-alerts" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-alerts" tabindex="0">
+      <div class="card">
+        <div class="section-header">
+          <h2 class="card-title">Alertas de Projeto</h2>
+          <div class="flex-center gap-sm">
+            <select id="myAlertFilter" class="form-select input-sel-sm">
+              <option value="">Todos</option>
+              <option value="false">Ativos</option>
+              <option value="true">Resolvidos</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="myAlertRefreshBtn">↺ Atualizar</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="myAlertsTable">
+            <thead><tr>
+              <th>Nível</th>
+              <th>PEP</th>
+              <th>Tipo</th>
+              <th>Mensagem</th>
+              <th>Criado em</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody id="myAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="myAlertsPagination" hidden class="pagination-bar">
+          <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="myAlertsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+          <button type="button" id="myAlertsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+          <span id="myAlertsPageLabel" class="hint"></span>
+          <button type="button" id="myAlertsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+        </div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ================================================================== -->
@@ -1093,6 +1144,49 @@
         <button type="button" id="auditPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
         <span id="auditPageLabel" class="hint"></span>
         <button type="button" id="auditNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+      </div>
+    </div>
+
+    <!-- Central de Alertas -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title">Central de Alertas</h2>
+        <div class="flex-center gap-sm">
+          <select id="adminAlertPepFilter" class="form-select input-sel-sm">
+            <option value="">Todos os PEPs</option>
+          </select>
+          <select id="adminAlertTypeFilter" class="form-select input-sel-sm">
+            <option value="">Todos os tipos</option>
+            <option value="budget_warning">Orçamento — Atenção</option>
+            <option value="budget_overrun">Orçamento — Estourado</option>
+            <option value="schedule_risk">Risco de Prazo (SPI)</option>
+          </select>
+          <select id="adminAlertResolvedFilter" class="form-select input-sel-sm">
+            <option value="">Todos</option>
+            <option value="false">Ativos</option>
+            <option value="true">Resolvidos</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="adminAlertRefreshBtn">↺ Atualizar</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="adminAlertsTable">
+          <thead><tr>
+            <th>Nível</th>
+            <th>PEP</th>
+            <th>Tipo</th>
+            <th>Mensagem</th>
+            <th>Criado em</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="adminAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="adminAlertsPagination" hidden class="pagination-bar">
+        <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="adminAlertsPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+        <button type="button" id="adminAlertsPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+        <span id="adminAlertsPageLabel" class="hint"></span>
+        <button type="button" id="adminAlertsNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
       </div>
     </div>
   </section>
