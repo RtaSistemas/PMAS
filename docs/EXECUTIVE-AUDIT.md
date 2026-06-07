@@ -226,4 +226,4 @@ Registro cronológico das verificações executadas durante a auditoria (2026-06
 
 *PMAS · Project Management Assistant System · v1.4.8RC_PMAS — RTA Sistemas · Auditoria Executiva · 2026-06-06*
 
-**Veredito: PARCIALMENTE CONFORME · 28 Conforme · 2 Parcialmente Conforme · 0 Não Conforme**
+**Veredito: PARCIALMENTE CONFORME · 30 Conforme · 1 Parcialmente Conforme · 0 Não Conforme · NC-01 e NC-03 resolvidas**
