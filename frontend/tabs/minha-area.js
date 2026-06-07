@@ -16,7 +16,8 @@ function _switchMyTab(tabId) {
   document.querySelectorAll('.my-tab-section').forEach(el => {
     el.hidden = el.id !== `my-tab-${tabId}`;
   });
-  if (tabId === 'upload') { loadMyHistory(); loadMyQr(); }
+  if (tabId === 'upload')  { loadMyHistory(); loadMyQr(); }
+  if (tabId === 'alerts')  { loadMyAlerts(); }
 }
 
 document.querySelectorAll('.my-tab-btn').forEach(btn => {
@@ -31,6 +32,9 @@ function _initMyArea() {
     const role    = payload.role || '';
     usernameEl.textContent = `${stored} (${role})`;
     _currentUserInfo = { username: stored, role };
+    // Admins see alerts in the Admin tab — hide the button in Minha Área for them
+    const alertsBtn = document.getElementById('my-tab-btn-alerts');
+    if (alertsBtn && role === 'admin') alertsBtn.style.display = 'none';
   }
   _initChartLayout();
   _loadMyPreferences();
@@ -389,3 +393,45 @@ document.getElementById('myQrExportBtn')?.addEventListener('click', async () => 
 // ---------------------------------------------------------------------------
 _makeSortable('myHistoryTable', [{key:'uploaded_at',type:'date'}, {key:'source_file',type:'str'}, {key:'uploaded_by_username',type:'str'}, {key:'records_inserted',type:'num'}, {key:'records_skipped',type:'num'}, {key:'quarantine_added',type:'num'}, {key:'warning_count',type:'num'}, {key:'info_count',type:'num'}, {key:'status',type:'str'}], () => _myHistoryCache, _renderMyHistory);
 _makeSortable('myQrTable',      [{key:'ingested_at',type:'date'}, null, null, null, null, {key:'quarantine_reason',type:'str'}, {key:'review_status',type:'str'}], () => _myQrCache, _renderMyQrTable);
+
+// ---------------------------------------------------------------------------
+// My Area — Alertas sub-tab
+// ---------------------------------------------------------------------------
+let _myAlertsCache = [];
+
+const _myAlertsPag = _makePaginator(
+  { container: 'myAlertsPagination', prev: 'myAlertsPrevBtn', next: 'myAlertsNextBtn', pageSize: 'myAlertsPageSize', label: 'myAlertsPageLabel', entity: 'Alertas de Projeto' },
+  rows => _renderMyAlerts(rows)
+);
+
+function _renderMyAlerts(rows) {
+  const filter    = document.getElementById('myAlertFilter')?.value;
+  const filtered  = (filter !== '' && filter != null) ? rows.filter(a => String(a.is_resolved) === filter) : rows;
+  _renderTable('myAlertsBody', filtered, {
+    colspan: 6,
+    emptyKey: 'no_alerts',
+    rowFn: a => `<tr class="${a.is_resolved ? 'alert-resolved' : ''}">
+      <td><span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span></td>
+      <td>${escHtml(a.pep_wbs)}</td>
+      <td><span class="alert-type-tag">${escHtml({ budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[a.alert_type] || a.alert_type)}</span></td>
+      <td style="max-width:320px;white-space:normal;font-size:.82rem" title="${escHtml(a.message)}">${escHtml(a.message)}</td>
+      <td style="white-space:nowrap;font-size:.8rem">${_fmtDate(a.created_at)}</td>
+      <td>${a.is_resolved ? '<span class="alert-status-resolved">Resolvido</span>' : '<span class="alert-status-active">Ativo</span>'}</td>
+    </tr>`,
+  });
+}
+
+async function loadMyAlerts() {
+  _myAlertsPag.reset();
+  const params = new URLSearchParams({ limit: 500 });
+  await _loadTable(`/api/my/alerts?${params}`, data => {
+    _myAlertsCache = data;
+    _myAlertsPag.render(_myAlertsCache);
+  });
+}
+
+document.getElementById('myAlertFilter')?.addEventListener('change', () => {
+  _myAlertsPag.reset();
+  _myAlertsPag.render(_myAlertsCache);
+});
+document.getElementById('myAlertRefreshBtn')?.addEventListener('click', loadMyAlerts);

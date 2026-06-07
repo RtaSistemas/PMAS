@@ -909,3 +909,71 @@ document.getElementById('openThemeModalBtn')?.addEventListener('click', async ()
 // ---------------------------------------------------------------------------
 _makeSortable('usersTable',  [{key:'username',type:'str'}, {key:'role',type:'str'}, null], () => { const q = document.getElementById('userSearch')?.value?.toLowerCase(); return q ? _allUsers.filter(u => u.username.toLowerCase().includes(q) || (u.role||'').toLowerCase().includes(q)) : _allUsers; }, _renderUsersTable);
 _makeSortable('auditTable',  [{key:'timestamp',type:'date'}, {key:'username',type:'str'}, {key:'action',type:'str'}, {key:'entity',type:'str'}, {key:'entity_id',type:'num'}, null], () => _auditLogCache, _renderAuditLog);
+
+// ---------------------------------------------------------------------------
+// Central de Alertas (Admin tab)
+// ---------------------------------------------------------------------------
+let _adminAlertsCache = [];
+
+const _adminAlertsPag = _makePaginator(
+  { container: 'adminAlertsPagination', prev: 'adminAlertsPrevBtn', next: 'adminAlertsNextBtn', pageSize: 'adminAlertsPageSize', label: 'adminAlertsPageLabel', entity: 'Central de Alertas' },
+  rows => _renderAdminAlerts(rows)
+);
+
+function _alertTypeLabel(t) {
+  return { budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[t] || t;
+}
+
+function _renderAdminAlerts(rows) {
+  _renderTable('adminAlertsBody', rows, {
+    colspan: 6,
+    emptyKey: 'no_alerts',
+    rowFn: a => `<tr class="${a.is_resolved ? 'alert-resolved' : ''}">
+      <td><span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span></td>
+      <td>${escHtml(a.pep_wbs)}</td>
+      <td><span class="alert-type-tag">${escHtml(_alertTypeLabel(a.alert_type))}</span></td>
+      <td style="max-width:360px;white-space:normal;font-size:.82rem" title="${escHtml(a.message)}">${escHtml(a.message)}</td>
+      <td style="white-space:nowrap;font-size:.8rem">${_fmtDate(a.created_at)}</td>
+      <td>${a.is_resolved ? '<span class="alert-status-resolved">Resolvido</span>' : '<span class="alert-status-active">Ativo</span>'}</td>
+    </tr>`,
+  });
+}
+
+async function loadAdminAlerts() {
+  _adminAlertsPag.reset();
+  const pep      = document.getElementById('adminAlertPepFilter')?.value || '';
+  const type     = document.getElementById('adminAlertTypeFilter')?.value || '';
+  const resolved = document.getElementById('adminAlertResolvedFilter')?.value;
+  const params   = new URLSearchParams({ limit: 500 });
+  if (pep)  params.set('pep_wbs', pep);
+  if (type) params.set('alert_type', type);
+  if (resolved !== '' && resolved != null) params.set('is_resolved', resolved);
+  await _loadTable(`/api/project-alerts?${params}`, data => {
+    _adminAlertsCache = data;
+    _adminAlertsPag.render(_adminAlertsCache);
+    _populateAdminAlertPepFilter(data);
+  });
+}
+
+function _populateAdminAlertPepFilter(alerts) {
+  const sel = document.getElementById('adminAlertPepFilter');
+  if (!sel) return;
+  const current = sel.value;
+  const peps = [...new Set(alerts.map(a => a.pep_wbs))].sort();
+  sel.innerHTML = '<option value="">Todos os PEPs</option>' + peps.map(p => `<option value="${escHtml(p)}"${p === current ? ' selected' : ''}>${escHtml(p)}</option>`).join('');
+}
+
+document.getElementById('adminAlertRefreshBtn')?.addEventListener('click', loadAdminAlerts);
+document.getElementById('adminAlertTypeFilter')?.addEventListener('change', loadAdminAlerts);
+document.getElementById('adminAlertResolvedFilter')?.addEventListener('change', loadAdminAlerts);
+document.getElementById('adminAlertPepFilter')?.addEventListener('change', () => {
+  _adminAlertsPag.reset();
+  const pep  = document.getElementById('adminAlertPepFilter')?.value || '';
+  const type = document.getElementById('adminAlertTypeFilter')?.value || '';
+  const res  = document.getElementById('adminAlertResolvedFilter')?.value;
+  let rows = _adminAlertsCache;
+  if (pep)  rows = rows.filter(a => a.pep_wbs === pep);
+  if (type) rows = rows.filter(a => a.alert_type === type);
+  if (res !== '' && res != null) rows = rows.filter(a => String(a.is_resolved) === res);
+  _adminAlertsPag.render(rows);
+});

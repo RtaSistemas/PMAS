@@ -116,6 +116,7 @@ class Project(Base):
     user_access = relationship("UserProjectAccess", back_populates="project", cascade="all, delete-orphan")
     baselines = relationship("ProjectBaseline", back_populates="project", cascade="all, delete-orphan", order_by="ProjectBaseline.locked_at.desc()")
     budget_revisions = relationship("BudgetRevision", back_populates="project", cascade="all, delete-orphan", order_by="BudgetRevision.changed_at.desc()")
+    alerts = relationship("ProjectAlert", back_populates="project", cascade="all, delete-orphan", order_by="ProjectAlert.created_at.desc()")
 
 
 class ProjectBaseline(Base):
@@ -194,6 +195,8 @@ class GlobalConfig(Base):
     timezone = Column(String, nullable=False, default="America/Sao_Paulo")
     ui_theme = Column(JSON, nullable=True)
     logo_path = Column(String, nullable=True)
+    spi_warning_threshold = Column(Float, default=0.85, nullable=False)
+    spi_risk_consecutive_cycles = Column(Integer, default=2, nullable=False)
 
 
 class AuditLog(Base):
@@ -379,3 +382,29 @@ class Notification(Base):
     created_at = Column(DateTime, nullable=False, default=now_br)
 
     user = relationship("User", back_populates="notifications")
+
+
+class ProjectAlert(Base):
+    """Permanent, immutable record of every risk event raised per project.
+
+    Distinct from Notification (transient, per-user bell tray):
+    - Never deleted by users
+    - Tracks is_resolved lifecycle automatically on subsequent uploads
+    - alert_type: "budget_warning" | "budget_overrun" | "schedule_risk"
+    - level: "warning" | "error"
+    """
+    __tablename__ = "project_alert"
+
+    id                 = Column(Integer, primary_key=True)
+    project_id         = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
+    pep_wbs            = Column(String, nullable=False, index=True)
+    alert_type         = Column(String, nullable=False, index=True)
+    level              = Column(String, nullable=False)
+    message            = Column(String, nullable=False)
+    metric_value       = Column(Float, nullable=True)
+    consecutive_cycles = Column(Integer, nullable=True)
+    created_at         = Column(DateTime, nullable=False, default=now_br)
+    resolved_at        = Column(DateTime, nullable=True)
+    is_resolved        = Column(Boolean, default=False, nullable=False, index=True)
+
+    project = relationship("Project", back_populates="alerts")

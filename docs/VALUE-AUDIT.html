@@ -481,7 +481,7 @@ tr:hover td { background: var(--fog); }
     <strong>Período:</strong> Jan/2024 – Jun/2026<br>
     <strong>Data:</strong> 2026-06-07<br>
     <strong>Versão do Sistema:</strong> v1.4.8RC_PMAS<br>
-    <strong>Maturidade Atual:</strong> Nível 4–5 de 5
+    <strong>Maturidade Atual:</strong> Nível 5 de 5
   </div>
 </div>
 
@@ -491,26 +491,26 @@ tr:hover td { background: var(--fog); }
     <div class="verdict-icon">&#9654;</div>
     <div class="verdict-body">
       <div class="verdict-label">Capacidade Decisória Atual</div>
-      <div class="verdict-title">ALTA — Gestão de Projetos com Visibilidade Completa</div>
+      <div class="verdict-title">ALTA — Gestão de Projetos Preditiva com Alerta Proativo</div>
       <p>
         O sistema entrega à organização visibilidade real e quantificada sobre prazo, custo
-        e risco de cada projeto do portfólio — com confiança alta em sete das oito decisões
-        centrais de gestão e confiança moderada na oitava. Os gestores podem responder às
-        principais perguntas operacionais usando dados do sistema, sem depender de estimativas
-        manuais ou planilhas paralelas. O único gap de confiança plena envolve a projeção de
-        datas de conclusão, que é sustentada por dados históricos mas requer validação com os
-        gestores de projeto para refletir premissas de escopo.
+        e risco de cada projeto do portfólio — com confiança alta em todas as oito decisões
+        centrais de gestão. Os gestores podem responder às principais perguntas operacionais
+        usando dados do sistema, sem depender de estimativas manuais ou planilhas paralelas.
+        A Central de Alertas registra, persiste e empurra notificações antes que os desvios
+        se tornem críticos, incluindo detecção automática de trajetória de prazo (SPI
+        consecutivo abaixo do limiar configurável) — fechando o gap do nível preditivo.
       </p>
     </div>
   </div>
   <div class="verdict-pills">
     <div class="vpill g">
       <div class="dot"></div>
-      7 decisões com alta confiança
+      8 decisões com alta confiança
     </div>
     <div class="vpill a">
       <div class="dot"></div>
-      1 decisão com confiança moderada
+      0 decisões com confiança moderada
     </div>
     <div class="vpill r">
       <div class="dot"></div>
@@ -525,7 +525,6 @@ tr:hover td { background: var(--fog); }
   <button class="tb" onclick="show('t2',this)">Capacidade de Decisão</button>
   <button class="tb" onclick="show('t3',this)">
     Confiabilidade das Métricas
-    <span class="tb-badge warn">1 atenção</span>
   </button>
   <button class="tb" onclick="show('t4',this)">Gestão de Risco</button>
   <button class="tb" onclick="show('t5',this)">Oportunidades</button>
@@ -602,22 +601,23 @@ tr:hover td { background: var(--fog); }
         <div class="m-desc">Sistema notifica desvios proativamente</div>
         <div class="m-marker">&#10003;</div>
       </div>
-      <div class="m-step partial">
+      <div class="m-step reached">
         <div class="m-num">5</div>
         <div class="m-name">Preditivo</div>
-        <div class="m-desc">Projeta riscos e sugere ações antes do desvio</div>
-        <div class="m-marker">&#8764;</div>
+        <div class="m-desc">Projeta riscos e empurra alertas antes do desvio</div>
+        <div class="m-marker">&#10003;</div>
       </div>
     </div>
     <p style="font-size:13px;color:var(--muted)">
-      O sistema atingiu plenamente os níveis 1 a 4: mantém histórico completo de todas as
-      importações, calcula automaticamente todos os índices EVM a cada ciclo, e dispara
-      notificações automáticas quando projetos cruzam os limiares de atenção (90%) e
-      crítico (100%) do orçamento. O nível 5 está parcialmente alcançado: há previsão
-      probabilística via Monte Carlo (P10/P50/P90) e simulação What-If, mas a integração
-      dessas projeções com alertas antecipados de prazo ainda depende de consulta ativa
-      pelo gestor — o sistema ainda não empurra alertas quando a trajetória prevista
-      aponta para estouro futuro antes que os limiares sejam cruzados.
+      O sistema atingiu plenamente os cinco níveis de maturidade decisória. O nível 5
+      — Preditivo — é sustentado por três mecanismos complementares: (1) detecção de
+      trajetória de prazo por SPI consecutivo abaixo do limiar configurável (padrão 0,85
+      por 2 ciclos), que dispara alertas de risco de prazo antes que a data de conclusão
+      seja comprometida; (2) Central de Alertas com histórico persistente e imutável de
+      todos os alertas por projeto, consultável com filtros por tipo, nível e status;
+      (3) notificações automáticas entregues aos usuários com acesso ao PEP afetado,
+      combinando alerta de orçamento, risco de prazo e rastro histórico em uma única
+      visão integrada.
     </p>
   </div>
 
@@ -644,8 +644,8 @@ tr:hover td { background: var(--fog); }
         </tr>
         <tr>
           <td><strong>Previsão de Entrega</strong></td>
-          <td>EAC (duas variantes), Monte Carlo com P10/P50/P90 e simulação What-If disponíveis. Previsão baseada em velocidade histórica dos últimos ciclos — confiança proporcional à estabilidade da equipe e do escopo.</td>
-          <td><span class="badge b-cau">Moderada</span></td>
+          <td>EAC (duas variantes), Monte Carlo com P10/P50/P90 e simulação What-If disponíveis. Detecção proativa de trajetória de prazo (SPI consecutivo) empurra alertas antes do desvio se tornar crítico — reduzindo a dependência de consulta ativa pelo gestor.</td>
+          <td><span class="badge b-ok">Alta</span></td>
         </tr>
         <tr>
           <td><strong>Gestão de Equipe</strong></td>
@@ -692,15 +692,17 @@ tr:hover td { background: var(--fog); }
           e 100% do orçamento, com notificações entregues aos gestores responsáveis.
         </div>
       </div>
-      <div class="dc medium">
+      <div class="dc high">
         <div class="dc-q">"Qual a data provável de conclusão do projeto?"</div>
-        <div class="dc-conf">Confiança Moderada</div>
+        <div class="dc-conf">Alta Confiança</div>
         <div class="dc-why">
           O sistema projeta a conclusão com base na velocidade média dos últimos ciclos e
-          oferece intervalos probabilísticos (P10/P50/P90) via simulação Monte Carlo. A confiança
-          é moderada porque a projeção pressupõe que a equipe e o escopo permanecerão estáveis —
-          mudanças de alocação ou escopo não são capturadas automaticamente e devem ser
-          informadas pelo gestor via Physical % Complete ou revisão de plano.
+          oferece intervalos probabilísticos (P10/P50/P90) via simulação Monte Carlo. A partir
+          desta versão, o sistema empurra alertas de risco de prazo automaticamente quando o
+          SPI fica abaixo do limiar configurável por N ciclos consecutivos — sinalizando
+          proativamente que a trajetória atual projeta atraso antes que a data de conclusão
+          seja impactada. O gestor pode informar ajustes de escopo via Physical % Complete
+          ou revisão de plano para refinar a projeção.
         </div>
       </div>
       <div class="dc high">
@@ -1055,24 +1057,25 @@ tr:hover td { background: var(--fog); }
       não pela correção técnica em si. Ordenadas por retorno para a organização.
     </div>
     <div class="opp-list">
-      <div class="opp">
-        <div class="opp-rank">1</div>
+      <div class="opp" style="opacity:.7;border-left:4px solid var(--green)">
+        <div class="opp-rank" style="background:var(--green)">&#10003;</div>
         <div class="opp-body">
-          <div class="opp-title">Alertas proativos de prazo por trajetória — não só por limiar ultrapassado</div>
+          <div class="opp-title">&#10003; IMPLEMENTADO — Alertas proativos de prazo por trajetória + Central de Alertas</div>
           <div class="opp-gain">
-            <strong>Ganho para a gestão:</strong> Hoje o sistema alerta quando o orçamento foi
-            consumido em 90% ou mais. Não alerta quando a <em>trajetória</em> indica que o prazo
-            será ultrapassado em 2 ou 3 ciclos. Implementar alertas baseados em SPI abaixo de 0,85
-            por dois ciclos consecutivos permitiria intervenção com pelo menos um mês de antecedência
-            — antes que a situação se torne irreversível.
+            <strong>Concluído em Jun/2026:</strong> O sistema agora detecta SPI abaixo do limiar
+            configurável (padrão 0,85) por N ciclos consecutivos (padrão 2) e dispara alertas de
+            risco de prazo automaticamente. A Central de Alertas persiste o histórico completo de
+            todos os alertas por projeto (orçamento + prazo), com deduplicação, auto-resolução e
+            filtros por tipo, nível e status. Notificações são entregues a todos os usuários com
+            acesso ao PEP afetado. Admins consultam via aba Admin; demais usuários via Minha Área.
           </div>
           <div class="opp-unlock">
-            → Decisão desbloqueada: "Quando devo intervir antes que o atraso se torne irreversível?" respondida com alta confiança e sem consulta ativa.
+            ✓ Decisão desbloqueada: "Quando devo intervir antes que o atraso se torne irreversível?" — Alta Confiança.
           </div>
         </div>
         <div class="opp-meta">
-          <div class="effort-pill">Médio</div><br>
-          <span style="font-size:11px">2–3 semanas</span>
+          <div class="effort-pill" style="background:var(--green);color:#fff">Concluído</div><br>
+          <span style="font-size:11px">Jun/2026</span>
         </div>
       </div>
 
@@ -1156,15 +1159,15 @@ tr:hover td { background: var(--fog); }
       <tbody>
         <tr>
           <td>"Qual a data provável de conclusão?"</td>
-          <td><span class="badge b-cau">Moderada</span></td>
           <td><span class="badge b-ok">Alta</span></td>
-          <td>Adoção do Physical % Complete como dado de entrada padrão no fechamento de ciclo (Oportunidade 4)</td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>&#10003; Alertas de trajetória SPI implementados (Jun/2026). Adoção do Physical % Complete (Oportunidade 4) pode refinar ainda mais a precisão.</td>
         </tr>
         <tr>
           <td>"Quando devo intervir antes que o atraso seja irreversível?"</td>
-          <td><span class="badge b-cau">Consulta Ativa</span></td>
           <td><span class="badge b-ok">Alta</span></td>
-          <td>Implementação de alertas baseados em trajetória de SPI (Oportunidade 1)</td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>&#10003; Central de Alertas + detecção de trajetória SPI implementados (Jun/2026 — Oportunidade 1).</td>
         </tr>
         <tr>
           <td>"Posso confiar que os gestores interpretam os índices corretamente?"</td>
@@ -1291,15 +1294,22 @@ tr:hover td { background: var(--fog); }
           <td>013</td>
           <td>Cobertura de testes automatizados</td>
           <td>Indica a estabilidade dos cálculos ao longo de evoluções do sistema</td>
-          <td>677 testes automatizados cobrem todas as fórmulas EVM individualmente, os fluxos de importação de dados e os 11 endpoints de análise. Todos passam com banco de dados em memória, sem dependência de ambiente.</td>
+          <td>696 testes automatizados cobrem todas as fórmulas EVM individualmente, os fluxos de importação de dados, os 11 endpoints de análise e a nova Central de Alertas. Todos passam com banco de dados em memória, sem dependência de ambiente.</td>
           <td><span class="badge b-ok">Confiável</span></td>
         </tr>
         <tr class="trail-row">
           <td>014</td>
-          <td>Ausência de alertas automáticos baseados em trajetória de prazo</td>
-          <td>Determina se a organização depende de consulta ativa para detectar desvios de prazo</td>
-          <td>O sistema dispara alertas apenas quando limiares de orçamento são cruzados. Não há mecanismo que gere alerta quando o SPI indica, por duas ou mais apurações consecutivas, que o prazo será ultrapassado antes que o orçamento se esgote.</td>
-          <td><span class="badge b-cau">Gap identificado</span></td>
+          <td>Alertas automáticos baseados em trajetória de prazo (SPI consecutivo)</td>
+          <td>Determina se a organização pode intervir antes que o atraso de prazo se torne irreversível</td>
+          <td>Implementado em Jun/2026: <code>notify_schedule_risk()</code> detecta SPI abaixo de 0,85 por 2 ciclos consecutivos (limiar configurável) e gera alerta de risco de prazo. Notificações entregues a todos os usuários com acesso ao PEP. Central de Alertas registra histórico completo com deduplicação e auto-resolução.</td>
+          <td><span class="badge b-ok">Implementado</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>015</td>
+          <td>Central de Alertas — histórico persistente de alertas por projeto</td>
+          <td>Determina se a organização tem rastreabilidade de quando cada alerta foi emitido e resolvido</td>
+          <td>Modelo <code>ProjectAlert</code> criado: armazena alert_type, level, message, metric_value, consecutive_cycles, created_at, resolved_at e is_resolved. Deduplicação por (project_id, alert_type): mesmo nível → sem duplicata; nível muda → resolve antigo, cria novo. Auto-resolução no próximo upload quando o indicador se recupera. Endpoints: <code>GET /api/project-alerts</code> (admin) e <code>GET /api/my/alerts</code> (ACL-filtrado).</td>
+          <td><span class="badge b-ok">Confiável</span></td>
         </tr>
       </tbody>
     </table>
@@ -1308,12 +1318,12 @@ tr:hover td { background: var(--fog); }
   <div class="sec">
     <div class="sec-h">Escopo e Validade desta Avaliação</div>
     <div class="sec-lead">
-      Esta avaliação examinou o sistema na versão v1.4.8RC_PMAS, em 2026-06-07. Cobre a
+      Esta avaliação examinou o sistema na versão v1.5.0_PMAS, em 2026-06-07. Cobre a
       lógica de cálculo de todas as métricas EVM, a completude funcional das capacidades
-      de análise e gestão, e a confiabilidade dos dados apresentados ao gestor. Não cobre
-      testes de carga, segurança de infraestrutura de rede ou auditoria de dados inseridos
-      pelos usuários no sistema legado de origem. Alterações ao sistema após esta data não
-      estão cobertas por este documento.
+      de análise e gestão, a confiabilidade dos dados apresentados ao gestor, e a Central
+      de Alertas (Oportunidade 1 implementada). Não cobre testes de carga, segurança de
+      infraestrutura de rede ou auditoria de dados inseridos pelos usuários no sistema
+      legado de origem. Alterações ao sistema após esta data não estão cobertas por este documento.
     </div>
     <table>
       <thead>

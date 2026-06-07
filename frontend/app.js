@@ -180,7 +180,7 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
-    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); loadAdminAlerts(); }
   });
 });
 

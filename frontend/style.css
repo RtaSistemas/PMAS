@@ -1557,3 +1557,45 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 #notifBadge,
 #semaphoreBar { display: none; }
 .svg-sprite-defs { display: none; }
+
+/* ── Project alert styles ──────────────────────────────────────────────────── */
+.alert-level-tag {
+  display: inline-block;
+  padding: .15rem .45rem;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.alert-level-warning  { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); }
+.alert-level-error    { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+.alert-level-info     { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.alert-type-tag {
+  display: inline-block;
+  padding: .12rem .4rem;
+  border-radius: 4px;
+  font-size: .72rem;
+  background: var(--surface-2, var(--surface));
+  color: var(--text-2, var(--text-muted));
+  border: 1px solid var(--border);
+}
+.alert-resolved td { opacity: .55; }
+.alert-status-active  { color: var(--danger); font-weight: 600; font-size: .8rem; }
+.alert-status-resolved { color: var(--success); font-size: .8rem; }
+.forecast-alerts-list { display: flex; flex-direction: column; gap: .5rem; padding: .5rem 0; }
+.forecast-alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .6rem .75rem;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  background: var(--surface);
+}
+.forecast-alert-item.level-warning { border-left-color: var(--amber); }
+.forecast-alert-item.level-error   { border-left-color: var(--danger); }
+.forecast-alert-item.level-info    { border-left-color: var(--accent); }
+.forecast-alert-item.is-resolved   { opacity: .5; }
+.forecast-alert-msg  { flex: 1; font-size: .85rem; color: var(--text); }
+.forecast-alert-meta { font-size: .72rem; color: var(--text-muted); margin-top: .2rem; }
