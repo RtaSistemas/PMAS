@@ -66,10 +66,11 @@ function _buildForecastOption(fc) {
       ...(lastHistoryCat ? {
         markLine: {
           silent: true, symbol: 'none',
-          lineStyle: { color: _cssVar('--border'), type: 'solid', width: 1 },
+          lineStyle: { color: _cssVar('--text-3'), type: 'dashed', width: 1.5 },
           data: [{ xAxis: lastHistoryCat,
             label: { show: true, formatter: _t('forecast.now_marker'),
-              color: _cssVar('--text-3'), fontSize: 9, position: 'insideEndTop' } }],
+              color: _cssVar('--text-3'), fontSize: 10, fontWeight: 600, position: 'insideEndTop',
+              backgroundColor: _cssVar('--surface'), padding: [2, 4] } }],
         },
       } : {}),
     },
