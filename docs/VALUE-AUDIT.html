@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Valor Decisório — PMAS — 2026-06-07</title>
+<style>
+:root {
+  --ink:      #0B1F3A;
+  --ink-md:   #1E3A5F;
+  --ink-lt:   #2C5282;
+  --canvas:   #FFFFFF;
+  --fog:      #F7F8FA;
+  --rule:     #E2E8F0;
+  --muted:    #64748B;
+  --body:     #334155;
+  --green:    #166534;
+  --green-bg: #F0FDF4;
+  --green-bd: #BBF7D0;
+  --amber:    #92400E;
+  --amber-bg: #FFFBEB;
+  --amber-bd: #FDE68A;
+  --red:      #991B1B;
+  --red-bg:   #FFF5F5;
+  --red-bd:   #FECACA;
+  --blue-bg:  #EFF6FF;
+  --f-serif:  Georgia, 'Times New Roman', serif;
+  --f-sans:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-mono:   'Consolas', 'Courier New', monospace;
+  --sh-sm:    0 1px 4px rgba(11,31,58,.08);
+  --sh-md:    0 4px 16px rgba(11,31,58,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--f-sans);
+  background: var(--fog);
+  color: var(--body);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+/* ─── CABEÇALHO ─── */
+.rh {
+  background: var(--ink);
+  color: #fff;
+  padding: 40px 52px 32px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: end;
+}
+.rh-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 10px;
+}
+.rh h1 {
+  font-family: var(--f-serif);
+  font-size: 28px;
+  font-weight: normal;
+  color: #fff;
+  line-height: 1.2;
+}
+.rh-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  max-width: 560px;
+  line-height: 1.6;
+}
+.rh-meta {
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  line-height: 2;
+}
+.rh-meta strong { color: rgba(255,255,255,.8); font-weight: 600; }
+
+/* ─── BANNER DE VEREDITO ─── */
+.verdict {
+  margin: 28px 36px;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: var(--sh-sm);
+}
+.verdict-top {
+  padding: 22px 28px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  background: var(--canvas);
+  border-left: 6px solid #ccc;
+}
+.verdict-top.high   { border-left-color: var(--green); }
+.verdict-top.medium { border-left-color: var(--amber); }
+.verdict-top.low    { border-left-color: var(--red); }
+.verdict-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+.verdict-body { flex: 1; }
+.verdict-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.verdict-title {
+  font-family: var(--f-serif);
+  font-size: 21px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.verdict-body p {
+  font-size: 13.5px;
+  color: var(--body);
+  line-height: 1.65;
+  max-width: 680px;
+}
+.verdict-pills {
+  display: flex;
+  gap: 12px;
+  padding: 14px 28px;
+  background: var(--fog);
+  border-top: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.vpill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.vpill.g { background:var(--green-bg); border-color:var(--green-bd); color:var(--green); }
+.vpill.a { background:var(--amber-bg); border-color:var(--amber-bd); color:var(--amber); }
+.vpill.r { background:var(--red-bg);   border-color:var(--red-bd);   color:var(--red); }
+.vpill .dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.vpill.g .dot { background: var(--green); }
+.vpill.a .dot { background: var(--amber); }
+.vpill.r .dot { background: var(--red); }
+
+/* ─── ABAS ─── */
+.tabs-nav {
+  background: var(--canvas);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  padding: 0 36px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--sh-sm);
+  overflow-x: auto;
+  gap: 2px;
+}
+.tb {
+  padding: 15px 18px 13px;
+  border: none;
+  background: none;
+  font-family: var(--f-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tb:hover { color: var(--ink); }
+.tb.on { color: var(--ink); border-bottom-color: var(--ink-lt); font-weight: 700; }
+.tb-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--rule);
+  color: var(--muted);
+}
+.tb.on .tb-badge { background: var(--ink); color: #fff; }
+.tb-badge.warn { background: var(--amber-bg); color: var(--amber); }
+
+.panel { display: none; padding: 32px 36px 56px; max-width: 1100px; }
+.panel.on { display: block; }
+
+/* ─── TIPOGRAFIA INTERNA ─── */
+.sec { margin-bottom: 40px; }
+.sec-h {
+  font-family: var(--f-serif);
+  font-size: 18px;
+  font-weight: normal;
+  color: var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.sec-lead {
+  font-size: 14px;
+  color: var(--body);
+  line-height: 1.75;
+  margin-bottom: 20px;
+  max-width: 760px;
+}
+.callout {
+  background: var(--blue-bg);
+  border-left: 4px solid var(--ink-lt);
+  padding: 14px 18px;
+  border-radius: 0 3px 3px 0;
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+/* ─── MATURIDADE ─── */
+.maturity {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.m-step {
+  flex: 1;
+  min-width: 140px;
+  padding: 14px 16px;
+  border-top: 4px solid var(--rule);
+  background: var(--canvas);
+  box-shadow: var(--sh-sm);
+  font-size: 12px;
+  color: var(--muted);
+  position: relative;
+}
+.m-step.reached { border-top-color: var(--green); }
+.m-step.partial { border-top-color: var(--amber); }
+.m-num { font-size: 22px; font-weight: 700; color: var(--rule); margin-bottom: 4px; }
+.m-step.reached .m-num { color: var(--green); }
+.m-step.partial .m-num { color: var(--amber); }
+.m-name { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.m-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.m-marker {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 14px;
+}
+
+/* ─── CAPACIDADES DECISÓRIAS ─── */
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.dc {
+  background: var(--canvas);
+  border-radius: 3px;
+  padding: 18px 20px;
+  box-shadow: var(--sh-sm);
+  border-top: 3px solid var(--rule);
+}
+.dc.high   { border-top-color: var(--green); }
+.dc.medium { border-top-color: var(--amber); }
+.dc.low    { border-top-color: var(--red); }
+.dc.none   { border-top-color: var(--rule); opacity: .75; }
+.dc-q {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+.dc-conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 3px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.dc.high   .dc-conf { background:var(--green-bg); color:var(--green); }
+.dc.medium .dc-conf { background:var(--amber-bg); color:var(--amber); }
+.dc.low    .dc-conf { background:var(--red-bg);   color:var(--red);   }
+.dc.none   .dc-conf { background:var(--fog);       color:var(--muted); }
+.dc-why { font-size: 12px; color: var(--muted); line-height: 1.55; }
+
+/* ─── SEMÁFOROS DE MÉTRICA ─── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.mc {
+  background: var(--canvas);
+  border-radius: 3px;
+  padding: 16px 18px;
+  box-shadow: var(--sh-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mc-sigla {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--f-mono);
+  color: var(--ink);
+  letter-spacing: .02em;
+}
+.mc-name { font-size: 11px; color: var(--muted); font-weight: 500; }
+.mc-signal {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ms-solid   { background:var(--green-bg); color:var(--green); }
+.ms-caution { background:var(--amber-bg); color:var(--amber); }
+.ms-risk    { background:var(--red-bg);   color:var(--red);   }
+.ms-na      { background:var(--fog);       color:var(--muted); }
+.mc-meaning { font-size: 12px; color: var(--body); line-height: 1.5; }
+
+/* ─── RISCO ─── */
+.risk-table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--canvas);
+  box-shadow: var(--sh-sm);
+  font-size: 13px;
+}
+th {
+  background: var(--ink);
+  color: rgba(255,255,255,.8);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 11px 16px;
+  text-align: left;
+}
+td { padding: 11px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--fog); }
+
+/* ─── OPORTUNIDADES ─── */
+.opp-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.opp {
+  background: var(--canvas);
+  border-radius: 3px;
+  padding: 20px 24px;
+  box-shadow: var(--sh-sm);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: start;
+}
+.opp-rank {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.opp-body {}
+.opp-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.opp-gain  { font-size: 13px; color: var(--body); line-height: 1.6; margin-bottom: 6px; }
+.opp-unlock {
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 600;
+}
+.opp-meta {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.effort-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: var(--fog);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* ─── TRILHA ─── */
+.trail-row:nth-child(odd) td { background: var(--fog); }
+.trail-row:nth-child(even) td { background: var(--canvas); }
+.ev-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 2px;
+  background: var(--blue-bg);
+  color: var(--ink-lt);
+  letter-spacing: .03em;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.b-ok  { background:var(--green-bg); color:var(--green); }
+.b-cau { background:var(--amber-bg); color:var(--amber); }
+.b-err { background:var(--red-bg);   color:var(--red);   }
+.b-na  { background:var(--fog);       color:var(--muted); }
+
+/* ─── RODAPÉ ─── */
+.rf {
+  background: var(--ink);
+  color: rgba(255,255,255,.4);
+  padding: 22px 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 56px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rf strong { color: rgba(255,255,255,.65); }
+
+/* ─── PRINT ─── */
+@media print {
+  .tabs-nav { display: none; }
+  .panel { display: block !important; page-break-before: always; }
+  .panel:first-of-type { page-break-before: avoid; }
+  .verdict, .opp, .dc, .mc { box-shadow: none; border: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<!-- CABEÇALHO INSTITUCIONAL -->
+<div class="rh">
+  <div>
+    <div class="rh-eyebrow">Relatório de Valor Decisório · Uso Restrito à Diretoria</div>
+    <h1>PMAS — Project Management Assistant System<br>Avaliação de Capacidade Decisória em Gestão de Projetos</h1>
+    <div class="rh-sub">
+      Análise independente do que este sistema habilita para a tomada de decisão,
+      onde a confiança nas métricas é sólida e onde a organização permanece exposta.
+      Perspectiva de negócios — não de conformidade técnica.
+    </div>
+  </div>
+  <div class="rh-meta">
+    <strong>Organização:</strong> RTA Sistemas<br>
+    <strong>Período:</strong> Jan/2024 – Jun/2026<br>
+    <strong>Data:</strong> 2026-06-07<br>
+    <strong>Versão do Sistema:</strong> v1.4.8RC_PMAS<br>
+    <strong>Maturidade Atual:</strong> Nível 4–5 de 5
+  </div>
+</div>
+
+<!-- VEREDITO DE CAPACIDADE -->
+<div class="verdict">
+  <div class="verdict-top high">
+    <div class="verdict-icon">&#9654;</div>
+    <div class="verdict-body">
+      <div class="verdict-label">Capacidade Decisória Atual</div>
+      <div class="verdict-title">ALTA — Gestão de Projetos com Visibilidade Completa</div>
+      <p>
+        O sistema entrega à organização visibilidade real e quantificada sobre prazo, custo
+        e risco de cada projeto do portfólio — com confiança alta em sete das oito decisões
+        centrais de gestão e confiança moderada na oitava. Os gestores podem responder às
+        principais perguntas operacionais usando dados do sistema, sem depender de estimativas
+        manuais ou planilhas paralelas. O único gap de confiança plena envolve a projeção de
+        datas de conclusão, que é sustentada por dados históricos mas requer validação com os
+        gestores de projeto para refletir premissas de escopo.
+      </p>
+    </div>
+  </div>
+  <div class="verdict-pills">
+    <div class="vpill g">
+      <div class="dot"></div>
+      7 decisões com alta confiança
+    </div>
+    <div class="vpill a">
+      <div class="dot"></div>
+      1 decisão com confiança moderada
+    </div>
+    <div class="vpill r">
+      <div class="dot"></div>
+      0 decisões sem suporte
+    </div>
+  </div>
+</div>
+
+<!-- ABAS -->
+<div class="tabs-nav">
+  <button class="tb on" onclick="show('t1',this)">Valor para a Organização</button>
+  <button class="tb" onclick="show('t2',this)">Capacidade de Decisão</button>
+  <button class="tb" onclick="show('t3',this)">
+    Confiabilidade das Métricas
+    <span class="tb-badge warn">1 atenção</span>
+  </button>
+  <button class="tb" onclick="show('t4',this)">Gestão de Risco</button>
+  <button class="tb" onclick="show('t5',this)">Oportunidades</button>
+  <button class="tb" onclick="show('t6',this)">
+    Trilha de Evidências
+    <span class="tb-badge">14</span>
+  </button>
+</div>
+
+<!-- ABA 1 — VALOR PARA A ORGANIZAÇÃO -->
+<div id="t1" class="panel on">
+  <div class="sec">
+    <div class="sec-h">O que este sistema torna possível</div>
+    <div class="sec-lead">
+      Antes do PMAS, a gestão de portfólio dependia da habilidade individual de cada
+      gestor em consolidar planilhas exportadas do sistema legado de ponto e transformá-las
+      em indicadores de desempenho. O processo era demorado, sujeito a erros de digitação,
+      e produzia relatórios que nem sempre estavam sincronizados entre si. Quando um projeto
+      estourava o orçamento, a organização costumava saber após o fato consumado.
+    </div>
+    <div class="sec-lead">
+      Com o PMAS, o ciclo mudou fundamentalmente: os arquivos de timesheet são carregados
+      diretamente do sistema legado e processados automaticamente. Em segundos, o sistema
+      calcula e exibe os índices de desempenho de todos os projetos do portfólio —
+      CPI, SPI, EAC, TCPI — atualizados a cada importação de ciclo. O gestor passa a operar
+      com visibilidade de semáforo: sabe imediatamente quais projetos estão dentro do orçamento,
+      quais estão sob pressão e quais já extrapolaram. A intervenção, quando necessária,
+      pode ser feita com semanas de antecedência.
+    </div>
+    <div class="sec-lead">
+      Para decisões mais sofisticadas, o sistema disponibiliza simulação de cenários (What-If)
+      e previsão probabilística de conclusão (Monte Carlo com P10/P50/P90), permitindo que
+      o gestor faça análises de risco antes de uma reunião de portfólio, não depois. A
+      trilha de auditoria completa — cada importação registrada, cada dado quarentenado,
+      cada revisão orçamentária documentada — elimina a ambiguidade sobre qual número é
+      "o oficial" em qualquer momento.
+    </div>
+    <div class="callout">
+      O PMAS centraliza o registro de esforço e entrega de valor de toda a equipe, calcula
+      automaticamente os índices EVM reconhecidos internacionalmente e notifica os gestores
+      quando projetos cruzam limiares de risco — transformando uma função que era reativa
+      (descobrir o problema após o fato) em proativa (intervir antes do estouro).
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Nível de Maturidade Decisória</div>
+    <div class="sec-lead">
+      Onde o sistema está na jornada de suporte à gestão de projetos —
+      e o que cada nível representa em termos de capacidade organizacional.
+    </div>
+    <div class="maturity">
+      <div class="m-step reached">
+        <div class="m-num">1</div>
+        <div class="m-name">Reativo</div>
+        <div class="m-desc">Sabe-se que o projeto falhou após o fato</div>
+        <div class="m-marker">&#10003;</div>
+      </div>
+      <div class="m-step reached">
+        <div class="m-num">2</div>
+        <div class="m-name">Registro</div>
+        <div class="m-desc">Histórico existe, análise é manual</div>
+        <div class="m-marker">&#10003;</div>
+      </div>
+      <div class="m-step reached">
+        <div class="m-num">3</div>
+        <div class="m-name">Monitoramento</div>
+        <div class="m-desc">Métricas calculadas e consultáveis</div>
+        <div class="m-marker">&#10003;</div>
+      </div>
+      <div class="m-step reached">
+        <div class="m-num">4</div>
+        <div class="m-name">Alertas</div>
+        <div class="m-desc">Sistema notifica desvios proativamente</div>
+        <div class="m-marker">&#10003;</div>
+      </div>
+      <div class="m-step partial">
+        <div class="m-num">5</div>
+        <div class="m-name">Preditivo</div>
+        <div class="m-desc">Projeta riscos e sugere ações antes do desvio</div>
+        <div class="m-marker">&#8764;</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">
+      O sistema atingiu plenamente os níveis 1 a 4: mantém histórico completo de todas as
+      importações, calcula automaticamente todos os índices EVM a cada ciclo, e dispara
+      notificações automáticas quando projetos cruzam os limiares de atenção (90%) e
+      crítico (100%) do orçamento. O nível 5 está parcialmente alcançado: há previsão
+      probabilística via Monte Carlo (P10/P50/P90) e simulação What-If, mas a integração
+      dessas projeções com alertas antecipados de prazo ainda depende de consulta ativa
+      pelo gestor — o sistema ainda não empurra alertas quando a trajetória prevista
+      aponta para estouro futuro antes que os limiares sejam cruzados.
+    </p>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Resumo Executivo por Dimensão</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimensão de Valor</th>
+          <th>O que entrega hoje</th>
+          <th>Confiança</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Visibilidade de Prazo</strong></td>
+          <td>SPI calculado por projeto a cada ciclo, com semáforo visual e histórico de tendência. Earned Schedule estendido (SPI(t)) disponível para projetos com plano baseline registrado.</td>
+          <td><span class="badge b-ok">Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Controle de Custo</strong></td>
+          <td>CPI calculado com custo congelado no momento de importação — imune a reajustes de tabela posteriores. Alertas automáticos em 90% e 100% do orçamento por projeto. Histórico de revisões orçamentárias auditável.</td>
+          <td><span class="badge b-ok">Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Previsão de Entrega</strong></td>
+          <td>EAC (duas variantes), Monte Carlo com P10/P50/P90 e simulação What-If disponíveis. Previsão baseada em velocidade histórica dos últimos ciclos — confiança proporcional à estabilidade da equipe e do escopo.</td>
+          <td><span class="badge b-cau">Moderada</span></td>
+        </tr>
+        <tr>
+          <td><strong>Gestão de Equipe</strong></td>
+          <td>Alocação por colaborador × projeto por ciclo, detecção automática de sobre-alocação, análise de concentração de risco (dependência de colaborador único), e histórico de esforço individual.</td>
+          <td><span class="badge b-ok">Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Relatório para Stakeholders</strong></td>
+          <td>Todos os índices EVM calculados servidor-side com formatação pronta para apresentação. Trilha de auditoria completa garante rastreabilidade de qualquer número apresentado até sua origem no timesheet.</td>
+          <td><span class="badge b-ok">Alta</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA 2 — CAPACIDADE DE DECISÃO -->
+<div id="t2" class="panel">
+  <div class="sec">
+    <div class="sec-h">Que decisões o sistema suporta com confiança?</div>
+    <div class="sec-lead">
+      Cada card representa uma pergunta de gestão real. O nível de confiança
+      indica com que segurança o gestor pode responder a esta pergunta
+      usando os dados do sistema hoje.
+    </div>
+    <div class="decision-grid">
+      <div class="dc high">
+        <div class="dc-q">"Estamos adiantados ou atrasados neste projeto?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          O Índice de Desempenho de Prazo (SPI) é calculado a cada ciclo usando as horas
+          registradas versus as horas planejadas no baseline. Valores acima de 1,0 indicam
+          adiantamento; abaixo de 1,0, atraso. O semáforo visual sintetiza o portfólio inteiro
+          em uma barra no topo da tela. Histórico de SPI disponível por ciclo.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"O projeto vai terminar dentro do orçamento?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          O CPI informa se cada real gasto está gerando valor proporcional. Quando CPI &lt; 1,0,
+          o sistema projeta automaticamente o EAC — o custo final esperado ao ritmo atual — e
+          o compara ao orçamento aprovado. Alertas automáticos são disparados ao cruzar 90%
+          e 100% do orçamento, com notificações entregues aos gestores responsáveis.
+        </div>
+      </div>
+      <div class="dc medium">
+        <div class="dc-q">"Qual a data provável de conclusão do projeto?"</div>
+        <div class="dc-conf">Confiança Moderada</div>
+        <div class="dc-why">
+          O sistema projeta a conclusão com base na velocidade média dos últimos ciclos e
+          oferece intervalos probabilísticos (P10/P50/P90) via simulação Monte Carlo. A confiança
+          é moderada porque a projeção pressupõe que a equipe e o escopo permanecerão estáveis —
+          mudanças de alocação ou escopo não são capturadas automaticamente e devem ser
+          informadas pelo gestor via Physical % Complete ou revisão de plano.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"Qual projeto do portfólio precisa de intervenção agora?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          A visão de portfólio exibe todos os projetos classificados por saúde (verde/amarelo/vermelho)
+          com base em CPI, SPI e consumo de orçamento. O semáforo global na barra superior
+          permite identificar em segundos quais projetos estão em risco. O gestor pode clicar
+          em qualquer projeto para ver o detalhamento completo de índices e histórico.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"Que CPI precisamos manter para não estourar o orçamento?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          O TCPI (Índice de Desempenho a Completar) responde exatamente a esta pergunta:
+          indica qual eficiência precisa ser mantida nos ciclos restantes para terminar
+          no orçamento aprovado. Quando TCPI &gt; 1,1, o sistema sinaliza que a meta
+          orçamentária se tornou improvável ao ritmo atual — momento de renegociar escopo
+          ou orçamento.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"O time está sendo mais eficiente que o planejado?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          A visão de Esforço da Equipe detalha as horas registradas por colaborador ao longo
+          do tempo. Cruzada com o plano baseline, permite comparar produtividade realizada
+          versus esperada. A detecção automática de sobre-alocação identifica colaboradores
+          trabalhando além da capacidade declarada.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"Quanto do orçamento já foi consumido versus entregue?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          A visão de portfólio exibe em tempo real o Valor Agregado (EV) — o quanto do
+          orçamento foi efetivamente entregue — versus o Custo Real (AC) gasto. O gráfico
+          de burn-up mostra a curva acumulada de entrega versus o plano. O EV é
+          limitado ao BAC (orçamento aprovado), impedindo leituras incorretas em projetos
+          que superaram o escopo original.
+        </div>
+      </div>
+      <div class="dc high">
+        <div class="dc-q">"Onde a equipe está gastando mais do que o planejado?"</div>
+        <div class="dc-conf">Alta Confiança</div>
+        <div class="dc-why">
+          A matriz de alocação (colaborador × projeto × ciclo) permite identificar em quais
+          projetos o gasto de horas está acima do planejado. A análise de concentração de
+          risco identifica projetos com dependência crítica de um único colaborador —
+          um sinal de risco de custo em caso de ausência desse profissional.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABA 3 — CONFIABILIDADE DAS MÉTRICAS -->
+<div id="t3" class="panel">
+  <div class="sec">
+    <div class="sec-h">Quanto confiar em cada número?</div>
+    <div class="sec-lead">
+      Cada métrica tem um sinal de confiabilidade baseado na verificação
+      de como ela é calculada e apresentada. O significado do índice
+      para o gestor é explicado ao lado — independente de como está implementado.
+    </div>
+    <div class="metric-grid">
+      <div class="mc">
+        <div class="mc-sigla">SPI</div>
+        <div class="mc-name">Índice de Desempenho de Prazo</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Acima de 1,0 o projeto está adiantado. Abaixo de 1,0
+          está atrasado. Abaixo de 0,8 exige intervenção imediata.<br>
+          <strong>Status:</strong> Calculado pela abordagem AgileEVM (horas realizadas / horas
+          planejadas), adequada para projetos onde o esforço em horas é a unidade de medida
+          principal. Protegido contra divisão por zero — retorna nulo quando não há plano.
+          Histórico por ciclo disponível para análise de tendência.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">CPI</div>
+        <div class="mc-name">Índice de Desempenho de Custo</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Acima de 1,0 cada real gasto está gerando mais valor
+          do que o planejado. Abaixo de 1,0, o projeto está gastando mais do que entregando.<br>
+          <strong>Status:</strong> Calculado como EV / AC com Valor Agregado limitado ao BAC —
+          evita leituras artificialmente otimistas em projetos que superaram o escopo. Custo
+          congelado no momento de importação, eliminando distorções por reajuste de tabela.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">EAC</div>
+        <div class="mc-name">Estimativa ao Término</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> O custo total esperado do projeto ao ritmo atual de
+          desempenho. Se EAC &gt; orçamento, o projeto já está projetado para estourar.<br>
+          <strong>Status:</strong> Duas variantes disponíveis: conservadora (BAC / CPI) e
+          sensível ao prazo (AC + saldo / CPI × SPI), a segunda recomendada quando o projeto
+          também está atrasado. Ambas protegidas contra divisão por zero.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">TCPI</div>
+        <div class="mc-name">Índice de Desempenho a Completar</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Qual eficiência precisa ser mantida nos ciclos
+          restantes para terminar no orçamento. Acima de 1,1 a meta se tornou praticamente
+          inatingível sem intervenção externa.<br>
+          <strong>Status:</strong> Calculado como (BAC − EV) / (BAC − AC), com guard
+          completo. Classificação verbal automática em português: "Atingível", "Apertado",
+          "Improvável".
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">VAC</div>
+        <div class="mc-name">Variação ao Término</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> A diferença entre o orçamento aprovado e o custo
+          final projetado. Negativo indica estouro previsto; positivo indica que há margem.<br>
+          <strong>Status:</strong> Calculado como BAC − EAC. Rótulo automático em português.
+          Exibido nas visões de forecast e portfólio.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">ETC</div>
+        <div class="mc-name">Estimativa para Completar</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Quanto ainda será necessário gastar para concluir
+          o projeto, a partir de hoje.<br>
+          <strong>Status:</strong> Calculado como EAC − AC, com proteção de piso em zero
+          (o custo restante nunca pode ser negativo). Útil para planejamento de caixa
+          nos ciclos futuros.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">CV / SV</div>
+        <div class="mc-name">Variações de Custo e Prazo</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Diferença absoluta entre valor entregue e custo/prazo
+          realizado. Zero ou positivo é favorável; negativo indica desvio.<br>
+          <strong>Status:</strong> Calculados a partir de EV, AC e PV com todas as proteções.
+          Apresentados em valores monetários (CV) e horas (SV) na visão de forecast.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">SPI(t)</div>
+        <div class="mc-name">SPI por Tempo — Earned Schedule</div>
+        <div class="mc-signal ms-caution">Atenção Requerida</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Extensão do SPI que mede atraso em unidades de
+          tempo (ciclos) em vez de horas. Mais preciso para projetos no final do ciclo de vida.<br>
+          <strong>Status:</strong> Implementado corretamente (ES/AT). Atenção: disponível apenas
+          para projetos com plano de ciclos registrado no sistema. Projetos sem baseline
+          temporal terão SPI(t) nulo — o gestor deve registrar o plano para usar este índice.
+        </div>
+      </div>
+      <div class="mc">
+        <div class="mc-sigla">P10/P50/P90</div>
+        <div class="mc-name">Percentis — Monte Carlo</div>
+        <div class="mc-signal ms-solid">Confiável</div>
+        <div class="mc-meaning">
+          <strong>O que significa:</strong> Intervalo de confiança para a data de conclusão.
+          P10 é o cenário otimista (10% de chance de terminar antes), P50 o mais provável,
+          P90 o conservador.<br>
+          <strong>Status:</strong> Simulação baseada em histórico completo de velocidade da
+          equipe. Requer ao menos 3 ciclos com dados para gerar projeção confiável.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Guia de Interpretação para a Gestão</div>
+    <div class="sec-lead">
+      Como ler cada métrica e o que a gestão deve fazer com cada leitura.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Métrica</th>
+          <th>Leitura favorável</th>
+          <th>Leitura de atenção</th>
+          <th>Leitura crítica</th>
+          <th>Ação recomendada</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>SPI</strong></td>
+          <td>&gt; 1,0 — Adiantado</td>
+          <td>0,8 – 1,0 — Ligeiro atraso</td>
+          <td>&lt; 0,8 — Intervenção urgente</td>
+          <td>Revisar cronograma e realocar recursos</td>
+        </tr>
+        <tr>
+          <td><strong>CPI</strong></td>
+          <td>&gt; 1,0 — Abaixo do orçamento</td>
+          <td>0,8 – 1,0 — Pressão de custo</td>
+          <td>&lt; 0,8 — Revisão orçamentária</td>
+          <td>Auditar horas lançadas e revisar estimativas</td>
+        </tr>
+        <tr>
+          <td><strong>EAC</strong></td>
+          <td>Próximo ao orçamento aprovado</td>
+          <td>EAC 10–20% acima do orçamento</td>
+          <td>EAC &gt; 20% acima do orçamento</td>
+          <td>Renegociar escopo ou orçamento com o cliente</td>
+        </tr>
+        <tr>
+          <td><strong>TCPI</strong></td>
+          <td>&lt; 1,0 — Meta atingível com folga</td>
+          <td>1,0 – 1,1 — Requer disciplina</td>
+          <td>&gt; 1,1 — Meta improvável</td>
+          <td>Revisar orçamento ou aceitar estouro projetado</td>
+        </tr>
+        <tr>
+          <td><strong>VAC</strong></td>
+          <td>Positivo — Previsto abaixo do orçamento</td>
+          <td>Levemente negativo (até 10%)</td>
+          <td>Fortemente negativo (&gt; 10%)</td>
+          <td>Acionar plano de contingência ou revisão de baseline</td>
+        </tr>
+        <tr>
+          <td><strong>P50 (Monte Carlo)</strong></td>
+          <td>Dentro do prazo planejado</td>
+          <td>1–2 ciclos além do planejado</td>
+          <td>&gt; 2 ciclos além do planejado</td>
+          <td>Revisar alocação e escopo; avaliar P90 como pior caso</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA 4 — GESTÃO DE RISCO -->
+<div id="t4" class="panel">
+  <div class="sec">
+    <div class="sec-h">Onde o sistema protege — e onde expõe</div>
+    <div class="sec-lead">
+      Riscos de gestão avaliados à luz do que o sistema entrega hoje.
+      Um risco "exposto" significa que a organização não tem proteção
+      sistêmica contra ele — depende de processos manuais ou da percepção
+      individual dos gestores.
+    </div>
+    <div class="risk-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Risco de Gestão</th>
+          <th>Proteção do Sistema</th>
+          <th>Consequência se ocorrer</th>
+          <th>Exposição</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Estouro de orçamento não detectado a tempo</strong></td>
+          <td>Alertas automáticos ao atingir 90% e 100% do orçamento. Notificações entregues a todos os gestores com acesso ao projeto. Semáforo de portfólio visível na barra superior da aplicação.</td>
+          <td>Comprometimento de caixa não previsto; necessidade de renegociação de última hora com o cliente.</td>
+          <td><span class="badge b-ok">Protegido</span></td>
+        </tr>
+        <tr>
+          <td><strong>Atraso de entrega sem aviso prévio</strong></td>
+          <td>SPI calculado por ciclo com histórico visual. Forecast de conclusão disponível sob consulta. Monte Carlo projeta P90. Porém: não há alerta automático quando a trajetória prevista indica estouro de prazo futuro — depende de o gestor consultar a tela de previsão.</td>
+          <td>Prazo comprometido sem acionamento proativo do plano de contingência.</td>
+          <td><span class="badge b-cau">Parcial</span></td>
+        </tr>
+        <tr>
+          <td><strong>Dados de horas registrados incorretamente</strong></td>
+          <td>Motor de regras de validação avalia cada linha importada. Linhas suspeitas vão para quarentena (fila de revisão administrativa). Dados quarentenados ficam fora dos cálculos até aprovação explícita. Registro completo da sessão de importação com contagem de linhas por status.</td>
+          <td>Métricas distorcidas por dados inválidos; decisões baseadas em números incorretos.</td>
+          <td><span class="badge b-ok">Protegido</span></td>
+        </tr>
+        <tr>
+          <td><strong>Relatório mostrando números inconsistentes ao longo do tempo</strong></td>
+          <td>O custo por hora de cada colaborador é congelado no momento de importação do timesheet — reajustes salariais ou de tabela posteriores não alteram registros históricos. Linha do tempo de revisões orçamentárias auditável. Baselines bloqueados preservam o orçamento de referência original.</td>
+          <td>Perda de credibilidade das métricas com stakeholders; questionamento da validade dos relatórios.</td>
+          <td><span class="badge b-ok">Protegido</span></td>
+        </tr>
+        <tr>
+          <td><strong>Gestor interpreta índice positivo como negativo (ou vice-versa)</strong></td>
+          <td>Todos os índices exibem rótulos em português junto ao número (ex: "Adiantado", "Em risco", "Acima do orçamento"). Código de cores padronizado. Porém: a interface não exibe de forma proeminente o guia de interpretação — um gestor não familiarizado com EVM pode não saber que CPI &gt; 1,0 é favorável.</td>
+          <td>Intervenção acionada no momento errado; decisão de encerrar projeto que estava indo bem.</td>
+          <td><span class="badge b-cau">Parcial</span></td>
+        </tr>
+        <tr>
+          <td><strong>Perda irrecuperável do histórico de dados</strong></td>
+          <td>O banco de dados centraliza todos os registros históricos com integridade referencial. A estrutura de dados garante que nenhuma importação sobrescreve outra sem registro. Porém: não há rotina automatizada de backup em produção — a organização depende de backups manuais ou de infraestrutura do servidor.</td>
+          <td>Impossibilidade de análise de tendência; perda de evidências para auditorias externas.</td>
+          <td><span class="badge b-cau">Parcial</span></td>
+        </tr>
+        <tr>
+          <td><strong>Concentração de conhecimento em colaborador único</strong></td>
+          <td>A análise de concentração de risco identifica automaticamente quais projetos têm mais de 50% das horas registradas por um único colaborador — sinalizando dependência crítica. Lista ordenada por grau de concentração disponível na visão de Equipe.</td>
+          <td>Projeto paralisado ou custos extras por ausência inesperada de colaborador crítico.</td>
+          <td><span class="badge b-ok">Protegido</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Situações que requerem atenção da gestão enquanto o sistema não cobre</div>
+    <div class="sec-lead">
+      Para os riscos parcialmente cobertos, a recomendação é estabelecer processos manuais
+      complementares até que a cobertura sistêmica seja ampliada.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Risco</th>
+          <th>Processo manual recomendado</th>
+          <th>Frequência sugerida</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Atraso sem alerta automático</strong></td>
+          <td>Incluir na reunião de portfólio mensal uma revisão da tela de Previsão para projetos com SPI &lt; 0,9. Verificar P90 do Monte Carlo para projetos críticos.</td>
+          <td>A cada importação de ciclo</td>
+        </tr>
+        <tr>
+          <td><strong>Interpretação incorreta de EVM</strong></td>
+          <td>Realizar sessão de capacitação de 2 horas para os gestores de projeto, usando o glossário já disponível no sistema como material de apoio.</td>
+          <td>Uma vez; repetir para novos gestores</td>
+        </tr>
+        <tr>
+          <td><strong>Backup de dados</strong></td>
+          <td>Configurar rotina diária de cópia do arquivo de banco de dados para storage externo. Testar restore a cada 30 dias.</td>
+          <td>Diariamente (automatizar)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA 5 — OPORTUNIDADES -->
+<div id="t5" class="panel">
+  <div class="sec">
+    <div class="sec-h">O que desbloquear para maior capacidade decisória</div>
+    <div class="sec-lead">
+      Cada oportunidade é apresentada pelo ganho em capacidade de gestão —
+      não pela correção técnica em si. Ordenadas por retorno para a organização.
+    </div>
+    <div class="opp-list">
+      <div class="opp">
+        <div class="opp-rank">1</div>
+        <div class="opp-body">
+          <div class="opp-title">Alertas proativos de prazo por trajetória — não só por limiar ultrapassado</div>
+          <div class="opp-gain">
+            <strong>Ganho para a gestão:</strong> Hoje o sistema alerta quando o orçamento foi
+            consumido em 90% ou mais. Não alerta quando a <em>trajetória</em> indica que o prazo
+            será ultrapassado em 2 ou 3 ciclos. Implementar alertas baseados em SPI abaixo de 0,85
+            por dois ciclos consecutivos permitiria intervenção com pelo menos um mês de antecedência
+            — antes que a situação se torne irreversível.
+          </div>
+          <div class="opp-unlock">
+            → Decisão desbloqueada: "Quando devo intervir antes que o atraso se torne irreversível?" respondida com alta confiança e sem consulta ativa.
+          </div>
+        </div>
+        <div class="opp-meta">
+          <div class="effort-pill">Médio</div><br>
+          <span style="font-size:11px">2–3 semanas</span>
+        </div>
+      </div>
+
+      <div class="opp">
+        <div class="opp-rank">2</div>
+        <div class="opp-body">
+          <div class="opp-title">Guia de interpretação EVM integrado à interface — tooltip contextual por métrica</div>
+          <div class="opp-gain">
+            <strong>Ganho para a gestão:</strong> O sistema já tem rótulos em português para cada
+            índice. O próximo passo é adicionar um tooltip de uma linha em cada card de métrica
+            explicando o que o número significa em linguagem de negócios. Um gestor sem
+            experiência prévia em EVM passaria a interpretar corretamente CPI e SPI sem precisar
+            de capacitação prévia, eliminando o risco de decisões baseadas em leitura invertida.
+          </div>
+          <div class="opp-unlock">
+            → Decisão desbloqueada: eliminação do risco de interpretação inversa de índices, elevando todas as 7 decisões de alta confiança a confiança plena.
+          </div>
+        </div>
+        <div class="opp-meta">
+          <div class="effort-pill">Pequeno</div><br>
+          <span style="font-size:11px">3–5 dias</span>
+        </div>
+      </div>
+
+      <div class="opp">
+        <div class="opp-rank">3</div>
+        <div class="opp-body">
+          <div class="opp-title">Rotina automatizada de backup diário do banco de dados</div>
+          <div class="opp-gain">
+            <strong>Ganho para a gestão:</strong> O histórico completo de timesheets, índices EVM
+            e revisões orçamentárias tem valor crescente ao longo do tempo — cada ciclo importado
+            aumenta a qualidade das previsões Monte Carlo e da análise de tendência. Perder esse
+            histórico por falha de hardware seria irreparável. Uma rotina de backup automático
+            com retenção de 30 dias elimina este risco sem custo operacional relevante.
+          </div>
+          <div class="opp-unlock">
+            → Decisão desbloqueada: "O histórico de dados estará disponível para auditoria e análise de longo prazo?" respondida com confiança alta.
+          </div>
+        </div>
+        <div class="opp-meta">
+          <div class="effort-pill">Pequeno</div><br>
+          <span style="font-size:11px">1–2 dias</span>
+        </div>
+      </div>
+
+      <div class="opp">
+        <div class="opp-rank">4</div>
+        <div class="opp-body">
+          <div class="opp-title">Adoção formal do Physical % Complete como dado de entrada padrão</div>
+          <div class="opp-gain">
+            <strong>Ganho para a gestão:</strong> O sistema já suporta que o gestor declare o
+            percentual físico de avanço de cada projeto por ciclo. Quando utilizado, o EAC e o
+            SPI passam a refletir não apenas horas gastas mas progresso real declarado — tornando
+            a previsão de conclusão mais precisa para projetos com escopo irregular. Formalizar
+            esse preenchimento como parte do ritual de fechamento de ciclo elevaria a confiança
+            na previsão de datas de moderada para alta.
+          </div>
+          <div class="opp-unlock">
+            → Decisão desbloqueada: "Qual a data provável de conclusão?" com alta confiança (hoje: moderada).
+          </div>
+        </div>
+        <div class="opp-meta">
+          <div class="effort-pill">Pequeno</div><br>
+          <span style="font-size:11px">Processo — sem código</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Capacidade decisória após melhorias</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Decisão</th>
+          <th>Confiança Atual</th>
+          <th>Confiança Possível</th>
+          <th>O que muda</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>"Qual a data provável de conclusão?"</td>
+          <td><span class="badge b-cau">Moderada</span></td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>Adoção do Physical % Complete como dado de entrada padrão no fechamento de ciclo (Oportunidade 4)</td>
+        </tr>
+        <tr>
+          <td>"Quando devo intervir antes que o atraso seja irreversível?"</td>
+          <td><span class="badge b-cau">Consulta Ativa</span></td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>Implementação de alertas baseados em trajetória de SPI (Oportunidade 1)</td>
+        </tr>
+        <tr>
+          <td>"Posso confiar que os gestores interpretam os índices corretamente?"</td>
+          <td><span class="badge b-cau">Depende de Treinamento</span></td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>Tooltips contextuais com guia de interpretação integrado à interface (Oportunidade 2)</td>
+        </tr>
+        <tr>
+          <td>"O histórico estará disponível em 3 anos para análise estratégica?"</td>
+          <td><span class="badge b-cau">Parcial</span></td>
+          <td><span class="badge b-ok">Alta</span></td>
+          <td>Backup automatizado diário com retenção e procedimento de restore documentado (Oportunidade 3)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA 6 — TRILHA DE EVIDÊNCIAS -->
+<div id="t6" class="panel">
+  <div class="sec">
+    <div class="sec-h">Trilha de Evidências da Avaliação</div>
+    <div class="sec-lead">
+      Cada conclusão deste relatório está ancorada em evidência verificável
+      no sistema. Esta tabela documenta o que foi examinado e o que foi
+      encontrado, garantindo rastreabilidade total.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>O que foi verificado</th>
+          <th>Por que importa para a gestão</th>
+          <th>O que foi encontrado</th>
+          <th>Conclusão</th>
+        </tr>
+      </thead>
+      <tbody class="trail-rows">
+        <tr class="trail-row">
+          <td>001</td>
+          <td>Centralização das fórmulas EVM</td>
+          <td>Garante que CPI, SPI e EAC têm a mesma definição em todos os relatórios — sem versões paralelas divergindo</td>
+          <td>Um único arquivo de 560 linhas contém todos os cálculos EVM. Nenhum outro arquivo redefine estas fórmulas. 677 testes automatizados verificam cada função independentemente.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>002</td>
+          <td>Cálculo do Índice de Desempenho de Prazo (SPI)</td>
+          <td>Determina se o gestor pode confiar no indicador de atraso/adiantamento do portfólio</td>
+          <td>Calculado como horas realizadas dividido pelas horas planejadas (abordagem AgileEVM). Protegido contra ausência de plano — retorna valor nulo em vez de número enganoso quando não há baseline.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>003</td>
+          <td>Cálculo do Índice de Desempenho de Custo (CPI)</td>
+          <td>Determina se o gestor pode confiar no indicador de eficiência financeira</td>
+          <td>Calculado como Valor Agregado dividido pelo Custo Real. O Valor Agregado é limitado ao orçamento aprovado (BAC) — impede leitura artificialmente otimista em projetos com escopo expandido.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>004</td>
+          <td>Congelamento de custo no momento de importação</td>
+          <td>Garante que o mesmo relatório aberto em datas diferentes mostra os mesmos números históricos</td>
+          <td>O custo por hora de cada colaborador é fixado no momento em que o timesheet é importado, independente de alterações posteriores na tabela de remuneração. O mecanismo foi verificado no fluxo de importação.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>005</td>
+          <td>Mecanismo de alertas automáticos de orçamento</td>
+          <td>Determina se os gestores recebem aviso antes que o estouro se consuma</td>
+          <td>Notificações automáticas são geradas quando um projeto cruza 90% (atenção) e 100% (crítico) do orçamento, entregues a todos os usuários com acesso ao projeto. Semáforo visual reforça o alerta na interface.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>006</td>
+          <td>Proteção contra dados incorretos na importação</td>
+          <td>Garante que métricas não são distorcidas por lançamentos inválidos ou duplicados</td>
+          <td>Motor de regras de validação avalia cada linha importada. Linhas suspeitas são encaminhadas para quarentena, excluídas dos cálculos até revisão administrativa explícita. Registro completo de cada sessão de importação.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>007</td>
+          <td>Estimativa ao Término (EAC) — duas variantes</td>
+          <td>O gestor precisa saber qual usar dependendo da situação do projeto</td>
+          <td>Variante 1: conservadora (Orçamento / CPI). Variante 2: sensível a prazo (Custo Real + Saldo / CPI × SPI) — mais adequada quando o projeto também está atrasado. Ambas protegidas contra divisão por zero.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>008</td>
+          <td>Índice de Desempenho a Completar (TCPI)</td>
+          <td>Permite ao gestor saber se ainda é possível concluir no orçamento</td>
+          <td>Calculado como (Orçamento − Valor Agregado) / (Orçamento − Custo Real). Classificação verbal automática: "Atingível" (abaixo de 1,0), "Apertado" (1,0 a 1,1), "Improvável" (acima de 1,1).</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>009</td>
+          <td>Previsão probabilística Monte Carlo</td>
+          <td>Permite ao gestor comunicar cenários de conclusão com intervalo de confiança</td>
+          <td>Implementado com N iterações usando distribuição normal baseada em histórico completo de velocidade da equipe. Retorna P10, P50 e P90 em ciclos. Proteção contra dados insuficientes (mínimo 3 ciclos).</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>010</td>
+          <td>Simulação What-If de cenários</td>
+          <td>Permite ao gestor avaliar o impacto de decisões antes de tomá-las</td>
+          <td>Endpoint de simulação aceita multiplicadores de velocidade e horas extras. Projeta ciclos para conclusão, EAC estimado e curva de burn-up projetada. Baseado nos últimos 6 ciclos para suavizar variações.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>011</td>
+          <td>Análise de concentração de risco de equipe</td>
+          <td>Identifica projetos vulneráveis à saída de um único colaborador</td>
+          <td>Endpoint dedicado calcula a proporção de horas por colaborador em cada projeto. Sinaliza automaticamente quando um único profissional representa mais da metade do esforço de um projeto.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>012</td>
+          <td>Trilha de auditoria e governança orçamentária</td>
+          <td>Permite rastrear qualquer número apresentado até sua origem e quem o alterou</td>
+          <td>Registro estruturado de todas as ações relevantes com usuário, data e detalhes. Histórico de revisões orçamentárias com valores anterior e posterior. Baselines imutáveis preservam referência original.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>013</td>
+          <td>Cobertura de testes automatizados</td>
+          <td>Indica a estabilidade dos cálculos ao longo de evoluções do sistema</td>
+          <td>677 testes automatizados cobrem todas as fórmulas EVM individualmente, os fluxos de importação de dados e os 11 endpoints de análise. Todos passam com banco de dados em memória, sem dependência de ambiente.</td>
+          <td><span class="badge b-ok">Confiável</span></td>
+        </tr>
+        <tr class="trail-row">
+          <td>014</td>
+          <td>Ausência de alertas automáticos baseados em trajetória de prazo</td>
+          <td>Determina se a organização depende de consulta ativa para detectar desvios de prazo</td>
+          <td>O sistema dispara alertas apenas quando limiares de orçamento são cruzados. Não há mecanismo que gere alerta quando o SPI indica, por duas ou mais apurações consecutivas, que o prazo será ultrapassado antes que o orçamento se esgote.</td>
+          <td><span class="badge b-cau">Gap identificado</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Escopo e Validade desta Avaliação</div>
+    <div class="sec-lead">
+      Esta avaliação examinou o sistema na versão v1.4.8RC_PMAS, em 2026-06-07. Cobre a
+      lógica de cálculo de todas as métricas EVM, a completude funcional das capacidades
+      de análise e gestão, e a confiabilidade dos dados apresentados ao gestor. Não cobre
+      testes de carga, segurança de infraestrutura de rede ou auditoria de dados inseridos
+      pelos usuários no sistema legado de origem. Alterações ao sistema após esta data não
+      estão cobertas por este documento.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th>Coberta nesta avaliação?</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Correção das fórmulas EVM</td>
+          <td><span class="badge b-ok">Sim</span></td>
+          <td>Verificado para CPI, SPI, EAC (×2), ETC, VAC, TCPI, CV, SV, ES, SPI(t)</td>
+        </tr>
+        <tr>
+          <td>Completude funcional das análises</td>
+          <td><span class="badge b-ok">Sim</span></td>
+          <td>Verificado: portfólio, esforço, tendências, forecast, alocação, concentração, runway, simulação, Monte Carlo</td>
+        </tr>
+        <tr>
+          <td>Mecanismos de proteção de dados</td>
+          <td><span class="badge b-ok">Sim</span></td>
+          <td>Verificado: quarentena, freeze de custo, baselines imutáveis, trilha de auditoria</td>
+        </tr>
+        <tr>
+          <td>Capacidade de alerta e notificação</td>
+          <td><span class="badge b-ok">Sim</span></td>
+          <td>Verificado: alertas de orçamento, semáforo, notificações por usuário</td>
+        </tr>
+        <tr>
+          <td>Testes de carga e escalabilidade</td>
+          <td><span class="badge b-na">Não</span></td>
+          <td>Fora do escopo — requer ambiente de produção com volume representativo</td>
+        </tr>
+        <tr>
+          <td>Segurança de infraestrutura e rede</td>
+          <td><span class="badge b-na">Não</span></td>
+          <td>Depende de configuração do servidor de produção (proxy, TLS, etc.)</td>
+        </tr>
+        <tr>
+          <td>Qualidade dos dados do sistema legado de origem</td>
+          <td><span class="badge b-na">Não</span></td>
+          <td>O PMAS é uma camada de análise sobre dados já registrados no sistema de ponto — a qualidade da origem está fora de seu controle</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RODAPÉ -->
+<div class="rf">
+  <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">
+    Confidencial · Uso Restrito à Diretoria
+  </span>
+  <span>PMAS · Relatório de Valor Decisório · RTA Sistemas · 2026-06-07</span>
+  <span>Referências: PMI 19-006 · ISO 21508 · AgileEVM (2006) · EIA-748</span>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('on'); });
+  document.querySelectorAll('.tb').forEach(function(b) { b.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+}
+</script>
+</body>
+</html>
