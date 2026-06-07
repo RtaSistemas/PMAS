@@ -400,6 +400,12 @@
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>
+        <div id="runwayPagination" hidden class="pagination-bar">
+          <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="runwayPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
+          <button type="button" id="runwayPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
+          <span id="runwayPageLabel" class="hint"></span>
+          <button type="button" id="runwayNextBtn" class="btn btn-secondary btn-sm" data-i18n="page.next">Próximo ›</button>
+        </div>
       </div>
     </div>
 

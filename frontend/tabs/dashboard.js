@@ -208,6 +208,7 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('bulletPanel').hidden  = true;
   document.getElementById('runwayTable').hidden = true;
   document.getElementById('runwayEmpty').hidden = true;
+  _runwayPag.reset();
   document.getElementById('concentrationPanel').hidden = true;
   document.getElementById('concentrationGrid').innerHTML = '';
   _showEmpty('effortEmpty',    false);
@@ -275,6 +276,11 @@ function _showEmpty(id, show) {
 // ---------------------------------------------------------------------------
 let _lastEffortData = [];
 let _lastRunwayData = [];
+
+const _runwayPag = _makePaginator(
+  { container: 'runwayPagination', prev: 'runwayPrevBtn', next: 'runwayNextBtn', pageSize: 'runwayPageSize', label: 'runwayPageLabel', entity: 'runway.title' },
+  _drawRunwayRows
+);
 let _selectedCollaborator = null;
 let _calYear  = new Date().getFullYear();
 let _calMonth = new Date().getMonth() + 1; // 1-12
@@ -397,7 +403,8 @@ function _renderRunwayPanel(runway) {
   }
   empty.hidden = true;
   table.hidden = false;
-  _drawRunwayRows(_applySort('runwayTable', withBudget));
+  _runwayPag.reset();
+  _runwayPag.render(_applySort('runwayTable', withBudget));
 }
 
 function _drawRunwayRows(data) {
@@ -3003,5 +3010,5 @@ document.getElementById('calMonthInput').addEventListener('change', async () => 
 _makeSortable('runwayTable',
   [{key:'pep_wbs',type:'str'}, {key:'name',type:'str'}, {key:'_sortPlanned',type:'num'}, null, {key:'_sortAvg',type:'num'}, {key:'cpi',type:'num'}, {key:'cycles_to_complete',type:'num'}, {key:'estimated_completion_cycle',type:'str'}, {key:'spi',type:'num'}, {key:'schedule_status',type:'str'}],
   () => (_lastRunwayData||[]).filter(r => _evmMode ? r.budget_cost != null : r.budget_hours != null).map(r => Object.assign({}, r, {_sortPlanned: _evmMode ? (r.budget_cost||0) : (r.budget_hours||0), _sortAvg: _evmMode ? (r.avg_cost_per_cycle||0) : (r.avg_hours_per_cycle||0)})),
-  _drawRunwayRows
+  rows => { _runwayPag.reset(); _runwayPag.render(rows); }
 );
