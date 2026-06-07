@@ -186,6 +186,9 @@ clearBtn.addEventListener('click', () => {
   _portfolioTimelineMode = false;
   const _tlBtn = document.getElementById('timelineToggleBtn');
   if (_tlBtn) { _tlBtn.textContent = _t('btn.timeline_on'); _tlBtn.className = 'btn btn-secondary btn-sm'; }
+  _showTrajectory = false;
+  const _trajBtn = document.getElementById('toggleTrajectoryBtn');
+  if (_trajBtn) { _trajBtn.setAttribute('aria-pressed', 'false'); _trajBtn.className = 'btn btn-ghost btn-sm'; }
   _pepCpiMode = false;
   document.getElementById('cpiToggleBtn').textContent = _t('btn.view_cpi');
   document.getElementById('pepCpiPanel').hidden = true;
@@ -650,7 +653,7 @@ async function _renderPortfolioTab() {
       document.getElementById('scatterPanel').hidden = false;
       document.getElementById('scatterChart').style.height = '380px';
       const sc = _getOrCreateChart('scatterChart');
-      sc.setOption(_buildEvmQuadrantOption(quadrantItems), true);
+      sc.setOption(_buildEvmQuadrantOption(quadrantItems, _showTrajectory), true);
       sc.resize();
       sc.off('brushSelected');
       sc.on('brushSelected', params => {
