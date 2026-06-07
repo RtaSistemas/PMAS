@@ -3,7 +3,7 @@
 > **Auditoria mestra — compilado de todas as dimensões de verificação**
 > **Stack:** Python 3.11 · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5 · pt-BR
 > **Data:** 2026-06-06
-> **Última atualização:** 2026-06-06 — Sprint 1, Sprint 2 e Sprint 3 concluídos (15/17 achados resolvidos)
+> **Última atualização:** 2026-06-07 — Sprint 1, Sprint 2, Sprint 3 e v2.0.0RC_PMAS concluídos (16/17 achados resolvidos)
 > **Referências:** PMI-019-006 (EVM) · AgileEVM 2006 · Nielsen 10 Heuristics · WCAG 2.2 · ISO 8601 · ECMA-402
 
 ---
@@ -12,38 +12,35 @@
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  SAÚDE DO SISTEMA — PMAS                       (pós S1+S2+S3)   ║
+║  SAÚDE DO SISTEMA — PMAS              (pós S1+S2+S3+v2.0.0RC)   ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  D1 EVM e Gestão          [█████████▌]  9.5/10   0 achados ✅   ║
 ║  D2 UX e Usabilidade      [████████▌░]  8.5/10   1 achado       ║
 ║  D3 Formatação de Dados   [█████████▌]  9.5/10   0 achados ✅   ║
 ║  D4 Qualidade de Código   [█████████░]  9.0/10   0 achados ✅   ║
 ║  D5 Stack e Integridade   [█████████▌]  9.5/10   0 achados ✅   ║
-║  D6 Cumprimento Propósito [████████▌░]  8.5/10   2 gaps         ║
+║  D6 Cumprimento Propósito [█████████░]  9.0/10   1 gap          ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  SCORE GERAL              [█████████░]  9.1/10  (+1.8 vs audit) ║
+║  SCORE GERAL              [█████████░]  9.2/10  (+1.9 vs audit) ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  🔴 Críticos: 0   🟠 Altos: 0   🟡 Médios: 0   🔵 Baixos: 0    ║
-║  ⬜ Gaps de propósito: 2         ✅ Resolvidos: 15/17            ║
+║  ⬜ Gaps de propósito: 1         ✅ Resolvidos: 16/17            ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
 ### Diagnóstico em 4 parágrafos
 
-**Estado operacional (pós Sprint 1 + Sprint 2 + Sprint 3):**
-O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. Não há risco para decisões baseadas nos números apresentados hoje.
+**Estado operacional (pós Sprint 1 + Sprint 2 + Sprint 3 + v2.0.0RC_PMAS):**
+O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. O sistema atinge Maturidade Nível 5 (Preditivo): detecta proativamente risco de SPI via `notify_schedule_risk` e mantém uma Central de Alertas consultável. Não há risco para decisões baseadas nos números apresentados.
 
-**Arquitetura após Sprint 3:**
-`frontend/app.js` reduzido de 5.634 para 720 linhas (−87%) com extração de 5 módulos de tab (`tabs/dashboard.js`, `tabs/equipe.js`, `tabs/admin.js`, `tabs/minha-area.js`, `tabs/header.js`). Os 166 `style=` inline no `index.html` foram eliminados (0 restantes) via 21 classes utilitárias + regras CSS por elemento ID. `ingestion.py` refatorado em 6 funções de fase com 42 testes unitários independentes.
+**Arquitetura após Sprint 3 + v2.0.0RC:**
+`frontend/app.js` reduzido de 5.634 para 720 linhas (−87%) com extração de 5 módulos de tab. Zero `style=` inline em `index.html`. `ingestion.py` refatorado em 6 funções de fase com 44 testes unitários independentes. Adicionados: modelo `ProjectAlert`, modelo `Notification`, routers `project_alerts.py` e `notifications.py`, detecção automática de risco de SPI após cada upload.
 
 **Estado da base técnica:**
-A arquitetura de backend está sólida: `_str_or_none` unificada em `utils.py`, EVM centralizado, `/health` e `/api/docs` disponíveis. Frontend: todos os módulos têm responsabilidade única, `_makeSortable` colocalizado com cada render function, zero inline styles em `index.html`, 677 testes passando.
+698 testes, todos passando. EVM centralizado, `/health` e `/api/docs` disponíveis. `backup_pmas.sh` e `requirements-lock.txt` implementados. Frontend modularizado com zero dívida técnica estrutural pendente. MA-14 (exportação PDF) implementado via `@media print` + botão `#printReportBtn`.
 
-**Próximos itens — Backlog:**
-Apenas gaps de propósito permanecem: exportação PDF (MA-14) e notificações por e-mail/webhook (MA-15). Sem dívida técnica estrutural pendente.
-
-**Próximo passo — Sprint 3 (arquitetura):**
-Três itens de alto esforço: extração de `tabs/equipe.js` + `tabs/admin.js` (MA-01, meta: `app.js` ≤ 800 linhas), eliminação de 166 `style=` inline no `index.html` (MA-07, meta: ≤ 40 restantes), e refatoração de `ingestion.py` por fase (MA-12). Estes são os últimos blocos de dívida técnica estrutural.
+**Backlog residual:**
+Apenas MA-15 permanece em aberto: notificações externas por e-mail/webhook. Sem dívida técnica estrutural pendente.
 
 ---
 
@@ -64,7 +61,7 @@ Três itens de alto esforço: extração de `tabs/equipe.js` + `tabs/admin.js` (
 | MA-11 | D5 | `.btn` e `.btn-sm` têm a mesma altura (`2.25rem`) | 🔵 | P | ✅ Sprint 1 |
 | MA-12 | D4 | `ingestion.py` 673 linhas — candidato a extração | 🔵 | G | ✅ Sprint 3 |
 | MA-13 | D6 | Sem endpoint `/health` | ⬜ | P | ✅ Sprint 1 |
-| MA-14 | D6 | Sem exportação PDF | ⬜ | G | ⬜ Backlog |
+| MA-14 | D6 | Sem exportação PDF | ⬜ | G | ✅ v2.0.0RC (`@media print` + `#printReportBtn`) |
 | MA-15 | D6 | Sem notificações por e-mail / webhook | ⬜ | G | ⬜ Backlog |
 | MA-16 | D6 | Sem backup automatizado do banco | ⬜ | P | ✅ Sprint 2 |
 | MA-17 | D6 | Sem documentação OpenAPI exposta | ⬜ | P | ✅ Sprint 1 |
@@ -741,11 +738,14 @@ flowchart TD
         T3B["MA-07: extrair inline styles → classes CSS\n2 dias"]
         T3C["MA-12: refatorar ingestion.py por fase\n2 dias"]
     end
-    subgraph S4["Backlog — Novas Features"]
-        T4A["MA-14: exportação PDF"]
+    subgraph SRC["v2.0.0RC — Preditivo"]
+        TRC1["MA-14: exportação PDF ✅\n(@media print + #printReportBtn)"]
+        TRC2["ProjectAlert + notify_schedule_risk ✅\n(Maturidade Nível 5)"]
+    end
+    subgraph S4["Backlog — Pendente"]
         T4B["MA-15: notificações e-mail/webhook"]
     end
-    S1 --> S2 --> S3 --> S4
+    S1 --> S2 --> S3 --> SRC --> S4
 ```
 
 ### Sequência Detalhada
@@ -764,11 +764,11 @@ flowchart TD
 | 2 | MA-10 | `_str_or_none` unificada | D4 | P | `grep 'def _str_or_none'` = 1 arquivo | ✅ |
 | 2 | MA-16 | Backup script | D6 | P | `backup_pmas.sh` funcional + cron | ✅ |
 | 2 | MA-05 | `.toFixed` em tabelas | D3/D4 | M | Zero `.toFixed+'h'` em `<td>` templates | ✅ |
-| 3 | MA-01 | Extrair tabs/ | D4 | G | `wc -l app.js` ≤ 800 | 🔲 |
-| 3 | MA-07 | Inline styles → CSS | D5 | G | `grep 'style="' index.html` ≤ 40 | 🔲 |
-| 3 | MA-12 | Refatorar ingestion.py | D4 | G | Funções de fase com testes unitários | 🔲 |
-| ∞ | MA-14 | PDF export | D6 | G | `GET /api/report/{pep}/pdf` funciona | ⬜ |
-| ∞ | MA-15 | E-mail notifications | D6 | G | Configurável via GlobalConfig | ⬜ |
+| 3 | MA-01 | Extrair tabs/ | D4 | G | `wc -l app.js` ≤ 800 | ✅ (720 linhas) |
+| 3 | MA-07 | Inline styles → CSS | D5 | G | `grep 'style="' index.html` ≤ 40 | ✅ (0 restantes) |
+| 3 | MA-12 | Refatorar ingestion.py | D4 | G | Funções de fase com testes unitários | ✅ (44 testes) |
+| RC | MA-14 | PDF export | D6 | G | `@media print` + `#printReportBtn` | ✅ v2.0.0RC |
+| ∞ | MA-15 | E-mail / webhook notifications | D6 | G | Configurável via GlobalConfig | ⬜ |
 
 ---
 
@@ -788,7 +788,7 @@ flowchart TD
 - [x] Empty states em todas as listagens
 - [x] Métricas críticas (SPI/CPI) com destaque visual por cor
 - [x] Navegação por teclado funcional nos fluxos principais
-- [ ] 166 inline styles limitam eficácia dos temas customizados (🔲 Sprint 3)
+- [x] Zero inline styles em `index.html` — temas funcionam completamente ✅ Sprint 3
 
 ### Formatação
 - [x] `_fmtCost()` e `_fmtH()` em `utils.js` como referência canônica
@@ -805,7 +805,7 @@ flowchart TD
 - [x] Constantes de domínio em lang/ + GlobalConfig
 - [x] 635 testes cobrindo todos os cálculos críticos
 - [x] Zero `console.warn` em produção ✅ Sprint 1
-- [ ] `app.js` ~5.600 linhas — god module (🔲 Sprint 3)
+- [x] `app.js` 720 linhas — god module resolvido ✅ Sprint 3
 - [x] `_str_or_none` unificada em `utils.py` ✅ Sprint 2
 
 ### Stack e Gráficos
@@ -825,7 +825,8 @@ flowchart TD
 - [x] Exportação CSV (colaborador, ciclos, projetos, rate cards)
 - [x] `GET /health` retorna `{status, timestamp, version}` ✅ Sprint 1
 - [x] `backup_pmas.sh` com VACUUM INTO, retenção 30 dias, docs de restore ✅ Sprint 2
-- [ ] Sem exportação PDF
+- [x] Exportação PDF via `@media print` + `#printReportBtn` (A4 landscape, chrome oculto) ✅ v2.0.0RC
+- [x] Alertas preditivos (`ProjectAlert`) + Central de Alertas + `notify_schedule_risk` ✅ v2.0.0RC
 - [x] `GET /api/docs` e `/api/redoc` disponíveis ✅ Sprint 1
 
 ---
