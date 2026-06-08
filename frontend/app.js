@@ -238,6 +238,7 @@ let _stackMode  = true;   // true = stacked, false = grouped
 let _evmMode    = false;  // false = hours, true = R$
 let _pepCpiMode = false;  // false = hidden, true = per-PEP CPI panel visible
 let _portfolioTimelineMode = false;  // false = aggregated treemap, true = cycle timeline
+let _showTrajectory = false;         // false = hidden (default), true = trajectory lines visible
 
 const atabBtns     = document.querySelectorAll('.atab-btn');
 const atabSections = document.querySelectorAll('.atab-section');
@@ -269,6 +270,15 @@ document.getElementById('timelineToggleBtn').addEventListener('click', () => {
   document.getElementById('timelineToggleBtn').classList.toggle('btn-primary', _portfolioTimelineMode);
   document.getElementById('timelineToggleBtn').classList.toggle('btn-secondary', !_portfolioTimelineMode);
   _renderPortfolioTab();
+});
+
+document.getElementById('toggleTrajectoryBtn').addEventListener('click', () => {
+  _showTrajectory = !_showTrajectory;
+  const btn = document.getElementById('toggleTrajectoryBtn');
+  btn.setAttribute('aria-pressed', String(_showTrajectory));
+  btn.classList.toggle('btn-primary', _showTrajectory);
+  btn.classList.toggle('btn-ghost', !_showTrajectory);
+  if (_activeATab === 'portfolio') _renderPortfolioTab();
 });
 
 document.getElementById('cpiToggleBtn').addEventListener('click', () => {

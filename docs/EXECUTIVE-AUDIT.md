@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Versão** | v1.4.8RC_PMAS |
+| **Versão** | v2.0.0RC_PMAS |
 | **Empresa** | RTA Sistemas |
 | **Período** | S1–S3 · 2026 |
 | **Data da auditoria** | 2026-06-06 |
@@ -31,7 +31,7 @@ Foram verificados **mais de 30 critérios** distribuídos em cinco matrizes de v
 | Não Conforme | 0 |
 | Fórmulas EVM conformes | 11 |
 | Cobertura funcional | 100% |
-| Testes automatizados | 677 |
+| Testes automatizados | 698 |
 | Testes EVM específicos | 124 |
 
 ### Veredito Final
@@ -44,6 +44,7 @@ Foram verificados **mais de 30 critérios** distribuídos em cinco matrizes de v
 - **Respostas render-ready:** a camada `/api/v2` entrega CPI, SPI, EAC, TCPI, VAC, CV, SV já computados no servidor; o frontend não faz aritmética EVM.
 - **Padrão de congelamento (freeze):** `cost_per_hour` é resolvido na ingestão e nunca é alterado retroativamente por mudanças de rate card.
 - **Baseline imutável:** `ProjectBaseline` trava o orçamento (`locked_at`, `is_active`); `resolve_effective_budget()` é a fonte autoritativa.
+- **Alertas preditivos (v2.0.0RC):** `notify_schedule_risk()` detecta risco de SPI após cada upload e mantém `ProjectAlert` com lifecycle (criação, atualização de nível, auto-resolução); Central de Alertas consultável por admin e por usuário (ACL-filtrada).
 - **Zero dívida técnica crítica:** 0 `console.log` no frontend, 0 TODO/FIXME/HACK em fluxos EVM.
 
 ---
@@ -112,7 +113,7 @@ Todas as 11 fórmulas avaliadas estão **CONFORME** ao PMI Practice Standard for
 |---|---|---|---|
 | Logs de debug em produção | 0 | 0 `console.log` em `frontend/`; `logging` estruturado no backend | CONFORME |
 | TODOs críticos em fluxos EVM | 0 | 0 TODO/FIXME/HACK em qualquer arquivo Python ou JS | CONFORME |
-| Cobertura de testes nos cálculos EVM | > 0 | 677 testes no total; 104 em `test_evm_service.py` + 20 em `test_evm_integrity.py` = 124 testes EVM específicos | CONFORME |
+| Cobertura de testes nos cálculos EVM | > 0 | 698 testes no total; 104 em `test_evm_service.py` + 20 em `test_evm_integrity.py` = 124 testes EVM específicos | CONFORME |
 | Segredos hardcoded | 0 | 0 — `PMAS_SECRET_KEY` lida de variável de ambiente; fallback aleatório apenas em dev | PARCIALMENTE CONFORME |
 
 ---
@@ -128,7 +129,7 @@ Todas as 11 fórmulas avaliadas estão **CONFORME** ao PMI Practice Standard for
 | Norma | ISO 8601 / ISO 21508 — estratégia de fuso uniforme |
 | Evidência original | `models.py:128` usava `datetime.utcnow` para `locked_at`; linhas 149, 243, 254, 278 usavam `now_br` (BRT) |
 | Correção aplicada | Substituídos `datetime.utcnow` por `now_br` em `ProjectBaseline.locked_at`, `ThemePreset.created_at` e `Notification.created_at`. Import `from datetime import datetime` removido de `models.py`. Todos os timestamps agora usam `now_br` uniformemente. |
-| Testes | 677 testes passam após a correção |
+| Testes | 698 testes passam após a correção |
 | Status | **FECHADA** |
 
 ### NC-02 — SEVERIDADE BAIXA
@@ -224,6 +225,6 @@ Registro cronológico das verificações executadas durante a auditoria (2026-06
 
 ---
 
-*PMAS · Project Management Assistant System · v1.4.8RC_PMAS — RTA Sistemas · Auditoria Executiva · 2026-06-06*
+*PMAS · Project Management Assistant System · v2.0.0RC_PMAS — RTA Sistemas · Auditoria Executiva · 2026-06-06 · Atualizado: 2026-06-08*
 
 **Veredito: PARCIALMENTE CONFORME · 30 Conforme · 1 Parcialmente Conforme · 0 Não Conforme · NC-01 e NC-03 resolvidas**

@@ -843,7 +843,7 @@ async function loadSomething() {
 
 ## 14. Testing Patterns
 
-**Current test count: 677 tests across 21 files** (`pytest tests/ -v` — all in-memory SQLite, no `pmas.db` touched).
+**Current test count: 698 tests across 26 files** (`pytest tests/ -v` — all in-memory SQLite, no `pmas.db` touched).
 
 ### Backend tests
 

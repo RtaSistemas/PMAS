@@ -331,9 +331,10 @@ def cpi_color(cpi: Optional[float]) -> Optional[str]:
 
 def cpi_label(cpi: Optional[float]) -> Optional[str]:
     """Return human-readable CPI label in pt-BR."""
-    if cpi is None:
+    if cpi is None or cpi == 0:
         return None
-    return "Dentro do orçamento" if cpi >= 1.0 else "Acima do orçamento"
+    cost_per_real = round(1.0 / cpi, 2)
+    return f"Cada R$ 1,00 entregue custa R$ {cost_per_real:.2f}"
 
 
 def spi_color(spi: Optional[float]) -> Optional[str]:
@@ -351,11 +352,10 @@ def spi_label(spi: Optional[float]) -> Optional[str]:
     """Return human-readable SPI label in pt-BR."""
     if spi is None:
         return None
+    pct = round(abs(spi - 1.0) * 100)
     if spi >= 1.0:
-        return "No prazo"
-    if spi >= 0.9:
-        return "Atenção"
-    return "Atrasado"
+        return "No prazo" if pct == 0 else f"Ritmo {pct}% acima do planejado"
+    return f"Ritmo {pct}% abaixo do planejado"
 
 
 def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
@@ -376,11 +376,12 @@ def tcpi_label(tcpi: Optional[float]) -> Optional[str]:
     """Human-readable TCPI label in pt-BR."""
     if tcpi is None:
         return None
+    pct = round((tcpi - 1.0) * 100)
     if tcpi <= 1.0:
-        return "Meta alcançável"
+        return "Meta alcançável — eficiência atual é suficiente"
     if tcpi <= 1.1:
-        return "Meta apertada"
-    return "Meta inviável no ritmo atual"
+        return f"Meta apertada — exige {pct}% de ganho de eficiência"
+    return f"Meta inviável no ritmo atual — exigiria {pct}% de ganho"
 
 
 # ── Schedule status ───────────────────────────────────────────────────────────
@@ -461,9 +462,9 @@ def vac_label(vac: Optional[float]) -> Optional[str]:
     if vac is None:
         return None
     if vac > 0:
-        return "Economia projetada"
+        return f"Economia projetada de R$ {abs(vac):,.2f} no término"
     if vac < 0:
-        return "Estouro projetado"
+        return f"Estouro projetado de R$ {abs(vac):,.2f} no término"
     return "No orçamento"
 
 

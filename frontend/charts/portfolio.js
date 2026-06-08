@@ -15,7 +15,7 @@ function _healthColor(h) {
 // ---------------------------------------------------------------------------
 // _buildEvmQuadrantOption — CPI × SPI scatter/bubble chart
 // ---------------------------------------------------------------------------
-function _buildEvmQuadrantOption(items) {
+function _buildEvmQuadrantOption(items, showTrajectory = false) {
   const AXIS_CAP = 2.0;
 
   const red   = _cssVar('--red')     || '#ef4444';
@@ -46,8 +46,9 @@ function _buildEvmQuadrantOption(items) {
   const yMin = +Math.max(0, Math.min(...rawCpis, 0.8) - 0.1).toFixed(2);
   const yMax = +Math.min(Math.max(...rawCpis, 1.2) + 0.1, AXIS_CAP + 0.08).toFixed(2);
 
-  // Trajectory connector lines — one per PEP that has ≥2 CPI+SPI snapshots
-  const trajectoryLines = items
+  // Trajectory connector lines — one per PEP that has ≥2 CPI+SPI snapshots.
+  // Hidden by default; toggled via #toggleTrajectoryBtn.
+  const trajectoryLines = showTrajectory ? items
     .filter(d => Array.isArray(d.trajectory) && d.trajectory.length >= 2)
     .map(d => ({
       type: 'line',
@@ -71,7 +72,7 @@ function _buildEvmQuadrantOption(items) {
         value: [Math.min(t.spi, AXIS_CAP), Math.min(t.cpi, AXIS_CAP)],
         _t: t,
       })),
-    }));
+    })) : [];
 
   return {
     ..._chartDefaults(),
@@ -170,16 +171,16 @@ function _buildEvmQuadrantOption(items) {
         markArea: {
           silent: true,
           data: [
-            [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red   + '18' },
+            [{ coord: [xMin - 1, yMin - 1], itemStyle: { color: red,   opacity: 0.10 },
                label: { show: true, color: red,   fontSize: 9, position: 'insideTopLeft', formatter: _t('q.bl') } },
              { coord: [1.0, 1.0] }],
-            [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue  + '18' },
+            [{ coord: [1.0, yMin - 1],       itemStyle: { color: blue,  opacity: 0.10 },
                label: { show: true, color: blue,  fontSize: 9, position: 'insideTopLeft', formatter: _t('q.br') } },
              { coord: [xMax + 1, 1.0] }],
-            [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber + '18' },
+            [{ coord: [xMin - 1, 1.0],       itemStyle: { color: amber, opacity: 0.10 },
                label: { show: true, color: amber, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tl') } },
              { coord: [1.0, yMax + 1] }],
-            [{ coord: [1.0, 1.0],            itemStyle: { color: green + '18' },
+            [{ coord: [1.0, 1.0],            itemStyle: { color: green, opacity: 0.10 },
                label: { show: true, color: green, fontSize: 9, position: 'insideTopLeft', formatter: _t('q.tr') } },
              { coord: [xMax + 1, yMax + 1] }],
           ],
