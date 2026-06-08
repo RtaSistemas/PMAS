@@ -367,7 +367,7 @@ def _phase_validate_rows(
         if len(name) < 2 or name.lower() in _INVALID_COLLAB_NAMES:
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Nome de colaborador inválido: {row[_COL_COLLABORATOR]!r}",
+                "reason": f"Nome de colaborador inválido: '{row[_COL_COLLABORATOR]}'. Verifique a coluna 'Colaborador' no arquivo de origem e corrija.",
                 "rule_id": None,
             })
             continue
@@ -384,7 +384,7 @@ def _phase_validate_rows(
         if record_date is None:
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Data inválida: {row[_COL_DATE]!r}",
+                "reason": f"Data inválida: '{row[_COL_DATE]}'. Use o formato DD/MM/AAAA na coluna 'Data'.",
                 "rule_id": None,
             })
             continue
@@ -393,7 +393,7 @@ def _phase_validate_rows(
         if record_date > date.today():
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Data futura: {record_date}",
+                "reason": f"Data futura ({record_date}): registros com data posterior a hoje não são aceitos. Corrija no arquivo de origem.",
                 "rule_id": None,
             })
             continue
@@ -408,7 +408,7 @@ def _phase_validate_rows(
         if cycle is None:
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Sem ciclo ativo para a data {record_date} ({name})",
+                "reason": f"Nenhum ciclo ativo cobre a data {record_date} (colaborador: {name}). Cadastre o ciclo correspondente ou ajuste a data no arquivo de origem.",
                 "rule_id": None,
             })
             continue
@@ -418,7 +418,7 @@ def _phase_validate_rows(
         if total_h is None:
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Horas inválidas ou ausentes: {row[_COL_HOURS]!r}",
+                "reason": f"Horas inválidas ou ausentes: '{row[_COL_HOURS]}'. A coluna 'Horas totais (decimal)' deve conter um número (ex.: 8.5). Corrija no arquivo de origem.",
                 "rule_id": None,
             })
             continue

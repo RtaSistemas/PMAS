@@ -403,19 +403,22 @@ class TestClassifyHealth:
 
 class TestTcpiLabel:
     def test_achievable(self):
-        assert tcpi_label(0.95) == "Meta alcançável"
+        assert "alcançável" in tcpi_label(0.95)
 
     def test_exactly_1(self):
-        assert tcpi_label(1.0) == "Meta alcançável"
+        assert "alcançável" in tcpi_label(1.0)
 
     def test_tight(self):
-        assert tcpi_label(1.05) == "Meta apertada"
+        assert "apertada" in tcpi_label(1.05)
+        assert "5%" in tcpi_label(1.05)
 
     def test_exactly_1_1(self):
-        assert tcpi_label(1.1) == "Meta apertada"
+        assert "apertada" in tcpi_label(1.1)
+        assert "10%" in tcpi_label(1.1)
 
     def test_unachievable(self):
-        assert tcpi_label(1.25) == "Meta inviável no ritmo atual"
+        assert "inviável" in tcpi_label(1.25)
+        assert "25%" in tcpi_label(1.25)
 
     def test_none_returns_none(self):
         assert tcpi_label(None) is None
@@ -441,10 +444,10 @@ class TestCvLabelFix:
 
 class TestVacLabelColor:
     def test_positive_vac_label(self):
-        assert vac_label(5000.0) == "Economia projetada"
+        assert "Economia" in vac_label(5000.0)
 
     def test_negative_vac_label(self):
-        assert vac_label(-3000.0) == "Estouro projetado"
+        assert "Estouro" in vac_label(-3000.0)
 
     def test_zero_vac_label(self):
         assert vac_label(0) == "No orçamento"
