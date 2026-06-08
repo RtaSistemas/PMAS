@@ -635,11 +635,36 @@ flowchart LR
 
 #### Earned Value (EV)
 
+PMAS supports two EV modes. The active mode is determined automatically per project per request.
+
+**Mode 1 — Hours proxy (default)**
+
 ```
-EV = min(consumed_hours / budget_hours, 1.0) × BAC
+EV = min(consumed_hours / budget_hours, 1.0) × BAC_cost
 ```
 
-EV is capped at BAC — a project cannot "earn" more than its budget allows (per PMBoK).
+Used when no Physical Percent Complete has been declared. EV is capped at BAC — a project cannot "earn" more than its budget (per PMBoK).
+
+**Mode 2 — Physical Percent Complete**
+
+```
+EV = physical_pct × BAC_cost
+```
+
+Activated when a PM declares the cumulative physical completion percentage via **Projetos → Avanço Físico**. The most recent declared value (`last_physical_pct`) is used.
+
+**Trigger condition** (`uses_physical_pct = True`): at least one `ProjectCyclePlan` row for the project has `physical_pct IS NOT NULL`, **and** the project has a `budget_cost` configured.
+
+**Impact:** switching modes changes the EV base used by all downstream cost metrics — CPI, CV, TCPI, EAC, and VAC all recalculate. `remaining_hours` also switches formula:
+
+| Field | Mode 1 | Mode 2 |
+|---|---|---|
+| EV | `(h_consumed / h_budget) × BAC` | `physical_pct × BAC` |
+| remaining_hours | `budget_hours − consumed_hours` | `(1 − physical_pct) × budget_hours` |
+
+**When to use Mode 2:** when hours ≠ delivery — e.g. a research phase, a blocked sprint, or a project where the team worked overtime but the functional scope barely advanced. The PM declares what was actually delivered; the system computes cost efficiency against that real progress, not just against effort spent.
+
+**UI indicator:** a badge (`#forecastPhysicalBadge`) appears in the Forecast tab when `uses_physical_pct = true`, showing the current declared percentage. Absent badge = hours-proxy mode.
 
 #### Cost Performance Index (CPI)
 
