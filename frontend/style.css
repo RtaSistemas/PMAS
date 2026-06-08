@@ -1438,7 +1438,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ── MA-07: Utility classes (extracted from inline styles) ───────────────── */
-.pagination-bar   { display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:.5rem; margin-top:.5rem; overflow-x:auto; }
+.pagination-bar   { display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:.5rem; margin-top:.5rem; }
 .pagination-label { display:flex; align-items:center; gap:.3rem; }
 .mb-0 { margin-bottom: 0; }
 .mb-1 { margin-bottom: .35rem; }

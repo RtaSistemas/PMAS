@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [2.0.1_PMAS] — 2026-06-08
+
+UI polish and notification reliability release.
+
+### Fixed
+
+- **Pagination bar single line (P1):** Removed `overflow-x:auto` from `.pagination-bar` in
+  `style.css`. The property created a faint scrollbar container that made the paginator appear
+  on two lines. `flex-wrap:nowrap` was already set — the overflow rule was redundant and harmful.
+
+- **Admin tab section order (P2):** Moved "Aparência do Sistema" card to the first position
+  inside the Admin tab, above "Gestão de Usuários". System appearance is global configuration
+  that should be immediately visible to admins.
+
+- **Header semaphore hidden after page refresh (P4):** On page reload with a valid token,
+  `app.js` line 729 called `_bootApp()` synchronously, before `tabs/header.js` (and other tab
+  modules) had loaded. This caused a `ReferenceError` at `_updateHeaderUser()`, leaving the
+  header username as `—` and the traffic-light semaphore permanently hidden. Fixed by replacing
+  the direct `_bootApp()` call with `setTimeout(_bootApp, 0)`, which defers execution to after
+  all `<script>` tags in `<body>` have evaluated.
+
+- **Quarantine modal Reject button design (P5):** Changed `id="qrRejectBtn"` from `btn-primary`
+  to `btn-danger` in `index.html`. The Approve and Reject actions were visually identical;
+  Reject is a destructive action and must use the danger variant (transparent background, red
+  border and text) to match the design system.
+
+- **Bell not reflecting persistent alerts (P6):** In `notifications_svc.py`,
+  `notify_threshold_crossings()` and `notify_schedule_risk()` only called
+  `create_notification()` when `_upsert_project_alert()` returned `True` (new alert or level
+  escalation). If an existing alert persisted at the same severity level across multiple
+  uploads, no bell notification was sent — the ProjectAlert existed in Central de Alertas but
+  was invisible to the bell. Removed the `if created:` guard so a notification is created on
+  every upload that detects an active alert.
+
+---
+
 ## [2.0.0RC_PMAS] — 2026-06-07
 
 Predictive alerting release. PMAS reaches **Maturity Level 5** (Predictive) with proactive

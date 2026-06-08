@@ -1054,6 +1054,15 @@
   <!-- TAB: Admin                                                           -->
   <!-- ================================================================== -->
   <section id="tab-admin" class="tab-section" hidden role="tabpanel" aria-labelledby="adminTabBtn" tabindex="0">
+    <!-- Theme Editor -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="openThemeModalBtn" data-i18n="appearance.open_btn">🎨 Personalizar Aparência</button>
+      </div>
+      <div id="themePreviewBar" class="theme-preview-bar mt-2"></div>
+    </div>
+
     <div class="card">
       <div class="section-header">
         <h2 class="card-title" data-i18n="admin.title">Gestão de Usuários</h2>
@@ -1090,15 +1099,6 @@
       <ul class="sortable-list" id="rulesList">
         <li data-i18n="loading">Carregando…</li>
       </ul>
-    </div>
-
-    <!-- Theme Editor -->
-    <div class="card">
-      <div class="section-header">
-        <h2 class="card-title" data-i18n="appearance.title">Aparência do Sistema</h2>
-        <button type="button" class="btn btn-primary btn-sm" id="openThemeModalBtn" data-i18n="appearance.open_btn">🎨 Personalizar Aparência</button>
-      </div>
-      <div id="themePreviewBar" class="theme-preview-bar mt-2"></div>
     </div>
 
     <div class="card">
@@ -1668,7 +1668,7 @@
     </div>
     <div class="modal-footer">
       <button type="button" id="qrApproveBtn" class="btn btn-primary" data-i18n="qr.btn.approve">✅ Aprovar</button>
-      <button type="button" id="qrRejectBtn"  class="btn btn-primary" data-i18n="qr.btn.reject">❌ Rejeitar</button>
+      <button type="button" id="qrRejectBtn"  class="btn btn-danger" data-i18n="qr.btn.reject">❌ Rejeitar</button>
       <button type="button" id="qrModalCloseBtn" class="btn btn-secondary" data-modal-close="qrDetailModal" data-i18n="btn.close">Fechar</button>
     </div>
   </div>

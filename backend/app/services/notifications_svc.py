@@ -164,12 +164,11 @@ def notify_threshold_crossings(db: Session, pep_wbs_list: list[str]) -> None:
                 f"Projeto '{label}' ({pep}): orçamento {ratio}% consumido ({status_label})."
             )
 
-            created = _upsert_project_alert(
+            _upsert_project_alert(
                 db, project.id, pep, alert_type, level, msg, metric_value=ratio / 100
             )
-            if created:
-                for uid in _get_notif_recipients(db, project.id):
-                    create_notification(db, uid, msg, level=level)
+            for uid in _get_notif_recipients(db, project.id):
+                create_notification(db, uid, msg, level=level)
     except Exception:
         pass  # Non-critical — never block the upload response
 
@@ -246,12 +245,11 @@ def notify_schedule_risk(db: Session, pep_wbs_list: list[str]) -> None:
                 f"Sugestão: revisar alocação da equipe ou atualizar o plano de ciclos."
             )
 
-            created = _upsert_project_alert(
+            _upsert_project_alert(
                 db, project.id, pep, "schedule_risk", "warning", msg,
                 metric_value=avg_spi, consecutive_cycles=consecutive_n,
             )
-            if created:
-                for uid in _get_notif_recipients(db, project.id):
-                    create_notification(db, uid, msg, level="warning")
+            for uid in _get_notif_recipients(db, project.id):
+                create_notification(db, uid, msg, level="warning")
     except Exception:
         pass  # Non-critical — never block the upload response
