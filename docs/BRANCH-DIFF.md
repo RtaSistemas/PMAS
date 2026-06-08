@@ -18,7 +18,7 @@ This branch transforms PMAS from a basic timesheet viewer into a full-featured E
 | Backend analytics | Single `analytics.py` monolith + `reference.py` | 10 specialized `/api/v2` routers |
 | EVM computation | Scattered inline formulas in routers + frontend | Centralized `services/evm.py` (single source of truth) |
 | Frontend structure | Single 5,681-line `app.js` | Modular: `charts/`, `crud/`, `lang/`, `ui-helpers.js`, `evm-glossary.js`, `utils.js` |
-| Test coverage | 406 tests across 15 files | 635 tests across 20 files |
+| Test coverage | 406 tests across 15 files | 698 tests across 26 files |
 
 ---
 
@@ -96,9 +96,9 @@ This branch transforms PMAS from a basic timesheet viewer into a full-featured E
 | File | Purpose |
 |------|---------|
 | `CHANGELOG.md` | Version history with semantic entries |
-| `INTEGRITY-REPORT.md` | Visual/stack/purpose audit — 9 items, all resolved |
-| `UX-AUDIT.md` | UX/accessibility audit — 23 items, all resolved |
 | `docs/PATTERNS.md` | **Architectural patterns guide** (this branch) |
+| `docs/MASTER-AUDIT.md` | Architecture audit — 17 findings, 16 resolved, score 9.2/10 |
+| `docs/BRANCH-DIFF.md` | This file — summary of all changes vs main |
 
 ---
 
@@ -294,8 +294,8 @@ All v2 routers produce **render-ready** responses — every number arrives at th
 |--------|------|----------------|-----------------|----------------|
 | Backend routers | 14 | 24 (+10 v2) | 24 | 24 |
 | Backend services | 4 | 7 | 7 | 7 |
-| ORM models | 15 | 20 | 20 | 20 |
-| Test count | 406 | 635 | 635 | 677 (+42 phase tests) |
+| ORM models | 15 | 20 | 20 | 22 (+ProjectAlert, Notification) |
+| Test count | 406 | 635 | 635 | 698 |
 | Frontend JS files | 3 | 13 | 14 (+sortable.min.js local) | 19 (+5 tab modules) |
 | `app.js` lines | — | 5634 | 5634 | 720 (−87%) ✅ |
 | `index.html` inline `style=` | — | 166 | 166 | 0 ✅ |
@@ -307,7 +307,7 @@ All v2 routers produce **render-ready** responses — every number arrives at th
 | E2E test suites | 0 | 4 (Playwright) | 4 | 4 |
 | CDN dependencies | 2 (ECharts + SortableJS) | 1 (SortableJS) | 0 ✅ | 0 ✅ |
 | Text tokens in `:root` | — | 8 | 4 ✅ | 4 ✅ |
-| MASTER-AUDIT score | — | 7.3/10 | 8.7/10 ✅ | 9.1/10 ✅ |
+| MASTER-AUDIT score | — | 7.3/10 | 8.7/10 ✅ | 9.2/10 ✅ |
 | Open audit findings | — | 17 | 5 (12 resolved) | 2 (15 resolved) ✅ |
 
 ---
@@ -346,4 +346,46 @@ All v2 routers produce **render-ready** responses — every number arrives at th
 | `ingest_file()` | Now an orchestrator calling phases in sequence |
 | Public API | Unchanged (same signature, same return dict) |
 | New test file | `tests/test_ingestion_phases.py` — 42 unit tests |
-| Total tests | 677 (all passing) |
+| Total tests | 698 (all passing) |
+
+---
+
+## 9. v2.0.0RC — Alertas Preditivos
+
+> Applied after Sprint 3. Elevates the system to **Maturity Level 5 (Predictive)**.
+
+### New models
+
+| Model | Purpose |
+|-------|---------|
+| `ProjectAlert` | Permanent, lifecycle-managed alert per project: `alert_type`, `level`, `message`, `metric_value`, `consecutive_cycles`. Deduplication by `(project_id, alert_type)`; level changes resolve old and create new; auto-resolves when metric recovers. |
+| `Notification` | Bell-tray notification per user: `user_id`, `message`, `is_read`, `created_at`, `link`. |
+
+### New routers
+
+| File | Prefix | Purpose |
+|------|--------|---------|
+| `routers/project_alerts.py` | `/api/project-alerts` | Admin list with filters (pep_wbs, alert_type, is_resolved, date range) |
+| `routers/my.py` extended | `/api/my/alerts` | ACL-filtered ProjectAlert list for regular users |
+
+### New services
+
+| Function | File | Trigger |
+|----------|------|---------|
+| `notify_schedule_risk()` | `services/notifications_svc.py` | Fires after every successful upload; detects consecutive SPI warning cycles; creates/resolves `ProjectAlert` rows |
+| `notify_threshold_crossings()` | `services/notifications_svc.py` | Fires after every successful upload; detects budget threshold crossings; creates `Notification` and `ProjectAlert` rows |
+
+### Frontend
+
+- **Admin → Central de Alertas:** paginated `ProjectAlert` table with PEP/type/status filters
+- **Minha Área → Alertas sub-tab:** ACL-filtered `ProjectAlert` list (hidden for admin users)
+- **MA-14 resolved:** `@media print` CSS rules + `#printReportBtn` (A4 landscape, chrome hidden)
+
+### Metrics delta (Sprint 3 → v2.0.0RC)
+
+| Metric | After Sprint 3 | After v2.0.0RC |
+|--------|----------------|----------------|
+| ORM models | 20 | 22 |
+| Test count | 677 | 698 |
+| MASTER-AUDIT score | 9.1/10 | 9.2/10 |
+| Open audit findings | 2 | 1 (MA-15 only) |

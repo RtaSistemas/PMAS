@@ -167,11 +167,11 @@ def compute_cpi(ev_cost: Optional[float], actual_cost: Optional[float]) -> Optio
 | H1 | Visibilidade do estado do sistema | ✅ | `_setChartLoading()` com `aria-busy`; semaphore barra; badges de saúde |
 | H2 | Compatibilidade com o mundo real | ✅ | Terminologia EVM em pt-BR; ciclos mapeados para meses reais |
 | H3 | Controle e liberdade | ✅ | `data-modal-close` em todos os modais; Cancelar em todos os formulários |
-| H4 | Consistência e padrões | ⚠️ | Botões de ação variam entre tabs (alguns com ícone, outros sem); 166 inline styles criam inconsistências visuais |
+| H4 | Consistência e padrões | ✅ | Botões de ação consistentes entre tabs; zero `style=` inline após Sprint 3 — temas funcionam completamente |
 | H5 | Prevenção de erros | ✅ | `required aria-required` em inputs críticos; quarantine pipeline |
 | H6 | Reconhecimento vs. memorização | ✅ | EVM glossary tooltips; semaphore macro sempre visível |
 | H7 | Flexibilidade e eficiência | ✅ | Filtros persistentes; keyboard nav; CSV export; paginadores |
-| H8 | Estética minimalista | ⚠️ | 166 `style=` inline em index.html criam ruído visual e tornam temas parcialmente ineficazes |
+| H8 | Estética minimalista | ✅ | Zero `style=` inline em `index.html` — 21 classes utilitárias adicionadas ao CSS; design tokens aplicados em todos os elementos |
 | H9 | Recuperação de erros | ✅ | `_friendlyError()` com passthrough de detalhe 422; mensagens i18n; notify queue |
 | H10 | Ajuda e documentação | ✅ | EVM glossary tooltips; glossário canônico; UX-AUDIT resolvido |
 
@@ -338,49 +338,50 @@ formatter: v => `${v.toFixed(1)}h`  // intentional: axis labels don't support HT
 
 | Indicador | Valor encontrado | Threshold | Status |
 |-----------|-----------------|-----------|--------|
-| Maior arquivo (app.js) | 5.633 linhas | < 400 | 🟠 14× acima |
-| Maior arquivo backend (ingestion.py) | 673 linhas | < 400 | 🟡 1.7× acima |
+| Maior arquivo (app.js) | 720 linhas | < 800 | ✅ Sprint 3 (−87%) |
+| Maior arquivo backend (ingestion.py) | ~790 linhas | < 800 | ✅ Sprint 3 (fases + 44 testes) |
 | schemas.py | 440 linhas | < 400 | 🟡 Marginal |
 | TODOs em fluxos críticos | 0 | 0 | ✅ |
 | `console.log` ativos | 0 | 0 | ✅ |
-| `console.warn` ativos | 2 (catch blocks) | 0 | 🔵 |
-| Funções duplicadas | 1 (`_str_or_none`) | 0 | 🔵 |
+| `console.warn` ativos | 0 | 0 | ✅ Sprint 1 |
+| Funções duplicadas | 0 | 0 | ✅ Sprint 2 |
 | Secrets hardcoded | 0 | 0 | ✅ |
 | EVM centralizado | Sim (evm.py) | Sim | ✅ |
-| Formatação centralizada | Parcial | Sim | 🟡 |
-| Constantes centralizadas | Parcial (lang/ + GlobalConfig) | Sim | ✅ |
-| Cobertura de testes | 635 testes / 20 arquivos | Críticos cobertos | ✅ |
+| Formatação centralizada | Sim (`_fmtCost`, `_fmtH`, `_fmtDate`) | Sim | ✅ Sprint 1 |
+| Constantes centralizadas | Sim (lang/ + GlobalConfig) | Sim | ✅ |
+| Cobertura de testes | 698 testes / 26 arquivos | Críticos cobertos | ✅ |
 
 ### Mapa de Responsabilidades
 
 ```mermaid
 graph TD
-    subgraph "God Module — candidato a extração"
-        APP[app.js\n5.633 linhas]
+    subgraph "Core app.js ✅ 720 linhas"
+        APP[app.js\nauth · i18n · modals · tab nav\ntheme · chart registry · _bootApp]
     end
-    subgraph "Já extraídos ✅"
-        CH[charts/\neffort·portfolio·forecast]
-        CR[crud/\ncycles·projects]
-        LG[lang/\npt·en]
+    subgraph "Módulos de tab — Sprint 3 ✅"
+        DA[tabs/dashboard.js\nEsforço · Portfólio · Previsão]
+        EQ[tabs/equipe.js\nSeniority · RateCard · Over-alloc]
+        AD[tabs/admin.js\nUsers · Rules · Quarantine · Alertas]
+        MA[tabs/minha-area.js\nPrefs · Uploads · Quarentena pessoal]
+        HD[tabs/header.js\nSemaphore · Notificações]
+    end
+    subgraph "Módulos compartilhados ✅"
+        CH[charts/\neffort · portfolio · forecast]
+        CR[crud/\ncycles · projects]
+        LG[lang/\npt · en]
         UH[ui-helpers.js]
         EG[evm-glossary.js]
         UT[utils.js]
     end
-    subgraph "Ainda em app.js — próximas extrações"
-        TL[Trends + Allocation\nrendering]
-        SA[Semaphore +\nHeader logic]
-        LY[Layout prefs +\nUser prefs]
-        TE[Equipe tab\nSeniority·RateCard]
-        AD[Admin tab\nUsers·Rules·Quarantine]
-    end
-    APP -->|extraído| CH
-    APP -->|extraído| CR
-    APP -->|extraído| LG
-    APP -->|extraído| UH
-    APP -.->|próximo| TL
-    APP -.->|próximo| SA
-    APP -.->|próximo| TE
-    APP -.->|próximo| AD
+    APP --- DA
+    APP --- EQ
+    APP --- AD
+    APP --- MA
+    APP --- HD
+    APP --- CH
+    APP --- CR
+    APP --- LG
+    APP --- UH
 ```
 
 ### Achados D4
@@ -482,7 +483,7 @@ quadrantChart
 | Paleta de cores (tokens) | ✅ | ✅ | — |
 | Tipografia (system-ui stack) | ✅ | ✅ | — |
 | Z-index tokens (`--z-*`) | ✅ | ✅ | — |
-| Espaçamento | ⚠️ Parcial | ❌ 166 inline | Extrair para classes |
+| Espaçamento | ✅ | ✅ Zero inline (21 classes utilitárias) | — |
 | Componentes (botões, inputs, badges) | ✅ | ⚠️ `.btn`/`.btn-sm` idênticos | Altura única redundante |
 | Tema de gráficos ECharts | ✅ `_getPalette()` | ✅ | — |
 | Responsividade (breakpoints) | ✅ | ✅ | — |
@@ -609,22 +610,23 @@ mindmap
       ACL por usuário ✅
     Notificações
       Threshold crossing in-app ✅
+      ProjectAlert com lifecycle ✅
       E-mail / webhook ⬜
     Operação
-      /health endpoint ⬜
-      Backup automatizado ⬜
-      Documentação API OpenAPI ⬜
+      /health endpoint ✅
+      Backup automatizado ✅
+      Documentação API OpenAPI ✅
 ```
 
 ### Gaps de Propósito
 
-| ID | Gap | Impacto no usuário | Caminho | Esforço |
-|----|-----|--------------------|---------|---------|
-| MA-13 | Sem `/health` | Não detecta falha de banco em monitoramento | Adicionar endpoint com `SELECT 1` | P |
-| MA-14 | Sem exportação PDF | Gerentes não conseguem gerar relatório formal para stakeholders | Biblioteca `weasyprint` ou exportar HTML→PDF | G |
-| MA-15 | Sem notificações por e-mail/webhook | Alertas de threshold cruzado só visíveis ao acessar o app | SMTP via `smtplib` ou webhook para Teams/Slack | G |
-| MA-16 | Sem backup automatizado | Risco de perda de dados em falha do servidor | `backup_pmas.sh` + cron (documentado em CLAUDE.md P3) | P |
-| MA-17 | Sem OpenAPI UI exposto | Desenvolvedores sem forma de explorar a API interativamente | `docs_url="/api/docs"` no FastAPI (atualmente desabilitado) | P |
+| ID | Gap | Impacto no usuário | Caminho | Esforço | Status |
+|----|-----|--------------------|---------|---------|--------|
+| MA-13 | Sem `/health` | Não detecta falha de banco em monitoramento | Endpoint com `SELECT 1` | P | ✅ Sprint 1 |
+| MA-14 | Sem exportação PDF | Gerentes não conseguem gerar relatório formal | `@media print` + `#printReportBtn` | G | ✅ v2.0.0RC |
+| MA-15 | Sem notificações por e-mail/webhook | Alertas só visíveis ao acessar o app | SMTP via `smtplib` ou webhook para Teams/Slack | G | ⬜ Backlog |
+| MA-16 | Sem backup automatizado | Risco de perda de dados em falha do servidor | `backup_pmas.sh` + cron (ver CLAUDE.md P3) | P | ✅ Sprint 2 |
+| MA-17 | Sem OpenAPI UI exposto | Desenvolvedores sem forma de explorar a API | `docs_url="/api/docs"` no FastAPI | P | ✅ Sprint 1 |
 
 ---
 
@@ -803,7 +805,7 @@ flowchart TD
 - [x] Zero secrets hardcoded
 - [x] EVM centralizado em `services/evm.py`
 - [x] Constantes de domínio em lang/ + GlobalConfig
-- [x] 635 testes cobrindo todos os cálculos críticos
+- [x] 698 testes cobrindo todos os cálculos críticos
 - [x] Zero `console.warn` em produção ✅ Sprint 1
 - [x] `app.js` 720 linhas — god module resolvido ✅ Sprint 3
 - [x] `_str_or_none` unificada em `utils.py` ✅ Sprint 2

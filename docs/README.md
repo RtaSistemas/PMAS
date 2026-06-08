@@ -4,14 +4,12 @@ Project documentation organized by type.
 
 | File | Audience | Purpose |
 |------|----------|---------|
-| [PATTERNS.md](PATTERNS.md) | Developers | Coding conventions, design tokens, EVM rules, modal/CRUD/i18n patterns — read before adding any feature |
-| [MASTER-AUDIT.md](MASTER-AUDIT.md) | Tech lead | Architecture audit (score 9.1/10), sprint backlog, resolved/pending items |
-| [INTEGRITY-REPORT.md](INTEGRITY-REPORT.md) | Tech lead | Visual, stack, and purpose integrity assessment — all 9 items resolved |
-| [UX-AUDIT.md](UX-AUDIT.md) | Tech lead / UX | UX/accessibility audit — all 23 items resolved |
-| [BRANCH-DIFF.md](BRANCH-DIFF.md) | Developer | Summary of every change introduced in the `claude/create-project-docs-qJaUo` branch vs `main` |
-| [EXECUTIVE-AUDIT.html](EXECUTIVE-AUDIT.html) | Management / Compliance | Compliance audit report — 30 Conforme, 1 Parcialmente Conforme, NC-01 and NC-03 resolved |
-| [EXECUTIVE-AUDIT.md](EXECUTIVE-AUDIT.md) | Management / Compliance | Markdown summary of the compliance audit (machine-readable version of EXECUTIVE-AUDIT.html) |
-| [VALUE-AUDIT.html](VALUE-AUDIT.html) | Executives / Directors | Decision value report — evaluates what the system enables for organizational decision-making (Maturity Level 5, 8/8 decisions with high confidence) |
+| [PATTERNS.md](PATTERNS.md) | Developers | Coding conventions, design tokens, EVM rules, modal/CRUD/i18n/accessibility patterns — **read before adding any feature** |
+| [MASTER-AUDIT.md](MASTER-AUDIT.md) | Tech lead | Architecture audit (score 9.2/10, v2.0.0RC), sprint backlog — 16/17 achados resolvidos; 698 testes |
+| [BRANCH-DIFF.md](BRANCH-DIFF.md) | Developer | Summary of every change vs `main`: Sprints 1–3 + v2.0.0RC; metrics comparison table |
+| [EXECUTIVE-AUDIT.md](EXECUTIVE-AUDIT.md) | Management / Compliance | EVM compliance audit (v2.0.0RC): 30 Conforme, 1 Parcialmente Conforme — NC-01 e NC-03 resolvidas |
+| [EXECUTIVE-AUDIT.html](EXECUTIVE-AUDIT.html) | Management / Compliance | HTML version of the compliance audit (formatted for printing/sharing) |
+| [VALUE-AUDIT.html](VALUE-AUDIT.html) | Executives / Directors | Decision value report — Maturity Level 5, 8/8 decisions with high confidence |
 
 Root-level documents:
 - `README.md` — Project overview, installation, and usage
