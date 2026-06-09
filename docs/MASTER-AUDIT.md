@@ -3,7 +3,7 @@
 > **Auditoria mestra — compilado de todas as dimensões de verificação**
 > **Stack:** Python 3.11 · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5 · pt-BR
 > **Data:** 2026-06-06
-> **Última atualização:** 2026-06-07 — Sprint 1, Sprint 2, Sprint 3 e v2.0.0RC_PMAS concluídos (16/17 achados resolvidos)
+> **Última atualização:** 2026-06-08 — Sprint 1, Sprint 2, Sprint 3, v2.0.0RC_PMAS e v2.0.1_PMAS concluídos (16/17 achados resolvidos)
 > **Referências:** PMI-019-006 (EVM) · AgileEVM 2006 · Nielsen 10 Heuristics · WCAG 2.2 · ISO 8601 · ECMA-402
 
 ---
@@ -30,8 +30,8 @@
 
 ### Diagnóstico em 4 parágrafos
 
-**Estado operacional (pós Sprint 1 + Sprint 2 + Sprint 3 + v2.0.0RC_PMAS):**
-O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. O sistema atinge Maturidade Nível 5 (Preditivo): detecta proativamente risco de SPI via `notify_schedule_risk` e mantém uma Central de Alertas consultável. Não há risco para decisões baseadas nos números apresentados.
+**Estado operacional (pós Sprint 1 + Sprint 2 + Sprint 3 + v2.0.0RC_PMAS + v2.0.1_PMAS):**
+O PMAS está em condições plenas de uso para gestão de projetos com EVM. As métricas CPI, SPI, EAC, TCPI, VAC, CV, SV e Earned Schedule são calculadas corretamente, centralizadas em `services/evm.py`, e expostas via respostas render-ready nas 10 rotas v2. O sistema atinge Maturidade Nível 5 (Preditivo): detecta proativamente risco de SPI via `notify_schedule_risk` e mantém uma Central de Alertas consultável. Não há risco para decisões baseadas nos números apresentados. v2.0.1 corrigiu 5 itens de polish UI (paginação, ordem do Admin, semáforo no recarregamento de página, botão Rejeitar, sino de alertas persistentes).
 
 **Arquitetura após Sprint 3 + v2.0.0RC:**
 `frontend/app.js` reduzido de 5.634 para 720 linhas (−87%) com extração de 5 módulos de tab. Zero `style=` inline em `index.html`. `ingestion.py` refatorado em 6 funções de fase com 44 testes unitários independentes. Adicionados: modelo `ProjectAlert`, modelo `Notification`, routers `project_alerts.py` e `notifications.py`, detecção automática de risco de SPI após cada upload.

@@ -244,6 +244,30 @@ All formulas live in `backend/app/services/evm.py`. Reference:
 | `classify_health(consumed, budget, warn_t, crit_t)` | values + thresholds | `"ok"\|"warning"\|"critical"\|"no_budget"` |
 | `freeze_spi_boundary(actual_s, plan_s)` | list of (date,h) pairs | `(float, float)` |
 
+### Physical Percent Complete — dual EV mode
+
+`v2/forecast.py` supports two mutually exclusive ways to compute Earned Value. **Never add a third path** without an explicit decision.
+
+| Condition | EV formula | `uses_physical_pct` |
+|---|---|---|
+| No `physical_pct` declared on any `ProjectCyclePlan` row | `min(h_consumed/h_budget, 1.0) × BAC_cost` | `False` |
+| At least one row with `physical_pct IS NOT NULL` **and** `budget_cost > 0` | `last_physical_pct × BAC_cost` | `True` |
+
+`last_physical_pct` is the value from the **most recent cycle** (walking backwards through `cycle_data`) that has a non-null declaration. It is **not** averaged — it is the latest PM statement about cumulative completion.
+
+Switching to Physical mode also changes `remaining_hours`:
+```python
+# Physical mode
+remaining_hours = max((1.0 - last_physical_pct) * budget_hours, 0.0)
+
+# Hours-proxy mode (default)
+remaining_hours = max(budget_hours - consumed_hours, 0.0)
+```
+
+All downstream metrics — CPI, CV, TCPI, EAC, VAC, cycle estimates — derive from whichever EV is active. **Do not pass `last_physical_pct` into any EVM function that expects an hours value.** It is a ratio (0.0–1.0), not hours.
+
+The `uses_physical_pct` and `last_physical_pct` flags are returned in the forecast response so the frontend can render the badge and inform the user which mode is active.
+
 ### Velocity window rules (do not standardize without explicit decision)
 
 | Context | Window | Location | Notes |

@@ -726,5 +726,5 @@ document.addEventListener('visibilitychange', () => {
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');
-  _bootApp();
+  setTimeout(_bootApp, 0);
 }
