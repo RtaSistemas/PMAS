@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, get_current_user_allow_change
 from backend.app.main import app
 from backend.app.models import User
 from backend.app.routers.auth import hash_password
@@ -24,6 +24,7 @@ def _acting_as(user: User):
     """Temporarily impersonate *user* for one TestClient block."""
     saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_user_allow_change] = lambda: user
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
     app.dependency_overrides.clear()

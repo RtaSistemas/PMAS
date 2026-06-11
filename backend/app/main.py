@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 import logging.config
+import logging.handlers
 import os
 import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +16,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from backend.app.database import init_db
+from backend.app.database import DbSession, init_db
 from backend.app.limiter import limiter
 from backend.app.routers import (
     acl, auditlog, auth, baselines, cycles, dashboard,
@@ -36,6 +37,25 @@ from backend.app.routers.v2 import (
 # ── Logging ───────────────────────────────────────────────────────────────────
 
 _LOG_LEVEL = os.getenv("PMAS_LOG_LEVEL", "INFO").upper()
+_LOG_FILE  = os.getenv("PMAS_LOG_FILE", "")   # empty = console only
+
+_handlers: list[str] = ["console"]
+_handler_cfg: dict = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "formatter": "standard",
+    },
+}
+if _LOG_FILE:
+    _handler_cfg["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "formatter": "standard",
+        "filename": _LOG_FILE,
+        "maxBytes": 10 * 1024 * 1024,   # 10 MB per file
+        "backupCount": 5,
+        "encoding": "utf-8",
+    }
+    _handlers.append("file")
 
 logging.config.dictConfig({
     "version": 1,
@@ -46,13 +66,8 @@ logging.config.dictConfig({
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "standard",
-        },
-    },
-    "root": {"level": _LOG_LEVEL, "handlers": ["console"]},
+    "handlers": _handler_cfg,
+    "root": {"level": _LOG_LEVEL, "handlers": _handlers},
     "loggers": {
         "sqlalchemy.engine": {"level": "WARNING", "propagate": True},
         "uvicorn":           {"propagate": True},
@@ -76,7 +91,7 @@ async def _lifespan(app: FastAPI):
 app = FastAPI(
     title="PMAS API",
     description="Project Management Assistant System — Timesheet Foundation",
-    version="2.0.0RC",
+    version="2.0.2",
     lifespan=_lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -87,6 +102,30 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ── Security headers ──────────────────────────────────────────────────────────
+
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none';"
+)
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = _CSP
+    return response
+
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 
@@ -166,6 +205,17 @@ def health():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": app.version,
     }
+
+
+@app.get("/ready", tags=["ops"])
+def ready(db: DbSession):
+    from sqlalchemy import text as _text
+    try:
+        db.execute(_text("SELECT 1"))
+    except Exception:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(status_code=503, detail="Database unavailable.")
+    return {"status": "ready"}
 
 
 @app.get("/", include_in_schema=False)

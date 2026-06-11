@@ -18,7 +18,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, get_current_user_allow_change
 from backend.app.main import app
 from backend.app.models import (
     Collaborator,
@@ -142,6 +142,7 @@ def _acting_as(user):
     saved = dict(app.dependency_overrides)
     try:
         app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_user_allow_change] = lambda: user
         with TestClient(app, raise_server_exceptions=True) as c:
             yield c
     finally:

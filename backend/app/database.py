@@ -118,129 +118,178 @@ def _seed_admin() -> None:
 
 
 def _migrate_columns() -> None:
-    """Add columns introduced after the initial schema without dropping data."""
+    """Apply incremental schema migrations tracked in the schema_migration table.
+
+    Each migration step is guarded by a unique version key so it runs exactly once,
+    even across multiple worker processes starting concurrently.
+    """
+    from datetime import datetime as _dt
     from sqlalchemy import text
+
+    def _applied(conn, v: str) -> bool:
+        return conn.execute(
+            text("SELECT 1 FROM schema_migration WHERE version = :v"), {"v": v}
+        ).first() is not None
+
+    def _mark(conn, v: str) -> None:
+        conn.execute(
+            text("INSERT OR IGNORE INTO schema_migration (version, applied_at) VALUES (:v, :a)"),
+            {"v": v, "a": _dt.utcnow().isoformat()},
+        )
+
     try:
         with engine.begin() as conn:
-            tr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(timesheet_record)"))}
-            if "cost_per_hour" not in tr_cols:
-                conn.execute(text(
-                    "ALTER TABLE timesheet_record"
-                    " ADD COLUMN cost_per_hour FLOAT NOT NULL DEFAULT 0.0"
-                ))
-            c_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(collaborator)"))}
-            if "seniority_level_id" not in c_cols:
-                conn.execute(text(
-                    "ALTER TABLE collaborator"
-                    " ADD COLUMN seniority_level_id INTEGER REFERENCES seniority_level(id)"
-                ))
-            p_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project)"))}
-            if "budget_cost" not in p_cols:
-                conn.execute(text(
-                    "ALTER TABLE project ADD COLUMN budget_cost FLOAT"
-                ))
-            if "status" not in p_cols:
-                conn.execute(text(
-                    "ALTER TABLE project ADD COLUMN status VARCHAR NOT NULL DEFAULT 'ativo'"
-                ))
-            if "client" not in p_cols:
-                conn.execute(text("ALTER TABLE project ADD COLUMN client VARCHAR"))
-            if "manager" not in p_cols:
-                conn.execute(text("ALTER TABLE project ADD COLUMN manager VARCHAR"))
-            if "start_date" not in p_cols:
-                conn.execute(text("ALTER TABLE project ADD COLUMN start_date DATE"))
-            if "planned_end_date" not in p_cols:
-                conn.execute(text("ALTER TABLE project ADD COLUMN planned_end_date DATE"))
-            if "completion_date" not in p_cols:
-                conn.execute(text("ALTER TABLE project ADD COLUMN completion_date DATE"))
-            cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
-            if "is_closed" not in cy_cols:
-                conn.execute(text(
-                    "ALTER TABLE cycle ADD COLUMN is_closed BOOLEAN NOT NULL DEFAULT 0"
-                ))
-            if "is_active" not in cy_cols:
-                conn.execute(text(
-                    "ALTER TABLE cycle ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
-                ))
-            gc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(global_config)"))}
-            if "anomaly_max_daily_hours" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN anomaly_max_daily_hours FLOAT NOT NULL DEFAULT 24.0"
-                ))
-            if "budget_warning_threshold" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN budget_warning_threshold FLOAT NOT NULL DEFAULT 0.9"
-                ))
-            if "budget_critical_threshold" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN budget_critical_threshold FLOAT NOT NULL DEFAULT 1.0"
-                ))
-            if "ui_theme" not in gc_cols:
-                conn.execute(text("ALTER TABLE global_config ADD COLUMN ui_theme JSON"))
-            if "logo_path" not in gc_cols:
-                conn.execute(text("ALTER TABLE global_config ADD COLUMN logo_path VARCHAR"))
-            if "timezone" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN timezone VARCHAR NOT NULL DEFAULT 'America/Sao_Paulo'"
-                ))
-            if "spi_warning_threshold" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN spi_warning_threshold FLOAT NOT NULL DEFAULT 0.85"
-                ))
-            if "spi_risk_consecutive_cycles" not in gc_cols:
-                conn.execute(text(
-                    "ALTER TABLE global_config"
-                    " ADD COLUMN spi_risk_consecutive_cycles INTEGER NOT NULL DEFAULT 2"
-                ))
-            pcp_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project_cycle_plan)"))}
-            if "planned_cost" not in pcp_cols:
-                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN planned_cost FLOAT"))
-            if "physical_pct" not in pcp_cols:
-                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN physical_pct FLOAT"))
-            if "physical_note" not in pcp_cols:
-                conn.execute(text("ALTER TABLE project_cycle_plan ADD COLUMN physical_note TEXT"))
-            qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
-            if "review_status" not in qr_cols:
-                conn.execute(text(
-                    "ALTER TABLE quarantine_record"
-                    " ADD COLUMN review_status VARCHAR NOT NULL DEFAULT 'pending'"
-                ))
-            # Fase 1 — frozen cost columns on TimesheetRecord
-            if "normal_cost" not in tr_cols:
-                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN normal_cost FLOAT"))
-            if "extra_cost" not in tr_cols:
-                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN extra_cost FLOAT"))
-            if "standby_cost" not in tr_cols:
-                conn.execute(text("ALTER TABLE timesheet_record ADD COLUMN standby_cost FLOAT"))
-            u_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(\"user\")"))}
-            if "must_change_password" not in u_cols:
-                conn.execute(text(
-                    "ALTER TABLE \"user\" ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
-                ))
-            # budget_revision table (F7)
-            tables = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
-            if "budget_revision" not in tables:
-                conn.execute(text("""
-                    CREATE TABLE budget_revision (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
-                        old_budget_hours FLOAT,
-                        old_budget_cost FLOAT,
-                        new_budget_hours FLOAT,
-                        new_budget_cost FLOAT,
-                        reason TEXT,
-                        changed_by VARCHAR NOT NULL,
-                        changed_at DATETIME NOT NULL
-                    )
-                """))
-                conn.execute(text(
-                    "CREATE INDEX ix_budget_revision_project ON budget_revision(project_id)"
-                ))
+            # Bootstrap: create the migration-tracking table itself
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS schema_migration (
+                    version TEXT PRIMARY KEY,
+                    applied_at TEXT NOT NULL
+                )
+            """))
+
+            # M001 — cost_per_hour on timesheet_record
+            if not _applied(conn, "M001_tr_cost_per_hour"):
+                tr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(timesheet_record)"))}
+                if "cost_per_hour" not in tr_cols:
+                    conn.execute(text(
+                        "ALTER TABLE timesheet_record"
+                        " ADD COLUMN cost_per_hour FLOAT NOT NULL DEFAULT 0.0"
+                    ))
+                _mark(conn, "M001_tr_cost_per_hour")
+
+            # M002 — seniority_level_id on collaborator
+            if not _applied(conn, "M002_collab_seniority"):
+                c_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(collaborator)"))}
+                if "seniority_level_id" not in c_cols:
+                    conn.execute(text(
+                        "ALTER TABLE collaborator"
+                        " ADD COLUMN seniority_level_id INTEGER REFERENCES seniority_level(id)"
+                    ))
+                _mark(conn, "M002_collab_seniority")
+
+            # M003 — extended columns on project
+            if not _applied(conn, "M003_project_v1"):
+                p_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project)"))}
+                for col, defn in [
+                    ("budget_cost",      "ALTER TABLE project ADD COLUMN budget_cost FLOAT"),
+                    ("status",           "ALTER TABLE project ADD COLUMN status VARCHAR NOT NULL DEFAULT 'ativo'"),
+                    ("client",           "ALTER TABLE project ADD COLUMN client VARCHAR"),
+                    ("manager",          "ALTER TABLE project ADD COLUMN manager VARCHAR"),
+                    ("start_date",       "ALTER TABLE project ADD COLUMN start_date DATE"),
+                    ("planned_end_date", "ALTER TABLE project ADD COLUMN planned_end_date DATE"),
+                    ("completion_date",  "ALTER TABLE project ADD COLUMN completion_date DATE"),
+                ]:
+                    if col not in p_cols:
+                        conn.execute(text(defn))
+                _mark(conn, "M003_project_v1")
+
+            # M004 — is_closed / is_active on cycle
+            if not _applied(conn, "M004_cycle_v1"):
+                cy_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(cycle)"))}
+                if "is_closed" not in cy_cols:
+                    conn.execute(text("ALTER TABLE cycle ADD COLUMN is_closed BOOLEAN NOT NULL DEFAULT 0"))
+                if "is_active" not in cy_cols:
+                    conn.execute(text("ALTER TABLE cycle ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+                _mark(conn, "M004_cycle_v1")
+
+            # M005 — global_config v1 columns
+            if not _applied(conn, "M005_gc_v1"):
+                gc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(global_config)"))}
+                for col, defn in [
+                    ("anomaly_max_daily_hours",   "ALTER TABLE global_config ADD COLUMN anomaly_max_daily_hours FLOAT NOT NULL DEFAULT 24.0"),
+                    ("budget_warning_threshold",  "ALTER TABLE global_config ADD COLUMN budget_warning_threshold FLOAT NOT NULL DEFAULT 0.9"),
+                    ("budget_critical_threshold", "ALTER TABLE global_config ADD COLUMN budget_critical_threshold FLOAT NOT NULL DEFAULT 1.0"),
+                    ("ui_theme",                  "ALTER TABLE global_config ADD COLUMN ui_theme JSON"),
+                    ("logo_path",                 "ALTER TABLE global_config ADD COLUMN logo_path VARCHAR"),
+                    ("timezone",                  "ALTER TABLE global_config ADD COLUMN timezone VARCHAR NOT NULL DEFAULT 'America/Sao_Paulo'"),
+                ]:
+                    if col not in gc_cols:
+                        conn.execute(text(defn))
+                _mark(conn, "M005_gc_v1")
+
+            # M006 — SPI risk thresholds on global_config
+            if not _applied(conn, "M006_gc_spi_thresholds"):
+                gc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(global_config)"))}
+                if "spi_warning_threshold" not in gc_cols:
+                    conn.execute(text("ALTER TABLE global_config ADD COLUMN spi_warning_threshold FLOAT NOT NULL DEFAULT 0.85"))
+                if "spi_risk_consecutive_cycles" not in gc_cols:
+                    conn.execute(text("ALTER TABLE global_config ADD COLUMN spi_risk_consecutive_cycles INTEGER NOT NULL DEFAULT 2"))
+                _mark(conn, "M006_gc_spi_thresholds")
+
+            # M007 — planned_cost / physical_pct / physical_note on project_cycle_plan
+            if not _applied(conn, "M007_pcp_v1"):
+                pcp_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(project_cycle_plan)"))}
+                for col, defn in [
+                    ("planned_cost",  "ALTER TABLE project_cycle_plan ADD COLUMN planned_cost FLOAT"),
+                    ("physical_pct",  "ALTER TABLE project_cycle_plan ADD COLUMN physical_pct FLOAT"),
+                    ("physical_note", "ALTER TABLE project_cycle_plan ADD COLUMN physical_note TEXT"),
+                ]:
+                    if col not in pcp_cols:
+                        conn.execute(text(defn))
+                _mark(conn, "M007_pcp_v1")
+
+            # M008 — review_status on quarantine_record
+            if not _applied(conn, "M008_qr_review_status"):
+                qr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(quarantine_record)"))}
+                if "review_status" not in qr_cols:
+                    conn.execute(text(
+                        "ALTER TABLE quarantine_record"
+                        " ADD COLUMN review_status VARCHAR NOT NULL DEFAULT 'pending'"
+                    ))
+                _mark(conn, "M008_qr_review_status")
+
+            # M009 — frozen cost columns on timesheet_record
+            if not _applied(conn, "M009_tr_frozen_costs"):
+                tr_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(timesheet_record)"))}
+                for col in ("normal_cost", "extra_cost", "standby_cost"):
+                    if col not in tr_cols:
+                        conn.execute(text(f"ALTER TABLE timesheet_record ADD COLUMN {col} FLOAT"))
+                _mark(conn, "M009_tr_frozen_costs")
+
+            # M010 — must_change_password on user
+            if not _applied(conn, "M010_user_must_change_password"):
+                u_cols = {row[1] for row in conn.execute(text('PRAGMA table_info("user")'))}
+                if "must_change_password" not in u_cols:
+                    conn.execute(text(
+                        'ALTER TABLE "user" ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0'
+                    ))
+                _mark(conn, "M010_user_must_change_password")
+
+            # M011 — budget_revision table
+            if not _applied(conn, "M011_budget_revision_table"):
+                tables = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
+                if "budget_revision" not in tables:
+                    conn.execute(text("""
+                        CREATE TABLE budget_revision (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                            old_budget_hours FLOAT,
+                            old_budget_cost FLOAT,
+                            new_budget_hours FLOAT,
+                            new_budget_cost FLOAT,
+                            reason TEXT,
+                            changed_by VARCHAR NOT NULL,
+                            changed_at DATETIME NOT NULL
+                        )
+                    """))
+                    conn.execute(text(
+                        "CREATE INDEX ix_budget_revision_project ON budget_revision(project_id)"
+                    ))
+                _mark(conn, "M011_budget_revision_table")
+
+            # M012 — login lockout columns on user
+            if not _applied(conn, "M012_user_lockout"):
+                u_cols = {row[1] for row in conn.execute(text('PRAGMA table_info("user")'))}
+                if "failed_login_attempts" not in u_cols:
+                    conn.execute(text(
+                        'ALTER TABLE "user" ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0'
+                    ))
+                if "locked_until" not in u_cols:
+                    conn.execute(text(
+                        'ALTER TABLE "user" ADD COLUMN locked_until DATETIME'
+                    ))
+                _mark(conn, "M012_user_lockout")
+
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 

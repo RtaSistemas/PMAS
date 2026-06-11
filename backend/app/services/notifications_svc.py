@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from sqlalchemy.orm import Session
 
 from backend.app.models import Notification
 from backend.app.utils import now_br
+
+_DEDUP_WINDOW_HOURS = 24
 
 
 def create_notification(
@@ -12,7 +16,20 @@ def create_notification(
     message: str,
     level: str = "info",
 ) -> Notification:
-    """Create a Notification and add it to the session. Caller must commit."""
+    """Create a Notification, skipping if an identical unread one was sent in the last 24 h."""
+    cutoff = now_br() - timedelta(hours=_DEDUP_WINDOW_HOURS)
+    existing = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.message == message,
+            Notification.is_read == False,  # noqa: E712
+            Notification.created_at >= cutoff,
+        )
+        .first()
+    )
+    if existing:
+        return existing
     notif = Notification(user_id=user_id, message=message, level=level)
     db.add(notif)
     return notif

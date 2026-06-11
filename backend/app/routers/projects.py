@@ -3,11 +3,12 @@ from __future__ import annotations
 import io
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.limiter import limiter
 from backend.app.models import BudgetRevision, Project, UserProjectAccess
 from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
 from backend.app.utils import _str_or_none, now_br
@@ -68,7 +69,8 @@ MAX_CSV_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post("", summary="Criar projeto", status_code=201, response_model=ProjectOut)
-def create_project(body: ProjectIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def create_project(request: Request, body: ProjectIn, db: DbSession, current_user: AdminUser):
     if db.query(Project).filter(Project.pep_wbs == body.pep_wbs).first():
         raise HTTPException(status_code=409, detail="Já existe um projeto com esse código PEP.")
     project = Project(**body.model_dump())
@@ -83,7 +85,8 @@ def create_project(body: ProjectIn, db: DbSession, current_user: AdminUser):
 
 
 @router.put("/{project_id}", summary="Atualizar projeto", response_model=ProjectOut)
-def update_project(project_id: int, body: ProjectUpdateIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def update_project(request: Request, project_id: int, body: ProjectUpdateIn, db: DbSession, current_user: AdminUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
@@ -137,7 +140,8 @@ def get_budget_history(project_id: int, db: DbSession, current_user: CurrentUser
 
 
 @router.post("/import", summary="Importar projetos via CSV", response_model=ImportResultOut)
-def import_projects(file: UploadFile, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def import_projects(request: Request, file: UploadFile, db: DbSession, current_user: AdminUser):
     try:
         raw = file.file.read()
         if len(raw) > MAX_CSV_BYTES:
@@ -197,7 +201,8 @@ def import_projects(file: UploadFile, db: DbSession, current_user: AdminUser):
 
 
 @router.delete("/{project_id}", summary="Excluir projeto", status_code=204)
-def delete_project(project_id: int, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def delete_project(request: Request, project_id: int, db: DbSession, current_user: AdminUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")

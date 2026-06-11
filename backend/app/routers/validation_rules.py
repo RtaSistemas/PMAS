@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.limiter import limiter
 from backend.app.models import ValidationRule
 from backend.app.schemas import ValidationRuleIn, ValidationRuleOut
 
@@ -23,7 +24,8 @@ def list_rules(db: DbSession, _: AdminUser):
 
 
 @router.post("", response_model=ValidationRuleOut, status_code=201)
-def create_rule(payload: ValidationRuleIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def create_rule(request: Request, payload: ValidationRuleIn, db: DbSession, current_user: AdminUser):
     rule = ValidationRule(
         is_active=payload.is_active,
         is_system=False,
@@ -47,7 +49,8 @@ def create_rule(payload: ValidationRuleIn, db: DbSession, current_user: AdminUse
 
 
 @router.put("/{rule_id}", response_model=ValidationRuleOut)
-def update_rule(rule_id: int, payload: ValidationRuleIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def update_rule(request: Request, rule_id: int, payload: ValidationRuleIn, db: DbSession, current_user: AdminUser):
     rule = db.get(ValidationRule, rule_id)
     if rule is None:
         raise HTTPException(status_code=404, detail="Regra não encontrada.")
@@ -86,7 +89,8 @@ def update_rule(rule_id: int, payload: ValidationRuleIn, db: DbSession, current_
 
 
 @router.delete("/{rule_id}", status_code=204)
-def delete_rule(rule_id: int, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def delete_rule(request: Request, rule_id: int, db: DbSession, current_user: AdminUser):
     rule = db.get(ValidationRule, rule_id)
     if rule is None:
         raise HTTPException(status_code=404, detail="Regra não encontrada.")
@@ -98,7 +102,8 @@ def delete_rule(rule_id: int, db: DbSession, current_user: AdminUser):
 
 
 @router.patch("/{rule_id}/toggle", response_model=ValidationRuleOut)
-def toggle_rule(rule_id: int, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def toggle_rule(request: Request, rule_id: int, db: DbSession, current_user: AdminUser):
     rule = db.get(ValidationRule, rule_id)
     if rule is None:
         raise HTTPException(status_code=404, detail="Regra não encontrada.")
@@ -112,7 +117,8 @@ def toggle_rule(rule_id: int, db: DbSession, current_user: AdminUser):
 
 
 @router.post("/reorder", response_model=list[ValidationRuleOut])
-def reorder_rules(order_map: dict[int, int], db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def reorder_rules(request: Request, order_map: dict[int, int], db: DbSession, current_user: AdminUser):
     """Bulk update order field. Body: {rule_id: new_order, ...}"""
     rules = db.query(ValidationRule).filter(ValidationRule.id.in_(order_map.keys())).all()
     for rule in rules:

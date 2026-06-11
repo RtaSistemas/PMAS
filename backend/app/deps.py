@@ -30,10 +30,8 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: DbSession,
-) -> User:
+def _resolve_user(token: str, db) -> User:
+    """Decode the JWT and return the User row; raises 401 on any failure."""
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido ou expirado.",
@@ -52,7 +50,33 @@ def get_current_user(
     return user
 
 
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: DbSession,
+) -> User:
+    user = _resolve_user(token, db)
+    if getattr(user, "must_change_password", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Senha temporária — altere a senha antes de continuar.",
+            headers={"X-PMAS-Must-Change-Password": "true"},
+        )
+    return user
+
+
+def get_current_user_allow_change(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: DbSession,
+) -> User:
+    """Same as get_current_user but does not block users with must_change_password.
+    Used exclusively by the change-password endpoint so that a forced-change user
+    can authenticate long enough to set a new password.
+    """
+    return _resolve_user(token, db)
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUserFlex = Annotated[User, Depends(get_current_user_allow_change)]
 
 
 def require_admin(current_user: CurrentUser) -> User:

@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [2.0.2_PMAS] — 2026-06-11
+
+Stability and robustness release. No new end-user features; all changes harden the backend against misuse, data loss, and accidental misconfiguration.
+
+### Added
+
+- **`GET /ready` liveness probe** — runs `SELECT 1` against the database and returns `{"status":"ready"}` (200) or `{"detail":"Database unavailable."}` (503). Suitable for container orchestration health checks.
+- **Rotating file log handler** — set `PMAS_LOG_FILE=/path/to/pmas.log` to write logs to a rotating file (10 MB × 5 backups) in addition to stdout. Console logging is unchanged when the variable is not set.
+- **Security headers middleware** — every HTTP response now includes `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Content-Security-Policy` restricting resource origins to `'self'`.
+- **Rate limiting on write routes** — `@limiter.limit("30/minute")` applied to all POST / PUT / PATCH / DELETE handlers in `/api/projects`, `/api/cycles`, `/api/users`, and `/api/validation-rules`. Upload and login were already limited.
+- **`must_change_password` backend enforcement** — `get_current_user` now raises HTTP 403 (`X-PMAS-Must-Change-Password: true`) when the user's flag is set, blocking access to all routes except `PATCH /api/users/{id}/password`. The password-change endpoint uses the new `get_current_user_allow_change` dependency, which bypasses the flag check to allow the forced update.
+- **Notification deduplication (24-hour window)** — `create_notification()` in `notifications_svc.py` checks for an existing unread notification with the same `(user_id, message)` created within the last 24 hours before inserting a new row. Prevents bell-tray spam when the same alert condition persists across multiple uploads.
+- **Schema migration version table** — `_migrate_columns()` in `database.py` now creates and consults a `schema_migration` table. Each migration step is keyed (M001–M012) and runs exactly once. Prevents `ALTER TABLE` races during multi-worker startup and provides a queryable history of applied migrations.
+- **Login lockout** — after 5 consecutive failed login attempts the account is locked for 15 minutes (`locked_until` column on `User`). Successful login resets the counter. New columns (`failed_login_attempts INTEGER DEFAULT 0`, `locked_until DATETIME`) added via migration M012.
+
+### Changed
+
+- API `version` bumped to `2.0.2` in `main.py`.
+
+---
+
 ## [2.0.1_PMAS] — 2026-06-08
 
 UI polish and notification reliability release.

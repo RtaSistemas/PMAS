@@ -4,13 +4,14 @@ import io
 from datetime import date as DateType
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, get_current_user
+from backend.app.limiter import limiter
 from backend.app.models import Cycle, TimesheetRecord
 from backend.app.schemas import CycleIn, CycleOut, ImportResultOut
 
@@ -64,7 +65,8 @@ def list_cycles(db: DbSession, include_archived: bool = False):
 
 
 @router.post("", summary="Criar ciclo", status_code=201, response_model=CycleOut)
-def create_cycle(body: CycleIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def create_cycle(request: Request, body: CycleIn, db: DbSession, current_user: AdminUser):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="end_date deve ser >= start_date.")
     _check_overlap(db, body.start_date, body.end_date)
@@ -82,7 +84,8 @@ def create_cycle(body: CycleIn, db: DbSession, current_user: AdminUser):
 
 
 @router.put("/{cycle_id}", summary="Atualizar ciclo", response_model=CycleOut)
-def update_cycle(cycle_id: int, body: CycleIn, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def update_cycle(request: Request, cycle_id: int, body: CycleIn, db: DbSession, current_user: AdminUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -100,7 +103,8 @@ def update_cycle(cycle_id: int, body: CycleIn, db: DbSession, current_user: Admi
 
 
 @router.patch("/{cycle_id}/toggle-status", summary="Bloquear/desbloquear ciclo", response_model=CycleOut)
-def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
+@limiter.limit("30/minute")
+def toggle_cycle_status(request: Request, cycle_id: int, db: DbSession, _admin: AdminUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -113,7 +117,8 @@ def toggle_cycle_status(cycle_id: int, db: DbSession, _admin: AdminUser):
 
 
 @router.patch("/{cycle_id}/toggle-archive", summary="Arquivar/restaurar ciclo", response_model=CycleOut)
-def toggle_cycle_archive(cycle_id: int, db: DbSession, _admin: AdminUser):
+@limiter.limit("30/minute")
+def toggle_cycle_archive(request: Request, cycle_id: int, db: DbSession, _admin: AdminUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")
@@ -129,7 +134,8 @@ MAX_CSV_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post("/import", summary="Importar ciclos via CSV", response_model=ImportResultOut)
-def import_cycles(file: UploadFile, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def import_cycles(request: Request, file: UploadFile, db: DbSession, current_user: AdminUser):
     try:
         raw = file.file.read()
         if len(raw) > MAX_CSV_BYTES:
@@ -180,7 +186,8 @@ def import_cycles(file: UploadFile, db: DbSession, current_user: AdminUser):
 
 
 @router.delete("/{cycle_id}", summary="Excluir ciclo", status_code=204)
-def delete_cycle(cycle_id: int, db: DbSession, current_user: AdminUser):
+@limiter.limit("30/minute")
+def delete_cycle(request: Request, cycle_id: int, db: DbSession, current_user: AdminUser):
     cycle = db.get(Cycle, cycle_id)
     if cycle is None:
         raise HTTPException(status_code=404, detail="Ciclo não encontrado.")

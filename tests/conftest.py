@@ -8,7 +8,7 @@ from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.database import Base, get_db
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, get_current_user_allow_change
 from backend.app.main import app
 import backend.app.models  # noqa: F401 — registers all models in Base.metadata
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord, User, ValidationRule
@@ -52,6 +52,7 @@ _MOCK_ADMIN = User(id=9999, username="test_admin", hashed_password="", role="adm
 def client(create_tables):
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = lambda: _MOCK_ADMIN
+    app.dependency_overrides[get_current_user_allow_change] = lambda: _MOCK_ADMIN
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
     app.dependency_overrides.clear()

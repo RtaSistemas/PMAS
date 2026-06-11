@@ -177,6 +177,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user")
     must_change_password = Column(Boolean, default=False, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
 
     project_access = relationship("UserProjectAccess", back_populates="user", cascade="all, delete-orphan")
     preference = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
