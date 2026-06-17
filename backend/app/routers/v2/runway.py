@@ -70,9 +70,9 @@ def get_runway(
                 + TimesheetRecord.standby_hours
             ).label("period_hours"),
             func.sum(
-                TimesheetRecord.normal_cost
-                + TimesheetRecord.extra_cost
-                + TimesheetRecord.standby_cost
+                func.coalesce(TimesheetRecord.normal_cost, 0.0)
+                + func.coalesce(TimesheetRecord.extra_cost, 0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("period_cost"),
         )
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)

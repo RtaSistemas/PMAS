@@ -50,9 +50,9 @@ def get_allocation(
             func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
             func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
             func.sum(
-                TimesheetRecord.normal_cost
-                + TimesheetRecord.extra_cost
-                + TimesheetRecord.standby_cost
+                func.coalesce(TimesheetRecord.normal_cost, 0.0)
+                + func.coalesce(TimesheetRecord.extra_cost, 0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
