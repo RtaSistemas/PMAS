@@ -980,8 +980,8 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         fc.history.forEach(h => {
           // Honour cycle filter when active
           if (cycleIds.length > 0 && !selectedCycleNames.has(h.cycle_name)) return;
-          if (h.cumulative_cost > 0 && h.cumulative_ev_cost != null) {
-            points.push({ cycleName: h.cycle_name, cpi: +(h.cumulative_ev_cost / h.cumulative_cost).toFixed(3) });
+          if (h.cpi_cumulative != null) {
+            points.push({ cycleName: h.cycle_name, cpi: h.cpi_cumulative });
           }
           if (h.spi_cumulative != null) spiMap[h.cycle_name] = h.spi_cumulative;
         });

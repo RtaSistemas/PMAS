@@ -175,6 +175,7 @@ def get_forecast(
             "cumulative_planned_hours":  round(cum_ph, 2) if has_plan else None,
             "cumulative_planned_cost":   round(cum_pc, 2) if has_any_planned_cost else None,
             "cumulative_ev_cost":        ev_cost_cum,
+            "cpi_cumulative":            compute_cpi(ev_cost_cum, cum_c),
             "ev_source":                 ev_source,
             "physical_pct":              cycle_phys_pct,
             "spi_cumulative":            spi_cum,
