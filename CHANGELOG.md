@@ -6,6 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [2.0.3_PMAS] — 2026-06-17
+
+Audit remediation release. All 8 findings from PMAS-AUDIT.md resolved. No new end-user features.
+
+### Fixed
+
+- **DI-01 (HIGH)** — NULL cost columns no longer silently drop rows from `/api/v2/runway` and `/api/v2/allocation`. `func.coalesce(..., 0.0)` applied to each cost column in both endpoints. Regression test added: `TestNullCostRegression`.
+- **GR-2-01 (HIGH)** — `simulate.py` was computing EAC inline, violating GR-2. New `compute_eac_avg_rate(actual_cost, consumed_hours, remaining_hours)` function added to `services/evm.py`; `simulate.py` now delegates to it. Unit tests: `TestComputeEacAvgRate` (6 cases).
+- **GR-2-02 (MEDIUM)** — `dashboard.js` was computing cumulative CPI client-side via `ev/ac` division, duplicating EVM logic. `forecast.py` now includes `cpi_cumulative` in every history entry (via `compute_cpi`); the frontend reads it directly. Regression tests: `TestCpiCumulativeInHistory`.
+- **AR-01 (LOW)** — `dashboard.js` classified SPI(t) color using a hardcoded 0.8 threshold, inconsistent with the server's 0.9 threshold used for all other indicators. `forecast.py` now includes `spi_t_color` computed via `spi_color(spi_t)`; the frontend maps it to a CSS class. Regression tests: `TestSpiTColorInForecast`.
+- **GR-3-01 (LOW)** — `charts/forecast.js` and `charts/portfolio.js` used `|| '#hex'` fallbacks (e.g. `_cssVar('--green') || '#22c55e'`). All 12 occurrences removed. `test_gr3_no_hex_in_chart_color_properties` extended to cover `charts/*.js` and `tabs/*.js`; new `test_gr3_no_hex_fallback_in_charts` detects `|| '#hex'` patterns.
+- **AR-02 (LOW)** — Added clarifying comment in `notifications_svc.py` explaining that `compute_spi` is called with period-level values intentionally for per-cycle consecutive-risk detection.
+
+### Performance
+
+- **PF-01 (MEDIUM)** — Added `Index('ix_timesheet_record_date', TimesheetRecord.record_date)` to `models.py`. M013 migration in `database.py` adds the index to existing production databases on startup.
+- **PF-02 (MEDIUM)** — `refresh_pep_cycle` and `refresh_collaborator_cycle` in `summaries.py` replaced O(P×C) nested-loop queries with a single bulk `GROUP BY` aggregation per call. Total SQL round-trips reduced from O(P×C) to O(1) per ingestion regardless of portfolio size. Also fixed a latent bug where `(col or 0)` Python expressions were evaluated at ORM object level (not SQL COALESCE).
+
+### Tests
+
+- 712 tests total (+14 new tests covering all 8 audit findings).
+- No regressions.
+
+---
+
 ## [2.0.2_PMAS] — 2026-06-11
 
 Stability and robustness release. No new end-user features; all changes harden the backend against misuse, data loss, and accidental misconfiguration.

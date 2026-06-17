@@ -516,22 +516,21 @@ flowchart TD
 
 ## Correction Plan
 
-| # | Finding | Severity | File(s) | Action | Effort |
+> **Status: ALL FINDINGS RESOLVED — 2026-06-17 (v2.0.3_PMAS)**
+
+| # | Finding | Severity | File(s) | Action | Status |
 |---|---------|----------|---------|--------|--------|
-| 1 | DI-01: NULL costs dropped in runway | HIGH | `runway.py:72-76`, `allocation.py:52-56` | Add `func.coalesce()` to cost SUM | 30 min |
-| 2 | GR-2-01: simulate.py EAC formula | HIGH | `simulate.py:110-113`, `evm.py` | Add `compute_eac_avg_rate()` to `evm.py`; call it from `simulate.py` | 45 min |
-| 3 | GR-2-02: dashboard.js CPI division | MEDIUM | `forecast.py:162-187`, `dashboard.js:983-984` | Add `cpi_cumulative` to history entries in `forecast.py`; use it in frontend | 30 min |
-| 4 | PF-01: Missing `record_date` index | MEDIUM | `models.py:75`, `database.py` | Add `Index()` declaration + M013 migration | 20 min |
-| 5 | AR-01: SPI(t) hardcoded threshold | LOW | `forecast.py` return block, `dashboard.js:1542` | Add `spi_t_color` from server; remove hardcoded 0.8 | 30 min |
-| 6 | GR-3-01: hex fallbacks in charts | LOW | `charts/forecast.js`, `charts/portfolio.js` | Remove `\|\| '#hex'` fallbacks; extend GR-3 test to `charts/` | 45 min |
-| 7 | PF-02: O(P×C) summary refresh | MEDIUM | `summaries.py:31-93`, `summaries.py:104-161` | Bulk aggregation + single-pass upsert | 2 hrs |
-| 8 | AR-02: SPI semantic mismatch | LOW | `notifications_svc.py:243` | Add explanatory comment or alias function | 15 min |
+| 1 | DI-01: NULL costs dropped in runway | HIGH | `runway.py:72-76`, `allocation.py:52-56` | `func.coalesce()` applied; regression tests added | ✅ commit `851b0a0` |
+| 2 | GR-2-01: simulate.py EAC formula | HIGH | `simulate.py:110-113`, `evm.py` | `compute_eac_avg_rate()` added to `evm.py`; `simulate.py` delegates | ✅ commit `926256c` |
+| 3 | GR-2-02: dashboard.js CPI division | MEDIUM | `forecast.py:162-187`, `dashboard.js:983-984` | `cpi_cumulative` added to history; frontend reads it | ✅ commit `ae8e019` |
+| 4 | PF-01: Missing `record_date` index | MEDIUM | `models.py`, `database.py` | `Index` declaration + M013 migration | ✅ commit `2d6f516` |
+| 5 | AR-01: SPI(t) hardcoded threshold | LOW | `forecast.py` return block, `dashboard.js:1542` | `spi_t_color` added to response; frontend uses it | ✅ commit `c1eb592` |
+| 6 | GR-3-01: hex fallbacks in charts | LOW | `charts/forecast.js`, `charts/portfolio.js` | Fallbacks removed; GR-3 test extended to `charts/` | ✅ commit `bf11e8e` |
+| 7 | PF-02: O(P×C) summary refresh | MEDIUM | `summaries.py` | Bulk GROUP BY aggregation; single-pass upsert | ✅ commit `2cc080b` |
+| 8 | AR-02: SPI semantic mismatch | LOW | `notifications_svc.py:243` | Explanatory comment added | ✅ commit `1f70420` |
 
-**Total estimated remediation effort: ~6 hours for items 1–7.**
-
-Items 1 (DI-01) and 2 (GR-2-01) should be addressed before the next production release.  
-Items 3–6 are recommended for the next sprint.  
-Items 7–8 are backlog candidates.
+**All 8 findings remediated in v2.0.3_PMAS (2026-06-17).**  
+14 new regression tests added. Full suite: 712 passing, 0 failing.
 
 ---
 
