@@ -129,6 +129,22 @@ def compute_eac_schedule(
     return round(actual_cost + (budget_cost - ev_cost) / combined, 2)
 
 
+def compute_eac_avg_rate(
+    actual_cost: float,
+    consumed_hours: float,
+    remaining_hours: float,
+) -> Optional[float]:
+    """EAC = AC + (AC / consumed_h) × remaining_h — historical-rate projection.
+
+    Projects total cost by applying the historical cost-per-hour ratio to the
+    remaining scope.  Used in What-If simulation where a CPI baseline is not
+    available.  Returns None when consumed_hours ≤ 0 or remaining_hours ≤ 0.
+    """
+    if consumed_hours <= 0 or remaining_hours <= 0:
+        return None
+    return round(actual_cost + (actual_cost / consumed_hours) * remaining_hours, 2)
+
+
 def compute_tcpi(
     budget_cost: Optional[float],
     actual_cost: float,

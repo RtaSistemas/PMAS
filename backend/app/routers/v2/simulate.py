@@ -18,7 +18,7 @@ from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Project, ProjectBaseline
 from backend.app.routers.v2.forecast import _load_cycle_data
-from backend.app.services.evm import resolve_effective_budget
+from backend.app.services.evm import compute_eac_avg_rate, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -106,11 +106,8 @@ def simulate_project(
                 projected = min(projected, budget_hours)
             burn_up_projected.append(round(projected, 2))
 
-    # Projected EAC cost
-    avg_cost_rate = consumed_cost / consumed_hours if consumed_hours > 0 else 0.0
-    projected_eac_cost: Optional[float] = None
-    if avg_cost_rate > 0 and remaining > 0:
-        projected_eac_cost = round(consumed_cost + avg_cost_rate * remaining, 2)
+    # Projected EAC cost — delegates to the canonical formula in evm.py (GR-2).
+    projected_eac_cost = compute_eac_avg_rate(consumed_cost, consumed_hours, remaining)
 
     return SimulateOut(
         consumed_hours=round(consumed_hours, 2),

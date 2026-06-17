@@ -176,6 +176,28 @@ class TestSimulate:
         finally:
             app.dependency_overrides = saved
 
+    def test_projected_eac_cost_matches_compute_eac_avg_rate(self, client, db_session, clean_db):
+        """projected_eac_cost must equal compute_eac_avg_rate(AC, consumed_h, remaining_h)."""
+        from backend.app.services.evm import compute_eac_avg_rate
+        proj = _make_project(db_session, "SIM-EAC", "EAC Test", budget_hours=150.0, budget_cost=7_500.0)
+        collab = _make_collab(db_session, "SimEACUser", rate=50.0)
+        c1 = _make_cycle(db_session, "JAN/2025", date(2025, 1, 1), date(2025, 1, 31))
+        c2 = _make_cycle(db_session, "FEV/2025", date(2025, 2, 1), date(2025, 2, 28))
+        _make_record(db_session, collab, c1, proj.pep_wbs, 30.0, rate=50.0)
+        _make_record(db_session, collab, c2, proj.pep_wbs, 20.0, rate=50.0)
+        db_session.commit()
+
+        r = _simulate(client, proj.id, velocity_multiplier=1.0)
+        assert r.status_code == 200
+        body = r.json()
+
+        consumed_cost = body["consumed_cost"]   # 50*30 + 50*20 = 2500
+        consumed_hours = body["consumed_hours"]  # 50
+        remaining = body["remaining_hours"]       # 100
+
+        expected = compute_eac_avg_rate(consumed_cost, consumed_hours, remaining)
+        assert body["projected_eac_cost"] == pytest.approx(expected)
+
     def test_burn_up_projected_length_matches_cycles(self, client, db_session, clean_db):
         """burn_up_projected should have exactly cycles_to_complete entries."""
         proj = _make_project(db_session, "SIM-005", "BurnUp", budget_hours=100.0)
