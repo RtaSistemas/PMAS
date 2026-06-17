@@ -18,10 +18,10 @@ function _healthColor(h) {
 function _buildEvmQuadrantOption(items, showTrajectory = false) {
   const AXIS_CAP = 2.0;
 
-  const red   = _cssVar('--red')     || '#ef4444';
-  const amber = _cssVar('--amber')   || '#f59e0b';
-  const green = _cssVar('--green')   || '#22c55e';
-  const blue  = _cssVar('--primary') || '#4f8ef7';
+  const red   = _cssVar('--red');
+  const amber = _cssVar('--amber');
+  const green = _cssVar('--green');
+  const blue  = _cssVar('--primary');
   const dim   = _cssVar('--text-3');
 
   const colorOf = d => {

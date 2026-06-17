@@ -161,7 +161,7 @@ function _buildBurnUpOption(fc) {
   const evData = history.map(h => h.cumulative_ev_cost      ?? null);
   const acData = history.map(h => h.cumulative_cost         ?? null);
 
-  const eacColor = _cssVar('--amber') || '#f59e0b';
+  const eacColor = _cssVar('--amber');
   const legendData = [_t('burnup.pv'), _t('burnup.ev'), _t('burnup.ac')];
   if (fc.eac != null) legendData.push(_t('burnup.eac'));
 
@@ -178,17 +178,17 @@ function _buildBurnUpOption(fc) {
       name: _t('burnup.ev'),
       type: 'line', data: evData,
       symbol: 'circle', symbolSize: 5, connectNulls: false,
-      lineStyle: { color: _cssVar('--green') || '#22c55e', width: 2.5 },
-      itemStyle: { color: _cssVar('--green') || '#22c55e' },
-      areaStyle: { color: (_cssVar('--green') || '#22c55e') + '18' },
+      lineStyle: { color: _cssVar('--green'), width: 2.5 },
+      itemStyle: { color: _cssVar('--green') },
+      areaStyle: { color: _cssVar('--green') + '18' },
       emphasis:  { focus: 'series' },
     },
     {
       name: _t('burnup.ac'),
       type: 'line', data: acData,
       symbol: 'circle', symbolSize: 5, connectNulls: false,
-      lineStyle: { color: _cssVar('--red') || '#ef4444', width: 2.5 },
-      itemStyle: { color: _cssVar('--red') || '#ef4444' },
+      lineStyle: { color: _cssVar('--red'), width: 2.5 },
+      itemStyle: { color: _cssVar('--red') },
       emphasis:  { focus: 'series' },
     },
   ];
@@ -352,13 +352,13 @@ function _buildPepCpiOption(peps, allCycleNames, spiMapByPep = {}) {
       markArea: {
         silent: true,
         data: [
-          [{ yAxis: 0,   itemStyle: { color: (_cssVar('--red')   || '#ef4444') + '18' },
+          [{ yAxis: 0,   itemStyle: { color: _cssVar('--red') + '18' },
              label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_critical'),
-               color: _cssVar('--red')   || '#ef4444', fontSize: 9 } },
+               color: _cssVar('--red'), fontSize: 9 } },
            { yAxis: 0.9 }],
-          [{ yAxis: 0.9, itemStyle: { color: (_cssVar('--amber') || '#f59e0b') + '14' },
+          [{ yAxis: 0.9, itemStyle: { color: _cssVar('--amber') + '14' },
              label: { show: true, position: 'insideTopLeft', formatter: _t('cpi.zone_warning'),
-               color: _cssVar('--amber') || '#f59e0b', fontSize: 9 } },
+               color: _cssVar('--amber'), fontSize: 9 } },
            { yAxis: 1.0 }],
         ],
       },
