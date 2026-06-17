@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-635%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-712%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -162,15 +162,15 @@ Copy `.env.example` to `.env` and set the values:
 
 | Variable | Default | Description |
 |---|---|---|
-| `PMAS_SECRET_KEY` | *(random)* | JWT signing secret. **Required in production.** Generate with: `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `PMAS_PORT` | `8765` | Listening port |
 | `PMAS_HOST` | `127.0.0.1` | Network interface |
 | `PMAS_ENV` | `development` | `development` (auto-reload) or `production` |
 | `PMAS_ALLOWED_ORIGINS` | *(empty)* | Additional CORS origins, comma-separated |
 | `PMAS_DB_PATH` | *(project root)* | Path to `pmas.db` |
 | `PMAS_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
+| `PMAS_LOG_FILE` | *(empty)* | Absolute path for rotating log file (10 MB × 5 backups). Console-only when unset. |
 
-> Without `PMAS_SECRET_KEY`, a random key is generated at startup. All existing sessions are invalidated on restart. Set it for persistent sessions.
+> A JWT signing key is required in production — set it via your secrets manager or `.env`. Without it, a random key is generated at startup and all sessions are invalidated on restart.
 
 ### GlobalConfig (singleton — Admin → Global Config)
 
@@ -242,7 +242,7 @@ graph TD
     end
 
     subgraph DB["SQLite — pmas.db"]
-        Models["20 ORM models\n(SQLAlchemy 2.0)"]
+        Models["22 ORM models\n(SQLAlchemy 2.0)"]
         Summary["PepCycleSummary\nCollaboratorCycleSummary"]
     end
 
@@ -385,6 +385,29 @@ erDiagram
         string hashed_password
         string role
         bool must_change_password
+        int failed_login_attempts
+        datetime locked_until
+    }
+    Notification {
+        int id PK
+        int user_id FK
+        string message
+        string level
+        bool is_read
+        datetime created_at
+        string link
+    }
+    ProjectAlert {
+        int id PK
+        int project_id FK
+        string alert_type
+        string level
+        string message
+        float metric_value
+        int consecutive_cycles
+        datetime created_at
+        datetime resolved_at
+        bool is_resolved
     }
     UserProjectAccess {
         int id PK
@@ -468,8 +491,10 @@ erDiagram
     Project ||--o{ ProjectBaseline : revisions
     Project ||--o{ BudgetRevision : history
     Project ||--o{ UserProjectAccess : acl
+    Project ||--o{ ProjectAlert : alerts
     User ||--o{ UserProjectAccess : access
     User ||--o{ UploadSession : uploads
+    User ||--o{ Notification : notifications
     UploadSession ||--o{ QuarantineRecord : quarantine
     ValidationRule ||--o{ QuarantineRecord : rule
     Collaborator ||--o{ CollaboratorCycleSummary : summary
@@ -700,7 +725,13 @@ EAC = BAC / CPI
 EAC_schedule = AC + (BAC − EV) / (CPI × SPI)
 ```
 
-The `eac_method` field in the response indicates which variant was used (`"cpi"` or `"cpi_spi"`).
+**Historical-rate EAC (What-If simulation):**
+```
+EAC_avg_rate = AC + (AC / consumed_hours) × remaining_hours
+```
+Used in the What-If simulation (`POST /api/v2/projects/{id}/simulate`) when a CPI baseline is not applicable. Implemented in `compute_eac_avg_rate()` in `services/evm.py` (GR-2).
+
+The `eac_method` field in the forecast response indicates which variant was used (`"cpi"` or `"cpi_spi"`).
 
 #### To-Complete Performance Index (TCPI)
 
@@ -969,7 +1000,7 @@ PMAS
 |---|---|---|
 | `POST` | `/api/token` | Login — returns JWT (exp: 8h) |
 | `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | User CRUD (admin) |
-| `PUT` | `/api/users/{id}/password` | Change password |
+| `PATCH` | `/api/users/{id}/password` | Change password |
 | `GET` | `/api/audit-log` | Audit log (admin) |
 | `GET/PUT` | `/api/theme` | Global theme |
 | `POST/DELETE` | `/api/theme/logo` | Logo upload / removal |
@@ -977,6 +1008,17 @@ PMAS
 | `GET` | `/api/my/upload-history` | User's own upload history |
 | `GET` | `/api/my/quarantine` | User's own quarantine |
 | `GET` | `/api/my/budget-alerts` | Budget alerts accessible to the user |
+| `GET` | `/api/my/alerts` | ProjectAlert list for the current user (ACL-filtered) |
+
+### Notifications and Alerts
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/notifications` | Bell-tray notifications for the current user |
+| `PATCH` | `/api/notifications/{id}/read` | Mark one notification as read |
+| `PATCH` | `/api/notifications/read-all` | Mark all notifications as read |
+| `DELETE` | `/api/notifications/{id}` | Delete notification |
+| `GET` | `/api/project-alerts` | All `ProjectAlert` rows (admin) — filters: `pep_wbs`, `alert_type`, `is_resolved`, `date_from`, `date_to` |
 
 ---
 
@@ -987,40 +1029,48 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-635 tests across 21 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+712 tests across 26 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
-| `test_evm_service.py` | 104 | Unit tests for every function in `services/evm.py` (happy/boundary/None) |
+| `test_evm_service.py` | 110 | Unit tests for every function in `services/evm.py` (happy/boundary/None), including `compute_eac_avg_rate` |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
 | `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints |
+| `test_ingestion_phases.py` | 44 | Unit tests per phase function (`_phase_load_and_validate` → `_phase_upsert_records`); weekly alert deduplication regression |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
 | `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
+| `test_theme.py` | 30 | UI theme CRUD + theme presets |
 | `test_projects.py` | 27 | Project CRUD + EVM fields (dates, status) |
-| `test_theme.py` | 24 | UI theme CRUD + theme presets |
+| `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` + DI-01 NULL-cost regression |
+| `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, `cpi_cumulative`, `spi_t_color` |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` |
 | `test_users.py` | 22 | User CRUD, password change, role enforcement |
 | `test_cycles.py` | 20 | Cycle CRUD |
-| `test_evm_integrity.py` | 20 | EVM HTTP integration — render-ready responses, EV capped at BAC |
+| `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
+| `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
 | `test_over_allocation.py` | 13 | Over-allocation detection (filters, sort, CSV) |
 | `test_upload_guards.py` | 11 | Upload rate-limiting and auth guards |
 | `test_validation_rules.py` | 10 | ValidationRule API |
 | `test_monte_carlo.py` | 8 | Monte Carlo P10/P50/P90, histogram, insufficient-data guard |
-| `test_simulate.py` | 7 | What-If: velocity window, projected EAC, burn-up |
+| `test_simulate.py` | 8 | What-If: velocity window, projected EAC (`compute_eac_avg_rate`), burn-up |
+| `test_golden_rules.py` | 8 | GR-2/GR-3 enforcement: no EVM re-implementation, no hardcoded hex, no `\|\| '#hex'` fallbacks, locale/currency patterns |
+| `test_summaries_status.py` | 6 | `PepCycleSummary` / `CollaboratorCycleSummary` staleness detection |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
-| `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test |
+| `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup, not teardown) so every test starts from a known empty state.
 
 ### Golden rules tests (`test_golden_rules.py`)
 
-Automated checks that enforce architectural constraints on every CI run:
-- No EVM formulas outside `services/evm.py` (GR-2)
-- No hardcoded hex literals in chart color properties (GR-3)
-- No hardcoded `'pt-BR'` locale in `app.js`, `crud/cycles.js`, `crud/projects.js`
+Automated static-analysis checks enforced on every CI run:
+- **GR-2:** No EVM formula re-implemented outside `services/evm.py` (scans `routers/` and all `frontend/*.js`)
+- **GR-3:** No hardcoded hex literals in ECharts color properties (scans `app.js`, `crud/*.js`, `charts/*.js`, `tabs/*.js`)
+- **GR-3:** No `|| '#hex'` fallback patterns in `charts/*.js`
+- No hardcoded `'pt-BR'` locale string in `toLocaleString` calls
+- No raw `toLocaleString` with `minimumFractionDigits:2` bypassing `_fmtCost()`
+- No hardcoded `'R$'` in rendering concatenation contexts
 
 ---
 
@@ -1030,16 +1080,16 @@ Automated checks that enforce architectural constraints on every CI run:
 PMAS/
 ├── backend/
 │   └── app/
-│       ├── main.py              # FastAPI: CORS, routers, static mount, init_db
-│       ├── models.py            # 20 ORM models (SQLAlchemy 2.0)
+│       ├── main.py              # FastAPI: CORS, rate limiting, security headers, static mount, init_db
+│       ├── models.py            # 22 ORM models (SQLAlchemy 2.0)
 │       ├── schemas.py           # Pydantic I/O models
-│       ├── database.py          # SQLite engine, get_db(), _migrate_columns()
-│       ├── deps.py              # JWT: get_current_user, require_admin
+│       ├── database.py          # SQLite engine, get_db(), _migrate_columns() (M001–M013)
+│       ├── deps.py              # JWT: get_current_user, get_current_user_allow_change, require_admin
 │       ├── audit.py             # log_audit() helper
 │       ├── limiter.py           # Rate limiter (slowapi)
 │       ├── utils.py             # now_br(), misc helpers
 │       ├── routers/
-│       │   ├── auth.py          # POST /api/token
+│       │   ├── auth.py          # POST /api/token (login + lockout)
 │       │   ├── cycles.py        # CRUD + CSV for billing cycles
 │       │   ├── projects.py      # CRUD + CSV for projects
 │       │   ├── plans.py         # Baseline S-curve (cycle plans)
@@ -1052,33 +1102,42 @@ PMAS/
 │       │   ├── my.py            # Per-user endpoints
 │       │   ├── acl.py           # Per-PEP ACL
 │       │   ├── auditlog.py
+│       │   ├── notifications.py # Bell-tray CRUD
+│       │   ├── project_alerts.py # ProjectAlert admin list
 │       │   ├── theme.py
 │       │   └── v2/
 │       │       ├── effort.py         # Effort by collaborator
 │       │       ├── portfolio.py      # Portfolio health (EVM-aware)
-│       │       ├── forecast.py       # Full EVM forecast per PEP
+│       │       ├── forecast.py       # Full EVM forecast per PEP (cpi_cumulative, spi_t_color)
 │       │       ├── runway.py         # Runway + schedule risk
 │       │       ├── trends.py         # Hour/cost burn per cycle
 │       │       ├── allocation.py     # Allocation matrix
 │       │       ├── concentration.py  # Concentration risk
 │       │       ├── over_allocation.py
-│       │       ├── simulate.py       # What-If scenario
+│       │       ├── simulate.py       # What-If scenario (delegates EAC to evm.py)
 │       │       ├── monte_carlo.py    # Monte Carlo P10/P50/P90
 │       │       └── filters.py
 │       └── services/
 │           ├── evm.py           # ← Single source of truth for all EVM formulas
 │           ├── ingestion.py     # 6-phase pipeline + _lookup_rate()
 │           ├── rule_engine.py   # ValidationRule engine
-│           ├── summaries.py     # Upsert PepCycleSummary / CollaboratorCycleSummary
+│           ├── summaries.py     # Bulk-aggregation upsert (O(1) per ingestion)
+│           ├── notifications_svc.py  # Notification creation with 24h dedup
 │           ├── quarantine_svc.py
 │           ├── upload_session_svc.py
 │           └── theme_svc.py
 ├── frontend/
 │   ├── index.html               # 6 tabs + 3 analytics sub-tabs + modals
 │   ├── style.css                # Dark Navy + Sky Blue design system
-│   ├── app.js                   # Auth · i18n · ECharts lifecycle · Equipe/Admin CRUD
+│   ├── app.js                   # Auth · i18n · ECharts lifecycle · core globals
+│   ├── tabs/
+│   │   ├── dashboard.js         # Dashboard tab: filters, effort, portfolio, forecast
+│   │   ├── equipe.js            # Team tab: seniority, rate cards, over-allocation
+│   │   ├── admin.js             # Admin tab: users, audit, validation rules, quarantine, alerts
+│   │   ├── minha-area.js        # Minha Área tab: preferences, history, quarantine, alerts
+│   │   └── header.js            # Header: semaphore bar, notifications, tab badges
 │   ├── crud/
-│   │   ├── cycles.js            # Billing cycles CRUD (split from app.js)
+│   │   ├── cycles.js            # Billing cycles CRUD
 │   │   └── projects.js          # Projects/PEPs CRUD + plans + baselines + ACL
 │   ├── ui-helpers.js            # _makePaginator · _renderTable · _buildTableRow
 │   ├── multiselect.js           # Self-contained MultiSelect cascading component
@@ -1086,12 +1145,12 @@ PMAS/
 │   ├── echarts.min.js           # ECharts 5 (local bundle)
 │   └── charts/
 │       ├── effort.js            # Effort bar charts
-│       ├── portfolio.js         # Treemap + Bullet chart
-│       └── forecast.js          # S-curve + EVM KPI cards
+│       ├── portfolio.js         # Treemap + Bullet chart + EVM quadrant
+│       └── forecast.js          # S-curve + burn-up + CPI/SPI trend lines
 ├── frontend/lang/
-│   ├── pt.js                    # 531 keys — pt-BR
-│   └── en.js                    # 531 keys — en
-├── tests/                       # 21 files, 635 tests
+│   ├── pt.js                    # pt-BR translations
+│   └── en.js                    # en translations
+├── tests/                       # 26 files, 712 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable
