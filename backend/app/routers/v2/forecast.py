@@ -386,6 +386,7 @@ def get_forecast(
         "history":                    history,
         "es":                         es,
         "spi_t":                      spi_t,
+        "spi_t_color":                spi_color(spi_t),
         "sv_t":                       sv_t,
         "ieac_t":                     ieac_t,
         "planned_duration_cycles":    pd_cycles if sorted_plans else None,

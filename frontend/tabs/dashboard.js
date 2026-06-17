@@ -1539,7 +1539,8 @@ function _renderBurnUpChart(fc) {
     if (hasES) {
       const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
       const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
-      const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+      const _SPI_T_CM = { success: 'green', warning: 'amber', danger: 'red' };
+      const spiTCls  = fc.spi_t == null ? 'neutral' : (_SPI_T_CM[fc.spi_t_color] || 'red');
       const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
       const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
       const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
