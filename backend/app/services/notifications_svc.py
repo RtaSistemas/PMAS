@@ -240,6 +240,10 @@ def notify_schedule_risk(db: Session, pep_wbs_list: list[str]) -> None:
             for summary, plan, _cycle in rows:
                 if not plan.planned_hours:
                     break
+                # Intentional period-level use: for consecutive-cycle risk detection
+                # we want to know if each individual cycle was behind plan, not the
+                # cumulative SPI.  compute_spi performs actual/planned regardless of
+                # whether the inputs are period or cumulative, so this is correct.
                 spi = compute_spi(plan.planned_hours, summary.total_hours)
                 if spi is None:
                     break
