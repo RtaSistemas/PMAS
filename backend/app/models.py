@@ -95,6 +95,11 @@ Index(
     TimesheetRecord.collaborator_id,
 )
 
+Index(
+    "ix_timesheet_record_date",
+    TimesheetRecord.record_date,
+)
+
 
 class Project(Base):
     __tablename__ = "project"

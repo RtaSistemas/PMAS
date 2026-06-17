@@ -290,6 +290,14 @@ def _migrate_columns() -> None:
                     ))
                 _mark(conn, "M012_user_lockout")
 
+            # M013 — index on timesheet_record.record_date for date-range queries
+            if not _applied(conn, "M013_timesheet_record_date_idx"):
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_timesheet_record_date "
+                    "ON timesheet_record (record_date)"
+                ))
+                _mark(conn, "M013_timesheet_record_date_idx")
+
     except Exception:
         log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
 
