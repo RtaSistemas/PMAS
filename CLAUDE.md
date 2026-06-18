@@ -44,7 +44,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-698 tests across 26 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+712 tests across 26 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -84,7 +84,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `ProjectAlert` — permanent, lifecycle-managed alert per project: `alert_type`, `level`, `message`, `metric_value`, `consecutive_cycles`, `created_at`, `resolved_at`, `is_resolved`. Deduplication by `(project_id, alert_type)`; level changes resolve old and create new; auto-resolves when the triggering metric recovers
 - **`schemas.py`** — All Pydantic input/output models: `CycleIn/Out`, `ProjectIn/Out`, `SeniorityLevelIn/Out`, `RateCardIn/Out`, `CollaboratorSeniorityIn`, `ImportResultOut`, `UserCreateIn`, `UserOut`, `ValidationRuleIn/Out`, `QuarantineRecordOut`, `UploadSessionOut`, `AlertSummaryOut`, `UserPreferenceIn/Out`, `UIThemeIn/Out`, `ProjectCyclePlanIn/Out`, `ForecastOut`, and others.
 - **`database.py`** — SQLite engine, `get_db()` dependency, `init_db()` (runs `create_all` + `_migrate_columns`). `_migrate_columns()` applies `ALTER TABLE` for columns added after the initial schema, upgrading existing `pmas.db` files safely on startup.
-- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
+- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`/`compute_eac_avg_rate`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
 - **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Multi-phase pipeline with a configurable validation rule engine. Freezes cost via `freeze_costs` from `evm.py`.
 - **Other services** — `rule_engine.py` (per-row rule evaluation), `summaries.py` (maintains `PepCycleSummary`/`CollaboratorCycleSummary`), `quarantine_svc.py`, `upload_session_svc.py`, `theme_svc.py`.
 
@@ -202,7 +202,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 
 | File | Tests | Coverage |
 |---|---|---|
-| `test_evm_service.py` | 104 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None) |
+| `test_evm_service.py` | 110 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None); includes `compute_eac_avg_rate` |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
 | `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints (filters, portfolio, effort, trends, forecast, allocation, concentration) |
@@ -211,24 +211,24 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
 | `test_theme.py` | 30 | UI theme CRUD + theme presets |
 | `test_projects.py` | 27 | CRUD de projetos + EVM fields (start/planned-end/completion dates, status) |
+| `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk); NULL-cost regression |
+| `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC, `cpi_cumulative` in history, `spi_t_color` in forecast |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk) |
 | `test_users.py` | 22 | User CRUD, password change, role enforcement |
-| `test_evm_integrity.py` | 20 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC |
 | `test_cycles.py` | 20 | CRUD de ciclos |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
 | `test_over_allocation.py` | 13 | `/api/v2/over-allocation` detection (filters, sort, CSV) |
 | `test_upload_guards.py` | 11 | Upload rate-limiting and auth guards |
 | `test_validation_rules.py` | 10 | ValidationRule API |
+| `test_simulate.py` | 8 | `/api/v2/.../simulate` What-If (velocity window, projected EAC via `compute_eac_avg_rate`, burn-up) |
 | `test_monte_carlo.py` | 8 | `/api/v2/.../monte-carlo` (P10/P50/P90, histogram, insufficient-data guard) |
-| `test_simulate.py` | 7 | `/api/v2/.../simulate` What-If (velocity window, projected EAC, burn-up) |
-| `test_golden_rules.py` | 7 | Golden rules enforcement: GR-3 no hardcoded hex, locale patterns, `crud/*.js` coverage |
+| `test_golden_rules.py` | 8 | Golden rules enforcement: GR-3 no hardcoded hex (including `charts/*.js` and `tabs/*.js`), no hex fallbacks, locale patterns, `crud/*.js` coverage |
 | `test_summaries_status.py` | 6 | `PepCycleSummary` / `CollaboratorCycleSummary` staleness detection |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **698** | |
+| **Total** | **712** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
