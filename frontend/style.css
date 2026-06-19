@@ -1318,6 +1318,14 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius);
+  /* UX-09: scroll-shadow indicator (CSS-only, no JS required).
+     background-attachment:local layers scroll with content; :scroll layers
+     stay fixed — shadows appear only when content overflows the viewport. */
+  background:
+    linear-gradient(to right, var(--card) 1rem, transparent) left  / 2rem 100% no-repeat local,
+    linear-gradient(to left,  var(--card) 1rem, transparent) right / 2rem 100% no-repeat local,
+    linear-gradient(to right, rgba(0,0,0,0.20), transparent) left  / 3rem 100% no-repeat scroll,
+    linear-gradient(to left,  rgba(0,0,0,0.20), transparent) right / 3rem 100% no-repeat scroll;
 }
 .table-responsive .data-table { min-width: 520px; }
 
@@ -1460,6 +1468,23 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .field-hint-block  { display:block; min-height:1.1em; margin-top:.25rem; }
 .collapsible-trigger { cursor:pointer; user-select:none; padding:0 0 .5rem; }
 .input-sel-sm { min-width:160px; height:2rem; font-size:.8rem; }
+
+/* ── UX-09: Scroll-shadow indicator on horizontally scrollable tables ────── */
+/* CSS-only technique: background-attachment:local layers scroll with content;
+   background-attachment:scroll layers stay fixed → visible only when
+   content is wider than container (no JS needed). */
+.table-scroll-wrap {
+  overflow-x: auto;
+  background:
+    /* Left edge cover (masks the shadow when scrolled to start) */
+    linear-gradient(to right, var(--card) 1rem, transparent) left / 2rem 100% no-repeat local,
+    /* Right edge cover (masks the shadow when scrolled to end) */
+    linear-gradient(to left,  var(--card) 1rem, transparent) right / 2rem 100% no-repeat local,
+    /* Left scroll shadow */
+    linear-gradient(to right, rgba(0,0,0,0.22), transparent) left / 3rem 100% no-repeat scroll,
+    /* Right scroll shadow */
+    linear-gradient(to left,  rgba(0,0,0,0.22), transparent) right / 3rem 100% no-repeat scroll;
+}
 
 /* ── MA-07: Modal max-widths (moved from style= to CSS) ──────────────────── */
 #sessionDetailModal .modal-box  { max-width: 600px; }
