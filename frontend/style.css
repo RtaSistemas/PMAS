@@ -1184,6 +1184,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   .sortable-item, .sortable-chosen, .sortable-ghost,
   .btn, .tab-btn, .atab-btn, .ms-toggle,
   .stat-card, .sem-project { transition: none !important; }
+  /* Disable decorative keyframe animations */
+  .btn-dirty { animation: none !important; }
+  .skeleton-shimmer::after { animation: none !important; }
 }
 
 /* ── EVM tooltip uses new tokens ─────────────────────────────────────────── */
