@@ -217,7 +217,27 @@ async function _initNotifications() {
     }
   });
 
-  // Poll every 60 seconds
+  // Poll with exponential backoff: 60s → 120s → 240s → 480s (cap at 8 min).
+  // Resets to 60s when the tab regains visibility.
+  let _pollDelay = 60000;
+  let _pollTimer = null;
+  function _schedulePoll() {
+    clearTimeout(_pollTimer);
+    _pollTimer = setTimeout(async () => {
+      await _fetchNotifs();
+      _pollDelay = Math.min(_pollDelay * 2, 480000);
+      _schedulePoll();
+    }, _pollDelay);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      _pollDelay = 60000;
+      _fetchNotifs();
+      _schedulePoll();
+    } else {
+      clearTimeout(_pollTimer);
+    }
+  });
   _fetchNotifs();
-  setInterval(_fetchNotifs, 60000);
+  _schedulePoll();
 }
