@@ -1667,6 +1667,30 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 #semaphoreBar { display: none; }
 .svg-sprite-defs { display: none; }
 
+/* ── UX-06: Empty-state illustration block ──────────────────────────────────── */
+.empty-state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  gap: .85rem;
+  color: var(--text-3);
+  text-align: center;
+}
+.empty-state-icon {
+  opacity: .35;
+  line-height: 1;
+}
+.empty-state-icon svg {
+  display: block;
+}
+.empty-state-msg {
+  font-size: var(--fs-sm);
+  max-width: 28rem;
+  line-height: 1.5;
+}
+
 /* ── Project alert styles ──────────────────────────────────────────────────── */
 .alert-level-tag {
   display: inline-block;

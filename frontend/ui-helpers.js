@@ -86,9 +86,25 @@ function _chartDefaults() {
 
 // ---------------------------------------------------------------------------
 // C5 — Render an empty-state message into a container element
+// Optional `variant` selects the illustration: 'data'(default)|'search'|'done'
 // ---------------------------------------------------------------------------
-function _renderEmptyState(container, message) {
-  container.innerHTML = `<p class="empty-state" style="text-align:center;color:var(--text-3);padding:2rem">${escHtml(message)}</p>`;
+const _EMPTY_ICONS = {
+  data: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+    <path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>`,
+  search: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    <line x1="8" y1="11" x2="14" y2="11"/></svg>`,
+  done: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+};
+
+function _renderEmptyState(container, message, variant = 'data') {
+  const icon = _EMPTY_ICONS[variant] || _EMPTY_ICONS.data;
+  container.innerHTML = `<div class="empty-state-block">
+    <div class="empty-state-icon">${icon}</div>
+    <p class="empty-state-msg">${escHtml(message)}</p>
+  </div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +141,11 @@ function _renderTable(tbodyId, data, { colspan, emptyKey, rowFn }) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;color:var(--text-3);padding:2rem">${_t(emptyKey)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colspan}">
+      <div class="empty-state-block">
+        <div class="empty-state-icon">${_EMPTY_ICONS.search}</div>
+        <p class="empty-state-msg">${_t(emptyKey)}</p>
+      </div></td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(rowFn).join('');
