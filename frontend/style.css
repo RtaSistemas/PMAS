@@ -29,8 +29,8 @@
   --border:    #172f4e;
   --border-hi: #1d4068;
   --text:      #ddeeff;
-  --text-2:    #7ba0c0;
-  --text-3:    #7aadcc;
+  --text-2:    #93b4cc;  /* was #7ba0c0 — lightened for WCAG AA ≥ 4.5:1 on --card */
+  --text-3:    #9bbdd4;  /* was #7aadcc — lightened for WCAG AA ≥ 4.5:1 on --card */
   --primary:   #0ea5e9;
   --primary-d: #0284c7;
   --primary-g: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
