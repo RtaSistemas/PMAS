@@ -183,7 +183,10 @@
     <div class="card">
       <div class="section-header clickable" id="filterToggle" role="button" tabindex="0"
            aria-expanded="true" aria-controls="filterBody">
-        <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
+          <span id="filterActiveCount" class="filter-active-badge" hidden></span>
+        </div>
         <span id="filterChevron" class="chevron">▼</span>
       </div>
       <div id="filterBody">

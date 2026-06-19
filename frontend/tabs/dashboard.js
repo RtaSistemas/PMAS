@@ -9,16 +9,36 @@
 // Dirty-filter state — visual indicator when filters change without reloading
 // ---------------------------------------------------------------------------
 let _filtersDirty = false;
-function _markFiltersDirty() {
-  if (_filtersDirty) return;
-  _filtersDirty = true;
-  const btn = document.getElementById('loadBtn');
-  if (btn) {
-    btn.classList.add('btn-dirty');
-    btn.setAttribute('aria-description', _t('filter.dirty_hint'));
-    const span = btn.querySelector('[data-i18n="btn.load"]');
-    if (span) span.textContent = _t('btn.load_update');
+
+// UX-08: Update the active-filter count badge shown on the collapsed filter header.
+function _updateFilterBadge() {
+  const badge = document.getElementById('filterActiveCount');
+  if (!badge) return;
+  const msCount = [cycleMs, pepMs, pepDescMs, collaboratorMs]
+    .reduce((n, ms) => n + (ms.getValues().length > 0 ? 1 : 0), 0);
+  const dateFrom = document.getElementById('dateFromInput')?.value;
+  const dateTo   = document.getElementById('dateToInput')?.value;
+  const total = msCount + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  if (total > 0) {
+    badge.textContent = total;
+    badge.removeAttribute('hidden');
+  } else {
+    badge.setAttribute('hidden', '');
   }
+}
+
+function _markFiltersDirty() {
+  if (!_filtersDirty) {
+    _filtersDirty = true;
+    const btn = document.getElementById('loadBtn');
+    if (btn) {
+      btn.classList.add('btn-dirty');
+      btn.setAttribute('aria-description', _t('filter.dirty_hint'));
+      const span = btn.querySelector('[data-i18n="btn.load"]');
+      if (span) span.textContent = _t('btn.load_update');
+    }
+  }
+  _updateFilterBadge();
 }
 function _clearFiltersDirty() {
   _filtersDirty = false;
@@ -29,6 +49,7 @@ function _clearFiltersDirty() {
     const span = btn.querySelector('[data-i18n="btn.load"]');
     if (span) span.textContent = _t('btn.load');
   }
+  _updateFilterBadge();
 }
 
 const loadBtn  = document.getElementById('loadBtn');
@@ -49,8 +70,8 @@ const pepMs          = _createMS(document.getElementById('pepMs'),           _t(
 const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
 const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
 
-document.getElementById('dateFromInput').addEventListener('change', _markFiltersDirty);
-document.getElementById('dateToInput').addEventListener('change', _markFiltersDirty);
+document.getElementById('dateFromInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
+document.getElementById('dateToInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
 
 let pepDataCache = {};
 
