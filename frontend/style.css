@@ -87,6 +87,61 @@
   --z-tooltip:     10000;/* EVM tooltips, above modals */
 }
 
+/* ── Light mode (prefers-color-scheme: light) ───────────────────────────── */
+/* Override the dark defaults with a light palette.                            */
+/* Admin-applied theme (via _loadTheme) overrides these at runtime.           */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:        #f0f4f8;
+    --surface:   #ffffff;
+    --card:      #ffffff;
+    --card-alt:  #e8edf2;
+    --border:    #c8d6e5;
+    --border-hi: #a8bdd4;
+    --text:      #0f2036;
+    --text-1:    #0f2036;
+    --text-2:    #2c5070;
+    --text-3:    #4a7090;
+    --primary:   #0284c7;
+    --primary-d: #0369a1;
+    --primary-g: linear-gradient(135deg, #0284c7 0%, #0891b2 100%);
+    --primary-light: #0ea5e9;
+    --cyan:      #0891b2;
+    --green:     #059669;
+    --amber:     #d97706;
+    --red:       #dc2626;
+    --violet:    #7c3aed;
+    --shadow:    0 4px 24px rgba(0,0,0,0.12);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --glow:      0 0 20px rgba(2,132,199,0.12);
+    --card-ingest:  #f8fafc;
+    --border-ingest:#cbd5e1;
+    --error-text:   #dc2626;
+    --very-dark:    #e2e8f0;
+    --info-text:    #0284c7;
+    --warn-text:    #d97706;
+    --input-overlay:#0f172a;
+  }
+
+  /* Invert the login radial gradient for light mode */
+  #loginOverlay {
+    background: radial-gradient(ellipse at 30% 40%, #dbeafe 0%, var(--bg) 70%);
+  }
+
+  /* Lighten the skeleton shimmer for light backgrounds */
+  .skeleton-shimmer::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.6) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Darken placeholder text for light mode legibility */
+  ::placeholder { color: var(--text-3); }
+}
+
 /* ── Base ───────────────────────────────────────────────────── */
 body {
   font-family: var(--font-family);
