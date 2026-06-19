@@ -551,35 +551,16 @@ async function _loadTheme() {
     const text      = t.color_text       || '#e0e0e0';
     const textMuted = t.color_text_muted || '#8892a4';
 
-    // Standard --color-* vars (new CSS)
-    root.style.setProperty('--color-primary',    primary);
-    root.style.setProperty('--color-background', bg);
-    root.style.setProperty('--color-surface',    surface);
-    root.style.setProperty('--color-accent',     accent);
-    root.style.setProperty('--color-success',    success);
-    root.style.setProperty('--color-warning',    warning);
-    root.style.setProperty('--color-danger',     danger);
-    root.style.setProperty('--color-text',       text);
-    root.style.setProperty('--color-text-muted', textMuted);
-
-    // --theme-* aliases (gradient bar, tooltips)
-    root.style.setProperty('--theme-primary',    primary);
-    root.style.setProperty('--theme-bg',         bg);
-    root.style.setProperty('--theme-surface',    surface);
-    root.style.setProperty('--theme-accent',     accent);
-    root.style.setProperty('--theme-success',    success);
-    root.style.setProperty('--theme-warning',    warning);
-    root.style.setProperty('--theme-danger',     danger);
-    root.style.setProperty('--theme-text',       text);
-    root.style.setProperty('--theme-text-muted', textMuted);
-
-    // Original legacy vars — the ones the existing stylesheet actually uses
-    // (--bg 3×, --surface 8×, --card 8×, --text 12×, --primary 10×, etc.)
+    // Set the canonical design-token vars that style.css actually consumes.
+    // These are the single source of truth; --color-* and --theme-* aliases
+    // are computed from them in CSS via var() chaining, so they don't need
+    // to be written separately here.
     root.style.setProperty('--bg',        bg);
     root.style.setProperty('--surface',   surface);
     root.style.setProperty('--card',      surface);
     root.style.setProperty('--card-alt',  bg);
     root.style.setProperty('--text',      text);
+    root.style.setProperty('--text-1',    text);
     root.style.setProperty('--text-2',    textMuted);
     root.style.setProperty('--text-3',    textMuted);
     root.style.setProperty('--primary',   primary);
