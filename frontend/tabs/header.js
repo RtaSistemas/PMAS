@@ -173,7 +173,7 @@ async function _initNotifications() {
           <div class="notif-msg">${escHtml(n.message)}</div>
           <div class="notif-time">${fmtDateBR(n.created_at?.slice(0,10))}</div>
         </div>
-        <button class="btn btn-ghost btn-xs notif-del" data-id="${n.id}" title="${_t('notif.delete')}">✕</button>
+        <button class="btn btn-ghost btn-xs notif-del" data-id="${n.id}" aria-label="${_t('notif.delete')}" title="${_t('notif.delete')}">✕</button>
       </div>`).join('');
     panel.querySelector('#notifMarkAll')?.addEventListener('click', async () => {
       await fetch('/api/my/notifications/read-all', { method: 'POST', headers: _authHeaders() });
