@@ -1,0 +1,38 @@
+services:
+  pmas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: pmas:2.1.0
+    container_name: pmas
+    restart: unless-stopped
+    ports:
+      - "${PMAS_PORT:-8765}:${PMAS_PORT:-8765}"
+    volumes:
+      # Persist the SQLite database outside the container
+      - pmas_data:/data
+      # Optional: persist uploaded logos/assets
+      - pmas_static:/app/static
+    environment:
+      PMAS_DB_PATH: /data/pmas.db
+      PMAS_PORT: "${PMAS_PORT:-8765}"
+      PMAS_LOG_LEVEL: "${PMAS_LOG_LEVEL:-INFO}"
+      PMAS_LOG_FILE: /data/pmas.log
+      PMAS_WORKERS: "${PMAS_WORKERS:-2}"
+      PMAS_ALLOWED_ORIGINS: "${PMAS_ALLOWED_ORIGINS:-}"
+      PMAS_DB_POOL_SIZE: "${PMAS_DB_POOL_SIZE:-5}"
+      PMAS_DB_MAX_OVERFLOW: "${PMAS_DB_MAX_OVERFLOW:-10}"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:${PMAS_PORT:-8765}/ready')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  pmas_data:
+    driver: local
+  pmas_static:
+    driver: local

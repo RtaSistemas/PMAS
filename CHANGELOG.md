@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [2.1.0_PMAS] — 2026-07-22
+
+Scalability, error handling, and Linux deployment release.
+
+### Added
+
+- **Scalability — SQLite pragma tuning**: `wal_autocheckpoint=100`, `cache_size=-64000` (64 MB), `temp_store=MEMORY`, `mmap_size=268435456` (256 MB) added to the engine `connect` event listener. WAL checkpoint frequency and memory-mapped I/O now tuned for analytical workloads.
+- **Scalability — connection pool configuration**: `pool_size`, `max_overflow`, `pool_timeout`, and `pool_recycle` added to `create_engine()`, all configurable via env vars `PMAS_DB_POOL_SIZE` and `PMAS_DB_MAX_OVERFLOW`. Defaults: pool_size=5, max_overflow=10.
+- **RFC 7807 Problem Details**: `HTTPException` and `RequestValidationError` now return `application/problem+json` responses with `type`, `title`, `status`, `detail`, and field-level `erros` array in Portuguese. Replaces FastAPI's default JSON error format.
+- **Dockerfile (multi-stage)**: `builder` stage installs Python deps from `requirements-lock.txt`; `runtime` stage copies only the installed packages and app source into a minimal `python:3.11-slim` image. Runs as non-root user `pmas`. Configurable via env vars.
+- **`docker-compose.yml`**: Volume-mapped `/data` for persistent SQLite DB and `/app/static` for uploaded assets. All env vars exposed and documented.
+- **`.dockerignore`**: Excludes `*.db`, `tests/`, `amostras/`, `docs/`, `.git/`, `node_modules/`, and virtual environments from the Docker build context.
+- **`pmas.service` (systemd unit, resolves P5)**: `Type=simple`, `EnvironmentFile=/opt/pmas/.env`, `PrivateTmp=yes`, `ProtectSystem=strict`, `NoNewPrivileges=yes`, `LimitNOFILE=65536`, restart-on-failure with backoff. Resolves known production gap P5.
+- **`.env.example`**: Documents all supported environment variables with safe defaults.
+- **`deploy.sh`**: Bash deployment script for Ubuntu 22.04 / Debian 12. Supports `install`, `update`, `status`, `logs`, `stop`, `restart` subcommands. Creates `pmas` system user, virtualenv, copies code, installs systemd unit, enables service.
+
+### Changed
+
+- **Version** bumped from `2.0.2` → `2.1.0`.
+
+---
+
 ## [2.0.3_PMAS] — 2026-06-17
 
 Audit remediation release. All 8 findings from PMAS-AUDIT.md resolved. No new end-user features.

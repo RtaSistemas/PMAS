@@ -8,9 +8,10 @@ import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -91,7 +92,7 @@ async def _lifespan(app: FastAPI):
 app = FastAPI(
     title="PMAS API",
     description="Project Management Assistant System — Timesheet Foundation",
-    version="2.0.2",
+    version="2.1.0",
     lifespan=_lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -102,6 +103,65 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ── RFC 7807 Problem Details error responses ──────────────────────────────────
+
+_FIELD_LABELS: dict[str, str] = {
+    "username": "nome de utilizador",
+    "password": "senha",
+    "pep_wbs":  "código PEP",
+    "budget_hours": "horas orçadas",
+    "budget_cost":  "custo orçado",
+    "start_date":   "data de início",
+    "planned_end_date": "data prevista de conclusão",
+    "name":        "nome",
+    "hourly_rate": "taxa horária",
+    "valid_from":  "válido a partir de",
+    "valid_to":    "válido até",
+}
+
+
+def _problem(status: int, title: str, detail: str, **extra) -> JSONResponse:
+    body = {"type": f"about:blank", "title": title, "status": status, "detail": detail}
+    body.update(extra)
+    return JSONResponse(
+        status_code=status,
+        content=body,
+        media_type="application/problem+json",
+    )
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    titles = {
+        400: "Requisição inválida",
+        401: "Não autenticado",
+        403: "Sem permissão",
+        404: "Não encontrado",
+        409: "Conflito",
+        422: "Dados inválidos",
+        429: "Muitas requisições",
+        500: "Erro interno",
+        503: "Serviço indisponível",
+    }
+    title = titles.get(exc.status_code, "Erro")
+    return _problem(exc.status_code, title, str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    field_errors = []
+    for err in exc.errors():
+        loc = err.get("loc", [])
+        field = str(loc[-1]) if loc else "desconhecido"
+        label = _FIELD_LABELS.get(field, field)
+        field_errors.append({"campo": label, "mensagem": err.get("msg", "inválido")})
+    return _problem(
+        422,
+        "Dados inválidos",
+        "Um ou mais campos não passaram na validação.",
+        erros=field_errors,
+    )
 
 # ── Security headers ──────────────────────────────────────────────────────────
 

@@ -28,6 +28,12 @@ DATABASE_URL = f"sqlite:///{_db_path()}"
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False},
+    # SQLite WAL supports concurrent reads; keep a small pool to amortise
+    # connection setup cost without starving the file-level write lock.
+    pool_size=int(os.getenv("PMAS_DB_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("PMAS_DB_MAX_OVERFLOW", "10")),
+    pool_timeout=30,
+    pool_recycle=3600,
 )
 
 
@@ -36,6 +42,13 @@ def _set_sqlite_pragmas(dbapi_conn, _):
     dbapi_conn.execute("PRAGMA journal_mode=WAL")
     dbapi_conn.execute("PRAGMA synchronous=NORMAL")
     dbapi_conn.execute("PRAGMA foreign_keys=ON")
+    # Checkpoint after 100 pages — limits WAL file growth under write bursts.
+    dbapi_conn.execute("PRAGMA wal_autocheckpoint=100")
+    # 64 MB shared-cache per connection — speeds up large analytical queries.
+    dbapi_conn.execute("PRAGMA cache_size=-64000")
+    dbapi_conn.execute("PRAGMA temp_store=MEMORY")
+    # 256 MB memory-mapped I/O — reduces syscall overhead for read-heavy paths.
+    dbapi_conn.execute("PRAGMA mmap_size=268435456")
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
