@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ── Linux — desativado temporariamente (em teste) ──────────────────
-          # - os: ubuntu-latest
-          #   artifact_name: pmas-linux-x64
-          #   artifact_path: dist/pmas-linux-x64
+          # ── Linux ──────────────────────────────────────────────────────────
+          - os: ubuntu-latest
+            artifact_name: pmas-linux-x64
+            artifact_path: dist/pmas-linux-x64
 
           - os: windows-latest
             artifact_name: pmas-windows-x64.exe
