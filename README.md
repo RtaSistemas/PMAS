@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-723%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-740%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -189,6 +189,18 @@ Copy `.env.example` to `.env` and set the values:
 |---|---|
 | `admin` | Full access: all PEPs, all management routes |
 | `user` | Filtered read access per ACL; timesheet upload; own upload history / quarantine |
+
+### Automatic import (API keys)
+
+An administrator creates a key in **Admin → Importação automática**. A system then sends timesheet files without a login:
+
+```bash
+curl -X POST https://your-server/api/upload-timesheet \
+  -H "X-API-Key: pmas_..." \
+  -F "file=@timesheet.csv"
+```
+
+The key acts as the user that the administrator selects, so that user's role and PEP ACL apply. The key is valid **only** on the upload route. The server shows the key once and stores only a SHA-256 hash. Revoke a key in the same card; the audit log records each create, revoke and upload.
 
 ### Per-PEP ACL
 
@@ -1029,7 +1041,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-723 tests across 26 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+740 tests across 27 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1046,6 +1058,7 @@ pytest tests/ -v
 | `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, `cpi_cumulative`, `spi_t_color` |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
 | `test_users.py` | 25 | User CRUD, password change, role enforcement |
+| `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
 | `test_cycles.py` | 20 | Cycle CRUD |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -1150,7 +1163,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 26 files, 723 tests
+├── tests/                       # 27 files, 740 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable

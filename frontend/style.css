@@ -1679,6 +1679,15 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .help-main dd { color: var(--text-2); margin-left: 0; }
 .help-main table { margin: .75rem 0; }
 .help-main code { font-size: var(--fs-sm); }
+.help-code { background: var(--card-alt); border: 1px solid var(--border-hi); border-radius: var(--radius); padding: .75rem 1rem; overflow-x: auto; font-size: var(--fs-sm); }
+
+/* ── API keys ──────────────────────────────────────────────────────────────── */
+.api-key-value {
+  display: block; margin: .75rem 0; padding: .75rem 1rem;
+  background: var(--card-alt); border: 1px solid var(--border-hi); border-radius: var(--radius);
+  font-size: var(--fs-sm); word-break: break-all; user-select: all;
+}
+.badge-revoked { color: var(--red); }
 
 /* ── First-use checklist ───────────────────────────────────────────────────── */
 .onboarding-card { border-color: var(--primary); }

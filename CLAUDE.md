@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-723 tests across 26 test files. The CI also runs 37 Vitest tests and 46 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+740 tests across 27 test files. The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -60,7 +60,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 ### Backend (`backend/app/`)
 
 - **`main.py`** — Slim FastAPI app: CORS middleware, rate limiting (slowapi), structured logging, `include_router` for the stable CRUD routers plus the full `/api/v2` analytics layer, static file mount, root redirect, lifespan hook (`init_db`).
-- **`models.py`** — 22 SQLAlchemy ORM models:
+- **`models.py`** — 23 SQLAlchemy ORM models:
   - `SeniorityLevel` — unique name, linked to RateCard and Collaborator
   - `RateCard` — hourly_rate with valid_from / valid_to date range per seniority level
   - `Collaborator` — unique name, optional `seniority_level_id` FK, linked to records
@@ -74,6 +74,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `GlobalConfig` — key/value store (logo path, UI theme overrides, `spi_warning_threshold`, `spi_risk_consecutive_cycles`)
   - `AuditLog` — structured log: user, action, entity, old/new JSON snapshot
   - `UserProjectAccess` — per-user PEP whitelist (empty = access all)
+  - `ApiKey` — service key for automatic import: `name`, `key_prefix`, `key_hash` (SHA-256; the raw key is never stored), `user_id` (the key acts as this user, so the role and the ACL apply), `last_used_at`, `revoked_at`
   - `ValidationRule` — ordered, typed rules evaluated per row during ingestion
   - `UploadSession` — metadata record for each upload (filename, user, row counts, status)
   - `QuarantineRecord` — rows that failed validation, with review workflow (pending/approved/rejected)
@@ -95,6 +96,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 |---|---|---|
 | `auth.py` | `/api` | `POST /token` — JWT login |
 | `users.py` | `/api/users` | Admin CRUD for user accounts |
+| `api_keys.py` | `/api/api-keys` | Admin: list, create (the response shows the key once), revoke. A key is valid only on `POST /api/upload-timesheet` through the `X-API-Key` header (`deps.get_upload_user`) |
 | `auditlog.py` | `/api` | `GET /audit-log` (admin) |
 | `cycles.py` | `/api/cycles` | CRUD + CSV import/export for billing cycles |
 | `projects.py` | `/api/projects` | CRUD + CSV import/export for projects/PEPs |
@@ -145,6 +147,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 - **`tabs/admin.js`** — Admin tab: users CRUD, audit log, validation rules engine, quarantine table, session detail, theme editor, Central de Alertas (paginated `ProjectAlert` table with PEP/type/status filters).
 - **`tabs/minha-area.js`** — Minha Área tab: user preferences, chart layout drag-to-reorder, personal upload history, personal quarantine view, budget alerts, Alertas sub-tab (ACL-filtered `ProjectAlert` list; hidden for admin users).
 - **`tabs/header.js`** — `_updateHeaderUser`, `loadSemaphore` (macro traffic-light bar; clicking a pill drills to Portfolio), `_drillDownToPep`, `_refreshTabBadges`, `_initNotifications`.
+- **`tabs/api-keys.js`** — Admin card for API keys: list, create (modal, then a show-once modal with a copy button), revoke. `loadApiKeys()` runs when the Admin tab opens.
 - **`tabs/onboarding.js`** — First-use checklist on the Dashboard (administrators only): counts cycles, projects and imports, shows the progress, hides itself when all 3 steps are complete. `_refreshOnboarding()` runs at boot, on a return to the Dashboard tab, and on a language change.
 - **`tabs/print-report.js`** — Fills the `#printHeader` block on `beforeprint`: logo, app name, report name (active tab and sub-tab), date, user, and the active filters. The header is hidden on screen (`.print-only`). The print CSS also hides the filter card and the onboarding card.
 - **`help.html` / `help.js`** — Static help page (quick start, tabs, import columns, quarantine, terms) in EN (STE) and PT. The header Help link opens it in a new tab.
@@ -232,7 +235,8 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **723** | |
+| `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
+| **Total** | **740** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

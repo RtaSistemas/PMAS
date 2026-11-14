@@ -20,7 +20,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from backend.app.database import DbSession, init_db
 from backend.app.limiter import limiter
 from backend.app.routers import (
-    acl, auditlog, auth, baselines, cycles, dashboard,
+    acl, api_keys, auditlog, auth, baselines, cycles, dashboard,
     my, notifications, plans, project_alerts, projects, quarantine, ratecard,
     theme, upload, users, validation_rules,
 )
@@ -210,6 +210,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(api_keys.router)
 app.include_router(auditlog.router)
 app.include_router(cycles.router)
 app.include_router(projects.router)

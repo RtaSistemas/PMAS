@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.app.database import Base, get_db
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, get_upload_user
 from backend.app.main import app
 import backend.app.models as _models  # noqa: F401
 
@@ -56,6 +56,7 @@ def client():
     saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = lambda: _MockAdmin()
+    app.dependency_overrides[get_upload_user] = lambda: _MockAdmin()
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
     app.dependency_overrides.clear()

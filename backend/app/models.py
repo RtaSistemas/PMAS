@@ -415,3 +415,21 @@ class ProjectAlert(Base):
     is_resolved        = Column(Boolean, default=False, nullable=False, index=True)
 
     project = relationship("Project", back_populates="alerts")
+
+
+class ApiKey(Base):
+    """Service key for automatic imports. It acts as `user` (role and PEP ACL apply)
+    and is accepted only by POST /api/upload-timesheet. The database keeps a hash only."""
+    __tablename__ = "api_key"
+
+    id           = Column(Integer, primary_key=True)
+    name         = Column(String, nullable=False)
+    key_prefix   = Column(String, nullable=False)                     # first characters, for display
+    key_hash     = Column(String, nullable=False, unique=True, index=True)
+    user_id      = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    created_by   = Column(String, nullable=False)
+    created_at   = Column(DateTime, nullable=False, default=now_br)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at   = Column(DateTime, nullable=True)
+
+    user = relationship("User")

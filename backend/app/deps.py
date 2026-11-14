@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import logging
 import os
+import hashlib
 import secrets
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
 from backend.app.database import DbSession
-from backend.app.models import User
+from backend.app.models import ApiKey, User
+from backend.app.utils import now_br
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +77,60 @@ def get_current_user_allow_change(
     return _resolve_user(token, db)
 
 
+API_KEY_PREFIX = "pmas_"
+
+
+def hash_api_key(raw: str) -> str:
+    """Keys are long random strings, so a fast hash is enough. The raw key is never stored."""
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def new_api_key() -> str:
+    return API_KEY_PREFIX + secrets.token_urlsafe(32)
+
+
+oauth2_optional = OAuth2PasswordBearer(tokenUrl="/api/token", auto_error=False)
+
+
+def get_upload_user(
+    request: Request,
+    db: DbSession,
+    token: Annotated[str | None, Depends(oauth2_optional)] = None,
+    api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+) -> User:
+    """User for POST /api/upload-timesheet: an API key or a normal login token.
+    Only the upload endpoint uses this dependency, so a key cannot reach any other route."""
+    if api_key:
+        record = (
+            db.query(ApiKey)
+            .filter(ApiKey.key_hash == hash_api_key(api_key), ApiKey.revoked_at.is_(None))
+            .first()
+        )
+        if record is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Chave de API inválida ou revogada.",
+            )
+        if getattr(record.user, "must_change_password", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="O usuário desta chave deve alterar a senha antes de continuar.",
+            )
+        record.last_used_at = now_br()
+        db.commit()
+        request.state.api_key = record
+        return record.user
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return get_current_user(token, db)
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+UploadUser = Annotated[User, Depends(get_upload_user)]
 CurrentUserFlex = Annotated[User, Depends(get_current_user_allow_change)]
 
 

@@ -28,6 +28,8 @@ Scalability, error handling, and Linux release build.
 - **Flow tests** (`tests/frontend/e2e/flows/`): upload, quarantine approve and reject, baseline lock, and forecast. They run in a separate Playwright project against a second server with an empty database. A test that reintroduces the ISO date defect fails.
 - **`PMAS_LOGIN_RATE_LIMIT`**: environment variable for the login rate limit. The default stays at `30/minute`.
 
+- **API keys for automatic import** (`routers/api_keys.py`, `ApiKey` model, `tabs/api-keys.js`): an administrator creates a key in the Admin tab and a system sends files with `POST /api/upload-timesheet` and the `X-API-Key` header. The key acts as an existing user, so the role and the PEP ACL apply. The key is valid only on the upload route. The server shows the key once and keeps only a SHA-256 hash. Revoked keys are refused. Create, revoke and each upload are in the audit log. 17 backend tests and 2 flow tests. The help page documents the use.
+
 ### Fixed
 
 - **ISO dates were read with day and month swapped.** `_parse_date` forced day-first parsing, so `2026-01-05` became 1 May 2026. A file with ISO dates and days of 12 or less put hours in the wrong month, or sent the rows to quarantine. Dates with a 4-digit year first are now read year-first. Dates in `dd/mm/yyyy` format are unchanged. The fix also applies to quarantine approval and to the collaborator timeline. 8 new tests.

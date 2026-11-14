@@ -1097,6 +1097,31 @@
       </div>
     </div>
 
+    <!-- API keys (automatic import) -->
+    <div class="card">
+      <div class="section-header">
+        <h2 class="card-title" data-i18n="apikey.title">Importação automática (chaves de API)</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="newApiKeyBtn" data-i18n="apikey.new">+ Nova chave</button>
+      </div>
+      <p class="hint" data-i18n="apikey.hint">Uma chave permite que um sistema envie arquivos de timesheet sem login. A chave age como um usuário e vale somente para a importação.</p>
+      <div class="table-responsive">
+      <table class="data-table" id="apiKeysTable">
+        <thead>
+          <tr>
+            <th data-i18n="apikey.th.name">Nome</th>
+            <th data-i18n="apikey.th.user">Age como</th>
+            <th data-i18n="apikey.th.key">Chave</th>
+            <th data-i18n="apikey.th.created">Criada em</th>
+            <th data-i18n="apikey.th.last_used">Último uso</th>
+            <th data-i18n="apikey.th.status">Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="apiKeysBody"><tr><td colspan="7" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+
     <!-- Validation Rules -->
     <div class="card">
       <div class="section-header">
@@ -1516,6 +1541,52 @@
 <!-- ================================================================== -->
 <!-- Modal: Alterar Senha                                                 -->
 <!-- ================================================================== -->
+<!-- API key: create -->
+<div class="modal-backdrop" id="apiKeyModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+    <div class="modal-header">
+      <h3 id="apiKeyModalTitle" data-i18n="apikey.modal.title">Nova chave de API</h3>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" data-modal-close="apiKeyModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label for="apiKeyNameInput" data-i18n="apikey.name_lbl">Nome *</label>
+          <input type="text" id="apiKeyNameInput" maxlength="60" data-i18n-ph="apikey.name_ph" placeholder="Exemplo: Sistema de ponto" />
+        </div>
+        <div class="form-group">
+          <label for="apiKeyUserSelect" data-i18n="apikey.user_lbl">Age como</label>
+          <select id="apiKeyUserSelect" class="form-select"></select>
+        </div>
+      </div>
+      <div class="error-msg" id="apiKeyError"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-modal-close="apiKeyModal" data-i18n="btn.cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="apiKeySaveBtn" data-i18n="apikey.create">Criar chave</button>
+    </div>
+  </div>
+</div>
+
+<!-- API key: show once -->
+<div class="modal-backdrop" id="apiKeyShownModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="apiKeyShownTitle">
+    <div class="modal-header">
+      <h3 id="apiKeyShownTitle" data-i18n="apikey.shown.title">Copie a chave agora</h3>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" data-modal-close="apiKeyShownModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" data-i18n="apikey.shown.warning">O sistema mostra a chave somente agora. Depois não é possível ver a chave de novo.</p>
+      <code id="apiKeyValue" class="api-key-value"></code>
+      <p class="hint" data-i18n="apikey.shown.usage">Envie a chave no cabeçalho X-API-Key da requisição POST /api/upload-timesheet.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="apiKeyCopyBtn" data-i18n="apikey.copy">Copiar</button>
+      <button type="button" class="btn btn-primary" data-modal-close="apiKeyShownModal" data-i18n="btn.close">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="pwdModal" hidden>
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pwdModalTitle">
     <div class="modal-header">
@@ -1961,6 +2032,7 @@
 <script src="/frontend/tabs/minha-area.js"></script>
 <script src="/frontend/tabs/header.js"></script>
 <script src="/frontend/tabs/onboarding.js"></script>
+<script src="/frontend/tabs/api-keys.js"></script>
 <script src="/frontend/tabs/print-report.js"></script>
 </body>
 </html>

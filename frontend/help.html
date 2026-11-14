@@ -66,6 +66,18 @@
       <dt>EAC</dt><dd>The estimated total cost when the project ends.</dd>
     </dl>
 
+    <h2>Automatic import</h2>
+    <p>An administrator can create an API key in the <b>Admin</b> tab. A system uses the key to send timesheet files without a login.</p>
+    <ol>
+      <li>Open the <b>Admin</b> tab. Click <b>New key</b>. Enter a name.</li>
+      <li>Copy the key. The system shows the key only once.</li>
+      <li>Send the file with the key in the <code>X-API-Key</code> header.</li>
+    </ol>
+    <pre class="help-code">curl -X POST https://your-server/api/upload-timesheet \
+  -H "X-API-Key: pmas_..." \
+  -F "file=@timesheet.csv"</pre>
+    <p>The key acts as the user that you select. The role and the PEP access of that user apply. The key is valid only for the import. To stop a system, revoke its key.</p>
+
     <h2>Get more help</h2>
     <p>Contact your administrator. Tell the administrator the name of the tab and the steps that you did.</p>
   </article>
@@ -121,6 +133,18 @@
       <dt>SPI</dt><dd>O progresso em relação ao cronograma. O PMAS usa horas como base. Um valor abaixo de 1 significa que o projeto está atrasado.</dd>
       <dt>EAC</dt><dd>O custo total estimado quando o projeto termina.</dd>
     </dl>
+
+    <h2>Importação automática</h2>
+    <p>Um administrador pode criar uma chave de API na aba <b>Admin</b>. Um sistema usa a chave para enviar arquivos de timesheet sem login.</p>
+    <ol>
+      <li>Abra a aba <b>Admin</b>. Clique em <b>Nova chave</b>. Informe um nome.</li>
+      <li>Copie a chave. O sistema mostra a chave somente uma vez.</li>
+      <li>Envie o arquivo com a chave no cabeçalho <code>X-API-Key</code>.</li>
+    </ol>
+    <pre class="help-code">curl -X POST https://seu-servidor/api/upload-timesheet \
+  -H "X-API-Key: pmas_..." \
+  -F "file=@timesheet.csv"</pre>
+    <p>A chave age como o usuário que você seleciona. O perfil e o acesso a PEPs desse usuário valem para a chave. A chave vale somente para a importação. Para bloquear um sistema, revogue a chave dele.</p>
 
     <h2>Mais ajuda</h2>
     <p>Fale com o seu administrador. Informe o nome da aba e os passos que você fez.</p>
