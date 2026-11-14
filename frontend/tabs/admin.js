@@ -85,9 +85,10 @@ document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   errEl.textContent = '';
   if (!new_password) { errEl.textContent = _t('msg.pwd_field_required'); return; }
   try {
-    await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
+    const updated = await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
     closeModal('pwdModal');
-    notify(_t('msg.pwd_changed'), 'success');
+    const isSelf = updated?.username === _getTokenPayload()?.sub;
+    notify(_t(isSelf ? 'msg.pwd_changed' : 'msg.pwd_reset_temp'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 

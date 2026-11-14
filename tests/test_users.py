@@ -136,6 +136,35 @@ class TestChangePassword:
                         json={"new_password": "newpass123", "current_password": "pass"})
         assert r.status_code == 403
 
+    def test_admin_reset_forces_password_change(self, client, db_session):
+        target = _make_user(db_session, "pam", "oldpass")
+        assert target.must_change_password is False
+        r = client.patch(f"/api/users/{target.id}/password", json={"new_password": "temp1234"})
+        assert r.status_code == 200
+        db_session.refresh(target)
+        assert target.must_change_password is True
+
+    def test_admin_changing_own_password_clears_flag(self, db_session):
+        admin = _make_user(db_session, "root2", "oldpass", role="admin")
+        admin.must_change_password = True
+        db_session.commit()
+        with _acting_as(admin) as c:
+            r = c.patch(f"/api/users/{admin.id}/password", json={"new_password": "newpass123"})
+        assert r.status_code == 200
+        db_session.refresh(admin)
+        assert admin.must_change_password is False
+
+    def test_user_changing_own_password_clears_flag(self, db_session):
+        regular = _make_user(db_session, "quinn", "oldpass")
+        regular.must_change_password = True
+        db_session.commit()
+        with _acting_as(regular) as c:
+            r = c.patch(f"/api/users/{regular.id}/password",
+                        json={"new_password": "newpass123", "current_password": "oldpass"})
+        assert r.status_code == 200
+        db_session.refresh(regular)
+        assert regular.must_change_password is False
+
     def test_not_found(self, client):
         r = client.patch("/api/users/99999/password", json={"new_password": "newpass123"})
         assert r.status_code == 404
