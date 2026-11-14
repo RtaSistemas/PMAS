@@ -24,12 +24,14 @@ Scalability, error handling, and Linux release build.
 - **Illustrated empty states**: every empty chart panel in the Dashboard now shows an icon (one CSS rule on `.chart-empty`).
 - **Writing guide** (`docs/STE-GUIDE.md`) and checker (`scripts/ste_check.py`) for the ASD-STE100 profile. `frontend/lang/en.js` passes at 100% (94% before).
 - **CI**: Vitest and Playwright jobs. Before this change only pytest ran in CI.
+- **Flow tests** (`tests/frontend/e2e/flows/`): upload, quarantine approve and reject, baseline lock, and forecast. They run in a separate Playwright project against a second server with an empty database. A test that reintroduces the ISO date defect fails.
 - **`PMAS_LOGIN_RATE_LIMIT`**: environment variable for the login rate limit. The default stays at `30/minute`.
 
 ### Fixed
 
 - **ISO dates were read with day and month swapped.** `_parse_date` forced day-first parsing, so `2026-01-05` became 1 May 2026. A file with ISO dates and days of 12 or less put hours in the wrong month, or sent the rows to quarantine. Dates with a 4-digit year first are now read year-first. Dates in `dd/mm/yyyy` format are unchanged. The fix also applies to quarantine approval and to the collaborator timeline. 8 new tests.
 - **Administrator password reset** did not force a password change. The temporary password that an administrator sets for another user now sets `must_change_password`. The flag clears only when the user changes their own password. 3 new tests.
+- **Boot race**: `_bootApp` ran from `setTimeout(…, 0)`, before the tab modules loaded. A page reload with a valid session could stop with `_updateHeaderUser is not defined`. The boot now waits for `DOMContentLoaded`.
 - **Mobile overflow**: the Effort panel was 451 px wide on a 393 px screen. The button group in `.panel-header` now wraps.
 - **Mixed light and dark UI**: the `prefers-color-scheme: light` block (UX-05) changed only some variables, because the saved admin theme sets the background, surface and text colors. A light OS setting gave a half-light screen. The block is removed. A real light theme needs `_loadTheme` to set all derived variables. It stays in the backlog.
 - **Header buttons**: `.btn-ghost` and `.icon-btn` had no CSS rules, so the bell and the print button used the white native style. Rules added.

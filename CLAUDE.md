@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-715 tests across 26 test files. The CI also runs 37 Vitest tests and 38 Playwright tests. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+723 tests across 26 test files. The CI also runs 37 Vitest tests and 44 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -207,7 +207,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 |---|---|---|
 | `test_evm_service.py` | 110 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None); includes `compute_eac_avg_rate` |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
-| `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_ingestion.py` | 72 | CSV/XLSX parsing, quarantine, rule engine integration |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints (filters, portfolio, effort, trends, forecast, allocation, concentration) |
 | `test_ingestion_phases.py` | 44 | Unit tests per phase function (`_phase_load_and_validate`, `_phase_authorize_peps`, `_phase_prescan_dates`, `_phase_validate_rows`, `_phase_aggregate_rules`, `_phase_upsert_records`); includes regression tests for weekly alert deduplication |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
@@ -231,7 +231,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **715** | |
+| **Total** | **723** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

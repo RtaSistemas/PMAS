@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-715%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-723%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -1029,7 +1029,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-715 tests across 26 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+723 tests across 26 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1150,7 +1150,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 26 files, 715 tests
+├── tests/                       # 26 files, 723 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable
