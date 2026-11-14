@@ -582,6 +582,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;
 }
+.panel-header > .flex-center { flex-wrap: wrap; }
 .panel-title {
   font-size: 0.7rem; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.09em; flex: 1;
