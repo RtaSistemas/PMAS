@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-740%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-750%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -1041,7 +1041,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-740 tests across 27 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+750 tests across 28 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1059,6 +1059,7 @@ pytest tests/ -v
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
 | `test_users.py` | 25 | User CRUD, password change, role enforcement |
 | `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
+| `test_packaging.py` | 10 | Linux install package, installer, backup script |
 | `test_cycles.py` | 20 | Cycle CRUD |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -1163,7 +1164,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 27 files, 740 tests
+├── tests/                       # 28 files, 750 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable
@@ -1204,6 +1205,8 @@ pyinstaller --onefile --name pmas-windows-x64 \
   --add-data "static;static" \
   run.py
 ```
+
+**Install on a Linux server.** Each release also has `pmas-linux-x64-package.tar.gz`. Unpack it and run `sudo ./install.sh`. The installer creates the `pmas` user, installs the systemd service and a daily backup timer, and keeps your settings and data when you update. See [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 The workflow `.github/workflows/release.yml` runs both builds in parallel (Linux runner for x64, Windows runner for x64) and attaches the binaries to the GitHub Release automatically.
 

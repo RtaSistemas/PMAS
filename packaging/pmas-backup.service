@@ -1,0 +1,13 @@
+[Unit]
+Description=PMAS database backup
+
+[Service]
+Type=oneshot
+User=pmas
+Group=pmas
+EnvironmentFile=-/etc/pmas/pmas.env
+ExecStart=/opt/pmas/backup_pmas.sh
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/pmas

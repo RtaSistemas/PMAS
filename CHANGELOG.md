@@ -28,6 +28,8 @@ Scalability, error handling, and Linux release build.
 - **Flow tests** (`tests/frontend/e2e/flows/`): upload, quarantine approve and reject, baseline lock, and forecast. They run in a separate Playwright project against a second server with an empty database. A test that reintroduces the ISO date defect fails.
 - **`PMAS_LOGIN_RATE_LIMIT`**: environment variable for the login rate limit. The default stays at `30/minute`.
 
+- **Linux install package** (`packaging/`, `docs/OPERATIONS.md`): `pmas-linux-x64-package.tar.gz` has the binary, `install.sh`, the systemd service `pmas.service`, a daily backup timer, a settings template and the operations guide. `install.sh install` also updates (it keeps `/etc/pmas/pmas.env` and the data), and `install.sh uninstall` removes the program and keeps the data. The release workflow builds the package and runs a smoke test of the binary (`/health`, `/ready`, frontend). This closes known gap P5. 10 tests.
+- **Backup without the `sqlite3` program**: `backup_pmas.sh` uses the Python module when the program is missing.
 - **API keys for automatic import** (`routers/api_keys.py`, `ApiKey` model, `tabs/api-keys.js`): an administrator creates a key in the Admin tab and a system sends files with `POST /api/upload-timesheet` and the `X-API-Key` header. The key acts as an existing user, so the role and the PEP ACL apply. The key is valid only on the upload route. The server shows the key once and keeps only a SHA-256 hash. Revoked keys are refused. Create, revoke and each upload are in the audit log. 17 backend tests and 2 flow tests. The help page documents the use.
 
 ### Fixed

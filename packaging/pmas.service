@@ -1,0 +1,26 @@
+[Unit]
+Description=PMAS - Project Management Assistant System
+After=network.target
+
+[Service]
+Type=simple
+User=pmas
+Group=pmas
+WorkingDirectory=/var/lib/pmas
+EnvironmentFile=-/etc/pmas/pmas.env
+ExecStart=/opt/pmas/pmas
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# The binary unpacks itself in a private temporary directory.
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/pmas /var/log/pmas
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -36,7 +36,20 @@ DEST="${BACKUP_DIR}/pmas_${TIMESTAMP}.db"
 
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Starting backup: $DB_PATH → $DEST"
 
-sqlite3 "$DB_PATH" "VACUUM INTO '$DEST'"
+if command -v sqlite3 >/dev/null 2>&1; then
+  sqlite3 "$DB_PATH" "VACUUM INTO '$DEST'"
+elif command -v python3 >/dev/null 2>&1; then
+  # The server has no sqlite3 program. The Python module makes the same consistent copy.
+  python3 - "$DB_PATH" "$DEST" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("VACUUM INTO ?", (sys.argv[2],))
+con.close()
+PY
+else
+  echo "ERROR: install sqlite3 or python3 to make a backup" >&2
+  exit 1
+fi
 
 SIZE=$(du -sh "$DEST" | cut -f1)
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Backup complete: $DEST ($SIZE)"
