@@ -1,7 +1,7 @@
 /* PMAS — i18n: Portuguese (pt-BR) */
 window._LANG_PT = {
     'app.title':'PMAS — Dashboard de Gestão de Projetos',
-    'btn.import_ts':'⬆ Importar','btn.logout':'Sair','btn.lang':'EN',
+    'btn.import_ts':'⬆ Importar','btn.help':'Ajuda','btn.logout':'Sair','btn.lang':'EN',
     'tab.projects':'Projetos','tab.cycles':'Ciclos','tab.team':'Equipe','tab.my':'Minha Área',
     'filters.title':'Filtros','filter.cycle':'Ciclo','filter.pep_code':'PEP (Código)',
     'filter.pep_desc':'PEP (Descrição)','filter.collab':'Colaborador',
