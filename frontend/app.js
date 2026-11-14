@@ -683,5 +683,8 @@ document.addEventListener('visibilitychange', () => {
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');
-  setTimeout(_bootApp, 0);
+  // Wait until every script has run. The tab modules (header.js, dashboard.js, ...) load after
+  // this file, and _bootApp calls functions that they define.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bootApp);
+  else _bootApp();
 }
