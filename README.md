@@ -1035,7 +1035,7 @@ pytest tests/ -v
 |---|---:|---|
 | `test_evm_service.py` | 110 | Unit tests for every function in `services/evm.py` (happy/boundary/None), including `compute_eac_avg_rate` |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
-| `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_ingestion.py` | 72 | CSV/XLSX parsing, quarantine, rule engine integration |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints |
 | `test_ingestion_phases.py` | 44 | Unit tests per phase function (`_phase_load_and_validate` → `_phase_upsert_records`); weekly alert deduplication regression |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
