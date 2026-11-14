@@ -8,6 +8,7 @@ import pytest
 
 from backend.app.models import Collaborator, Cycle, TimesheetRecord, ValidationRule
 from backend.app.services.ingestion import (
+    _parse_date,
     _safe_hours,
     _str_or_none,
     ingest_file,
@@ -530,3 +531,27 @@ class TestIngestionHardening:
         summary = ingest_file(_csv(BASE_ROW), "t.csv", db_session)
         assert summary["records_inserted"] == 1
         assert any("João Silva" in i for i in summary["infos"])
+
+
+class TestParseDate:
+    """Regression: an ISO date with a day of 12 or less was read with day and month swapped."""
+
+    @pytest.mark.parametrize("text, expected", [
+        ("2026-01-05", date(2026, 1, 5)),
+        ("2026-01-05 08:30:00", date(2026, 1, 5)),
+        ("2026/01/05", date(2026, 1, 5)),
+        ("2026-12-31", date(2026, 12, 31)),
+        ("05/01/2026", date(2026, 1, 5)),      # day-first stays the rule for dd/mm/yyyy
+        ("25/01/2026", date(2026, 1, 25)),
+        ("12/03/2026", date(2026, 3, 12)),
+    ])
+    def test_parse_date(self, text, expected):
+        assert _parse_date(text) == expected
+
+    def test_iso_dates_reach_the_matching_cycle(self, db_session, sample_cycle):
+        rows = [{**BASE_ROW, "Data": "2026-01-05"}, {**BASE_ROW, "Data": "2026-01-06"}]
+        summary = ingest_file(_csv(*rows), "t.csv", db_session)
+        assert summary["records_inserted"] == 2
+        assert summary["quarantine_records_added"] == 0
+        stored = {r.record_date for r in db_session.query(TimesheetRecord).all()}
+        assert stored == {date(2026, 1, 5), date(2026, 1, 6)}
