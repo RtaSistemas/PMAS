@@ -11,8 +11,9 @@ import sys
 from pathlib import Path
 
 MAX_WORDS = 25
-CONTRACTION = re.compile(r"\b\w+(?:n't|'re|'ve|'ll|'d|'s)\b", re.I)
-FILLER = re.compile(r"\b(please|simply|just|etc\.?|e\.g\.|i\.e\.)(?=\W|$)", re.I)
+# A possessive ("user's") is allowed. Only contractions fail.
+CONTRACTION = re.compile(r"\b(?:\w+(?:n't|'re|'ve|'ll|'d)|(?:it|that|there|here|what|let)'s)\b", re.I)
+FILLER = re.compile(r"\b(please|simply|just|(?-i:etc)\.?|e\.g\.|i\.e\.)(?=\W|$)", re.I)
 VAGUE = re.compile(r"\b(should|might|may)\b", re.I)
 PASSIVE = re.compile(
     r"\b(is|are|was|were|be|been|being)\s+"
