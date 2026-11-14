@@ -24,6 +24,7 @@ Scalability, error handling, and Linux release build.
 - **Illustrated empty states**: every empty chart panel in the Dashboard now shows an icon (one CSS rule on `.chart-empty`).
 - **Writing guide** (`docs/STE-GUIDE.md`) and checker (`scripts/ste_check.py`) for the ASD-STE100 profile. `frontend/lang/en.js` passes at 100% (94% before).
 - **CI**: Vitest and Playwright jobs. Before this change only pytest ran in CI.
+- **Printed report header** (`tabs/print-report.js`): the print dialog now gives a page header with the logo, the report name, the date, the user and the active filters, and page numbers ("1 / 3"). The filter card no longer prints, and the panels flow without a forced page break after each chart.
 - **Flow tests** (`tests/frontend/e2e/flows/`): upload, quarantine approve and reject, baseline lock, and forecast. They run in a separate Playwright project against a second server with an empty database. A test that reintroduces the ISO date defect fails.
 - **`PMAS_LOGIN_RATE_LIMIT`**: environment variable for the login rate limit. The default stays at `30/minute`.
 

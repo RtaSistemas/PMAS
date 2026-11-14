@@ -1,7 +1,7 @@
 /* PMAS — i18n: English (en) */
 window._LANG_EN = {
     'app.title':'PMAS — Project Management Dashboard',
-    'btn.import_ts':'⬆ Import','btn.help':'Help','btn.logout':'Sign Out','btn.lang':'PT',
+    'btn.import_ts':'⬆ Import','btn.help':'Help','print.generated':'Generated on {date} by {user}','print.filters':'Filters:','print.no_filters':'No filter is active. The report shows all data.','btn.logout':'Sign Out','btn.lang':'PT',
     'tab.projects':'Projects','tab.cycles':'Cycles','tab.team':'Team','tab.my':'My Area',
     'filters.title':'Filters','filter.cycle':'Cycle','filter.pep_code':'PEP (Code)',
     'filter.pep_desc':'PEP (Description)','filter.collab':'Collaborator',

@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-723 tests across 26 test files. The CI also runs 37 Vitest tests and 44 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+723 tests across 26 test files. The CI also runs 37 Vitest tests and 46 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -146,6 +146,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 - **`tabs/minha-area.js`** — Minha Área tab: user preferences, chart layout drag-to-reorder, personal upload history, personal quarantine view, budget alerts, Alertas sub-tab (ACL-filtered `ProjectAlert` list; hidden for admin users).
 - **`tabs/header.js`** — `_updateHeaderUser`, `loadSemaphore` (macro traffic-light bar; clicking a pill drills to Portfolio), `_drillDownToPep`, `_refreshTabBadges`, `_initNotifications`.
 - **`tabs/onboarding.js`** — First-use checklist on the Dashboard (administrators only): counts cycles, projects and imports, shows the progress, hides itself when all 3 steps are complete. `_refreshOnboarding()` runs at boot, on a return to the Dashboard tab, and on a language change.
+- **`tabs/print-report.js`** — Fills the `#printHeader` block on `beforeprint`: logo, app name, report name (active tab and sub-tab), date, user, and the active filters. The header is hidden on screen (`.print-only`). The print CSS also hides the filter card and the onboarding card.
 - **`help.html` / `help.js`** — Static help page (quick start, tabs, import columns, quarantine, terms) in EN (STE) and PT. The header Help link opens it in a new tab.
 
 ### Ingestion Pipeline (`services/ingestion.py`)
