@@ -185,7 +185,7 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'cycles')   _renderCyclesTable(_allCycles);
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
-  if (tab === 'dashboard') _renderActiveTab();
+  if (tab === 'dashboard') { _renderActiveTab(); _refreshOnboarding(); }
   if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   if (tab === 'my')       _initMyArea();
 });

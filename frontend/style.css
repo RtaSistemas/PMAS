@@ -1707,6 +1707,22 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   line-height: 1.5;
 }
 
+/* ── First-use checklist ───────────────────────────────────────────────────── */
+.onboarding-card { border-color: var(--primary); }
+.onboarding-card .onboarding-title { font-size: var(--fs-lg); color: var(--primary); margin-bottom: .25rem; }
+.onboarding-progress { font-size: var(--fs-sm); color: var(--text-3); margin-bottom: 1rem; }
+.onboarding-steps { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+.onboarding-step { display: flex; align-items: center; gap: .75rem; color: var(--text-2); }
+.onboarding-text { flex: 1; }
+.onboarding-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 1px solid var(--border-hi); font-size: var(--fs-xs); font-weight: 700;
+}
+.onboarding-step.done { color: var(--text-3); }
+.onboarding-step.done .onboarding-text { text-decoration: line-through; }
+.onboarding-step.done .onboarding-mark { background: var(--green); border-color: var(--green); color: var(--bg); }
+
 /* ── Project alert styles ──────────────────────────────────────────────────── */
 .alert-level-tag {
   display: inline-block;

@@ -175,7 +175,7 @@ tabBtns.forEach(btn => {
     btn.setAttribute('aria-selected', 'true');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
-    if (btn.dataset.tab === 'dashboard') _renderActiveTab();
+    if (btn.dataset.tab === 'dashboard') { _renderActiveTab(); _refreshOnboarding(); }
     if (btn.dataset.tab === 'projects') loadProjectsTable();
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
@@ -629,7 +629,7 @@ function _bootApp() {
   _restoreFilterDates();
   if (_getTokenPayload()?.must_change) _showDefaultPasswordBanner();
   loadDashboardCycles().then(() => {
-    if (!_allCycles.length && _isAdmin()) _showOnboardingBanner();
+    _refreshOnboarding();
     _restoreFilterSelections();
   });
   loadSemaphore();
@@ -671,30 +671,6 @@ function _showDefaultPasswordBanner() {
     setTimeout(() => document.getElementById('usersTable')?.scrollIntoView({ behavior: 'smooth' }), 200);
   });
 }
-
-function _showOnboardingBanner() {
-  if (document.getElementById('onboardingBanner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'onboardingBanner';
-  banner.className = 'card';
-  banner.style.cssText = 'margin:1.5rem;padding:1.5rem;border:1px solid var(--primary);background:rgba(14,165,233,0.05)';
-  banner.innerHTML = `
-    <h2 style="margin:0 0 1rem;font-size:1.1rem;color:var(--primary)">${_t('onboard.title')}</h2>
-    <ol style="margin:0 0 1.25rem;padding-left:1.4rem;display:flex;flex-direction:column;gap:.4rem;color:var(--text-2)">
-      <li>${_t('onboard.step1')}</li>
-      <li>${_t('onboard.step2')}</li>
-      <li>${_t('onboard.step3')}</li>
-    </ol>
-    <button class="btn btn-primary btn-sm" id="onboardingCta">${_t('onboard.cta')}</button>
-  `;
-  const dashPanel = document.getElementById('tab-dashboard');
-  if (dashPanel) dashPanel.prepend(banner);
-  document.getElementById('onboardingCta')?.addEventListener('click', () => {
-    banner.remove();
-    document.querySelector('[data-tab="projects"]')?.click();
-  });
-}
-
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
