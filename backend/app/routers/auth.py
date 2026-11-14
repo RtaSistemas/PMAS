@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -32,7 +33,7 @@ _LOCKOUT_MINUTES = 15
 
 
 @router.post("/token", response_model=Token)
-@limiter.limit("30/minute")
+@limiter.limit(os.getenv("PMAS_LOGIN_RATE_LIMIT", "30/minute"))
 def login(
     request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],

@@ -25,6 +25,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'python -m uvicorn backend.app.main:app --port 8000',
+    // Each test logs in. The default limit of 30 logins per minute is too low for the suite.
+    env: { PMAS_LOGIN_RATE_LIMIT: '1000/minute' },
     port: 8000,
     reuseExistingServer: true,
     timeout: 30000,
