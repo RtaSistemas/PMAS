@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
 > **Implementation patterns** — all coding conventions, design tokens, EVM formula rules, modal/pagination/CRUD/i18n/accessibility patterns are documented in [`docs/PATTERNS.md`](docs/PATTERNS.md). Read it before adding any feature.
+> **Writing guide** — write all English text (UI strings, documentation, error messages) to the ASD-STE100 profile in [`docs/STE-GUIDE.md`](docs/STE-GUIDE.md). Check a file with `python scripts/ste_check.py <file>`; keep each new or changed file at 80% or more.
 > **Project documentation** — audit reports, sprint records, and the branch diff live in [`docs/`](docs/README.md).
 
 ## Golden Rules — Architectural Constraints
@@ -44,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-712 tests across 26 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+715 tests across 26 test files. The CI also runs 37 Vitest tests and 38 Playwright tests. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Sample Data
 
@@ -144,6 +145,8 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 - **`tabs/admin.js`** — Admin tab: users CRUD, audit log, validation rules engine, quarantine table, session detail, theme editor, Central de Alertas (paginated `ProjectAlert` table with PEP/type/status filters).
 - **`tabs/minha-area.js`** — Minha Área tab: user preferences, chart layout drag-to-reorder, personal upload history, personal quarantine view, budget alerts, Alertas sub-tab (ACL-filtered `ProjectAlert` list; hidden for admin users).
 - **`tabs/header.js`** — `_updateHeaderUser`, `loadSemaphore` (macro traffic-light bar; clicking a pill drills to Portfolio), `_drillDownToPep`, `_refreshTabBadges`, `_initNotifications`.
+- **`tabs/onboarding.js`** — First-use checklist on the Dashboard (administrators only): counts cycles, projects and imports, shows the progress, hides itself when all 3 steps are complete. `_refreshOnboarding()` runs at boot, on a return to the Dashboard tab, and on a language change.
+- **`help.html` / `help.js`** — Static help page (quick start, tabs, import columns, quarantine, terms) in EN (STE) and PT. The header Help link opens it in a new tab.
 
 ### Ingestion Pipeline (`services/ingestion.py`)
 
@@ -214,7 +217,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk); NULL-cost regression |
 | `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC, `cpi_cumulative` in history, `spi_t_color` in forecast |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_users.py` | 22 | User CRUD, password change, role enforcement |
+| `test_users.py` | 25 | User CRUD, password change, role enforcement |
 | `test_cycles.py` | 20 | CRUD de ciclos |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -228,7 +231,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **712** | |
+| **Total** | **715** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

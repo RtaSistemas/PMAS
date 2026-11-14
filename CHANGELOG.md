@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
-## [2.1.0_PMAS] — 2026-07-22
+## [2.1.0_PMAS] — 2026-11-14
 
 Scalability, error handling, and Linux release build.
 
@@ -17,9 +17,25 @@ Scalability, error handling, and Linux release build.
 - **RFC 7807 Problem Details**: `HTTPException` and `RequestValidationError` now return `application/problem+json` responses with `type`, `title`, `status`, `detail`, and field-level `erros` array in Portuguese. Replaces FastAPI's default JSON error format.
 - **Linux release build**: Re-enabled `ubuntu-latest` matrix entry in `.github/workflows/release.yml`. Pushing a `v*` tag now produces `pmas-linux-x64` alongside the existing Windows binary.
 
+### Added (commercial-readiness, wave 0)
+
+- **First-use checklist** (`tabs/onboarding.js`): replaces the static welcome banner. It shows the real progress (cycle, project, import), opens the matching tab, and hides itself when all 3 steps are complete. The old banner named a wrong path.
+- **Help page** (`help.html`): quick start, tabs, import columns, quarantine and terms, in English and Portuguese. A Help link in the header opens it.
+- **Illustrated empty states**: every empty chart panel in the Dashboard now shows an icon (one CSS rule on `.chart-empty`).
+- **Writing guide** (`docs/STE-GUIDE.md`) and checker (`scripts/ste_check.py`) for the ASD-STE100 profile. `frontend/lang/en.js` passes at 100% (94% before).
+- **CI**: Vitest and Playwright jobs. Before this change only pytest ran in CI.
+- **`PMAS_LOGIN_RATE_LIMIT`**: environment variable for the login rate limit. The default stays at `30/minute`.
+
+### Fixed
+
+- **Administrator password reset** did not force a password change. The temporary password that an administrator sets for another user now sets `must_change_password`. The flag clears only when the user changes their own password. 3 new tests.
+- **Mobile overflow**: the Effort panel was 451 px wide on a 393 px screen. The button group in `.panel-header` now wraps.
+- **Header buttons**: `.btn-ghost` and `.icon-btn` had no CSS rules, so the bell and the print button used the white native style. Rules added.
+
 ### Changed
 
 - **Version** bumped from `2.0.2` → `2.1.0`.
+- **English UI text**: 31 strings rewritten to the STE profile (no "please", no "e.g.", no passive voice).
 
 ---
 
