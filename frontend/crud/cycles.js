@@ -23,16 +23,16 @@ const _cyclesPag = _makePaginator(
       emptyKey: 'no_cycles',
       rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
-      <td>${escHtml(c.name)}${!c.is_active ? ` <em style="color:${_cssVar('--text-3')};font-size:.8rem">(arquivado)</em>` : ''}</td>
-      <td>${c.start_date}</td>
-      <td>${c.end_date}</td>
+      <td>${escHtml(c.name)}${!c.is_active ? ` <em style="color:${_cssVar('--text-3')};font-size:.8rem">${_t('cycle.archived')}</em>` : ''}</td>
+      <td>${fmtDateOnly(c.start_date)}</td>
+      <td>${fmtDateOnly(c.end_date)}</td>
       <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US')}</td>
       <td><div class="actions">
         ${admin ? `<button class="btn btn-sm ${c.is_closed ? 'btn-warning' : 'btn-secondary'}" onclick="toggleCycleLock(${c.id}, ${c.is_closed})" title="${c.is_closed ? _t('title.unlock') : _t('title.lock')}">${c.is_closed ? '🔒' : '🔓'}</button>` : ''}
         ${admin ? `<button class="btn btn-sm btn-secondary" onclick="toggleCycleArchive(${c.id}, ${c.is_active})" title="${c.is_active ? _t('title.archive') : _t('title.restore')}">${c.is_active ? '📦' : '↩'}</button>` : ''}
-        <button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>
+        ${admin ? `<button class="btn btn-secondary btn-sm" onclick="openCycleModal(${c.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCycle(${c.id}, ${escHtml(JSON.stringify(c.name))}, ${c.record_count})">${_t('btn.delete')}</button>` : ''}
       </div></td>
     </tr>`,
     });

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   escHtml,
   fmtDateBR,
+  fmtDate,
+  fmtDateOnly,
   formatHours,
   formatCost,
   clamp,
@@ -195,5 +197,43 @@ describe('parseISODate', () => {
 
   it('returns null for undefined', () => {
     expect(parseISODate(undefined)).toBeNull();
+  });
+});
+
+// ── fmtDate / fmtDateOnly (one date rule: dd/mm/yyyy) ─────────────────────────
+
+describe('fmtDate', () => {
+  it('shows dd/mm/yyyy HH:mm in the time zone of the system', () => {
+    expect(fmtDate('2026-01-15T15:30:00Z')).toBe('15/01/2026 12:30');
+  });
+
+  it('uses the same format in English', () => {
+    window._locale = 'en';
+    expect(fmtDate('2026-01-15T15:30:00Z')).toBe('15/01/2026 12:30');
+    delete window._locale;
+  });
+
+  it('shows 24-hour time at midnight', () => {
+    expect(fmtDate('2026-01-15T03:00:00Z')).toBe('15/01/2026 00:00');
+  });
+
+  it('returns a dash for an empty value and the input for a bad value', () => {
+    expect(fmtDate(null)).toBe('—');
+    expect(fmtDate('not a date')).toBe('not a date');
+  });
+});
+
+describe('fmtDateOnly', () => {
+  it('formats an ISO date without a time zone shift', () => {
+    expect(fmtDateOnly('2026-03-07')).toBe('07/03/2026');
+  });
+
+  it('formats a timestamp as a date', () => {
+    expect(fmtDateOnly('2026-01-15T15:30:00Z')).toBe('15/01/2026');
+  });
+
+  it('returns a dash for an empty value', () => {
+    expect(fmtDateOnly('')).toBe('—');
+    expect(fmtDateOnly(undefined)).toBe('—');
   });
 });

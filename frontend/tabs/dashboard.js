@@ -139,23 +139,23 @@ function _showIngestResult(json, filename) {
 
   summary.innerHTML =
     `<span style="font-weight:600;color:${_cssVar('--text')}">${escHtml(filename)}</span>` +
-    chip('Inseridos',   json.records_inserted,         _cssVar('--green')) +
-    chip('Ignorados',   json.records_skipped,           _cssVar('--text-3')) +
-    chip('Quarentena',  json.quarantine_records_added,  _cssVar('--red')) +
-    chip('Avisos',      json.warning_count,             _cssVar('--amber')) +
-    chip('Infos',       json.info_count,                _cssVar('--primary'));
+    chip(_t('history.th.inserted'),   json.records_inserted,         _cssVar('--green')) +
+    chip(_t('history.th.skipped'),    json.records_skipped,           _cssVar('--text-3')) +
+    chip(_t('history.th.quarantine'), json.quarantine_records_added,  _cssVar('--red')) +
+    chip(_t('history.th.warnings'),   json.warning_count,             _cssVar('--amber')) +
+    chip(_t('history.th.infos'),      json.info_count,                _cssVar('--primary'));
 
   let html = '';
   if (json.warnings?.length) {
     html += `<details open style="padding:.6rem 1rem;border-bottom:1px solid ${_cssVar('--surface')}">
-      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} aviso(s)</summary>
+      <summary style="cursor:pointer;color:${_cssVar('--amber')};font-weight:600;font-size:.8rem;list-style:none">⚠ ${json.warnings.length} ${_t('upload.warnings')}</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.warnings.map(w => `<li style="color:${_cssVar('--amber')};font-size:.79rem">${escHtml(w)}</li>`).join('')}
       </ul></details>`;
   }
   if (json.infos?.length) {
     html += `<details open style="padding:.6rem 1rem">
-      <summary style="cursor:pointer;color:${_cssVar('--primary')};font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} informação(ões)</summary>
+      <summary style="cursor:pointer;color:${_cssVar('--primary')};font-weight:600;font-size:.8rem;list-style:none">ℹ ${json.infos.length} ${_t('upload.infos')}</summary>
       <ul style="margin:.4rem 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.2rem;max-height:180px;overflow-y:auto">
         ${json.infos.map(i => `<li style="color:${_cssVar('--primary')};font-size:.79rem">${escHtml(i)}</li>`).join('')}
       </ul></details>`;
@@ -200,13 +200,14 @@ clearBtn.addEventListener('click', () => {
   cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
+  _updateFilterBadge();
   try { localStorage.removeItem('pmas_filters_v1'); } catch (_) {}
   pepDataCache = {};
   _evmMode = false;
   document.getElementById('evmToggleBtn').textContent = _t('btn.view_hours');
   _portfolioTimelineMode = false;
   const _tlBtn = document.getElementById('timelineToggleBtn');
-  if (_tlBtn) { _tlBtn.textContent = _t('btn.timeline_on'); _tlBtn.className = 'btn btn-secondary btn-sm'; }
+  if (_tlBtn) { _tlBtn.textContent = _t('btn.timeline_on'); _tlBtn.dataset.i18n = 'btn.timeline_on'; _tlBtn.className = 'btn btn-secondary btn-sm'; }
   _showTrajectory = false;
   const _trajBtn = document.getElementById('toggleTrajectoryBtn');
   if (_trajBtn) { _trajBtn.setAttribute('aria-pressed', 'false'); _trajBtn.className = 'btn btn-ghost btn-sm'; }
@@ -483,7 +484,7 @@ function _drawRunwayRows(data) {
     }
 
     const rowBg = (item.risk === 'critical' || item.risk === 'overrun')
-      ? 'background:rgba(197,109,118,.07)'
+      ? `background:${_withAlpha(_cssVar('--red'), 0.07)}`
       : '';
 
     const tr = document.createElement('tr');
@@ -560,14 +561,14 @@ function _renderConcentrationPanel(concentration) {
       : formatHours(item.total_hours, 0);
 
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
+    row.style.cssText = `display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
     row.innerHTML = `
       <div style="min-width:14px;display:flex;align-items:center"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor}"></span></div>
       <div style="min-width:130px">
         <div style="font-family:monospace;font-size:.8rem;color:${_cssVar('--text')}">${escHtml(item.pep_wbs)}</div>
         <div style="font-size:.72rem;color:${_cssVar('--text-3')};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
-      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1 1 12rem;min-width:0">${barsHtml}</div>
       <div style="font-size:.72rem;color:${_cssVar('--text-3')};white-space:nowrap">${totalDisplay}</div>
     `;
     grid.appendChild(row);
@@ -768,10 +769,10 @@ function _renderCostCompositionChart(trends) {
       ..._chartDefaults().tooltip,
       formatter(params) {
         const total = params.reduce((s, p) => s + (p.value || 0), 0);
-        let html = `<b>${params[0].axisValue}</b><br/>`;
+        let html = `<b>${escHtml(params[0].axisValue)}</b><br/>`;
         params.forEach(p => {
           const pct = total > 0 ? (p.value / total * 100).toFixed(1) : '0.0';
-          html += `${p.marker}${p.seriesName}: ${_fmtCost(p.value)} (${pct}%)<br/>`;
+          html += `${p.marker}${escHtml(p.seriesName)}: ${_fmtCost(p.value)} (${pct}%)<br/>`;
         });
         html += `<b>Total: ${_fmtCost(total)}</b>`;
         return html;
@@ -1128,7 +1129,7 @@ function _drawAllocMatrix() {
     if (!v) return '';
     const ratio = v / maxVal;
     const a = (0.08 + ratio * 0.72).toFixed(2);
-    return `background:rgba(14,165,233,${a})`;
+    return `background:${_withAlpha(_cssVar('--primary'), a)}`;
   };
 
   const thCls = key => {
@@ -1139,11 +1140,11 @@ function _drawAllocMatrix() {
   let html = '<table class="alloc-matrix data-table"><thead><tr>';
   html += `<th class="${thCls('__name__')}" data-sort-key="__name__">${_t('allocation.collaborator')}</th>`;
   sortedPeps.forEach(pep => {
-    const desc  = pep === '__none__' ? '(sem PEP)' : (pepLabels[pep] || pep);
+    const desc  = pep === '__none__' ? _t('allocation.no_pep') : (pepLabels[pep] || pep);
     const headerContent = pep === '__none__'
       ? escHtml(desc)
       : `${escHtml(pep)}<br><span class="alloc-th-desc">${escHtml(desc)}</span>`;
-    html += `<th class="${thCls(pep)}" data-sort-key="${pep}" title="${escHtml(pep + ' · ' + desc)}">${headerContent}</th>`;
+    html += `<th class="${thCls(pep)}" data-sort-key="${escHtml(pep)}" title="${escHtml(pep + ' · ' + desc)}">${headerContent}</th>`;
   });
   html += `<th class="${thCls('__total__')}" data-sort-key="__total__">${_t('allocation.total')}</th></tr></thead><tbody>`;
 
@@ -1237,13 +1238,13 @@ function _buildForecastKpis(fc) {
 
   // Completion cycle range sublabel (R-12)
   const completionRangeSublbl = (fc.est_cycles_optimistic != null && fc.est_cycles_pessimistic != null)
-    ? `+${fc.est_cycles_optimistic} a +${fc.est_cycles_pessimistic} ciclos`
+    ? `+${fc.est_cycles_optimistic} ${_t('lbl.to')} +${fc.est_cycles_pessimistic} ${_t('unit.cycles')}`
     : null;
 
   const completionVal = fc.is_closed && fc.completed_on
     ? fmtDateBR(fc.completed_on)
     : (fc.estimated_completion_cycle
-      || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ciclos` : '—'));
+      || (fc.estimated_cycles_to_complete != null ? `+${fc.estimated_cycles_to_complete} ${_t('unit.cycles')}` : '—'));
   const completionLbl = fc.is_closed ? _t('forecast.completed_on') : _t('forecast.completion');
 
   const row1 = [
@@ -1420,13 +1421,12 @@ async function _loadForecastAlerts(pepWbs) {
     const pepAlerts = alerts.filter(a => a.pep_wbs === pepWbs);
     if (pepAlerts.length === 0) { card.hidden = true; return; }
     card.hidden = false;
-    const _fmtType = t => ({ budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[t] || t);
     list.innerHTML = `<div class="forecast-alerts-list">${pepAlerts.map(a => `
       <div class="forecast-alert-item level-${a.level}${a.is_resolved ? ' is-resolved' : ''}">
-        <span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span>
+        ${_alertLevelTag(a)}
         <div>
-          <div class="forecast-alert-msg">${a.message}</div>
-          <div class="forecast-alert-meta">${_fmtType(a.alert_type)} · ${fmt.datetime ? fmt.datetime(a.created_at) : a.created_at.replace('T', ' ').slice(0,16)}${a.is_resolved ? ' · <span class="alert-status-resolved">Resolvido</span>' : ''}</div>
+          <div class="forecast-alert-msg">${escHtml(a.message)}</div>
+          <div class="forecast-alert-meta">${escHtml(_alertTypeLabel(a.alert_type))} · ${_fmtDate(a.created_at)}${a.is_resolved ? ` · <span class="alert-status-resolved">${_t('alerts.status.resolved')}</span>` : ''}</div>
         </div>
       </div>`).join('')}</div>`;
   } catch (_) {
@@ -1461,7 +1461,7 @@ function _renderVelocitySparkline(fc) {
       trigger: 'axis', ..._chartDefaults().tooltip,
       formatter: p => {
         const bar = p[0];
-        return `<b>${bar.name}</b><br/>${bar.marker}${(+bar.value).toFixed(1)} h` +
+        return `<b>${escHtml(bar.name)}</b><br/>${bar.marker}${(+bar.value).toFixed(1)} h` +
           `<br/><span style="color:${avgColor}">— — </span>${_t('forecast.avg3')}: <b style="color:${avgColor}">${avg3.toFixed(1)} h</b>`;
       },
     },
@@ -1521,7 +1521,7 @@ function _renderForecastBaseline(fc) {
       <th data-i18n="plan.th.cycle">${_t('plan.th.cycle')}</th>
       ${hasHours ? `<th class="text-right" data-i18n="plan.th.hours">${_t('plan.th.hours')}</th>
       <th class="text-right" data-i18n="forecast.realized">${_t('forecast.realized')}</th>
-      <th class="text-right">Δ Horas</th>` : ''}
+      <th class="text-right">${_t('forecast.th.delta_hours')}</th>` : ''}
       ${hasCost  ? `<th class="text-right" data-i18n="plan.th.cost">${_t('plan.th.cost')}</th>
       <th class="text-right">AC</th>` : ''}
     </tr></thead><tbody>`;
@@ -1562,11 +1562,11 @@ function _renderBurnUpChart(fc) {
       const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
       const _SPI_T_CM = { success: 'green', warning: 'amber', danger: 'red' };
       const spiTCls  = fc.spi_t == null ? 'neutral' : (_SPI_T_CM[fc.spi_t_color] || 'red');
-      const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
+      const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ' + _t('unit.cycles') : '—';
       const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
-      const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';
-      const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ciclos' : '—';
-      const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ciclos' : '—';
+      const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ' + _t('unit.cycles') : '—';
+      const atVal    = fc.actual_time_cycles != null ? fc.actual_time_cycles + ' ' + _t('unit.cycles') : '—';
+      const pdVal    = fc.planned_duration_cycles != null ? fc.planned_duration_cycles + ' ' + _t('unit.cycles') : '—';
       const cards = [
         { val: esVal,    lbl: 'ES',      cls: 'blue',    evm: 'ES',    sublbl: `${_t('forecast.es.at')} ${atVal}` },
         { val: spiTVal,  lbl: 'SPI(t)',  cls: spiTCls,   evm: 'SPIt'  },
@@ -1605,7 +1605,7 @@ async function _loadForecastSimulation(projectId) {
   const hint = document.getElementById('whatIfVelocityHint');
   if (hint) {
     hint.textContent = _fcAvgVelocity != null
-      ? `${_t('sim.velocity_base')} ${_fcAvgVelocity.toFixed(1)} h/ciclo`
+      ? `${_t('sim.velocity_base')} ${_fcAvgVelocity.toFixed(1)} ${_t('unit.h_per_cycle')}`
       : '';
   }
   // auto-load monte carlo
@@ -1614,8 +1614,14 @@ async function _loadForecastSimulation(projectId) {
 
 async function _runWhatIf() {
   if (!_simProjectId) return;
-  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value)  || 1.0;
-  const extra = parseFloat(document.getElementById('whatIfExtraHours').value)   || 0.0;
+  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value);
+  const extraRaw = document.getElementById('whatIfExtraHours').value.trim();
+  const extra = extraRaw === '' ? 0 : parseFloat(extraRaw);
+  const simErr = document.getElementById('whatIfError');
+  simErr.textContent = '';
+  // The server accepts a multiplier from 0.1 to 5 and extra hours of 0 or more.
+  if (!(mult >= 0.1 && mult <= 5)) { simErr.textContent = _t('sim.err_multiplier'); return; }
+  if (!(extra >= 0)) { simErr.textContent = _t('sim.err_extra'); return; }
   const btn   = document.getElementById('whatIfRunBtn');
   btn.disabled = true;
   const burnEl = document.getElementById('whatIfBurnUpChart');
@@ -1624,7 +1630,7 @@ async function _runWhatIf() {
       velocity_multiplier: mult, extra_hours_per_cycle: extra,
     });
     const el = document.getElementById('whatIfResult');
-    const ctc = r.cycles_to_complete != null ? `${r.cycles_to_complete} ciclos` : '—';
+    const ctc = r.cycles_to_complete != null ? `${r.cycles_to_complete} ${_t('unit.cycles')}` : '—';
     const eac = r.projected_eac_cost != null ? _fmtCost(r.projected_eac_cost) : '—';
     const cards = [
       { val: `${r.avg_velocity.toFixed(1)}h`, lbl: _t('sim.avg_velocity'),      cls: 'neutral', evm: 'SimAvgVel'  },
@@ -1637,7 +1643,7 @@ async function _runWhatIf() {
     // Burn-up projection chart
     if (burnEl && r.burn_up_projected?.length) {
       const projected = [r.consumed_hours, ...r.burn_up_projected];
-      const cats = ['Atual', ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
+      const cats = [_t('sim.burnup.current'), ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
       const budget = r.budget_hours;
       burnEl.hidden = false;
       const wc = _getOrCreateChart('whatIfBurnUpChart');
@@ -1652,8 +1658,8 @@ async function _runWhatIf() {
         },
         tooltip: { trigger: 'axis', ..._chartDefaults().tooltip,
           formatter: params => {
-            let html = `<b>${params[0]?.axisValue}</b><br>`;
-            params.forEach(p => p.value != null && (html += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br>`)); // intentional: ECharts tooltip formatters don't support locale HTML
+            let html = `<b>${escHtml(params[0]?.axisValue)}</b><br>`;
+            params.forEach(p => p.value != null && (html += `${p.marker}${escHtml(p.seriesName)}: <b>${p.value.toFixed(1)}h</b><br>`)); // intentional: ECharts tooltip formatters don't support locale HTML
             return html;
           },
         },
@@ -1684,7 +1690,7 @@ async function _runWhatIf() {
       burnEl.hidden = true;
     }
   } catch (e) {
-    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${escHtml(_friendlyError(e))}</p>`;
     if (burnEl) burnEl.hidden = true;
   } finally {
     btn.disabled = false;
@@ -1704,9 +1710,9 @@ async function _runMonteCarlo() {
       return;
     }
     const mcCards = [
-      { val: `${r.p10 ?? '—'} ciclos`,                   lbl: `P10 ${_t('mc.optimistic')}`, cls: 'green',   evm: 'MCP10'     },
-      { val: `${r.p50 ?? '—'} ciclos`,                   lbl: `P50 ${_t('mc.median')}`,     cls: 'blue',    evm: 'MCP50'     },
-      { val: `${r.p90 ?? '—'} ciclos`,                   lbl: `P90 ${_t('mc.pessimistic')}`,cls: 'red',     evm: 'MCP90'     },
+      { val: `${r.p10 ?? '—'} ${_t('unit.cycles')}`,                   lbl: `P10 ${_t('mc.optimistic')}`, cls: 'green',   evm: 'MCP10'     },
+      { val: `${r.p50 ?? '—'} ${_t('unit.cycles')}`,                   lbl: `P50 ${_t('mc.median')}`,     cls: 'blue',    evm: 'MCP50'     },
+      { val: `${r.p90 ?? '—'} ${_t('unit.cycles')}`,                   lbl: `P90 ${_t('mc.pessimistic')}`,cls: 'red',     evm: 'MCP90'     },
       { val: `${r.mean_velocity?.toFixed(1) ?? '—'}h`,   lbl: _t('mc.mean_velocity'),        cls: 'neutral', evm: 'MCMeanVel' },
     ].map(_mkStatCard).join('');
     el.innerHTML = `<div class="stats-row" style="margin-top:.5rem">${mcCards}</div>`;
@@ -1769,7 +1775,7 @@ async function _runMonteCarlo() {
           formatter: params => {
             const bar  = params.find(p => p.seriesType === 'bar') || params[0];
             const bell = params.find(p => p.seriesType === 'line');
-            let html = `<b>${bar.axisValue} ${_t('sim.cycles_to_complete')}</b><br>`;
+            let html = `<b>${escHtml(bar.axisValue)} ${_t('sim.cycles_to_complete')}</b><br>`;
             html += `${bar.marker}${_t('mc.histogram.frequency')}: <b>${bar.value}</b>`;
             if (bell?.value != null) html += `<br><span style="color:${bellColor}">- -</span> ${_t('mc.bell_curve')}: <b>${(+bell.value).toFixed(1)}</b>`;
             return html;
@@ -1952,7 +1958,7 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
     const heat = (v, max) => {
       if (!v) return '';
       const a = (0.08 + (v / max) * 0.72).toFixed(2);
-      return `style="background:rgba(14,165,233,${a})"`;
+      return `style="background:${_withAlpha(_cssVar('--primary'), a)}"`;
     };
     const fmt = v => v > 0 ? formatHours(v) : '—';
 
@@ -2025,7 +2031,7 @@ async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
     const heat = (v, max) => {
       if (!v) return '';
       const a = (0.08 + (v / max) * 0.72).toFixed(2);
-      return `style="background:rgba(14,165,233,${a})"`;
+      return `style="background:${_withAlpha(_cssVar('--primary'), a)}"`;
     };
     const fmt = v => v > 0 ? _fmtCost(v) : '—';
 
@@ -2097,8 +2103,8 @@ async function _renderPlanTable() {
         <td style="text-align:right">${costStr}</td>
         <td style="text-align:right">${physStr}</td>
         <td style="white-space:nowrap">
-          <button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${escHtml(JSON.stringify(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
-          <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>
+          ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="editPlan(${pl.cycle_id}, ${escHtml(JSON.stringify(pl.cycle_name))}, ${pl.planned_hours}, ${pl.planned_cost ?? 'null'})" style="margin-right:.25rem">${_t('btn.edit')}</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePlan(${pl.cycle_id})">${_t('btn.delete')}</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -2134,7 +2140,7 @@ document.getElementById('editPlanSaveBtn').addEventListener('click', async () =>
   const rawCost = document.getElementById('editPlanCost').value.trim();
   const cost = rawCost === '' ? null : parseFloat(rawCost);
   if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
-  if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = 'Custo inválido.'; return; }
+  if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = _t('msg.invalid_cost'); return; }
   try {
     await apiFetchJSON(`/api/projects/${_planProjectId}/plans/${_editPlanCycleId}`, 'PUT',
       { cycle_id: _editPlanCycleId, planned_hours: hours, planned_cost: cost });
@@ -2236,7 +2242,7 @@ document.getElementById('physicalProgressSaveBtn').addEventListener('click', asy
     if (rawPct !== '') {
       pct = parseFloat(rawPct);
       if (isNaN(pct) || pct < 0 || pct > 100) {
-        errEl.textContent = `% inválido na linha "${row.cells[0].textContent}". Use valores entre 0 e 100.`;
+        errEl.textContent = _tf('plan.physical.invalid_pct', { row: row.cells[0].textContent });
         return;
       }
       pct = pct / 100;
@@ -2266,7 +2272,7 @@ document.getElementById('addPlanSaveBtn').addEventListener('click', async () => 
     const rawC    = row.querySelector('.plan-cost').value.trim();
     const cost    = rawC === '' ? null : parseFloat(rawC);
     if (isNaN(hours) || hours < 0) { errEl.textContent = _t('msg.valid_hours'); return; }
-    if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = 'Custo inválido.'; return; }
+    if (cost !== null && (isNaN(cost) || cost < 0)) { errEl.textContent = _t('msg.invalid_cost'); return; }
     entries.push({ cycle_id: cycleId, planned_hours: hours, planned_cost: cost });
   }
   if (!entries.length) { _closeAddPlanModal(); return; }
@@ -2488,7 +2494,7 @@ async function _renderCollabTimeline(name) {
   chartEl.style.visibility = '';
 
   const tc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
-  tc.setOption({ aria: { enabled: true } });
+  tc.setOption(_ARIA_OPTION);
   _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
@@ -2564,7 +2570,7 @@ function _renderCollabRadar(name, rows) {
       formatter: params => {
         const [vol, ext, sby, reg, pres] = params.value;
         return [
-          `<b>${params.name}</b>`,
+          `<b>${escHtml(params.name)}</b>`,
           `${_t('radar.volume')}: ${vol.toFixed(1)}`,
           `${_t('radar.extra')}: ${ext.toFixed(1)}`,
           `${_t('radar.standby')}: ${sby.toFixed(1)}`,
@@ -2697,7 +2703,7 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
-  cc.setOption({ aria: { enabled: true } });
+  cc.setOption(_ARIA_OPTION);
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
     ..._chartDefaults(),
@@ -2707,7 +2713,7 @@ async function _renderCollabCalendar(name, year, month) {
         if (!p.value || p.value[1] < 0) return '';
         const [d_date, , n, e, s] = p.value;
         const q = quarantineDates.has(d_date) ? ' ⚠' : '';
-        let tip = `<b>${d_date}</b>${q}`;
+        let tip = `<b>${escHtml(d_date)}</b>${q}`;
         if (n > 0) tip += `<br/>${_t('trends.normal')}: ${n.toFixed(1)}h`;
         if (e > 0) tip += `<br/>${_t('trends.extra')}: ${e.toFixed(1)}h`;
         if (s > 0) tip += `<br/>${_t('trends.standby')}: ${s.toFixed(1)}h`;

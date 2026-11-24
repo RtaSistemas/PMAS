@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PMAS — Dashboard de Gestão de Projetos</title>
-  <link rel="icon" type="image/png" href="/static/assets/icon.png" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230ea5e9'/%3E%3Crect x='7' y='16' width='4' height='9' rx='1' fill='white'/%3E%3Crect x='14' y='11' width='4' height='14' rx='1' fill='white'/%3E%3Crect x='21' y='7' width='4' height='18' rx='1' fill='white'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
   <script src="/frontend/echarts.min.js"></script>
   <script src="/frontend/sortable.min.js"></script>
@@ -86,7 +86,7 @@
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
         class="currency-input" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
-    <button id="notifBtn" class="btn btn-ghost icon-btn" aria-label="Notificações" title="Notificações">
+    <button id="notifBtn" class="btn btn-ghost icon-btn" aria-label="Notificações" title="Notificações" data-i18n-aria="notif.title" data-i18n-title="notif.title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
       <span id="notifBadge" class="notif-badge">0</span>
     </button>
@@ -167,7 +167,7 @@
     <span data-i18n="tab.my">Minha Área</span>
     <span class="tab-badge" id="myTabBadge" hidden></span>
   </button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" data-admin-only hidden
           role="tab" aria-selected="false" aria-controls="tab-admin">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
     <span>Admin</span>
@@ -188,7 +188,7 @@
     <div class="card filter-card">
       <div class="section-header clickable" id="filterToggle" role="button" tabindex="0"
            aria-expanded="true" aria-controls="filterBody">
-        <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="flex-center gap-sm">
           <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
           <span id="filterActiveCount" class="filter-active-badge" hidden></span>
         </div>
@@ -196,19 +196,19 @@
       </div>
       <div id="filterBody">
         <div class="filter-grid">
-          <div class="field"><label for="cycleMs-toggle" data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
-          <div class="field"><label for="pepMs-toggle" data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
-          <div class="field"><label for="pepDescMs-toggle" data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
-          <div class="field"><label for="collaboratorMs-toggle" data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
-          <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
-          <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
-          <div class="field btn-group">
+          <div class="field btn-group filter-actions">
             <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
             <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
             <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
             <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
             <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
           </div>
+          <div class="field"><label for="cycleMs-toggle" data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+          <div class="field"><label for="pepMs-toggle" data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+          <div class="field"><label for="pepDescMs-toggle" data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+          <div class="field"><label for="collaboratorMs-toggle" data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+          <div class="field"><label for="dateFromInput" data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
+          <div class="field"><label for="dateToInput" data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
         </div>
       </div>
     </div>
@@ -261,7 +261,7 @@
         <div class="detail-panel-header">
           <span id="collabDetailName" class="font-600"></span>
           <div class="flex-center gap-sm">
-            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
+            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" data-i18n-aria="collab.export_aria" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
             <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
           </div>
         </div>
@@ -334,7 +334,7 @@
           <div class="flex-center gap-sm">
             <span class="panel-note" data-i18n="portfolio.note">Blocos cinzas = PEP sem projeto cadastrado</span>
             <button type="button" id="evmToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_hours">Vista: Horas</button>
-            <button type="button" id="timelineToggleBtn" class="btn btn-secondary btn-sm">Por Ciclo</button>
+            <button type="button" id="timelineToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.timeline_on">Por Ciclo</button>
           </div>
         </div>
         <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
@@ -355,7 +355,7 @@
         <div class="panel-header">
           <span class="panel-title" data-i18n="scatter.title">Quadrante EVM — CPI × SPI</span>
           <button type="button" id="toggleTrajectoryBtn" class="btn btn-ghost btn-sm" aria-pressed="false"
-                  title="Mostrar/ocultar trajetória histórica por PEP">
+                  title="Mostrar/ocultar trajetória histórica por PEP" data-i18n-title="scatter.trajectory_title">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             <span data-i18n="scatter.trajectory">Trajetória</span>
           </button>
@@ -393,6 +393,7 @@
           <button type="button" id="runwayExportBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" hidden>Exportar CSV</button>
         </div>
         <div id="runwayEmpty" class="chart-empty" hidden data-i18n="runway.empty">Nenhum PEP com orçamento encontrado.</div>
+        <div class="table-responsive">
         <table class="data-table" id="runwayTable" hidden>
           <thead><tr>
             <th data-i18n="runway.th.pep">PEP</th>
@@ -408,6 +409,7 @@
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="runwayPagination" hidden class="pagination-bar">
           <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="runwayPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="runwayPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -440,7 +442,7 @@
             data-i18n="forecast.physical_badge" data-i18n-title="forecast.physical_badge_title">Modo: % Físico</span>
         </div>
         <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
-        <div id="velocitySparklineChart" hidden></div>
+        <div id="velocitySparklineChart" role="img" data-i18n-aria="chart.velocitySparklineChart" hidden></div>
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden></div>
       </div>
 
@@ -483,11 +485,11 @@
       <!-- Alertas do Projeto -->
       <div class="card" id="forecastAlertsCard" data-panel-id="forecast-alerts" hidden>
         <div class="section-header">
-          <h2 class="card-title">Alertas do Projeto</h2>
-          <select id="forecastAlertFilter" class="form-select input-sel-sm">
-            <option value="">Todos</option>
-            <option value="false">Ativos</option>
-            <option value="true">Resolvidos</option>
+          <h2 class="card-title" data-i18n="alerts.project_title">Alertas do Projeto</h2>
+          <select id="forecastAlertFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+            <option value="" data-i18n="alerts.filter.all">Todos</option>
+            <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+            <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
           </select>
         </div>
         <div id="forecastAlertsList"></div>
@@ -511,7 +513,7 @@
             <div>
               <div class="form-group">
                 <label for="whatIfMultiplier" data-i18n="sim.multiplier_lbl">Multiplicador de velocidade</label>
-                <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="10" step="0.1" class="w-full" />
+                <input type="number" id="whatIfMultiplier" value="1.0" min="0.1" max="5" step="0.1" class="w-full" />
                 <span id="whatIfVelocityHint" class="hint"></span>
               </div>
               <div class="form-group">
@@ -522,11 +524,11 @@
               <div class="form-group">
                 <label aria-hidden="true">&nbsp;</label>
                 <button type="button" class="btn btn-primary btn-sm" id="whatIfRunBtn" onclick="_runWhatIf()" data-i18n="sim.btn_run">Simular</button>
-                <span class="field-hint-block"></span>
+                <span id="whatIfError" class="error-msg" role="alert"></span>
               </div>
             </div>
             <div id="whatIfResult"></div>
-            <div id="whatIfBurnUpChart" hidden></div>
+            <div id="whatIfBurnUpChart" role="img" data-i18n-aria="chart.whatIfBurnUpChart" hidden></div>
           </div>
         </div>
 
@@ -540,7 +542,7 @@
           <div id="mcBody">
             <p class="hint mb-3" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
             <div id="mcResult"></div>
-            <div id="mcHistogramChart" hidden></div>
+            <div id="mcHistogramChart" role="img" data-i18n-aria="chart.mcHistogramChart" hidden></div>
           </div>
         </div>
       </div>
@@ -557,11 +559,11 @@
         <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importProjectsInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newProjectBtn" data-admin-only data-i18n="btn.new_project">+ Novo projeto</button>
         </div>
       </div>
       <div id="projectsStats" class="stats-strip" hidden></div>
@@ -602,11 +604,11 @@
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportCyclesBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importCyclesInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-admin-only data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
       <div class="flex-center gap-lg mb-2">
@@ -650,23 +652,23 @@
       <div class="form-grid flex-bottom">
         <div class="form-group">
           <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
-          <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
+          <input type="number" id="extraMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="1.5" />
         </div>
         <div class="form-group">
           <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
-          <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="standbyMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="1.0" />
         </div>
         <div class="form-group">
           <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
-          <input type="number" id="budgetWarningInput" min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
+          <input type="number" id="budgetWarningInput" data-admin-disable min="0.01" max="0.99" step="0.01" placeholder="0.9" />
         </div>
         <div class="form-group">
           <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
-          <input type="number" id="budgetCriticalInput" min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="budgetCriticalInput" data-admin-disable min="0.01" max="2" step="0.01" placeholder="1.0" />
         </div>
         <div class="form-group">
           <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
-          <select id="timezoneSelect" class="form-select">
+          <select id="timezoneSelect" data-admin-disable class="form-select">
             <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
             <option value="America/Manaus">America/Manaus (UTC-4)</option>
             <option value="America/Belem">America/Belem (UTC-3)</option>
@@ -674,7 +676,7 @@
           </select>
         </div>
         <div class="form-group">
-          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
+          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-admin-only data-i18n="btn.save_config">Salvar fatores</button>
         </div>
       </div>
       <p id="configMsg" class="hint mt-2"></p>
@@ -685,11 +687,11 @@
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importSeniorityInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-admin-only data-i18n="btn.new_seniority">+ Novo nível</button>
         </div>
       </div>
       <div class="table-responsive">
@@ -711,11 +713,11 @@
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importRateCardInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-admin-only data-i18n="btn.new_ratecard">+ Nova taxa</button>
         </div>
       </div>
       <div class="table-responsive">
@@ -745,7 +747,7 @@
         <h2 class="card-title" data-i18n="team.title">Colaboradores</h2>
         <div class="flex-center gap-sm">
           <select id="bulkSenioritySelect" class="form-select"></select>
-          <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-admin-only data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
       <input type="text" id="teamSearch" class="table-search-input" data-i18n-ph="team.search_ph" placeholder="Buscar colaborador…" />
@@ -822,7 +824,7 @@
       <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload"
               role="tab" aria-selected="false" aria-controls="my-tab-upload" id="my-tab-btn-upload">Upload</button>
       <button type="button" class="my-tab-btn" data-my-tab="alerts"
-              role="tab" aria-selected="false" aria-controls="my-tab-alerts" id="my-tab-btn-alerts">Alertas</button>
+              role="tab" aria-selected="false" aria-controls="my-tab-alerts" id="my-tab-btn-alerts" data-i18n="myarea.alerts">Alertas</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
@@ -1024,25 +1026,25 @@
     <div id="my-tab-alerts" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-alerts" tabindex="0">
       <div class="card">
         <div class="section-header">
-          <h2 class="card-title">Alertas de Projeto</h2>
+          <h2 class="card-title" data-i18n="alerts.project_title">Alertas de Projeto</h2>
           <div class="flex-center gap-sm">
-            <select id="myAlertFilter" class="form-select input-sel-sm">
-              <option value="">Todos</option>
-              <option value="false">Ativos</option>
-              <option value="true">Resolvidos</option>
+            <select id="myAlertFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+              <option value="" data-i18n="alerts.filter.all">Todos</option>
+              <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+              <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="myAlertRefreshBtn">↺ Atualizar</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="myAlertRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
           </div>
         </div>
         <div class="table-responsive">
           <table class="data-table" id="myAlertsTable">
             <thead><tr>
-              <th>Nível</th>
-              <th>PEP</th>
-              <th>Tipo</th>
-              <th>Mensagem</th>
-              <th>Criado em</th>
-              <th>Status</th>
+              <th data-i18n="alerts.th.level">Nível</th>
+              <th data-i18n="alerts.th.pep">PEP</th>
+              <th data-i18n="alerts.th.type">Tipo</th>
+              <th data-i18n="alerts.th.message">Mensagem</th>
+              <th data-i18n="alerts.th.created">Criado em</th>
+              <th data-i18n="alerts.th.status">Status</th>
             </tr></thead>
             <tbody id="myAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
           </table>
@@ -1195,34 +1197,34 @@
     <!-- Central de Alertas -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Central de Alertas</h2>
+        <h2 class="card-title" data-i18n="alerts.central_title">Central de Alertas</h2>
         <div class="flex-center gap-sm">
-          <select id="adminAlertPepFilter" class="form-select input-sel-sm">
-            <option value="">Todos os PEPs</option>
+          <select id="adminAlertPepFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.pep" aria-label="PEP">
+            <option value="" data-i18n="alerts.all_peps">Todos os PEPs</option>
           </select>
-          <select id="adminAlertTypeFilter" class="form-select input-sel-sm">
-            <option value="">Todos os tipos</option>
-            <option value="budget_warning">Orçamento — Atenção</option>
-            <option value="budget_overrun">Orçamento — Estourado</option>
-            <option value="schedule_risk">Risco de Prazo (SPI)</option>
+          <select id="adminAlertTypeFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.type" aria-label="Tipo">
+            <option value="" data-i18n="alerts.all_types">Todos os tipos</option>
+            <option value="budget_warning" data-i18n="alerts.type.budget_warning">Orçamento — Atenção</option>
+            <option value="budget_overrun" data-i18n="alerts.type.budget_overrun">Orçamento — Estourado</option>
+            <option value="schedule_risk" data-i18n="alerts.type.schedule_risk">Risco de Prazo</option>
           </select>
-          <select id="adminAlertResolvedFilter" class="form-select input-sel-sm">
-            <option value="">Todos</option>
-            <option value="false">Ativos</option>
-            <option value="true">Resolvidos</option>
+          <select id="adminAlertResolvedFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+            <option value="" data-i18n="alerts.filter.all">Todos</option>
+            <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+            <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
           </select>
-          <button type="button" class="btn btn-secondary btn-sm" id="adminAlertRefreshBtn">↺ Atualizar</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="adminAlertRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
       </div>
       <div class="table-responsive">
         <table class="data-table" id="adminAlertsTable">
           <thead><tr>
-            <th>Nível</th>
-            <th>PEP</th>
-            <th>Tipo</th>
-            <th>Mensagem</th>
-            <th>Criado em</th>
-            <th>Status</th>
+            <th data-i18n="alerts.th.level">Nível</th>
+            <th data-i18n="alerts.th.pep">PEP</th>
+            <th data-i18n="alerts.th.type">Tipo</th>
+            <th data-i18n="alerts.th.message">Mensagem</th>
+            <th data-i18n="alerts.th.created">Criado em</th>
+            <th data-i18n="alerts.th.status">Status</th>
           </tr></thead>
           <tbody id="adminAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
@@ -1285,12 +1287,12 @@
     </div>
     <div class="flex-center gap-sm flex-wrap">
       <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
-      <label class="btn btn-secondary btn-sm cursor-pointer m-0" id="importPlanLabel">
+      <label class="btn btn-secondary btn-sm cursor-pointer m-0" id="importPlanLabel" data-admin-only>
         <span data-i18n="plan.btn_import">↑ Importar CSV</span>
         <input type="file" id="importPlanFile" accept=".csv" hidden />
       </label>
-      <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
-      <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-admin-only data-i18n="plan.physical.btn">Avanço Físico</button>
+      <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-admin-only data-i18n="plan.btn_add">+ Adicionar ciclo</button>
     </div>
     <p class="hint text-dim plan-hint" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
     <div class="modal-body">
@@ -1379,11 +1381,11 @@
       </div>
       <div class="form-group">
         <label for="projectBudgetInput" data-i18n="pm.bh_lbl">Budget de horas</label>
-        <input type="number" id="projectBudgetInput" placeholder="Ex: 160" min="0" step="0.5" />
+        <input type="number" id="projectBudgetInput" placeholder="160" min="0" step="0.5" />
       </div>
       <div class="form-group">
         <label for="projectBudgetCostInput" data-i18n="pm.bc_lbl">Budget (R$)</label>
-        <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
+        <input type="number" id="projectBudgetCostInput" placeholder="25000.00" min="0" step="0.01" />
       </div>
       <div class="form-group" id="budgetReasonGroup" hidden>
         <label for="projectBudgetReasonInput" data-i18n="pm.budget_reason_lbl">Motivo da revisão de budget</label>
@@ -1656,10 +1658,10 @@
         <div class="form-group">
           <label data-i18n="vr.th.action">Ação</label>
           <select class="form-select" id="ruleActionInput">
-            <option value="info">info</option>
-            <option value="warning">warning</option>
-            <option value="quarentena">quarentena</option>
-            <option value="descarte">descarte</option>
+            <option value="info" data-i18n="vr.action.info">info</option>
+            <option value="warning" data-i18n="vr.action.warning">warning</option>
+            <option value="quarentena" data-i18n="vr.action.quarentena">quarentena</option>
+            <option value="descarte" data-i18n="vr.action.descarte">descarte</option>
           </select>
           <p id="ruleAggregateHint" hidden data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
         </div>
@@ -1831,7 +1833,7 @@
       <div class="table-responsive">
         <table class="data-table">
           <thead><tr>
-            <th class="th-checkbox"><input type="checkbox" id="addPlanCheckAll" title="Selecionar todos" /></th>
+            <th class="th-checkbox"><input type="checkbox" id="addPlanCheckAll" title="Selecionar todos" data-i18n-title="ms.select_all" /></th>
             <th data-i18n="plan.th.cycle">Ciclo</th>
             <th class="text-right" data-i18n="plan.th.hours">Horas</th>
             <th class="text-right" data-i18n="plan.th.cost">Custo (R$)</th>
@@ -1866,7 +1868,7 @@
         </label>
         <label class="col-flex-sm">
           <span data-i18n="plan.th.cost">Custo Planejado (R$)</span>
-          <input type="number" id="editPlanCost" min="0" step="0.01" class="form-input" placeholder="opcional" />
+          <input type="number" id="editPlanCost" min="0" step="0.01" class="form-input" placeholder="opcional" data-i18n-ph="lbl.optional" />
         </label>
       </div>
       <div id="editPlanError" class="error-msg"></div>
@@ -1915,7 +1917,7 @@
   <div class="modal-box theme-modal-box" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
     <div class="modal-header">
       <h3 id="themeModalTitle" data-i18n="appearance.modal_title">Personalizar Aparência</h3>
-      <button type="button" class="modal-close" aria-label="Fechar" id="closeThemeModalBtn" data-modal-close="themeModal">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="closeThemeModalBtn" data-modal-close="themeModal">×</button>
     </div>
 
     <div class="modal-body">
@@ -1971,7 +1973,7 @@
       <div class="theme-field">
         <label data-i18n="appearance.font_family">Fonte</label>
         <select id="themeFont">
-          <option value="">Padrão (sistema)</option>
+          <option value="" data-i18n="appearance.font_default">Padrão (sistema)</option>
           <option value="'Roboto', sans-serif">Roboto</option>
           <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
           <option value="'Source Sans 3', sans-serif">Source Sans 3</option>

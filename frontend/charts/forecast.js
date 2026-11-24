@@ -128,7 +128,7 @@ function _buildForecastOption(fc) {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
           if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${(+p.value).toFixed(1)}h</b><br>`;
+          html += `${p.marker} ${escHtml(p.seriesName)}: <b>${(+p.value).toFixed(1)}h</b><br>`;
         });
         return html;
       },
@@ -220,7 +220,7 @@ function _buildBurnUpOption(fc) {
         let html = `<b>${escHtml(params[0].axisValue)}</b><br>`;
         params.forEach(p => {
           if (p.value == null) return;
-          html += `${p.marker} ${p.seriesName}: <b>${_fmtCost(p.value)}</b><br>`;
+          html += `${p.marker} ${escHtml(p.seriesName)}: <b>${_fmtCost(p.value)}</b><br>`;
         });
         return html;
       },

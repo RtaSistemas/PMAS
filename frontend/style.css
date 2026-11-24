@@ -378,6 +378,9 @@ main {
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .btn-group { flex-direction: row; gap: 0.5rem; align-items: flex-end; }
+/* The action buttons are the first row of the filter card. A filter dropdown opens downward,
+   so it never covers the Load button. */
+.filter-grid > .filter-actions { grid-column: 1 / -1; flex-wrap: wrap; }
 
 /* ── Form inputs ─────────────────────────────────────────────── */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -388,6 +391,10 @@ main {
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .form-group.full { grid-column: 1 / -1; }
+/* The cost-factor form uses flex. Let the fields wrap, so the form fits a narrow screen. */
+.form-grid.flex-bottom { flex-wrap: wrap; }
+.form-grid.flex-bottom .form-group { flex: 1 1 11rem; min-width: 0; }
+.form-group select.form-select, .form-group input { max-width: 100%; box-sizing: border-box; }
 
 input[type="text"], input[type="number"], input[type="date"], input[type="month"],
 input[type="password"], select.form-select {
@@ -973,8 +980,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .sortable-handle {
   color: var(--text-3); font-size: 0.9rem; flex-shrink: 0; cursor: grab;
 }
-.sortable-item-label { flex: 1; font-size: 0.84rem; }
-.sortable-item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+.sortable-item-label { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; font-size: 0.84rem; }
+.sortable-item-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
+.sortable-item { flex-wrap: wrap; }
 
 /* Layout card — nested panel sub-lists */
 .layout-tab-item {
@@ -1746,3 +1754,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .forecast-alert-item.is-resolved   { opacity: .5; }
 .forecast-alert-msg  { flex: 1; font-size: .85rem; color: var(--text); }
 .forecast-alert-meta { font-size: .72rem; color: var(--text-muted); margin-top: .2rem; }
+
+/* The hidden attribute must win over component display rules (.tab-btn, .btn, ...).
+   It is the last rule in the file, so a script can still override it with an inline style. */
+[hidden],
+#forecastKpis[hidden] { display: none; }

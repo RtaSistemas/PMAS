@@ -59,7 +59,15 @@ class MultiSelect {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[idx]?.querySelector('input')?.click(); }
       if (e.key === 'Tab')       { this._close(); }
     });
+    // After a click on an option the panel is built again, so the focus is lost. A key handler on the
+    // document lets Escape close the open panel in all cases.
+    this._docKeyHandler = e => {
+      if (e.key !== 'Escape' || this.panel.hidden) return;
+      this._close();
+      this.btn.focus();
+    };
     document.addEventListener('click', this._docClickHandler);
+    document.addEventListener('keydown', this._docKeyHandler);
     this._updateBtn();
   }
 
@@ -85,6 +93,7 @@ class MultiSelect {
 
   destroy() {
     document.removeEventListener('click', this._docClickHandler);
+    document.removeEventListener('keydown', this._docKeyHandler);
     this.el.classList.remove('ms-root');
     this.btn.remove();
     this.panel.remove();
@@ -145,16 +154,16 @@ class MultiSelect {
       const item = this.items.find(i => String(i.value) === v);
       lbl.textContent = item ? item.label : v; this.btn.classList.add('has-value');
     } else {
-      lbl.textContent = `${this.selected.size} selecionados`; this.btn.classList.add('has-value');
+      lbl.textContent = _tf('ms.n_selected', { n: this.selected.size }); this.btn.classList.add('has-value');
     }
   }
 
   _renderPanel() {
     this.panel.innerHTML = '';
     if (this.items.length === 0) {
-      const e = document.createElement('div'); e.className = 'ms-empty'; e.textContent = 'Sem opções'; this.panel.appendChild(e); return;
+      const e = document.createElement('div'); e.className = 'ms-empty'; e.textContent = _t('ms.no_options'); this.panel.appendChild(e); return;
     }
-    const allLbl = this._makeRow('__all__', 'Selecionar todos', true);
+    const allLbl = this._makeRow('__all__', _t('ms.select_all'), true);
     const allChk = allLbl.querySelector('input');
     allChk.checked = this.selected.size === this.items.length && this.items.length > 0;
     allChk.indeterminate = this.selected.size > 0 && this.selected.size < this.items.length;

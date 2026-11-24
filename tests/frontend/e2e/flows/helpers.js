@@ -83,3 +83,42 @@ export async function openApp(page, token) {
   await expect(page.locator('#appShell')).toBeVisible();
   return errors;
 }
+
+/**
+ * Create a non-admin user through the API and return its credentials.
+ * If the server marks the password as temporary, this helper replaces it, so the user can log in.
+ */
+export async function createUser(request, token, role = 'user') {
+  const username = `u${Math.random().toString(36).slice(2, 9)}`;
+  const password = 'User#Passw0rd1';
+  const res = await request.post('/api/users', { headers: auth(token), data: { username, password, role } });
+  expect(res.ok(), 'create user').toBeTruthy();
+  const created = await res.json();
+  const login = await request.post('/api/token', { form: { username, password } });
+  expect(login.ok(), 'user login').toBeTruthy();
+  const body = await login.json();
+  const payload = JSON.parse(Buffer.from(body.access_token.split('.')[1], 'base64url').toString());
+  if (payload.must_change) {
+    const next = `${password}x`;
+    const change = await request.patch(`/api/users/${created.id}/password`, {
+      headers: auth(body.access_token), data: { new_password: next, current_password: password },
+    });
+    expect(change.ok(), 'first password change').toBeTruthy();
+    return { id: created.id, username, password: next };
+  }
+  return { id: created.id, username, password };
+}
+
+/** Sign in through the real login form, in English. Return the lists of page errors and of 403 responses. */
+export async function loginViaForm(page, username, password) {
+  const seen = { errors: [], forbidden: [] };
+  page.on('pageerror', e => seen.errors.push(e.message));
+  page.on('response', r => { if (r.status() === 403) seen.forbidden.push(r.url()); });
+  await page.addInitScript(() => localStorage.setItem('pmas_lang', 'en'));
+  await page.goto('/frontend/index.html');
+  await page.locator('#loginUsername').fill(username);
+  await page.locator('#loginPassword').fill(password);
+  await page.locator('#loginForm button[type="submit"]').click();
+  await expect(page.locator('#appShell')).toBeVisible();
+  return seen;
+}

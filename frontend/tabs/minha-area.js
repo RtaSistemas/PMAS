@@ -203,10 +203,8 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   errEl.textContent = '';
   if (!currentPwd || !newPwd) { errEl.textContent = _t('msg.pwd_fill_all'); return; }
   try {
-    const stored = sessionStorage.getItem('username') || '';
-    // Find own user id first
-    const users = await apiFetch('/api/users');
-    const me = users.find(u => u.username === stored);
+    // Any role can read its own user record.
+    const me = await apiFetch('/api/users/me');
     if (!me) { errEl.textContent = _t('msg.user_not_found'); return; }
     await apiFetchJSON(`/api/users/${me.id}/password`, 'PATCH', {
       new_password: newPwd,
@@ -264,13 +262,9 @@ const _historyPag = _makePaginator(
     emptyKey: 'msg.no_import_sessions',
     rowFn: r => {
       const when = _fmtDate(r.uploaded_at);
-      const statusKey = r.status === 'ok' ? 'history.status.ok'
-        : r.status === 'warnings' ? 'history.status.warnings'
-        : r.status === 'quarantine' ? 'history.status.quarantine'
-        : 'history.status.rejected';
       const warnCell = r.warning_count > 0 ? `<strong style="color:${_cssVar('--amber')}">${r.warning_count}</strong>` : '0';
       const infoCell = r.info_count    > 0 ? `<strong style="color:${_cssVar('--primary')}">${r.info_count}</strong>`    : '0';
-      return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="Clique para ver detalhes">
+      return `<tr style="cursor:pointer" onclick="_openSessionDetail(${r.id})" title="${escHtml(_t('history.click_detail'))}">
       <td style="white-space:nowrap;font-size:.78rem">${escHtml(when)}</td>
       <td style="font-size:.78rem">${escHtml(r.source_file)}</td>
       <td style="font-size:.78rem">${escHtml(r.uploaded_by_username)}</td>
@@ -279,7 +273,7 @@ const _historyPag = _makePaginator(
       <td style="text-align:right">${r.quarantine_added > 0 ? `<strong style="color:${_cssVar('--red')}">${r.quarantine_added}</strong>` : '0'}</td>
       <td style="text-align:right">${warnCell}</td>
       <td style="text-align:right">${infoCell}</td>
-      <td>${escHtml(_t(statusKey))}</td>
+      <td>${escHtml(_historyStatusLabel(r.status))}</td>
     </tr>`;
     },
   })
@@ -307,12 +301,13 @@ document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
   const rows = _historyPag.getRows();
   if (!rows.length) { notify(_t('msg.no_import_sessions'), 'info'); return; }
   const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
-  const header = ['Quando','Arquivo','Enviado por','Inseridos','Ignorados','Quarentena','Avisos','Infos','Status'];
+  const header = ['history.th.when', 'history.th.file', 'history.th.sent_by', 'history.th.inserted', 'history.th.skipped',
+    'history.th.quarantine', 'history.th.warnings', 'history.th.infos', 'history.th.status'].map(_t);
   const lines = rows.map(r => {
     const when = _fmtDate(r.uploaded_at);
     return [esc(when), esc(r.source_file), esc(r.uploaded_by_username),
       r.records_inserted, r.records_skipped, r.quarantine_added,
-      r.warning_count, r.info_count, esc(r.status)].join(',');
+      r.warning_count, r.info_count, esc(_historyStatusLabel(r.status))].join(',');
   });
   const blob = new Blob(['﻿' + [header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -400,7 +395,7 @@ _makeSortable('myQrTable',      [{key:'ingested_at',type:'date'}, null, null, nu
 let _myAlertsCache = [];
 
 const _myAlertsPag = _makePaginator(
-  { container: 'myAlertsPagination', prev: 'myAlertsPrevBtn', next: 'myAlertsNextBtn', pageSize: 'myAlertsPageSize', label: 'myAlertsPageLabel', entity: 'Alertas de Projeto' },
+  { container: 'myAlertsPagination', prev: 'myAlertsPrevBtn', next: 'myAlertsNextBtn', pageSize: 'myAlertsPageSize', label: 'myAlertsPageLabel', entity: 'alerts.project_title' },
   rows => _renderMyAlerts(rows)
 );
 
@@ -411,12 +406,12 @@ function _renderMyAlerts(rows) {
     colspan: 6,
     emptyKey: 'no_alerts',
     rowFn: a => `<tr class="${a.is_resolved ? 'alert-resolved' : ''}">
-      <td><span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span></td>
+      <td>${_alertLevelTag(a)}</td>
       <td>${escHtml(a.pep_wbs)}</td>
-      <td><span class="alert-type-tag">${escHtml({ budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[a.alert_type] || a.alert_type)}</span></td>
+      <td><span class="alert-type-tag">${escHtml(_alertTypeLabel(a.alert_type))}</span></td>
       <td style="max-width:320px;white-space:normal;font-size:.82rem" title="${escHtml(a.message)}">${escHtml(a.message)}</td>
       <td style="white-space:nowrap;font-size:.8rem">${_fmtDate(a.created_at)}</td>
-      <td>${a.is_resolved ? '<span class="alert-status-resolved">Resolvido</span>' : '<span class="alert-status-active">Ativo</span>'}</td>
+      <td>${_alertStatusTag(a)}</td>
     </tr>`,
   });
 }

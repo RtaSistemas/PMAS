@@ -18,7 +18,7 @@ function calcHeight(count) {
 function _buildEffortTitle(selectedCycleIds, selectedPepCodes) {
   if (!selectedCycleIds.length) return _t('chart.all_cycles');
   const first = (_allCycles || []).find(c => String(c.id) === String(selectedCycleIds[0]));
-  const name = first ? first.name : `Ciclo #${selectedCycleIds[0]}`;
+  const name = first ? first.name : _tf('effort.cycle_n', { n: selectedCycleIds[0] });
   let t = selectedCycleIds.length > 1
     ? `${name} (${_t('lbl.plus_cycles').replace('{n}', selectedCycleIds.length - 1)})`
     : name;
@@ -84,11 +84,11 @@ function _buildHoursBarOption({
     ..._chartDefaults().tooltip,
     formatter: params => {
       const bars = params.filter(p => p.seriesType === 'bar');
-      let html   = `<b>${params[0].axisValue}</b><br/>`;
+      let html   = `<b>${escHtml(params[0].axisValue)}</b><br/>`;
       let total  = 0;
       bars.forEach(p => {
         if (p.value > 0) {
-          html  += `${p.marker}${p.seriesName}: <b>${p.value.toFixed(1)}h</b><br/>`;
+          html  += `${p.marker}${escHtml(p.seriesName)}: <b>${p.value.toFixed(1)}h</b><br/>`;
           total += p.value;
         }
       });
@@ -99,7 +99,7 @@ function _buildHoursBarOption({
   };
 
   // ── 5. Bar series ────────────────────────────────────────────────────
-  const bgStyle = { showBackground: true, backgroundStyle: { color: 'rgba(255,255,255,0.01)' } };
+  const bgStyle = { showBackground: true, backgroundStyle: { color: _withAlpha(_cssVar('--text'), 0.01) } };
   const barMaxWidth = isHoriz ? 32 : 48;
 
   const _barSerie = (name, data, color) => ({
