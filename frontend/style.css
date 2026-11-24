@@ -1746,3 +1746,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 .forecast-alert-item.is-resolved   { opacity: .5; }
 .forecast-alert-msg  { flex: 1; font-size: .85rem; color: var(--text); }
 .forecast-alert-meta { font-size: .72rem; color: var(--text-muted); margin-top: .2rem; }
+
+/* The hidden attribute must win over component display rules (.tab-btn, .btn, ...).
+   It is the last rule in the file, so a script can still override it with an inline style. */
+[hidden],
+#forecastKpis[hidden] { display: none; }

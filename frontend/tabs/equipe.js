@@ -100,8 +100,8 @@ const _seniorityPag = _makePaginator(
     <tr>
       <td>${escHtml(l.name)}</td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>
+        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openSeniorityModal(${l.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSeniorityLevel(${l.id}, ${escHtml(JSON.stringify(l.name))})">${_t('btn.delete')}</button>` : ''}
       </div></td>
     </tr>`,
   })
@@ -129,8 +129,8 @@ const _rateCardPag = _makePaginator(
       <td>${c.valid_from}</td>
       <td>${c.valid_to ?? '—'}</td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>
+        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>` : ''}
       </div></td>
     </tr>`,
   })
@@ -156,7 +156,7 @@ const _teamPag = _makePaginator(
       <td>${escHtml(m.name)}</td>
       <td>${m.seniority_level_name ? escHtml(m.seniority_level_name) : `<span style="color:${_cssVar('--text-3')}">—</span>`}</td>
       <td style="text-align:right">${m.current_hourly_rate != null ? _fmtCost(m.current_hourly_rate) : '—'}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button></td>
+      <td>${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openAssignSeniority(${m.id}, ${escHtml(JSON.stringify(m.name))}, ${m.seniority_level_id ?? 'null'})">${_t('btn.assign')}</button>` : ''}</td>
     </tr>`,
   })
 );

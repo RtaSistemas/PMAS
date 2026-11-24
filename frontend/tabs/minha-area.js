@@ -203,10 +203,8 @@ document.getElementById('myPwdSaveBtn')?.addEventListener('click', async () => {
   errEl.textContent = '';
   if (!currentPwd || !newPwd) { errEl.textContent = _t('msg.pwd_fill_all'); return; }
   try {
-    const stored = sessionStorage.getItem('username') || '';
-    // Find own user id first
-    const users = await apiFetch('/api/users');
-    const me = users.find(u => u.username === stored);
+    // Any role can read its own user record.
+    const me = await apiFetch('/api/users/me');
     if (!me) { errEl.textContent = _t('msg.user_not_found'); return; }
     await apiFetchJSON(`/api/users/${me.id}/password`, 'PATCH', {
       new_password: newPwd,

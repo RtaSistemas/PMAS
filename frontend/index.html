@@ -167,7 +167,7 @@
     <span data-i18n="tab.my">Minha Área</span>
     <span class="tab-badge" id="myTabBadge" hidden></span>
   </button>
-  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" hidden
+  <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn" data-admin-only hidden
           role="tab" aria-selected="false" aria-controls="tab-admin">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
     <span>Admin</span>
@@ -557,11 +557,11 @@
         <h2 class="card-title" data-i18n="projects.title">Projetos / PEPs</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportProjectsBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importProjectsInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newProjectBtn" data-i18n="btn.new_project">+ Novo projeto</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newProjectBtn" data-admin-only data-i18n="btn.new_project">+ Novo projeto</button>
         </div>
       </div>
       <div id="projectsStats" class="stats-strip" hidden></div>
@@ -602,11 +602,11 @@
         <h2 class="card-title" data-i18n="cycles.title">Ciclos cadastrados</h2>
         <div class="actions">
           <button type="button" class="btn btn-secondary btn-sm" id="exportCyclesBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer">
+          <label class="btn btn-secondary btn-sm cursor-pointer" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importCyclesInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-i18n="btn.new_cycle">+ Novo ciclo</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newCycleBtn" data-admin-only data-i18n="btn.new_cycle">+ Novo ciclo</button>
         </div>
       </div>
       <div class="flex-center gap-lg mb-2">
@@ -650,23 +650,23 @@
       <div class="form-grid flex-bottom">
         <div class="form-group">
           <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
-          <input type="number" id="extraMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.5" />
+          <input type="number" id="extraMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="Ex: 1.5" />
         </div>
         <div class="form-group">
           <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
-          <input type="number" id="standbyMultiplierInput" min="0.01" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="standbyMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="Ex: 1.0" />
         </div>
         <div class="form-group">
           <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
-          <input type="number" id="budgetWarningInput" min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
+          <input type="number" id="budgetWarningInput" data-admin-disable min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
         </div>
         <div class="form-group">
           <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
-          <input type="number" id="budgetCriticalInput" min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="budgetCriticalInput" data-admin-disable min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
         </div>
         <div class="form-group">
           <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
-          <select id="timezoneSelect" class="form-select">
+          <select id="timezoneSelect" data-admin-disable class="form-select">
             <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
             <option value="America/Manaus">America/Manaus (UTC-4)</option>
             <option value="America/Belem">America/Belem (UTC-3)</option>
@@ -674,7 +674,7 @@
           </select>
         </div>
         <div class="form-group">
-          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-i18n="btn.save_config">Salvar fatores</button>
+          <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" data-admin-only data-i18n="btn.save_config">Salvar fatores</button>
         </div>
       </div>
       <p id="configMsg" class="hint mt-2"></p>
@@ -685,11 +685,11 @@
         <h2 class="card-title" data-i18n="seniority.title">Níveis de Senioridade</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportSeniorityBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importSeniorityInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-i18n="btn.new_seniority">+ Novo nível</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newSeniorityBtn" data-admin-only data-i18n="btn.new_seniority">+ Novo nível</button>
         </div>
       </div>
       <div class="table-responsive">
@@ -711,11 +711,11 @@
         <h2 class="card-title" data-i18n="ratecard.title">Tabela de Taxas (Rate Card)</h2>
         <div class="flex-center gap-sm flex-wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="exportRateCardBtn" data-i18n="btn.export_csv2">⬇ Exportar CSV</button>
-          <label class="btn btn-secondary btn-sm cursor-pointer m-0">
+          <label class="btn btn-secondary btn-sm cursor-pointer m-0" data-admin-only>
             <span data-i18n="btn.import_csv">⬆ Importar CSV</span>
             <input type="file" id="importRateCardInput" accept=".csv" hidden />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-i18n="btn.new_ratecard">+ Nova taxa</button>
+          <button type="button" class="btn btn-primary btn-sm" id="newRateCardBtn" data-admin-only data-i18n="btn.new_ratecard">+ Nova taxa</button>
         </div>
       </div>
       <div class="table-responsive">
@@ -745,7 +745,7 @@
         <h2 class="card-title" data-i18n="team.title">Colaboradores</h2>
         <div class="flex-center gap-sm">
           <select id="bulkSenioritySelect" class="form-select"></select>
-          <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-i18n="btn.assign_all">Atribuir a todos</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="bulkSeniorityBtn" data-admin-only data-i18n="btn.assign_all">Atribuir a todos</button>
         </div>
       </div>
       <input type="text" id="teamSearch" class="table-search-input" data-i18n-ph="team.search_ph" placeholder="Buscar colaborador…" />
@@ -1285,12 +1285,12 @@
     </div>
     <div class="flex-center gap-sm flex-wrap">
       <button type="button" class="btn btn-secondary btn-sm" id="exportPlanBtn" data-i18n="plan.btn_export">↓ Exportar CSV</button>
-      <label class="btn btn-secondary btn-sm cursor-pointer m-0" id="importPlanLabel">
+      <label class="btn btn-secondary btn-sm cursor-pointer m-0" id="importPlanLabel" data-admin-only>
         <span data-i18n="plan.btn_import">↑ Importar CSV</span>
         <input type="file" id="importPlanFile" accept=".csv" hidden />
       </label>
-      <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-i18n="plan.physical.btn">Avanço Físico</button>
-      <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-i18n="plan.btn_add">+ Adicionar ciclo</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="physicalProgressBtn" data-admin-only data-i18n="plan.physical.btn">Avanço Físico</button>
+      <button type="button" class="btn btn-primary btn-sm" id="addPlanRowBtn" data-admin-only data-i18n="plan.btn_add">+ Adicionar ciclo</button>
     </div>
     <p class="hint text-dim plan-hint" data-i18n="plan.hint">Define as horas e custo planejados por ciclo para calcular VP, IDP, Variação de Prazo e o Burn-Up em R$.</p>
     <div class="modal-body">

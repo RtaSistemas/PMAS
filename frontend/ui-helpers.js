@@ -210,3 +210,12 @@ function _makePaginator(ids, onPage) {
     getRows()  { return _rows; },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Role gating — controls that only an administrator can use
+// ---------------------------------------------------------------------------
+function _applyRoleGating() {
+  const admin = _isAdmin();
+  document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = !admin; });
+  document.querySelectorAll('[data-admin-disable]').forEach(el => { el.disabled = !admin; });
+}

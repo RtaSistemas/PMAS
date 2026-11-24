@@ -38,7 +38,7 @@ const _projectsPag = _makePaginator(
       <td>${_buildDatesCell(p)}</td>
       <td><span class="badge-status ${p.status}">${p.status}</span></td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>
+        ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>` : ''}
         <button class="btn btn-primary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
         <div class="row-actions-wrap">
           <button class="btn btn-secondary btn-sm row-actions-trigger" title="${_t('btn.more_actions')}" aria-label="${_t('btn.more_actions')}" aria-haspopup="menu" aria-expanded="false">⋮</button>
@@ -46,8 +46,8 @@ const _projectsPag = _makePaginator(
             <button class="row-actions-item" role="menuitem" onclick="_openBudgetHistory(${p.id}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('budget.history.btn')}</button>
             <button class="row-actions-item" role="menuitem" onclick="_openBaselineModal(${p.id})">📍 ${_t('baseline.title')}</button>
             ${_isAdmin() ? `<button class="row-actions-item" role="menuitem" onclick="_openAclModal(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">🔑 ${_t('acl.title')}</button>` : ''}
-            <div class="row-actions-sep"></div>
-            <button class="row-actions-item danger" role="menuitem" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>
+            ${_isAdmin() ? `<div class="row-actions-sep"></div>
+            <button class="row-actions-item danger" role="menuitem" onclick="deleteProject(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))})">${_t('btn.delete')}</button>` : ''}
           </div>
         </div>
       </div></td>

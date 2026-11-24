@@ -620,7 +620,7 @@ async function _loadTheme() {
 
 
 function _bootApp() {
-  if (_isAdmin()) document.getElementById('adminTabBtn').removeAttribute('hidden');
+  _applyRoleGating();
   document.getElementById('langToggleBtn').textContent = _t('btn.lang');
   _applyI18n();
   _loadTheme();
