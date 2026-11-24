@@ -18,7 +18,7 @@ def get_audit_log(
     _admin: AdminUser,
     entity: Optional[str] = None,
     action: Optional[str] = None,
-    limit: int = Query(default=100, le=500),
+    limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ):
     q = db.query(AuditLog)

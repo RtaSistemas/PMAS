@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
@@ -31,7 +32,7 @@ def list_users(db: DbSession, _admin: AdminUser):
 @router.post("", summary="Criar usuário", status_code=201, response_model=UserOut)
 @limiter.limit("30/minute")
 def create_user(request: Request, body: UserCreateIn, db: DbSession, _admin: AdminUser):
-    if db.query(User).filter(User.username == body.username).first():
+    if db.query(User).filter(func.lower(User.username) == body.username.lower()).first():
         raise HTTPException(status_code=400, detail="Nome de usuário já existe.")
     user = User(
         username=body.username,

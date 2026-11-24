@@ -93,7 +93,7 @@ def _backfill_summaries() -> None:
         finally:
             db.close()
     except Exception:
-        log.debug("_backfill_summaries: erro", exc_info=True)
+        log.error("_backfill_summaries: falha ao preencher os resumos", exc_info=True)
 
 
 def _seed_config() -> None:
@@ -312,7 +312,9 @@ def _migrate_columns() -> None:
                 _mark(conn, "M013_timesheet_record_date_idx")
 
     except Exception:
-        log.debug("_migrate_columns: erro ao migrar colunas", exc_info=True)
+        # A half-migrated schema fails later in obscure ways: fail loudly now.
+        log.error("_migrate_columns: falha ao migrar o esquema do banco", exc_info=True)
+        raise
 
 
 _BUILTIN_PRESETS = [

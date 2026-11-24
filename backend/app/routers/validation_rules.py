@@ -18,6 +18,9 @@ router = APIRouter(
 )
 
 
+MAX_RULE_ORDER = 10000
+
+
 @router.get("", response_model=list[ValidationRuleOut])
 def list_rules(db: DbSession, _: AdminUser):
     return db.query(ValidationRule).order_by(ValidationRule.order, ValidationRule.id).all()
@@ -120,9 +123,15 @@ def toggle_rule(request: Request, rule_id: int, db: DbSession, current_user: Adm
 @limiter.limit("30/minute")
 def reorder_rules(request: Request, order_map: dict[int, int], db: DbSession, current_user: AdminUser):
     """Bulk update order field. Body: {rule_id: new_order, ...}"""
+    for rid, new_order in order_map.items():
+        if not (0 < rid < 2**63) or not (1 <= new_order <= MAX_RULE_ORDER):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Regra {rid} ou ordem inválida: a ordem deve estar entre 1 e {MAX_RULE_ORDER}.",
+            )
     rules = db.query(ValidationRule).filter(ValidationRule.id.in_(order_map.keys())).all()
     for rule in rules:
-        rule.order = max(1, order_map[rule.id])
+        rule.order = order_map[rule.id]
         rule.updated_by = current_user.username
         rule.updated_at = datetime.now(timezone.utc)
     log_audit(db, current_user, "reorder", "validation_rule", None, {"order_map": order_map})

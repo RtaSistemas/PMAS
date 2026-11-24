@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 import logging.config
 import logging.handlers
+import math
 import os
 import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -98,6 +100,135 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# ── Error handlers ────────────────────────────────────────────────────────────
+
+_PT_MESSAGES: dict[str, str] = {
+    "missing": "campo obrigatório",
+    "string_too_short": "texto curto demais (mínimo de {min_length} caracteres)",
+    "string_too_long": "texto longo demais (máximo de {max_length} caracteres)",
+    "string_type": "deve ser um texto",
+    "int_type": "deve ser um número inteiro",
+    "int_parsing": "deve ser um número inteiro válido",
+    "int_from_float": "deve ser um número inteiro",
+    "float_type": "deve ser um número",
+    "float_parsing": "deve ser um número válido",
+    "bool_type": "deve ser verdadeiro ou falso",
+    "bool_parsing": "deve ser verdadeiro ou falso",
+    "date_type": "deve ser uma data",
+    "date_parsing": "data inválida (use AAAA-MM-DD)",
+    "date_from_datetime_parsing": "data inválida (use AAAA-MM-DD)",
+    "datetime_parsing": "data/hora inválida",
+    "greater_than": "deve ser maior que {gt}",
+    "greater_than_equal": "deve ser maior ou igual a {ge}",
+    "less_than": "deve ser menor que {lt}",
+    "less_than_equal": "deve ser menor ou igual a {le}",
+    "finite_number": "deve ser um número finito",
+    "literal_error": "valor não permitido (permitidos: {expected})",
+    "enum": "valor não permitido (permitidos: {expected})",
+    "dict_type": "deve ser um objeto",
+    "list_type": "deve ser uma lista",
+    "json_invalid": "JSON inválido",
+    "model_attributes_type": "deve ser um objeto",
+    "missing_argument": "campo obrigatório",
+}
+
+
+class _SafeFormat(dict):
+    def __missing__(self, key):
+        return "?"
+
+
+def _translate_validation_error(err: dict) -> str:
+    """Portuguese message for one pydantic error; falls back to the original text."""
+    etype = err.get("type", "")
+    original = str(err.get("msg", "") or "")
+    ctx = err.get("ctx") or {}
+    if etype == "value_error":
+        # Custom validators already raise Portuguese text; drop pydantic's prefix.
+        text = original
+        if text.lower().startswith("value error, "):
+            text = text[len("Value error, "):]
+        return text or "valor inválido"
+    template = _PT_MESSAGES.get(etype)
+    if template is None:
+        return original or "valor inválido"
+    try:
+        return template.format_map(_SafeFormat(dict(ctx)))
+    except Exception:
+        return original or "valor inválido"
+
+
+def _loc_to_field(loc) -> str:
+    skip = ("body", "query", "path", "header", "cookie")
+    return ".".join(str(p) for p in (loc or ()) if p not in skip)
+
+
+def _json_safe(value):
+    """NaN / Infinity are not valid JSON: send them back as text."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _safe_error(err: dict) -> dict:
+    """JSON-safe copy of a pydantic error (bytes / exception objects in input / ctx)."""
+    out: dict = {}
+    for key in ("type", "loc", "input", "ctx"):
+        if key not in err:
+            continue
+        try:
+            out[key] = _json_safe(jsonable_encoder(
+                err[key],
+                custom_encoder={bytes: lambda b: b.decode("utf-8", "replace"), Exception: str},
+            ))
+        except Exception:
+            out[key] = str(err[key])
+    out["msg"] = _translate_validation_error(err)
+    return out
+
+
+async def _validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    parts: list[str] = []
+    for err in errors:
+        field = _loc_to_field(err.get("loc"))
+        msg = _translate_validation_error(err)
+        parts.append(f"Campo '{field}': {msg}" if field else msg)
+    detail = "; ".join(parts) if parts else "Requisição inválida."
+    return JSONResponse(
+        status_code=422,
+        content={"detail": detail, "errors": [_safe_error(e) for e in errors]},
+    )
+
+
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    log.exception("Erro não tratado em %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        media_type="application/problem+json",
+        content={
+            "type": "about:blank",
+            "title": "Erro interno do servidor",
+            "status": 500,
+            "detail": "Ocorreu um erro inesperado. Tente novamente; se persistir, contate o administrador.",
+            "instance": request.url.path,
+        },
+    )
+
+
+async def _overflow_handler(request: Request, exc: OverflowError):
+    # An id larger than SQLite's 64-bit integer cannot exist: treat as not found.
+    return JSONResponse(status_code=404, content={"detail": "Registro não encontrado."})
+
+
+app.add_exception_handler(OverflowError, _overflow_handler)
+app.add_exception_handler(RequestValidationError, _validation_exception_handler)
+app.add_exception_handler(Exception, _unhandled_exception_handler)
+
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 
 app.state.limiter = limiter
@@ -106,28 +237,14 @@ app.add_middleware(SlowAPIMiddleware)
 
 # ── RFC 7807 Problem Details error responses ──────────────────────────────────
 
-_FIELD_LABELS: dict[str, str] = {
-    "username": "nome de utilizador",
-    "password": "senha",
-    "pep_wbs":  "código PEP",
-    "budget_hours": "horas orçadas",
-    "budget_cost":  "custo orçado",
-    "start_date":   "data de início",
-    "planned_end_date": "data prevista de conclusão",
-    "name":        "nome",
-    "hourly_rate": "taxa horária",
-    "valid_from":  "válido a partir de",
-    "valid_to":    "válido até",
-}
-
-
-def _problem(status: int, title: str, detail: str, **extra) -> JSONResponse:
-    body = {"type": f"about:blank", "title": title, "status": status, "detail": detail}
+def _problem(status: int, title: str, detail: str, headers: dict | None = None, **extra) -> JSONResponse:
+    body = {"type": "about:blank", "title": title, "status": status, "detail": detail}
     body.update(extra)
     return JSONResponse(
         status_code=status,
         content=body,
         media_type="application/problem+json",
+        headers=headers,
     )
 
 
@@ -145,23 +262,8 @@ async def _http_exception_handler(request: Request, exc: HTTPException) -> JSONR
         503: "Serviço indisponível",
     }
     title = titles.get(exc.status_code, "Erro")
-    return _problem(exc.status_code, title, str(exc.detail))
+    return _problem(exc.status_code, title, str(exc.detail), headers=getattr(exc, "headers", None))
 
-
-@app.exception_handler(RequestValidationError)
-async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    field_errors = []
-    for err in exc.errors():
-        loc = err.get("loc", [])
-        field = str(loc[-1]) if loc else "desconhecido"
-        label = _FIELD_LABELS.get(field, field)
-        field_errors.append({"campo": label, "mensagem": err.get("msg", "inválido")})
-    return _problem(
-        422,
-        "Dados inválidos",
-        "Um ou mais campos não passaram na validação.",
-        erros=field_errors,
-    )
 
 # ── Security headers ──────────────────────────────────────────────────────────
 

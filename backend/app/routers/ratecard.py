@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import io
+import math
+import re
 from datetime import date
 from typing import Optional
 
@@ -21,6 +23,19 @@ from backend.app.schemas import (
 )
 
 router = APIRouter(prefix="/api", tags=["ratecard"], dependencies=[Depends(get_current_user)])
+
+
+def _parse_csv_date(raw) -> date:
+    """ISO first (4-digit year first); otherwise day-first (dd/mm/yyyy)."""
+    txt = str(raw).strip()
+    if not txt or txt.lower() in {"nan", "none", "nat"}:
+        raise ValueError("data vazia")
+    try:
+        if re.match(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", txt):
+            return pd.to_datetime(txt.replace("/", "-").replace(".", "-")).date()
+        return pd.to_datetime(txt, dayfirst=True).date()
+    except Exception:
+        raise ValueError(f"data inválida ({txt!r})")
 
 
 def _assert_no_overlap(db: Session, body: RateCardIn, exclude_id: int | None = None) -> None:
@@ -136,6 +151,12 @@ def delete_seniority_level(level_id: int, db: DbSession, _admin: AdminUser):
             status_code=409,
             detail=f"Nível em uso por {in_use} colaborador(es). Reatribua antes de excluir.",
         )
+    cards = db.query(RateCard).filter(RateCard.seniority_level_id == level_id).count()
+    if cards:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Nível possui {cards} rate card(s). Exclua os rate cards antes de excluir o nível.",
+        )
     log_audit(db, _admin, "delete", "seniority_level", level_id, {"name": sl.name})
     db.delete(sl); db.commit()
 
@@ -224,61 +245,81 @@ def import_rate_cards(file: UploadFile, db: DbSession, _admin: AdminUser):
         raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {missing}")
     created, updated, errors = 0, 0, []
     for i, row in df.iterrows():
+        line = i + 2
         try:
             level_name = str(row["seniority_level"]).strip()
             if not level_name or level_name.lower() in {"nan", "none"}:
-                errors.append(f"Linha {i + 2}: seniority_level vazio")
+                errors.append(f"Linha {line}: seniority_level vazio")
                 continue
-            hourly_rate = float(row["hourly_rate"])
-            valid_from = pd.to_datetime(str(row["valid_from"])).date()
+            try:
+                hourly_rate = float(row["hourly_rate"])
+            except (TypeError, ValueError):
+                errors.append(f"Linha {line}: hourly_rate inválido")
+                continue
+            if not math.isfinite(hourly_rate) or hourly_rate <= 0:
+                errors.append(f"Linha {line}: hourly_rate deve ser um número maior que zero")
+                continue
+            try:
+                valid_from = _parse_csv_date(row["valid_from"])
+            except ValueError:
+                errors.append(f"Linha {line}: valid_from inválido")
+                continue
             raw_to = str(row.get("valid_to", "")).strip()
-            valid_to = (
-                pd.to_datetime(raw_to).date()
-                if raw_to and raw_to.lower() not in {"nan", "none", ""}
-                else None
-            )
+            try:
+                valid_to = (
+                    _parse_csv_date(raw_to)
+                    if raw_to and raw_to.lower() not in {"nan", "none", "nat"}
+                    else None
+                )
+            except ValueError:
+                errors.append(f"Linha {line}: valid_to inválido")
+                continue
             if valid_to and valid_to < valid_from:
-                errors.append(f"Linha {i + 2}: valid_to anterior a valid_from")
+                errors.append(f"Linha {line}: valid_to anterior a valid_from")
                 continue
             sl = db.query(SeniorityLevel).filter(SeniorityLevel.name == level_name).first()
-            if not sl:
+            new_level = sl is None
+            if new_level:
                 sl = SeniorityLevel(name=level_name)
                 db.add(sl)
                 db.flush()
+            card_in = RateCardIn(
+                seniority_level_id=sl.id,
+                hourly_rate=hourly_rate,
+                valid_from=valid_from,
+                valid_to=valid_to,
+            )
             # Upsert by (seniority_level_id, valid_from)
             existing = db.query(RateCard).filter(
                 RateCard.seniority_level_id == sl.id,
                 RateCard.valid_from == valid_from,
             ).first()
+            try:
+                _assert_no_overlap(db, card_in, exclude_id=existing.id if existing else None)
+            except HTTPException:
+                errors.append(f"Linha {line}: sobreposição de período para '{level_name}'")
+                continue
             if existing:
                 existing.hourly_rate = hourly_rate
                 existing.valid_to = valid_to
                 updated += 1
             else:
-                try:
-                    _assert_no_overlap(db, RateCardIn(
-                        seniority_level_id=sl.id,
-                        hourly_rate=hourly_rate,
-                        valid_from=valid_from,
-                        valid_to=valid_to,
-                    ))
-                except HTTPException:
-                    errors.append(f"Linha {i + 2}: sobreposição de período para '{level_name}'")
-                    continue
                 db.add(RateCard(
                     seniority_level_id=sl.id,
                     hourly_rate=hourly_rate,
                     valid_from=valid_from,
                     valid_to=valid_to,
                 ))
+                db.flush()
                 created += 1
         except Exception as exc:
-            errors.append(f"Linha {i + 2}: {exc}")
+            errors.append(f"Linha {line}: {str(exc).splitlines()[0][:120]}")
     if created or updated:
         log_audit(db, _admin, "import", "rate_card",
                   detail={"created": created, "updated": updated, "errors": len(errors)})
     db.commit()
-    return {"created": created, "updated": updated, "errors": errors}
+    return {"created": created, "updated": updated, "errors": errors,
+            "message": f"{created} criado(s), {updated} atualizado(s), {len(errors)} erro(s)."}
 
 
 @router.put("/rate-cards/{card_id}", response_model=IdOut)
@@ -288,6 +329,8 @@ def update_rate_card(card_id: int, body: RateCardIn, db: DbSession, current_user
         raise HTTPException(status_code=404, detail="Rate card não encontrado.")
     if body.valid_to and body.valid_to < body.valid_from:
         raise HTTPException(status_code=422, detail="valid_to não pode ser anterior a valid_from.")
+    if not db.get(SeniorityLevel, body.seniority_level_id):
+        raise HTTPException(status_code=404, detail="Nível de senioridade não encontrado.")
     _assert_no_overlap(db, body, exclude_id=card_id)
     card.seniority_level_id = body.seniority_level_id
     card.hourly_rate = body.hourly_rate

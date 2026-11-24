@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import io
+import math
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.limiter import limiter
-from backend.app.models import BudgetRevision, Project, UserProjectAccess
+from backend.app.models import BudgetRevision, PepCycleSummary, Project, ProjectAlert, TimesheetRecord, UserProjectAccess
 from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
 from backend.app.utils import _str_or_none, now_br
 
@@ -59,6 +62,13 @@ def _project_to_dict(p: Project) -> dict:
     }
 
 
+def _pep_history_counts(db: Session, pep_wbs: str) -> tuple[int, int]:
+    """(timesheet records, summary rows) keyed by the PEP string."""
+    records = db.query(func.count(TimesheetRecord.id)).filter(TimesheetRecord.pep_wbs == pep_wbs).scalar() or 0
+    summaries = db.query(func.count(PepCycleSummary.id)).filter(PepCycleSummary.pep_wbs == pep_wbs).scalar() or 0
+    return records, summaries
+
+
 @router.get("", summary="Listar projetos", response_model=list[ProjectOut])
 def list_projects(db: DbSession):
     projects = db.query(Project).order_by(Project.pep_wbs).all()
@@ -95,6 +105,16 @@ def update_project(request: Request, project_id: int, body: ProjectUpdateIn, db:
     ).first()
     if conflict:
         raise HTTPException(status_code=409, detail="Já existe outro projeto com esse código PEP.")
+    if body.pep_wbs != project.pep_wbs:
+        records, summaries = _pep_history_counts(db, project.pep_wbs)
+        alerts = db.query(func.count(ProjectAlert.id)).filter(ProjectAlert.pep_wbs == project.pep_wbs).scalar() or 0
+        if records or summaries or alerts:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Não é possível renomear o código PEP: existem {records} registro(s) de horas "
+                       f"({summaries} resumo(s), {alerts} alerta(s)) associados a '{project.pep_wbs}'. "
+                       "O histórico é identificado pelo código PEP.",
+            )
     old_budget_hours = project.budget_hours
     old_budget_cost  = project.budget_cost
     for field, value in body.model_dump(exclude={"budget_change_reason"}).items():
@@ -148,6 +168,8 @@ def import_projects(request: Request, file: UploadFile, db: DbSession, current_u
             raise HTTPException(status_code=413, detail="Arquivo CSV excede o limite de 10 MB.")
         df = pd.read_csv(io.BytesIO(raw))
         df.columns = [c.strip() for c in df.columns]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {e}")
     missing = {"pep_wbs"} - set(df.columns)
@@ -170,6 +192,14 @@ def import_projects(request: Request, file: UploadFile, db: DbSession, current_u
             start_date       = _date_or_none(row.get("start_date"))
             planned_end_date = _date_or_none(row.get("planned_end_date"))
             completion_date  = _date_or_none(row.get("completion_date"))
+            for label, num in (("budget_hours", budget_hours), ("budget_cost", budget_cost)):
+                if num is not None and (not math.isfinite(num) or num < 0):
+                    raise ValueError(f"{label} inválido")
+            if start_date is not None:
+                if planned_end_date is not None and planned_end_date < start_date:
+                    raise ValueError("planned_end_date anterior a start_date")
+                if completion_date is not None and completion_date < start_date:
+                    raise ValueError("completion_date anterior a start_date")
             if completion_date is not None:
                 status = "encerrado"
             existing = db.query(Project).filter(Project.pep_wbs == pep).first()
@@ -206,6 +236,13 @@ def delete_project(request: Request, project_id: int, db: DbSession, current_use
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    records, _summaries = _pep_history_counts(db, project.pep_wbs)
+    if records:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Projeto possui {records} registro(s) de horas. "
+                   "Remova os registros antes de excluir o projeto.",
+        )
     log_audit(db, current_user, "delete", "project", project_id, {"pep_wbs": project.pep_wbs, "name": project.name})
     db.delete(project)
     db.commit()

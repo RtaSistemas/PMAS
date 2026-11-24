@@ -9,7 +9,7 @@ from backend.app.audit import log_audit
 from backend.app.database import DbSession, _BUILTIN_PRESET_NAMES
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import GlobalConfig, ThemePreset
-from backend.app.schemas import ThemePresetIn, ThemePresetOut, UIThemeIn, UIThemeOut
+from backend.app.schemas import ThemePresetIn, ThemePresetOut, UIThemeIn, UIThemeOut, validate_preset_config
 from backend.app.services.theme_svc import delete_logo, get_theme_out, save_logo
 
 router = APIRouter(prefix="/api/theme", tags=["theme"])
@@ -168,14 +168,26 @@ def import_presets(file: UploadFile, db: DbSession, current_user: AdminUser):
         text = raw.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text))
         rows = list(reader)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {exc}")
 
     created = updated = skipped = 0
-    for row in rows:
+    errors: list[str] = []
+    color_keys = [
+        "color_primary", "color_background", "color_surface", "color_accent",
+        "color_success", "color_warning", "color_danger", "color_text", "color_text_muted",
+    ]
+    for line, row in enumerate(rows, start=2):
         name = (row.get("name") or "").strip()
         if not name:
             skipped += 1
+            errors.append(f"Linha {line}: nome vazio")
+            continue
+        if len(name) > 200:
+            skipped += 1
+            errors.append(f"Linha {line}: nome muito longo")
             continue
         # Skip rows that are built-in or claim a built-in name
         is_builtin_flag = (row.get("is_builtin") or "").strip().lower()
@@ -183,36 +195,25 @@ def import_presets(file: UploadFile, db: DbSession, current_user: AdminUser):
             skipped += 1
             continue
 
-        # Validate hex colors — require # prefix
-        color_keys = [
-            "color_primary", "color_background", "color_surface", "color_accent",
-            "color_success", "color_warning", "color_danger", "color_text", "color_text_muted",
-        ]
-        cfg: dict = {}
-        valid = True
+        raw_cfg: dict = {}
         for key in color_keys:
             val = (row.get(key) or "").strip()
-            if val and not val.startswith("#"):
-                skipped += 1
-                valid = False
-                break
-            cfg[key] = val
-        if not valid:
-            continue
-
-        cfg["density"] = (row.get("density") or "normal").strip()
-        palette = []
-        for i in range(8):
-            c = (row.get(f"pal_{i}") or "").strip()
-            if c:
-                palette.append(c)
-        cfg["chart_palette"] = palette
+            if val:
+                raw_cfg[key] = val
+        raw_cfg["density"] = (row.get("density") or "normal").strip()
+        raw_cfg["chart_palette"] = [
+            c for c in ((row.get(f"pal_{i}") or "").strip() for i in range(8)) if c
+        ]
         # Optional new fields
         for opt_key in ("color_card", "color_border", "color_text_hint", "color_violet"):
-            val = (row.get(opt_key) or "").strip() or None
-            cfg[opt_key] = val
-        br = (row.get("border_radius") or "").strip() or None
-        cfg["border_radius"] = br
+            raw_cfg[opt_key] = (row.get(opt_key) or "").strip() or None
+        raw_cfg["border_radius"] = (row.get("border_radius") or "").strip() or None
+        try:
+            cfg = validate_preset_config(raw_cfg)
+        except ValueError as exc:
+            skipped += 1
+            errors.append(f"Linha {line}: {str(exc).splitlines()[0][:120]}")
+            continue
 
         existing = db.query(ThemePreset).filter_by(name=name).first()
         if existing:
@@ -226,4 +227,4 @@ def import_presets(file: UploadFile, db: DbSession, current_user: AdminUser):
         log_audit(db, current_user, "import", "theme_preset", None,
                   {"created": created, "updated": updated, "skipped": skipped})
     db.commit()
-    return {"created": created, "updated": updated, "skipped": skipped}
+    return {"created": created, "updated": updated, "skipped": skipped, "errors": errors}

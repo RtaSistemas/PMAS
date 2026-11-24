@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import io
 import csv
+import io
+import math
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
@@ -84,21 +85,44 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
         text = raw.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text))
         rows = list(reader)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {exc}")
 
     required = {"pep_wbs", "cycle_name", "planned_hours"}
-    if rows and not required.issubset(set(rows[0].keys())):
-        missing = required - set(rows[0].keys())
-        raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {missing}")
-    has_cost_col = bool(rows) and "planned_cost" in rows[0].keys()
+    fieldnames = [(f or "").strip() for f in (reader.fieldnames or [])]
+    if not fieldnames:
+        raise HTTPException(status_code=422, detail="Arquivo CSV vazio.")
+    missing = required - set(fieldnames)
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Colunas obrigatórias ausentes: {sorted(missing)}")
+    if not rows:
+        return {"created": 0, "updated": 0, "errors": [],
+                "message": "Arquivo sem linhas de dados: nada foi importado."}
+    # Normalise header whitespace so " pep_wbs" still matches.
+    rows = [{(k or "").strip(): v for k, v in r.items()} for r in rows]
+    has_cost_col = "planned_cost" in fieldnames
 
     # Pre-load indexes to avoid N+1 queries
     projects = {p.pep_wbs: p for p in db.query(Project).all()}
     cycles = {c.name: c for c in db.query(Cycle).all()}
+    cycles_ci = {}
+    for c in db.query(Cycle).order_by(Cycle.id).all():
+        cycles_ci.setdefault(c.name.strip().lower(), c)
+    existing_plans = {
+        (pl.project_id, pl.cycle_id): pl for pl in db.query(ProjectCyclePlan).all()
+    }
+
+    def _num(raw: str) -> float:
+        v = float(raw)
+        if not math.isfinite(v) or v < 0:
+            raise ValueError
+        return v
 
     created = updated = 0
     errors: list[str] = []
+    seen: set[tuple[int, int]] = set()
 
     for i, row in enumerate(rows, start=2):
         pep = (row.get("pep_wbs") or "").strip()
@@ -112,9 +136,7 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
             errors.append(f"Linha {i}: cycle_name vazio")
             continue
         try:
-            hours = float(raw_h)
-            if hours < 0:
-                raise ValueError
+            hours = _num(raw_h)
         except ValueError:
             errors.append(f"Linha {i}: planned_hours inválido ({raw_h!r})")
             continue
@@ -124,9 +146,7 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
             raw_c = (row.get("planned_cost") or "").strip()
             if raw_c:
                 try:
-                    cost = float(raw_c)
-                    if cost < 0:
-                        raise ValueError
+                    cost = _num(raw_c)
                 except ValueError:
                     errors.append(f"Linha {i}: planned_cost inválido ({raw_c!r})")
                     continue
@@ -135,19 +155,23 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
         if proj is None:
             errors.append(f"Linha {i}: projeto '{pep}' não encontrado")
             continue
-        cycle = cycles.get(cname)
+        cycle = cycles.get(cname) or cycles_ci.get(cname.lower())
         if cycle is None:
             errors.append(f"Linha {i}: ciclo '{cname}' não encontrado")
             continue
 
-        plan = (
-            db.query(ProjectCyclePlan)
-            .filter(ProjectCyclePlan.project_id == proj.id, ProjectCyclePlan.cycle_id == cycle.id)
-            .first()
-        )
+        key = (proj.id, cycle.id)
+        if key in seen:
+            errors.append(f"Linha {i}: linha duplicada para ('{pep}', '{cname}'); mantida a primeira ocorrência")
+            continue
+        seen.add(key)
+
+        plan = existing_plans.get(key)
         if plan is None:
-            db.add(ProjectCyclePlan(project_id=proj.id, cycle_id=cycle.id,
-                                    planned_hours=hours, planned_cost=cost))
+            new_plan = ProjectCyclePlan(project_id=proj.id, cycle_id=cycle.id,
+                                        planned_hours=hours, planned_cost=cost)
+            db.add(new_plan)
+            existing_plans[key] = new_plan
             created += 1
         else:
             plan.planned_hours = hours
@@ -159,11 +183,14 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
         log_audit(db, current_user, "import", "project_plan",
                   detail={"created": created, "updated": updated, "errors": len(errors)})
     db.commit()
-    return {"created": created, "updated": updated, "errors": errors}
+    return {"created": created, "updated": updated, "errors": errors,
+            "message": f"{created} criado(s), {updated} atualizado(s), {len(errors)} erro(s)."}
 
 
 @router.put("/{project_id}/plans/{cycle_id}", response_model=ProjectCyclePlanOut)
 def upsert_plan(project_id: int, cycle_id: int, body: ProjectCyclePlanIn, db: DbSession, current_user: AdminUser):
+    if body.cycle_id != cycle_id:
+        raise HTTPException(status_code=422, detail="cycle_id do corpo difere do ciclo informado na URL.")
     if db.get(Project, project_id) is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
     if db.get(Cycle, cycle_id) is None:

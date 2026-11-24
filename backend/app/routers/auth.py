@@ -8,6 +8,7 @@ import bcrypt as _bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
+from sqlalchemy import func
 
 from backend.app.database import DbSession
 from backend.app.deps import ALGORITHM, SECRET_KEY
@@ -20,12 +21,25 @@ router = APIRouter(prefix="/api", tags=["auth"])
 _TOKEN_EXPIRE_HOURS = 8
 
 
+_MAX_PASSWORD_BYTES = 72  # bcrypt limit
+
+
 def hash_password(password: str) -> str:
-    return _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
+    raw = password.encode()
+    if len(raw) > _MAX_PASSWORD_BYTES:
+        raise ValueError("A senha excede 72 bytes.")
+    return _bcrypt.hashpw(raw, _bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _bcrypt.checkpw(plain.encode(), hashed.encode())
+    """Never raises: any malformed input simply fails verification."""
+    try:
+        raw = plain.encode()
+        if len(raw) > _MAX_PASSWORD_BYTES:
+            return False
+        return _bcrypt.checkpw(raw, hashed.encode())
+    except Exception:
+        return False
 
 
 _MAX_ATTEMPTS = 5
@@ -40,6 +54,12 @@ def login(
     db: DbSession,
 ):
     user = db.query(User).filter(User.username == form.username).first()
+    username = form.username.strip()
+    if user is None:
+        # Case-insensitive fallback, only when it identifies exactly one user.
+        matches = db.query(User).filter(func.lower(User.username) == username.lower()).limit(2).all()
+        if len(matches) == 1:
+            user = matches[0]
 
     if user:
         locked_until = getattr(user, "locked_until", None)

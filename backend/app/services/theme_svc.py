@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from backend.app.models import GlobalConfig
@@ -10,6 +11,9 @@ from backend.app.schemas import UIThemeOut
 
 LOGO_DIR = Path(__file__).resolve().parents[3] / "static" / "assets" / "logos"
 ALLOWED_EXT: frozenset[str] = frozenset({".png", ".jpg", ".jpeg", ".svg", ".webp"})
+ALLOWED_CONTENT_TYPES: frozenset[str] = frozenset({
+    "image/png", "image/jpeg", "image/svg+xml", "image/webp",
+})
 MAX_LOGO_BYTES = 2 * 1024 * 1024  # 2 MB
 
 DEFAULT_THEME: dict = {
@@ -32,7 +36,12 @@ async def save_logo(file: UploadFile, db: Session) -> str:
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(status_code=400, detail=f"Extensão não permitida: {ext}")
+    ctype = (file.content_type or "").split(";")[0].strip().lower()
+    if ctype and ctype not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Tipo de arquivo não permitido: {ctype}")
     data = await file.read(MAX_LOGO_BYTES + 1)
+    if len(data) == 0:
+        raise HTTPException(status_code=400, detail="O arquivo de logo está vazio.")
     if len(data) > MAX_LOGO_BYTES:
         raise HTTPException(status_code=413, detail="Logo excede o limite de 2 MB.")
     LOGO_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,6 +50,9 @@ async def save_logo(file: UploadFile, db: Session) -> str:
     dest = LOGO_DIR / filename
     dest.write_bytes(data)
     cfg = db.get(GlobalConfig, 1)
+    if cfg is None:
+        cfg = GlobalConfig(id=1)
+        db.add(cfg)
     if cfg.logo_path:
         old = Path(cfg.logo_path)
         if old.exists():
@@ -57,7 +69,21 @@ def get_theme_out(db: Session) -> UIThemeOut:
     if cfg and cfg.logo_path:
         logo_url = f"/static/assets/logos/{Path(cfg.logo_path).name}"
     merged = {**DEFAULT_THEME, **theme, "logo_url": logo_url}
-    return UIThemeOut(**merged)
+    # The endpoint is public: stored values that no longer validate (older
+    # data) must fall back to defaults instead of breaking every page load.
+    for _ in range(len(merged) + 1):
+        try:
+            return UIThemeOut(**merged)
+        except ValidationError as exc:
+            bad = {e["loc"][0] for e in exc.errors() if e.get("loc")}
+            if not bad:
+                break
+            for key in bad:
+                if key in DEFAULT_THEME:
+                    merged[key] = DEFAULT_THEME[key]
+                else:
+                    merged.pop(key, None)
+    return UIThemeOut(**DEFAULT_THEME, logo_url=logo_url)
 
 
 def delete_logo(db: Session) -> None:

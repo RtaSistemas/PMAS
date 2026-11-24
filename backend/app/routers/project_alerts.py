@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime, time
+
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.database import DbSession
@@ -22,10 +24,10 @@ def list_project_alerts(
     pep_wbs: str | None = None,
     alert_type: str | None = None,
     is_resolved: bool | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    limit: int = Query(default=200, le=1000),
-    offset: int = 0,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
 ):
     """List all ProjectAlerts (admin only). Supports filtering by PEP, type, resolved status, and date range."""
     q = db.query(ProjectAlert).order_by(ProjectAlert.created_at.desc())
@@ -36,7 +38,7 @@ def list_project_alerts(
     if is_resolved is not None:
         q = q.filter(ProjectAlert.is_resolved == is_resolved)
     if date_from is not None:
-        q = q.filter(ProjectAlert.created_at >= date_from)
+        q = q.filter(ProjectAlert.created_at >= datetime.combine(date_from, time.min))
     if date_to is not None:
-        q = q.filter(ProjectAlert.created_at <= date_to + " 23:59:59")
+        q = q.filter(ProjectAlert.created_at <= datetime.combine(date_to, time.max))
     return q.offset(offset).limit(limit).all()
