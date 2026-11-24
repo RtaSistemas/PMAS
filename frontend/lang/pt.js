@@ -630,4 +630,13 @@ window._LANG_PT = {
     'sim.err_multiplier':'O multiplicador deve ser um número de 0,1 a 5.',
     'sim.err_extra':'As horas extras devem ser um número maior ou igual a 0.',
     'sim.burnup.current':'Atual',
+    // multiselect
+    'ms.n_selected':'{n} selecionados',
+    // D15 chart labels
+    'chart.velocitySparklineChart':'Velocidade por Ciclo',
+    'chart.whatIfBurnUpChart':'Projeção What-If',
+    'chart.mcHistogramChart':'Distribuição de resultados (Monte Carlo)',
+    // qr detail
+    'qr.rule_n':'Regra #{n}',
+    'qr.reviewed_on':'{user} em {date}',
 };

@@ -171,7 +171,7 @@ async function _initNotifications() {
       <div class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}">
         <div style="flex:1">
           <div class="notif-msg">${escHtml(n.message)}</div>
-          <div class="notif-time">${fmtDateBR(n.created_at?.slice(0,10))}</div>
+          <div class="notif-time">${fmtDateOnly(n.created_at)}</div>
         </div>
         <button class="btn btn-ghost btn-xs notif-del" data-id="${n.id}" aria-label="${_t('notif.delete')}" title="${_t('notif.delete')}">✕</button>
       </div>`).join('');

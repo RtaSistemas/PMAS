@@ -24,8 +24,8 @@ const _cyclesPag = _makePaginator(
       rowFn: c => `
     <tr style="${!c.is_active ? 'opacity:.5' : ''}">
       <td>${escHtml(c.name)}${!c.is_active ? ` <em style="color:${_cssVar('--text-3')};font-size:.8rem">${_t('cycle.archived')}</em>` : ''}</td>
-      <td>${c.start_date}</td>
-      <td>${c.end_date}</td>
+      <td>${fmtDateOnly(c.start_date)}</td>
+      <td>${fmtDateOnly(c.end_date)}</td>
       <td><span class="badge-status ativo">${_t('badge.regular')}</span></td>
       <td style="text-align:right">${c.record_count.toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-US')}</td>
       <td><div class="actions">

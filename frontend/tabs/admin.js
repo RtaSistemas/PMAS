@@ -407,11 +407,11 @@ function _openQRDetail(id) {
   document.getElementById('qrDExtra').textContent     = raw['Hora extra'] || '—';
   document.getElementById('qrDStandby').textContent   = raw['Hora sobreaviso'] || '—';
   document.getElementById('qrDReason').textContent    = r.quarantine_reason;
-  document.getElementById('qrDRule').textContent      = r.rule_description || (r.rule_id ? `Regra #${r.rule_id}` : '—');
+  document.getElementById('qrDRule').textContent      = r.rule_description || (r.rule_id ? _tf('qr.rule_n', { n: r.rule_id }) : '—');
   document.getElementById('qrDSession').textContent   = r.upload_session_id ?? '—';
   document.getElementById('qrDStatus').innerHTML      = _qrStatusBadge(r.review_status);
   document.getElementById('qrDReviewedBy').textContent = r.reviewed_by
-    ? `${r.reviewed_by} em ${_fmtDate(r.reviewed_at)}`
+    ? _tf('qr.reviewed_on', { user: r.reviewed_by, date: _fmtDate(r.reviewed_at) })
     : '—';
   document.getElementById('qrDRawData').textContent   = JSON.stringify(raw, null, 2);
 
@@ -970,7 +970,7 @@ async function loadAdminAlerts() {
   if (pep)  params.set('pep_wbs', pep);
   if (type) params.set('alert_type', type);
   if (resolved !== '' && resolved != null) params.set('is_resolved', resolved);
-  await _loadTable(`/api/project-alerts?${params}`, data => {
+  await _loadTable(`/api/project-alerts/?${params}`, data => {
     _adminAlertsCache = data;
     _adminAlertsPag.render(_adminAlertsCache);
     _populateAdminAlertPepFilter(data);

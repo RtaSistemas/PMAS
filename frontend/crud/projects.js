@@ -381,12 +381,7 @@ function deleteProject(id, pep) {
 
 // ── Baseline Modal ─────────────────────────────────────────────────────────
 
-function _fmtDateShort(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  return d.toLocaleDateString(_locale === 'pt' ? 'pt-BR' : 'en-US', { day:'2-digit', month:'2-digit', year:'numeric' });
-}
+function _fmtDateShort(iso) { return fmtDateOnly(iso); }
 
 let _baselineModalProjectId = null;
 

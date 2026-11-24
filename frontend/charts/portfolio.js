@@ -79,7 +79,7 @@ function _buildEvmQuadrantOption(items, showTrajectory = false) {
     brush: {
       brushStyle: {
         borderWidth: 1,
-        color:       'rgba(148,163,184,0.10)',
+        color:       _withAlpha(_cssVar('--text-2'), 0.10),
         borderColor: _cssVar('--primary'),
       },
       outOfBrush: { colorAlpha: 0.15 },
@@ -238,7 +238,7 @@ function _buildTreemapOption(health, evmMode = false) {
           return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
         },
       },
-      emphasis: { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
+      emphasis: { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: _withAlpha(_cssVar('--bg'), 0.5) } },
       itemStyle: { gapWidth: 2, borderRadius: 4 },
       levels: [{
         itemStyle: { borderWidth: 0, gapWidth: 4 },
@@ -367,7 +367,7 @@ function _buildTimelineTreemapOption(snapshots, evmMode) {
             return `${nm}\n${valStr}${d && !d.is_registered ? '\n⚠' : ''}`;
           },
         },
-        emphasis:  { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' } },
+        emphasis:  { focus: 'self', itemStyle: { shadowBlur: 8, shadowColor: _withAlpha(_cssVar('--bg'), 0.5) } },
         itemStyle: { gapWidth: 2, borderRadius: 4 },
         levels:    [{ itemStyle: { borderWidth: 0, gapWidth: 4 }, upperLabel: { show: false } }],
         data: [],
@@ -441,8 +441,8 @@ function _buildBulletOption(withBudget, evmMode = false) {
         data: budgets.map(b => ({
           value: b,
           itemStyle: {
-            color: 'rgba(148,163,184,0.18)',
-            borderColor: 'rgba(148,163,184,0.35)',
+            color: _withAlpha(_cssVar('--text-2'), 0.18),
+            borderColor: _withAlpha(_cssVar('--text-2'), 0.35),
             borderWidth: 1,
             borderRadius: [0, 3, 3, 0],
           },

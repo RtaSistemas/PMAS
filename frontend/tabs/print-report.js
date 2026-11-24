@@ -41,8 +41,7 @@ function _buildPrintHeader() {
   const logoHtml = logo ? `<img class="print-logo" src="${escHtml(logo.getAttribute('src'))}" alt="" />` : '';
 
   const user = _getTokenPayload()?.sub || '';
-  const when = new Date().toLocaleString(_locale === 'pt' ? 'pt-BR' : 'en-GB',
-    { dateStyle: 'medium', timeStyle: 'short' });
+  const when = fmtDate(new Date().toISOString());
   const generated = _t('print.generated').replace('{date}', when).replace('{user}', user);
 
   const parts = _printFilterParts();

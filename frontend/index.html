@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PMAS — Dashboard de Gestão de Projetos</title>
-  <link rel="icon" type="image/png" href="/static/assets/icon.png" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230ea5e9'/%3E%3Crect x='7' y='16' width='4' height='9' rx='1' fill='white'/%3E%3Crect x='14' y='11' width='4' height='14' rx='1' fill='white'/%3E%3Crect x='21' y='7' width='4' height='18' rx='1' fill='white'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
   <script src="/frontend/echarts.min.js"></script>
   <script src="/frontend/sortable.min.js"></script>
@@ -188,7 +188,7 @@
     <div class="card filter-card">
       <div class="section-header clickable" id="filterToggle" role="button" tabindex="0"
            aria-expanded="true" aria-controls="filterBody">
-        <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="flex-center gap-sm">
           <h2 class="card-title" data-i18n="filters.title">Filtros</h2>
           <span id="filterActiveCount" class="filter-active-badge" hidden></span>
         </div>
@@ -196,19 +196,19 @@
       </div>
       <div id="filterBody">
         <div class="filter-grid">
-          <div class="field"><label for="cycleMs-toggle" data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
-          <div class="field"><label for="pepMs-toggle" data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
-          <div class="field"><label for="pepDescMs-toggle" data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
-          <div class="field"><label for="collaboratorMs-toggle" data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
-          <div class="field"><label data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
-          <div class="field"><label data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
-          <div class="field btn-group">
+          <div class="field btn-group filter-actions">
             <button type="button" id="loadBtn" class="btn btn-primary" data-i18n="btn.load">Carregar</button>
             <button type="button" id="clearBtn" class="btn btn-secondary" data-i18n="btn.clear">Limpar</button>
             <button type="button" id="shortcutLastMonth" class="btn btn-secondary" data-i18n="btn.last_month">Últ. mês</button>
             <button type="button" id="shortcutLastQuarter" class="btn btn-secondary" data-i18n="btn.last_quarter">Últ. trimestre</button>
             <button type="button" id="shortcutThisYear" class="btn btn-secondary" data-i18n="btn.this_year">Este ano</button>
           </div>
+          <div class="field"><label for="cycleMs-toggle" data-i18n="filter.cycle">Ciclo</label><div id="cycleMs"></div></div>
+          <div class="field"><label for="pepMs-toggle" data-i18n="filter.pep_code">PEP (Código)</label><div id="pepMs"></div></div>
+          <div class="field"><label for="pepDescMs-toggle" data-i18n="filter.pep_desc">PEP (Descrição)</label><div id="pepDescMs"></div></div>
+          <div class="field"><label for="collaboratorMs-toggle" data-i18n="filter.collab">Colaborador</label><div id="collaboratorMs"></div></div>
+          <div class="field"><label for="dateFromInput" data-i18n="filter.dfrom">Data início</label><input type="date" id="dateFromInput" /></div>
+          <div class="field"><label for="dateToInput" data-i18n="filter.dto">Data fim</label><input type="date" id="dateToInput" /></div>
         </div>
       </div>
     </div>
@@ -393,6 +393,7 @@
           <button type="button" id="runwayExportBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" hidden>Exportar CSV</button>
         </div>
         <div id="runwayEmpty" class="chart-empty" hidden data-i18n="runway.empty">Nenhum PEP com orçamento encontrado.</div>
+        <div class="table-responsive">
         <table class="data-table" id="runwayTable" hidden>
           <thead><tr>
             <th data-i18n="runway.th.pep">PEP</th>
@@ -408,6 +409,7 @@
           </tr></thead>
           <tbody id="runwayBody"></tbody>
         </table>
+        </div><!-- /.table-responsive -->
         <div id="runwayPagination" hidden class="pagination-bar">
           <label class="hint pagination-label"><span data-i18n="page.items_label">Itens:</span> <select id="runwayPageSize" class="input-sm"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
           <button type="button" id="runwayPrevBtn" class="btn btn-secondary btn-sm" data-i18n="page.prev">‹ Anterior</button>
@@ -440,7 +442,7 @@
             data-i18n="forecast.physical_badge" data-i18n-title="forecast.physical_badge_title">Modo: % Físico</span>
         </div>
         <div id="forecastChart" role="img" data-i18n-aria="chart.forecastChart"></div>
-        <div id="velocitySparklineChart" hidden></div>
+        <div id="velocitySparklineChart" role="img" data-i18n-aria="chart.velocitySparklineChart" hidden></div>
         <div id="forecastProjectInfo" class="flex-center gap-xl flex-wrap" hidden></div>
       </div>
 
@@ -526,7 +528,7 @@
               </div>
             </div>
             <div id="whatIfResult"></div>
-            <div id="whatIfBurnUpChart" hidden></div>
+            <div id="whatIfBurnUpChart" role="img" data-i18n-aria="chart.whatIfBurnUpChart" hidden></div>
           </div>
         </div>
 
@@ -540,7 +542,7 @@
           <div id="mcBody">
             <p class="hint mb-3" data-i18n="mc.hint">Estimativas de conclusão baseadas em 1.000 simulações com velocidade histórica (ciclos adicionais necessários).</p>
             <div id="mcResult"></div>
-            <div id="mcHistogramChart" hidden></div>
+            <div id="mcHistogramChart" role="img" data-i18n-aria="chart.mcHistogramChart" hidden></div>
           </div>
         </div>
       </div>

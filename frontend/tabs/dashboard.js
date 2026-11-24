@@ -200,6 +200,7 @@ clearBtn.addEventListener('click', () => {
   cycleMs.clear(); pepMs.clear(); pepDescMs.clear(); collaboratorMs.clear();
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
+  _updateFilterBadge();
   try { localStorage.removeItem('pmas_filters_v1'); } catch (_) {}
   pepDataCache = {};
   _evmMode = false;
@@ -483,7 +484,7 @@ function _drawRunwayRows(data) {
     }
 
     const rowBg = (item.risk === 'critical' || item.risk === 'overrun')
-      ? 'background:rgba(197,109,118,.07)'
+      ? `background:${_withAlpha(_cssVar('--red'), 0.07)}`
       : '';
 
     const tr = document.createElement('tr');
@@ -560,14 +561,14 @@ function _renderConcentrationPanel(concentration) {
       : formatHours(item.total_hours, 0);
 
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:center;gap:1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
+    row.style.cssText = `display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:.4rem .5rem;border-radius:.35rem;background:${_cssVar('--card')}`;
     row.innerHTML = `
       <div style="min-width:14px;display:flex;align-items:center"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor}"></span></div>
       <div style="min-width:130px">
         <div style="font-family:monospace;font-size:.8rem;color:${_cssVar('--text')}">${escHtml(item.pep_wbs)}</div>
         <div style="font-size:.72rem;color:${_cssVar('--text-3')};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px" title="${escHtml(item.name || '')}">${escHtml(item.name || '')}</div>
       </div>
-      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1">${barsHtml}</div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;flex:1 1 12rem;min-width:0">${barsHtml}</div>
       <div style="font-size:.72rem;color:${_cssVar('--text-3')};white-space:nowrap">${totalDisplay}</div>
     `;
     grid.appendChild(row);
@@ -1128,7 +1129,7 @@ function _drawAllocMatrix() {
     if (!v) return '';
     const ratio = v / maxVal;
     const a = (0.08 + ratio * 0.72).toFixed(2);
-    return `background:rgba(14,165,233,${a})`;
+    return `background:${_withAlpha(_cssVar('--primary'), a)}`;
   };
 
   const thCls = key => {
@@ -1957,7 +1958,7 @@ async function _renderForecastAllocTable(pep, dateFrom, dateTo) {
     const heat = (v, max) => {
       if (!v) return '';
       const a = (0.08 + (v / max) * 0.72).toFixed(2);
-      return `style="background:rgba(14,165,233,${a})"`;
+      return `style="background:${_withAlpha(_cssVar('--primary'), a)}"`;
     };
     const fmt = v => v > 0 ? formatHours(v) : '—';
 
@@ -2030,7 +2031,7 @@ async function _renderForecastAllocCostTable(pep, dateFrom, dateTo) {
     const heat = (v, max) => {
       if (!v) return '';
       const a = (0.08 + (v / max) * 0.72).toFixed(2);
-      return `style="background:rgba(14,165,233,${a})"`;
+      return `style="background:${_withAlpha(_cssVar('--primary'), a)}"`;
     };
     const fmt = v => v > 0 ? _fmtCost(v) : '—';
 
@@ -2493,7 +2494,7 @@ async function _renderCollabTimeline(name) {
   chartEl.style.visibility = '';
 
   const tc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
-  tc.setOption({ aria: { enabled: true } });
+  tc.setOption(_ARIA_OPTION);
   _charts['collabInlineTimelineChart'] = tc;
   tc.setOption(_buildHoursBarOption({
     data: rows, categoryKey: 'cycle_name',
@@ -2702,7 +2703,7 @@ async function _renderCollabCalendar(name, year, month) {
   chartEl.style.height = `${numWeeks * cellW + 8}px`;
 
   const cc = echarts.init(chartEl, 'pmas', { renderer: 'svg' });
-  cc.setOption({ aria: { enabled: true } });
+  cc.setOption(_ARIA_OPTION);
   _charts['collabCalendarChart'] = cc;
   cc.setOption({
     ..._chartDefaults(),

@@ -48,9 +48,18 @@ document.getElementById('currencySymbol').addEventListener('change', _onCurrency
 // ---------------------------------------------------------------------------
 // Modal utilities — focus trap + Escape + aria
 // ---------------------------------------------------------------------------
+// The modals that are open now, the last one is on top. Escape closes only that one.
+const _openModalIds = [];
+
 function openModal(modalId, triggerEl, firstFocusSelector) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
+  // Open the same modal again without a second set of handlers
+  if (modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
+  if (modal._escHandler)  document.removeEventListener('keydown', modal._escHandler);
+  const at = _openModalIds.indexOf(modalId);
+  if (at !== -1) _openModalIds.splice(at, 1);
+  _openModalIds.push(modalId);
   modal._triggerEl = triggerEl || document.activeElement;
   modal.hidden = false;
   const firstFocusable = firstFocusSelector
@@ -67,7 +76,9 @@ function openModal(modalId, triggerEl, firstFocusSelector) {
     if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
     else            { if (document.activeElement === last)  { e.preventDefault(); first.focus(); } }
   };
-  modal._escHandler = e => { if (e.key === 'Escape') closeModal(modalId); };
+  modal._escHandler = e => {
+    if (e.key === 'Escape' && _openModalIds[_openModalIds.length - 1] === modalId) closeModal(modalId);
+  };
   modal.addEventListener('keydown', modal._trapHandler);
   document.addEventListener('keydown', modal._escHandler);
 }
@@ -76,6 +87,8 @@ function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
   modal.hidden = true;
+  const at = _openModalIds.indexOf(modalId);
+  if (at !== -1) _openModalIds.splice(at, 1);
   if (modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
   if (modal._escHandler)  document.removeEventListener('keydown', modal._escHandler);
   modal._triggerEl?.focus();
@@ -91,11 +104,15 @@ function confirmDialog(message, onConfirm, danger = true) {
   document.getElementById('confirmModalMsg').textContent = message;
   const btn = document.getElementById('confirmModalOk');
   btn.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+  // A cancelled dialog must not keep its callback for the next dialog
+  if (btn._confirmHandler) btn.removeEventListener('click', btn._confirmHandler);
   const handler = () => {
     closeModal('confirmModal');
     onConfirm();
     btn.removeEventListener('click', handler);
+    btn._confirmHandler = null;
   };
+  btn._confirmHandler = handler;
   btn.addEventListener('click', handler);
   openModal('confirmModal', document.activeElement, '#confirmModalOk');
 }
@@ -153,6 +170,15 @@ function _cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+// Add an alpha channel to a theme color (#rgb or #rrggbb). Other formats stay as they are.
+function _withAlpha(color, alpha) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(color).trim());
+  if (!m) return color;
+  const h = m[1].length === 3 ? m[1].replace(/./g, c => c + c) : m[1];
+  const n = parseInt(h, 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 function _echartsTip(extra = {}) {
   return Object.assign({
     backgroundColor: _cssVar('--card'),
@@ -207,10 +233,14 @@ function _disposeTabCharts(tabId) {
   });
 }
 
+// The chart container has an aria-label from the translation files (data-i18n-aria).
+// The automatic description of ECharts is in English only and can show NaN, so the system turns it off.
+const _ARIA_OPTION = { aria: { enabled: true, label: { enabled: false } } };
+
 function _getOrCreateChart(id) {
   if (!_charts[id] || _charts[id].isDisposed()) {
     _charts[id] = echarts.init(document.getElementById(id), 'pmas', { renderer: 'svg' });
-    _charts[id].setOption({ aria: { enabled: true } });
+    _charts[id].setOption(_ARIA_OPTION);
   }
   return _charts[id];
 }
@@ -608,6 +638,8 @@ async function _loadTheme() {
     // Register pmas echarts theme from CSS tokens
     if (window.echarts) {
       echarts.registerTheme('pmas', {
+        // A later setOption(..., true) would reset the aria option, so the theme keeps it for every chart
+        aria: { enabled: true, label: { enabled: false } },
         backgroundColor: 'transparent',
         textStyle: { color: _cssVar('--text-1') },
         axisLabel: { color: _cssVar('--text-2') },

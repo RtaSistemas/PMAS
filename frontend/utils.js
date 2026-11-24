@@ -33,15 +33,33 @@ export function formatCost(raw, factor = 1, symbol = 'R$', locale = 'pt-BR') {
   })}`;
 }
 
+// One date rule for the whole interface: dd/mm/yyyy in both languages (the same as fmtDateBR).
+// A time shows as HH:mm, 24 hours, in the time zone of the system (window._timezone).
+function _formatDateParts(d, withTime) {
+  const tz = (typeof window !== 'undefined' && window._timezone) || 'America/Sao_Paulo';
+  const options = { timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric' };
+  if (withTime) Object.assign(options, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', options).formatToParts(d).map(x => [x.type, x.value]));
+  return `${p.day}/${p.month}/${p.year}` + (withTime ? ` ${p.hour}:${p.minute}` : '');
+}
+
 /**
- * Format an ISO timestamp for display. Respects the current locale (_locale global)
- * and an optional window._timezone override (default: America/Sao_Paulo).
+ * Format an ISO timestamp as "dd/mm/yyyy HH:mm". Returns a dash for an empty value.
  */
 export function fmtDate(isoStr) {
   if (!isoStr) return '—';
-  const tz = (typeof window !== 'undefined' && window._timezone) || 'America/Sao_Paulo';
-  const loc = (typeof _locale !== 'undefined' ? _locale : (typeof window !== 'undefined' ? window._locale : 'pt')) || 'pt';
-  return new Date(isoStr).toLocaleString(loc === 'pt' ? 'pt-BR' : 'en-US', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
+  const d = new Date(isoStr);
+  return isNaN(d) ? String(isoStr) : _formatDateParts(d, true);
+}
+
+/**
+ * Format an ISO date (YYYY-MM-DD) or an ISO timestamp as "dd/mm/yyyy". Returns a dash for an empty value.
+ */
+export function fmtDateOnly(isoStr) {
+  if (!isoStr) return '—';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(isoStr))) return fmtDateBR(isoStr);
+  const d = new Date(isoStr);
+  return isNaN(d) ? String(isoStr) : _formatDateParts(d, false);
 }
 
 /**
@@ -68,6 +86,7 @@ if (typeof window !== 'undefined') {
   window.formatHours = formatHours;
   window.formatCost = formatCost;
   window.fmtDate = fmtDate;
+  window.fmtDateOnly = fmtDateOnly;
   window._fmtDate = fmtDate;
   window.clamp = clamp;
   window.parseISODate = parseISODate;

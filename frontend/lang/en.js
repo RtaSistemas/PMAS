@@ -630,4 +630,13 @@ window._LANG_EN = {
     'sim.err_multiplier':'The multiplier must be a number from 0.1 to 5.',
     'sim.err_extra':'The extra hours must be a number of 0 or more.',
     'sim.burnup.current':'Current',
+    // multiselect
+    'ms.n_selected':'{n} selected',
+    // D15 chart labels
+    'chart.velocitySparklineChart':'Velocity per cycle',
+    'chart.whatIfBurnUpChart':'What-If projection',
+    'chart.mcHistogramChart':'Result distribution (Monte Carlo)',
+    // qr detail
+    'qr.rule_n':'Rule #{n}',
+    'qr.reviewed_on':'{user} on {date}',
 };

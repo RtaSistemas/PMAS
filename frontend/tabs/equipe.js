@@ -126,8 +126,8 @@ const _rateCardPag = _makePaginator(
     <tr>
       <td>${escHtml(c.seniority_level_name)}</td>
       <td style="text-align:right">${_fmtCost(c.hourly_rate)}</td>
-      <td>${c.valid_from}</td>
-      <td>${c.valid_to ?? '—'}</td>
+      <td>${fmtDateOnly(c.valid_from)}</td>
+      <td>${fmtDateOnly(c.valid_to)}</td>
       <td><div class="actions">
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openRateCardModal(${c.id})">${_t('btn.edit')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteRateCard(${c.id})">${_t('btn.delete')}</button>` : ''}
