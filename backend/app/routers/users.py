@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, CurrentUserFlex, get_current_user, get_current_user_allow_change
+from backend.app.limiter import limiter
 from backend.app.models import User
 from backend.app.routers.auth import hash_password, verify_password
 from backend.app.schemas import PasswordChangeIn, UserCreateIn, UserOut
@@ -12,8 +13,14 @@ from backend.app.schemas import PasswordChangeIn, UserCreateIn, UserOut
 router = APIRouter(
     prefix="/api/users",
     tags=["users"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user_allow_change)],
 )
+
+
+@router.get("/me", summary="Usuário autenticado", response_model=UserOut)
+def read_me(current_user: CurrentUserFlex):
+    """The signed-in user. Any role can call it (the password-change form needs the own id)."""
+    return current_user
 
 
 @router.get("", summary="Listar usuários", response_model=list[UserOut])
@@ -22,7 +29,8 @@ def list_users(db: DbSession, _admin: AdminUser):
 
 
 @router.post("", summary="Criar usuário", status_code=201, response_model=UserOut)
-def create_user(body: UserCreateIn, db: DbSession, _admin: AdminUser):
+@limiter.limit("30/minute")
+def create_user(request: Request, body: UserCreateIn, db: DbSession, _admin: AdminUser):
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=400, detail="Nome de usuário já existe.")
     user = User(
@@ -39,11 +47,13 @@ def create_user(body: UserCreateIn, db: DbSession, _admin: AdminUser):
 
 
 @router.patch("/{user_id}/password", summary="Alterar senha", response_model=UserOut)
+@limiter.limit("30/minute")
 def change_password(
+    request: Request,
     user_id: int,
     body: PasswordChangeIn,
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: CurrentUserFlex,
 ):
     target = db.get(User, user_id)
     if target is None:
@@ -56,7 +66,9 @@ def change_password(
         if not verify_password(body.current_password, target.hashed_password):
             raise HTTPException(status_code=400, detail="Senha atual incorreta.")
     target.hashed_password = hash_password(body.new_password)
-    target.must_change_password = False
+    # A password that an administrator sets for another user is temporary.
+    # The user must choose a new password at the next login.
+    target.must_change_password = current_user.id != user_id
     log_audit(db, current_user, "change_password", "user", user_id, {"target_username": target.username})
     db.commit()
     db.refresh(target)
@@ -64,7 +76,8 @@ def change_password(
 
 
 @router.delete("/{user_id}", summary="Excluir usuário", status_code=204)
-def delete_user(user_id: int, db: DbSession, admin: AdminUser):
+@limiter.limit("30/minute")
+def delete_user(request: Request, user_id: int, db: DbSession, admin: AdminUser):
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")

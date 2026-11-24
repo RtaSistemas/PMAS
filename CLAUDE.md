@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Stack:** Python 3.11+ · FastAPI · SQLAlchemy · SQLite · Vanilla JS · Apache ECharts 5. The UI is fully in Portuguese (pt-BR).
 
 > **Implementation patterns** — all coding conventions, design tokens, EVM formula rules, modal/pagination/CRUD/i18n/accessibility patterns are documented in [`docs/PATTERNS.md`](docs/PATTERNS.md). Read it before adding any feature.
+> **Writing guide** — write all English text (UI strings, documentation, error messages) to the ASD-STE100 profile in [`docs/STE-GUIDE.md`](docs/STE-GUIDE.md). Check a file with `python scripts/ste_check.py <file>`; keep each new or changed file at 80% or more.
 > **Project documentation** — audit reports, sprint records, and the branch diff live in [`docs/`](docs/README.md).
 
 ## Golden Rules — Architectural Constraints
@@ -44,7 +45,11 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-698 tests across 26 test files. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+750 tests across 28 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+
+## Linux Package
+
+`packaging/build_package.sh <binary>` builds `pmas-linux-x64-package.tar.gz` (binary, `install.sh`, `backup_pmas.sh`, systemd units, `pmas.env.example`, `OPERATIONS.md`). `install.sh` takes `PMAS_PREFIX`, `PMAS_ETC`, `PMAS_DATA`, `PMAS_LOGDIR`, `PMAS_SYSTEMD_DIR` and `PMAS_SKIP_SYSTEM=1` (copy files only); `tests/test_packaging.py` uses them. See `docs/OPERATIONS.md`.
 
 ## Sample Data
 
@@ -59,7 +64,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 ### Backend (`backend/app/`)
 
 - **`main.py`** — Slim FastAPI app: CORS middleware, rate limiting (slowapi), structured logging, `include_router` for the stable CRUD routers plus the full `/api/v2` analytics layer, static file mount, root redirect, lifespan hook (`init_db`).
-- **`models.py`** — 22 SQLAlchemy ORM models:
+- **`models.py`** — 23 SQLAlchemy ORM models:
   - `SeniorityLevel` — unique name, linked to RateCard and Collaborator
   - `RateCard` — hourly_rate with valid_from / valid_to date range per seniority level
   - `Collaborator` — unique name, optional `seniority_level_id` FK, linked to records
@@ -73,6 +78,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `GlobalConfig` — key/value store (logo path, UI theme overrides, `spi_warning_threshold`, `spi_risk_consecutive_cycles`)
   - `AuditLog` — structured log: user, action, entity, old/new JSON snapshot
   - `UserProjectAccess` — per-user PEP whitelist (empty = access all)
+  - `ApiKey` — service key for automatic import: `name`, `key_prefix`, `key_hash` (SHA-256; the raw key is never stored), `user_id` (the key acts as this user, so the role and the ACL apply), `last_used_at`, `revoked_at`
   - `ValidationRule` — ordered, typed rules evaluated per row during ingestion
   - `UploadSession` — metadata record for each upload (filename, user, row counts, status)
   - `QuarantineRecord` — rows that failed validation, with review workflow (pending/approved/rejected)
@@ -84,7 +90,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `ProjectAlert` — permanent, lifecycle-managed alert per project: `alert_type`, `level`, `message`, `metric_value`, `consecutive_cycles`, `created_at`, `resolved_at`, `is_resolved`. Deduplication by `(project_id, alert_type)`; level changes resolve old and create new; auto-resolves when the triggering metric recovers
 - **`schemas.py`** — All Pydantic input/output models: `CycleIn/Out`, `ProjectIn/Out`, `SeniorityLevelIn/Out`, `RateCardIn/Out`, `CollaboratorSeniorityIn`, `ImportResultOut`, `UserCreateIn`, `UserOut`, `ValidationRuleIn/Out`, `QuarantineRecordOut`, `UploadSessionOut`, `AlertSummaryOut`, `UserPreferenceIn/Out`, `UIThemeIn/Out`, `ProjectCyclePlanIn/Out`, `ForecastOut`, and others.
 - **`database.py`** — SQLite engine, `get_db()` dependency, `init_db()` (runs `create_all` + `_migrate_columns`). `_migrate_columns()` applies `ALTER TABLE` for columns added after the initial schema, upgrading existing `pmas.db` files safely on startup.
-- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
+- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`/`compute_eac_avg_rate`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
 - **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Multi-phase pipeline with a configurable validation rule engine. Freezes cost via `freeze_costs` from `evm.py`.
 - **Other services** — `rule_engine.py` (per-row rule evaluation), `summaries.py` (maintains `PepCycleSummary`/`CollaboratorCycleSummary`), `quarantine_svc.py`, `upload_session_svc.py`, `theme_svc.py`.
 
@@ -94,6 +100,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 |---|---|---|
 | `auth.py` | `/api` | `POST /token` — JWT login |
 | `users.py` | `/api/users` | Admin CRUD for user accounts |
+| `api_keys.py` | `/api/api-keys` | Admin: list, create (the response shows the key once), revoke. A key is valid only on `POST /api/upload-timesheet` through the `X-API-Key` header (`deps.get_upload_user`) |
 | `auditlog.py` | `/api` | `GET /audit-log` (admin) |
 | `cycles.py` | `/api/cycles` | CRUD + CSV import/export for billing cycles |
 | `projects.py` | `/api/projects` | CRUD + CSV import/export for projects/PEPs |
@@ -144,6 +151,10 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 - **`tabs/admin.js`** — Admin tab: users CRUD, audit log, validation rules engine, quarantine table, session detail, theme editor, Central de Alertas (paginated `ProjectAlert` table with PEP/type/status filters).
 - **`tabs/minha-area.js`** — Minha Área tab: user preferences, chart layout drag-to-reorder, personal upload history, personal quarantine view, budget alerts, Alertas sub-tab (ACL-filtered `ProjectAlert` list; hidden for admin users).
 - **`tabs/header.js`** — `_updateHeaderUser`, `loadSemaphore` (macro traffic-light bar; clicking a pill drills to Portfolio), `_drillDownToPep`, `_refreshTabBadges`, `_initNotifications`.
+- **`tabs/api-keys.js`** — Admin card for API keys: list, create (modal, then a show-once modal with a copy button), revoke. `loadApiKeys()` runs when the Admin tab opens.
+- **`tabs/onboarding.js`** — First-use checklist on the Dashboard (administrators only): counts cycles, projects and imports, shows the progress, hides itself when all 3 steps are complete. `_refreshOnboarding()` runs at boot, on a return to the Dashboard tab, and on a language change.
+- **`tabs/print-report.js`** — Fills the `#printHeader` block on `beforeprint`: logo, app name, report name (active tab and sub-tab), date, user, and the active filters. The header is hidden on screen (`.print-only`). The print CSS also hides the filter card and the onboarding card.
+- **`help.html` / `help.js`** — Static help page (quick start, tabs, import columns, quarantine, terms) in EN (STE) and PT. The header Help link opens it in a new tab.
 
 ### Ingestion Pipeline (`services/ingestion.py`)
 
@@ -202,33 +213,35 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 
 | File | Tests | Coverage |
 |---|---|---|
-| `test_evm_service.py` | 104 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None) |
+| `test_evm_service.py` | 110 | Pure-math unit tests for every function in `services/evm.py` (happy/boundary/None); includes `compute_eac_avg_rate` |
 | `test_full_sample.py` | 83 | End-to-end upload + analytics pipeline with full sample data |
-| `test_ingestion.py` | 64 | CSV/XLSX parsing, quarantine, rule engine integration |
+| `test_ingestion.py` | 72 | CSV/XLSX parsing, quarantine, rule engine integration |
 | `test_v2_endpoints.py` | 64 | All `/api/v2` analytics endpoints (filters, portfolio, effort, trends, forecast, allocation, concentration) |
 | `test_ingestion_phases.py` | 44 | Unit tests per phase function (`_phase_load_and_validate`, `_phase_authorize_peps`, `_phase_prescan_dates`, `_phase_validate_rows`, `_phase_aggregate_rules`, `_phase_upsert_records`); includes regression tests for weekly alert deduplication |
 | `test_ratecard.py` | 35 | SeniorityLevel, RateCard, team, rate lookup, EVM freeze |
 | `test_rule_engine.py` | 32 | ValidationRule CRUD, toggle, reorder, per-row evaluation |
 | `test_theme.py` | 30 | UI theme CRUD + theme presets |
 | `test_projects.py` | 27 | CRUD de projetos + EVM fields (start/planned-end/completion dates, status) |
+| `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk); NULL-cost regression |
+| `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC, `cpi_cumulative` in history, `spi_t_color` in forecast |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_runway_concentration.py` | 23 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk) |
-| `test_users.py` | 22 | User CRUD, password change, role enforcement |
-| `test_evm_integrity.py` | 20 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC |
+| `test_users.py` | 25 | User CRUD, password change, role enforcement |
 | `test_cycles.py` | 20 | CRUD de ciclos |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
 | `test_over_allocation.py` | 13 | `/api/v2/over-allocation` detection (filters, sort, CSV) |
 | `test_upload_guards.py` | 11 | Upload rate-limiting and auth guards |
 | `test_validation_rules.py` | 10 | ValidationRule API |
+| `test_simulate.py` | 8 | `/api/v2/.../simulate` What-If (velocity window, projected EAC via `compute_eac_avg_rate`, burn-up) |
 | `test_monte_carlo.py` | 8 | `/api/v2/.../monte-carlo` (P10/P50/P90, histogram, insufficient-data guard) |
-| `test_simulate.py` | 7 | `/api/v2/.../simulate` What-If (velocity window, projected EAC, burn-up) |
-| `test_golden_rules.py` | 7 | Golden rules enforcement: GR-3 no hardcoded hex, locale patterns, `crud/*.js` coverage |
+| `test_golden_rules.py` | 8 | Golden rules enforcement: GR-3 no hardcoded hex (including `charts/*.js` and `tabs/*.js`), no hex fallbacks, locale patterns, `crud/*.js` coverage |
 | `test_summaries_status.py` | 6 | `PepCycleSummary` / `CollaboratorCycleSummary` staleness detection |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
-| **Total** | **698** | |
+| `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
+| `test_packaging.py` | 10 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
+| **Total** | **750** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
@@ -242,7 +255,7 @@ Audited items deliberately deferred. Do not implement without an explicit decisi
 | P2 | `/ready` liveness probe | `backend/app/main.py` | `GET /health` already returns `{"status":"ok","timestamp":...,"version":...}`. Add `GET /ready` that runs `SELECT 1` and returns 503 if the database is unreachable |
 | P3 | Database backup script | `backup_pmas.sh` ✅ exists | Script implemented: `VACUUM INTO`, configurable paths via env vars, 30-day retention, restore procedure documented. Still needs a cron entry in production |
 | P4 | Dependency lock file | `requirements-lock.txt` ✅ exists | Generated with `pip freeze`; use `pip install -r requirements-lock.txt` for reproducible deployments |
-| P5 | systemd deployment unit | does not exist | `pmas.service` with `uvicorn --workers 2 --host 127.0.0.1`, `Restart=on-failure`, `EnvironmentFile=/opt/pmas/.env`, `PrivateTmp=true`; operating instructions (start/stop/logs/deploy new version) |
+| P5 | systemd deployment unit | `packaging/` ✅ exists | `pmas.service` (runs the standalone binary as user `pmas`, `Restart=on-failure`, `EnvironmentFile=/etc/pmas/pmas.env`, `PrivateTmp`), `pmas-backup.timer` (daily backup), `install.sh` (install, update, uninstall) and `docs/OPERATIONS.md`. The release workflow builds `pmas-linux-x64-package.tar.gz` and smoke-tests the binary. A single-worker binary is the design; multi-worker `uvicorn` is not packaged |
 
 **Additional known risks** (non-blocking, but on record):
 - HTTPS not enforced — the app must run behind a reverse proxy (nginx/caddy) with TLS; no internal redirect middleware

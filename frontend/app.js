@@ -175,12 +175,12 @@ tabBtns.forEach(btn => {
     btn.setAttribute('aria-selected', 'true');
     document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
 
-    if (btn.dataset.tab === 'dashboard') _renderActiveTab();
+    if (btn.dataset.tab === 'dashboard') { _renderActiveTab(); _refreshOnboarding(); }
     if (btn.dataset.tab === 'projects') loadProjectsTable();
     if (btn.dataset.tab === 'cycles')   loadCyclesTable();
     if (btn.dataset.tab === 'team')     loadTeamTab();
     if (btn.dataset.tab === 'my')       _initMyArea();
-    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); loadAdminAlerts(); }
+    if (btn.dataset.tab === 'admin')  { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); loadAdminAlerts(); loadApiKeys(); }
   });
 });
 
@@ -551,35 +551,16 @@ async function _loadTheme() {
     const text      = t.color_text       || '#e0e0e0';
     const textMuted = t.color_text_muted || '#8892a4';
 
-    // Standard --color-* vars (new CSS)
-    root.style.setProperty('--color-primary',    primary);
-    root.style.setProperty('--color-background', bg);
-    root.style.setProperty('--color-surface',    surface);
-    root.style.setProperty('--color-accent',     accent);
-    root.style.setProperty('--color-success',    success);
-    root.style.setProperty('--color-warning',    warning);
-    root.style.setProperty('--color-danger',     danger);
-    root.style.setProperty('--color-text',       text);
-    root.style.setProperty('--color-text-muted', textMuted);
-
-    // --theme-* aliases (gradient bar, tooltips)
-    root.style.setProperty('--theme-primary',    primary);
-    root.style.setProperty('--theme-bg',         bg);
-    root.style.setProperty('--theme-surface',    surface);
-    root.style.setProperty('--theme-accent',     accent);
-    root.style.setProperty('--theme-success',    success);
-    root.style.setProperty('--theme-warning',    warning);
-    root.style.setProperty('--theme-danger',     danger);
-    root.style.setProperty('--theme-text',       text);
-    root.style.setProperty('--theme-text-muted', textMuted);
-
-    // Original legacy vars — the ones the existing stylesheet actually uses
-    // (--bg 3×, --surface 8×, --card 8×, --text 12×, --primary 10×, etc.)
+    // Set the canonical design-token vars that style.css actually consumes.
+    // These are the single source of truth; --color-* and --theme-* aliases
+    // are computed from them in CSS via var() chaining, so they don't need
+    // to be written separately here.
     root.style.setProperty('--bg',        bg);
     root.style.setProperty('--surface',   surface);
     root.style.setProperty('--card',      surface);
     root.style.setProperty('--card-alt',  bg);
     root.style.setProperty('--text',      text);
+    root.style.setProperty('--text-1',    text);
     root.style.setProperty('--text-2',    textMuted);
     root.style.setProperty('--text-3',    textMuted);
     root.style.setProperty('--primary',   primary);
@@ -648,7 +629,7 @@ function _bootApp() {
   _restoreFilterDates();
   if (_getTokenPayload()?.must_change) _showDefaultPasswordBanner();
   loadDashboardCycles().then(() => {
-    if (!_allCycles.length && _isAdmin()) _showOnboardingBanner();
+    _refreshOnboarding();
     _restoreFilterSelections();
   });
   loadSemaphore();
@@ -691,30 +672,6 @@ function _showDefaultPasswordBanner() {
   });
 }
 
-function _showOnboardingBanner() {
-  if (document.getElementById('onboardingBanner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'onboardingBanner';
-  banner.className = 'card';
-  banner.style.cssText = 'margin:1.5rem;padding:1.5rem;border:1px solid var(--primary);background:rgba(14,165,233,0.05)';
-  banner.innerHTML = `
-    <h2 style="margin:0 0 1rem;font-size:1.1rem;color:var(--primary)">${_t('onboard.title')}</h2>
-    <ol style="margin:0 0 1.25rem;padding-left:1.4rem;display:flex;flex-direction:column;gap:.4rem;color:var(--text-2)">
-      <li>${_t('onboard.step1')}</li>
-      <li>${_t('onboard.step2')}</li>
-      <li>${_t('onboard.step3')}</li>
-    </ol>
-    <button class="btn btn-primary btn-sm" id="onboardingCta">${_t('onboard.cta')}</button>
-  `;
-  const dashPanel = document.getElementById('tab-dashboard');
-  if (dashPanel) dashPanel.prepend(banner);
-  document.getElementById('onboardingCta')?.addEventListener('click', () => {
-    banner.remove();
-    document.querySelector('[data-tab="projects"]')?.click();
-  });
-}
-
-
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   if (!sessionStorage.getItem('access_token')) return;
@@ -726,5 +683,8 @@ document.addEventListener('visibilitychange', () => {
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');
-  setTimeout(_bootApp, 0);
+  // Wait until every script has run. The tab modules (header.js, dashboard.js, ...) load after
+  // this file, and _bootApp calls functions that they define.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bootApp);
+  else _bootApp();
 }

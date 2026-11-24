@@ -95,6 +95,11 @@ Index(
     TimesheetRecord.collaborator_id,
 )
 
+Index(
+    "ix_timesheet_record_date",
+    TimesheetRecord.record_date,
+)
+
 
 class Project(Base):
     __tablename__ = "project"
@@ -177,6 +182,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user")
     must_change_password = Column(Boolean, default=False, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
 
     project_access = relationship("UserProjectAccess", back_populates="user", cascade="all, delete-orphan")
     preference = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -408,3 +415,21 @@ class ProjectAlert(Base):
     is_resolved        = Column(Boolean, default=False, nullable=False, index=True)
 
     project = relationship("Project", back_populates="alerts")
+
+
+class ApiKey(Base):
+    """Service key for automatic imports. It acts as `user` (role and PEP ACL apply)
+    and is accepted only by POST /api/upload-timesheet. The database keeps a hash only."""
+    __tablename__ = "api_key"
+
+    id           = Column(Integer, primary_key=True)
+    name         = Column(String, nullable=False)
+    key_prefix   = Column(String, nullable=False)                     # first characters, for display
+    key_hash     = Column(String, nullable=False, unique=True, index=True)
+    user_id      = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    created_by   = Column(String, nullable=False)
+    created_at   = Column(DateTime, nullable=False, default=now_br)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at   = Column(DateTime, nullable=True)
+
+    user = relationship("User")

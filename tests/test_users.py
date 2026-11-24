@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, get_current_user_allow_change
 from backend.app.main import app
 from backend.app.models import User
 from backend.app.routers.auth import hash_password
@@ -24,6 +24,7 @@ def _acting_as(user: User):
     """Temporarily impersonate *user* for one TestClient block."""
     saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_user_allow_change] = lambda: user
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
     app.dependency_overrides.clear()
@@ -135,6 +136,35 @@ class TestChangePassword:
                         json={"new_password": "newpass123", "current_password": "pass"})
         assert r.status_code == 403
 
+    def test_admin_reset_forces_password_change(self, client, db_session):
+        target = _make_user(db_session, "pam", "oldpass")
+        assert target.must_change_password is False
+        r = client.patch(f"/api/users/{target.id}/password", json={"new_password": "temp1234"})
+        assert r.status_code == 200
+        db_session.refresh(target)
+        assert target.must_change_password is True
+
+    def test_admin_changing_own_password_clears_flag(self, db_session):
+        admin = _make_user(db_session, "root2", "oldpass", role="admin")
+        admin.must_change_password = True
+        db_session.commit()
+        with _acting_as(admin) as c:
+            r = c.patch(f"/api/users/{admin.id}/password", json={"new_password": "newpass123"})
+        assert r.status_code == 200
+        db_session.refresh(admin)
+        assert admin.must_change_password is False
+
+    def test_user_changing_own_password_clears_flag(self, db_session):
+        regular = _make_user(db_session, "quinn", "oldpass")
+        regular.must_change_password = True
+        db_session.commit()
+        with _acting_as(regular) as c:
+            r = c.patch(f"/api/users/{regular.id}/password",
+                        json={"new_password": "newpass123", "current_password": "oldpass"})
+        assert r.status_code == 200
+        db_session.refresh(regular)
+        assert regular.must_change_password is False
+
     def test_not_found(self, client):
         r = client.patch("/api/users/99999/password", json={"new_password": "newpass123"})
         assert r.status_code == 404
@@ -170,3 +200,19 @@ class TestDeleteUser:
         with _acting_as(regular) as c:
             r = c.delete(f"/api/users/{victim.id}")
         assert r.status_code == 403
+
+
+class TestMe:
+    def test_regular_user_reads_own_record(self, db_session):
+        regular = _make_user(db_session, "me_user", "pass123")
+        with _acting_as(regular) as c:
+            r = c.get("/api/users/me")
+        assert r.status_code == 200
+        assert r.json()["id"] == regular.id
+        assert r.json()["username"] == "me_user"
+        assert "hashed_password" not in r.json()
+
+    def test_regular_user_still_cannot_list_users(self, db_session):
+        regular = _make_user(db_session, "me_user2", "pass123")
+        with _acting_as(regular) as c:
+            assert c.get("/api/users").status_code == 403

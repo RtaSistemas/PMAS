@@ -9,16 +9,36 @@
 // Dirty-filter state — visual indicator when filters change without reloading
 // ---------------------------------------------------------------------------
 let _filtersDirty = false;
-function _markFiltersDirty() {
-  if (_filtersDirty) return;
-  _filtersDirty = true;
-  const btn = document.getElementById('loadBtn');
-  if (btn) {
-    btn.classList.add('btn-dirty');
-    btn.setAttribute('aria-description', _t('filter.dirty_hint'));
-    const span = btn.querySelector('[data-i18n="btn.load"]');
-    if (span) span.textContent = _t('btn.load_update');
+
+// UX-08: Update the active-filter count badge shown on the collapsed filter header.
+function _updateFilterBadge() {
+  const badge = document.getElementById('filterActiveCount');
+  if (!badge) return;
+  const msCount = [cycleMs, pepMs, pepDescMs, collaboratorMs]
+    .reduce((n, ms) => n + (ms.getValues().length > 0 ? 1 : 0), 0);
+  const dateFrom = document.getElementById('dateFromInput')?.value;
+  const dateTo   = document.getElementById('dateToInput')?.value;
+  const total = msCount + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  if (total > 0) {
+    badge.textContent = total;
+    badge.removeAttribute('hidden');
+  } else {
+    badge.setAttribute('hidden', '');
   }
+}
+
+function _markFiltersDirty() {
+  if (!_filtersDirty) {
+    _filtersDirty = true;
+    const btn = document.getElementById('loadBtn');
+    if (btn) {
+      btn.classList.add('btn-dirty');
+      btn.setAttribute('aria-description', _t('filter.dirty_hint'));
+      const span = btn.querySelector('[data-i18n="btn.load"]');
+      if (span) span.textContent = _t('btn.load_update');
+    }
+  }
+  _updateFilterBadge();
 }
 function _clearFiltersDirty() {
   _filtersDirty = false;
@@ -29,6 +49,7 @@ function _clearFiltersDirty() {
     const span = btn.querySelector('[data-i18n="btn.load"]');
     if (span) span.textContent = _t('btn.load');
   }
+  _updateFilterBadge();
 }
 
 const loadBtn  = document.getElementById('loadBtn');
@@ -49,8 +70,8 @@ const pepMs          = _createMS(document.getElementById('pepMs'),           _t(
 const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
 const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
 
-document.getElementById('dateFromInput').addEventListener('change', _markFiltersDirty);
-document.getElementById('dateToInput').addEventListener('change', _markFiltersDirty);
+document.getElementById('dateFromInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
+document.getElementById('dateToInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
 
 let pepDataCache = {};
 
@@ -164,7 +185,7 @@ document.getElementById('langToggleBtn').addEventListener('click', () => {
   if (tab === 'cycles')   _renderCyclesTable(_allCycles);
   if (tab === 'projects') _renderProjectsTable(_allProjects);
   if (tab === 'team')     loadTeamTab();
-  if (tab === 'dashboard') _renderActiveTab();
+  if (tab === 'dashboard') { _renderActiveTab(); _refreshOnboarding(); }
   if (tab === 'admin')    { loadUsersTable(); loadAuditLog(); loadRulesList(); _loadThemeEditor(); }
   if (tab === 'my')       _initMyArea();
 });
@@ -980,8 +1001,8 @@ async function _renderTrendsCharts(pepCodes, pepDescs, collabIds, cycleIds, date
         fc.history.forEach(h => {
           // Honour cycle filter when active
           if (cycleIds.length > 0 && !selectedCycleNames.has(h.cycle_name)) return;
-          if (h.cumulative_cost > 0 && h.cumulative_ev_cost != null) {
-            points.push({ cycleName: h.cycle_name, cpi: +(h.cumulative_ev_cost / h.cumulative_cost).toFixed(3) });
+          if (h.cpi_cumulative != null) {
+            points.push({ cycleName: h.cycle_name, cpi: h.cpi_cumulative });
           }
           if (h.spi_cumulative != null) spiMap[h.cycle_name] = h.spi_cumulative;
         });
@@ -1539,7 +1560,8 @@ function _renderBurnUpChart(fc) {
     if (hasES) {
       const esVal    = fc.es    != null ? (+fc.es).toFixed(2)    : '—';
       const spiTVal  = fc.spi_t != null ? (+fc.spi_t).toFixed(2) : '—';
-      const spiTCls  = fc.spi_t == null ? 'neutral' : fc.spi_t >= 1 ? 'green' : fc.spi_t >= 0.8 ? 'amber' : 'red';
+      const _SPI_T_CM = { success: 'green', warning: 'amber', danger: 'red' };
+      const spiTCls  = fc.spi_t == null ? 'neutral' : (_SPI_T_CM[fc.spi_t_color] || 'red');
       const svTFmt   = fc.sv_t  != null ? (fc.sv_t >= 0 ? '+' : '') + (+fc.sv_t).toFixed(2) + ' ciclos' : '—';
       const svTCls   = fc.sv_t  == null ? 'neutral' : fc.sv_t >= 0 ? 'green' : 'red';
       const ieacTVal = fc.ieac_t != null ? (+fc.ieac_t).toFixed(1) + ' ciclos' : '—';

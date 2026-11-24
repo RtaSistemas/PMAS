@@ -41,6 +41,7 @@ _COL_START_TIME = "Hora Inicial [H]"
 
 _INVALID_COLLAB_NAMES = {"nan", "none", "unnamed", "0", "", "-", "—"}
 _MAX_ROWS_WARNING = 5_000
+_YEAR_FIRST = re.compile(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}")
 _PEP_PATTERN = re.compile(r"^[A-Z0-9]{2,}-[A-Z0-9]{3,}$", re.IGNORECASE)
 
 
@@ -716,7 +717,10 @@ def _parse_date(value) -> date:
         return value if type(value) is date else value.date()
     if isinstance(value, (int, float)):
         return date(1899, 12, 30) + timedelta(days=int(value))
-    return pd.to_datetime(str(value), dayfirst=True).date()
+    text = str(value).strip()
+    # A date that starts with a 4-digit year is year-first (ISO). Forcing day-first
+    # on it swaps the day and the month (2026-01-05 would become 1 May 2026).
+    return pd.to_datetime(text, dayfirst=not _YEAR_FIRST.match(text)).date()
 
 
 def _parse_date_safe(value) -> date | None:

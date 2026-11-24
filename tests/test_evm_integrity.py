@@ -577,3 +577,87 @@ class TestRunwaySpiScenarios:
             f"Expected hours-based SPI=2.4, got {item['spi']} "
             "(old R$-capped code would give 2.0)"
         )
+
+
+# ---------------------------------------------------------------------------
+# GR-2-02 Regression: cpi_cumulative in forecast history
+# ---------------------------------------------------------------------------
+
+class TestCpiCumulativeInHistory:
+    """GR-2-02: forecast history entries must include cpi_cumulative computed
+    server-side so the frontend does not divide ev / cost client-side."""
+
+    PEP  = "INT-CPI-CUM"
+    DESC = "CPI-Cum Test"
+
+    def test_history_has_cpi_cumulative(self, client, db_session):
+        _global_config(db_session)
+        cy = _cycle(db_session, "Jan/2026-CUM", 2026, 1)
+        co = _collab(db_session, "CumUser")
+        _project(db_session, self.PEP, budget_hours=100.0, budget_cost=10_000.0)
+        _rec(db_session, cy, co, self.PEP, self.DESC, normal=50.0, cph=100.0)
+
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}")
+        assert resp.status_code == 200
+        fc = resp.json()
+        assert fc["history"], "Expected at least one history entry"
+        for entry in fc["history"]:
+            assert "cpi_cumulative" in entry, (
+                f"GR-2-02: cpi_cumulative missing from history entry {entry['cycle_name']}"
+            )
+
+    def test_cpi_cumulative_matches_ev_over_ac(self, client, db_session):
+        """cpi_cumulative must equal compute_cpi(ev_cost, ac) = ev/ac."""
+        _global_config(db_session)
+        cy = _cycle(db_session, "Jan/2026-EV", 2026, 1)
+        co = _collab(db_session, "EVUser")
+        _project(db_session, self.PEP + "2", budget_hours=100.0, budget_cost=10_000.0)
+        # consumed=50h → EV = 50/100 * 10000 = 5000; AC = 50*100 = 5000; CPI = 1.0
+        _rec(db_session, cy, co, self.PEP + "2", self.DESC, normal=50.0, cph=100.0)
+
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}2")
+        assert resp.status_code == 200
+        fc = resp.json()
+        entry = fc["history"][-1]
+        assert entry["cpi_cumulative"] == pytest.approx(1.0, abs=0.01)
+
+
+# ---------------------------------------------------------------------------
+# AR-01 Regression: spi_t_color must be present in forecast response
+# ---------------------------------------------------------------------------
+
+class TestSpiTColorInForecast:
+    """AR-01: forecast response must include spi_t_color (server-computed)
+    so the frontend does not hardcode the 0.8 threshold."""
+
+    PEP  = "INT-SPIT-COL"
+    DESC = "SPI-t Color Test"
+
+    def test_spi_t_color_present_in_response(self, client, db_session):
+        _global_config(db_session)
+        cy = _cycle(db_session, "Jan/2026-SPIT", 2026, 1)
+        co = _collab(db_session, "SpitUser")
+        p = _project(db_session, self.PEP, budget_hours=100.0, budget_cost=10_000.0)
+        _rec(db_session, cy, co, self.PEP, self.DESC, normal=50.0, cph=100.0)
+        _plan(db_session, p.id, cy.id, planned_hours=50.0)
+
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}")
+        assert resp.status_code == 200
+        fc = resp.json()
+        assert "spi_t_color" in fc, "AR-01: spi_t_color must be present in forecast response"
+
+    def test_spi_t_color_valid_values(self, client, db_session):
+        """spi_t_color must be None or one of success/warning/danger."""
+        _global_config(db_session)
+        cy = _cycle(db_session, "Feb/2026-SPIT", 2026, 2)
+        co = _collab(db_session, "SpitUser2")
+        p = _project(db_session, self.PEP + "2", budget_hours=100.0, budget_cost=10_000.0)
+        _rec(db_session, cy, co, self.PEP + "2", self.DESC, normal=50.0, cph=100.0)
+        _plan(db_session, p.id, cy.id, planned_hours=50.0)
+
+        resp = client.get(f"/api/v2/forecast?pep_wbs={self.PEP}2")
+        assert resp.status_code == 200
+        color = resp.json().get("spi_t_color")
+        assert color in (None, "success", "warning", "danger"), (
+            f"spi_t_color must be None or a valid status string, got {color!r}"
+        )

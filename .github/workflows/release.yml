@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ── Linux — desativado temporariamente (em teste) ──────────────────
-          # - os: ubuntu-latest
-          #   artifact_name: pmas-linux-x64
-          #   artifact_path: dist/pmas-linux-x64
+          # ── Linux ──────────────────────────────────────────────────────────
+          - os: ubuntu-latest
+            artifact_name: pmas-linux-x64
+            artifact_path: dist/pmas-linux-x64
 
           - os: windows-latest
             artifact_name: pmas-windows-x64.exe
@@ -76,6 +76,23 @@ jobs:
             --hidden-import limits \
             --collect-all openpyxl \
             run.py
+
+      - name: Smoke test the Linux binary
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          PMAS_DB_PATH="$RUNNER_TEMP/smoke.db" PMAS_PORT=8765 ./dist/pmas-linux-x64 &
+          pid=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8765/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8765/ready
+          curl -sf -o /dev/null http://127.0.0.1:8765/frontend/index.html
+          kill $pid
+
+      - name: Build the Linux install package
+        if: matrix.os == 'ubuntu-latest'
+        run: packaging/build_package.sh dist/pmas-linux-x64 dist
 
       # ── Windows ────────────────────────────────────────────────────────────
 
@@ -144,4 +161,7 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" --title "Release ${{ github.ref_name }}" --notes "" 2>/dev/null || true
           gh release upload "${{ github.ref_name }}" "${{ matrix.artifact_path }}" --clobber
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            gh release upload "${{ github.ref_name }}" dist/pmas-linux-x64-package.tar.gz --clobber
+          fi
         shell: bash

@@ -80,6 +80,7 @@ from backend.app.services.evm import (
     compute_cpi,
     compute_cv,
     compute_eac,
+    compute_eac_avg_rate,
     compute_eac_schedule,
     compute_ev_cost,
     compute_period_delta,
@@ -237,6 +238,32 @@ class TestComputeEacSchedule:
 
     def test_zero_spi_returns_none(self):
         assert compute_eac_schedule(10_000.0, 4_000.0, 4_000.0, 1.0, 0.0) is None
+
+
+# ── compute_eac_avg_rate ─────────────────────────────────────────────────────
+
+class TestComputeEacAvgRate:
+    def test_normal(self):
+        # AC=4000, consumed=100h, remaining=50h → rate=40/h → EAC=4000+40*50=6000
+        assert compute_eac_avg_rate(4_000.0, 100.0, 50.0) == pytest.approx(6_000.0)
+
+    def test_zero_consumed_hours_returns_none(self):
+        assert compute_eac_avg_rate(4_000.0, 0.0, 50.0) is None
+
+    def test_zero_remaining_hours_returns_none(self):
+        assert compute_eac_avg_rate(4_000.0, 100.0, 0.0) is None
+
+    def test_negative_consumed_returns_none(self):
+        assert compute_eac_avg_rate(4_000.0, -5.0, 50.0) is None
+
+    def test_zero_actual_cost_returns_zero_eac(self):
+        # AC=0 → avg rate=0 → EAC = 0 + 0 * remaining = 0
+        assert compute_eac_avg_rate(0.0, 100.0, 50.0) == pytest.approx(0.0)
+
+    def test_result_rounds_to_2dp(self):
+        # AC=1, consumed=3, remaining=1 → rate=1/3 → EAC=1+1/3 ≈ 1.33
+        result = compute_eac_avg_rate(1.0, 3.0, 1.0)
+        assert result == pytest.approx(1.33, abs=0.005)
 
 
 # ── compute_tcpi ──────────────────────────────────────────────────────────────

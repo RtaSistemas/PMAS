@@ -85,9 +85,10 @@ document.getElementById('pwdSaveBtn').addEventListener('click', async () => {
   errEl.textContent = '';
   if (!new_password) { errEl.textContent = _t('msg.pwd_field_required'); return; }
   try {
-    await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
+    const updated = await apiFetchJSON(`/api/users/${userId}/password`, 'PATCH', { new_password });
     closeModal('pwdModal');
-    notify(_t('msg.pwd_changed'), 'success');
+    const isSelf = updated?.username === _getTokenPayload()?.sub;
+    notify(_t(isSelf ? 'msg.pwd_changed' : 'msg.pwd_reset_temp'), 'success');
   } catch (e) { errEl.textContent = e.message; }
 });
 
@@ -244,9 +245,9 @@ function _renderRulesList() {
     const systemBadge = r.is_system ? `<span class="rule-badge system">🔒 ${_t('vr.badge.system')}</span>` : '';
     const activeClass = r.is_active ? '' : 'rule-inactive';
     const editBtn  = r.is_system ? '' :
-      `<button class="btn btn-secondary btn-sm" onclick="openEditRule(${r.id})">✎</button>`;
+      `<button class="btn btn-secondary btn-sm" aria-label="${_t('btn.edit')}" title="${_t('btn.edit')}" onclick="openEditRule(${r.id})">✎</button>`;
     const delBtn = r.is_system ? '' :
-      `<button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">✕</button>`;
+      `<button class="btn btn-danger btn-sm" aria-label="${_t('btn.delete')}" title="${_t('btn.delete')}" onclick="deleteRule(${r.id})">✕</button>`;
     const toggleTitle = _t(r.is_active ? 'vr.btn.deactivate' : 'vr.btn.activate');
     const moveUpBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_up') || 'Mover acima'}" aria-label="${_t('vr.btn.move_up') || 'Mover acima'}" onclick="moveRule(${r.id}, -1)" ${ruleIdx === 0 ? 'disabled' : ''}>↑</button>`;
     const moveDnBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_down') || 'Mover abaixo'}" aria-label="${_t('vr.btn.move_down') || 'Mover abaixo'}" onclick="moveRule(${r.id}, 1)" ${ruleIdx === _rules.length - 1 ? 'disabled' : ''}>↓</button>`;

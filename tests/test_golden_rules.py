@@ -95,7 +95,12 @@ _ECHARTS_HEX_RE = re.compile(
 
 def test_gr3_no_hex_in_chart_color_properties():
     """GR-3: ECharts option color properties must not use hardcoded hex literals."""
-    files_to_check = [FRONTEND / "app.js"] + list((FRONTEND / "crud").glob("*.js"))
+    files_to_check = (
+        [FRONTEND / "app.js"]
+        + list((FRONTEND / "crud").glob("*.js"))
+        + list((FRONTEND / "charts").glob("*.js"))
+        + list((FRONTEND / "tabs").glob("*.js"))
+    )
     violations = []
     for path in files_to_check:
         if not path.exists():
@@ -109,6 +114,36 @@ def test_gr3_no_hex_in_chart_color_properties():
     assert not violations, (
         "GR-3 violation — hardcoded hex in ECharts color property "
         "(use _cssVar() or _getPalette()):\n"
+        + "\n".join(violations)
+    )
+
+
+# ── GR-3 fallback: no `|| '#hex'` as color fallbacks ─────────────────────────
+#
+# _cssVar() always resolves from the configured theme CSS variables.  Using
+# || '#hex' as a fallback bypasses the admin-configured palette and hardcodes
+# a specific color.  The CSS variables are guaranteed to be defined by style.css,
+# so fallbacks are unnecessary and violate GR-3.
+
+_HEX_FALLBACK_RE = re.compile(r"\|\|\s*['\"]#[0-9A-Fa-f]{3,8}['\"]")
+
+
+def test_gr3_no_hex_fallback_in_charts():
+    """GR-3: No `|| '#hex'` fallback patterns in chart files."""
+    charts_dir = FRONTEND / "charts"
+    violations = []
+    for path in charts_dir.glob("*.js"):
+        if not path.exists():
+            continue
+        source = _read(path)
+        for m in _HEX_FALLBACK_RE.finditer(source):
+            line_no = source[: m.start()].count("\n") + 1
+            ctx = source[max(0, m.start() - 60) : m.end() + 60].replace("\n", " ")
+            violations.append(f"{path.name}:{line_no}: …{ctx.strip()}…")
+
+    assert not violations, (
+        "GR-3 violation — || '#hex' fallback in chart file "
+        "(CSS variables are always defined; remove the fallback):\n"
         + "\n".join(violations)
     )
 

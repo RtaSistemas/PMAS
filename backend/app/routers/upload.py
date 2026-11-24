@@ -4,10 +4,11 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 
+from backend.app.audit import log_audit
 from backend.app.database import DbSession
-from backend.app.deps import AdminUser, CurrentUser, get_current_user
+from backend.app.deps import AdminUser, CurrentUser, UploadUser
 from backend.app.limiter import limiter
 from backend.app.models import UploadSession
 from backend.app.schemas import UploadOut, UploadSessionOut
@@ -26,11 +27,7 @@ from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/api",
-    tags=["upload"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/api", tags=["upload"])
 
 _MAX_UPLOAD_MB = int(os.getenv("PMAS_MAX_UPLOAD_MB", "20"))
 _MAX_UPLOAD_BYTES = _MAX_UPLOAD_MB * 1024 * 1024
@@ -51,7 +48,7 @@ def _save_rejected_session(db, user, fname: str, reason: str) -> None:
 
 @router.post("/upload-timesheet", summary="Ingerir CSV ou XLSX de timesheet", response_model=UploadOut)
 @limiter.limit(os.getenv("PMAS_UPLOAD_RATE_LIMIT", "60/minute"))
-def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_user: CurrentUser):
+def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_user: UploadUser):
     fname = Path(file.filename or "").name or "upload"
     if not any(fname.lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Apenas arquivos .csv ou .xlsx são aceitos.")
@@ -102,6 +99,11 @@ def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_
 
     notify_threshold_crossings(db, summary.get("affected_peps", []))
     notify_schedule_risk(db, summary.get("affected_peps", []))
+
+    api_key = getattr(request.state, "api_key", None)
+    if api_key is not None:
+        log_audit(db, current_user, "upload_api_key", "api_key", api_key.id,
+                  {"key_name": api_key.name, "key_prefix": api_key.key_prefix, "file": fname})
 
     db.commit()
 

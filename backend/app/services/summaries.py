@@ -26,71 +26,104 @@ def refresh_pep_cycle(
     cycle_ids: list[int],
 ) -> None:
     """Recompute `pep_cycle_summary` for every (pep_wbs, cycle_id) pair
-    that was touched by the current ingestion batch."""
+    that was touched by the current ingestion batch.
+
+    Replaces the former O(P×C) nested-loop approach with a single bulk
+    aggregation query over the entire (pep_wbs_list × cycle_ids) space,
+    followed by a single-pass upsert.
+    """
+    peps = [p for p in pep_wbs_list if p is not None]
+    if not peps or not cycle_ids:
+        return
+
     now = datetime.utcnow()
-    for pep in pep_wbs_list:
-        if pep is None:
-            continue
-        for cycle_id in cycle_ids:
-            rows = (
-                db.query(
-                    func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
-                    func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
-                    func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
-                    func.sum(
-                        TimesheetRecord.normal_hours
-                        + TimesheetRecord.extra_hours
-                        + TimesheetRecord.standby_hours
-                    ).label("total_hours"),
-                    func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
-                    func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
-                    func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
-                    func.sum(
-                        (TimesheetRecord.normal_cost or 0)
-                        + (TimesheetRecord.extra_cost or 0)
-                        + (TimesheetRecord.standby_cost or 0)
-                    ).label("total_cost"),
-                    TimesheetRecord.pep_description,
-                )
-                .filter(
-                    TimesheetRecord.pep_wbs == pep,
-                    TimesheetRecord.cycle_id == cycle_id,
-                )
-                .group_by(TimesheetRecord.pep_description)
-                .all()
-            )
 
-            if not rows:
-                # No records left → delete summary row if it exists
-                db.query(PepCycleSummary).filter_by(
-                    pep_wbs=pep, cycle_id=cycle_id
-                ).delete(synchronize_session=False)
-                continue
+    rows = (
+        db.query(
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            TimesheetRecord.cycle_id,
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
+        )
+        .filter(
+            TimesheetRecord.pep_wbs.in_(peps),
+            TimesheetRecord.cycle_id.in_(cycle_ids),
+        )
+        .group_by(
+            TimesheetRecord.pep_wbs,
+            TimesheetRecord.pep_description,
+            TimesheetRecord.cycle_id,
+        )
+        .all()
+    )
 
-            # Aggregate across all pep_description variants for this pep_wbs
-            agg = {
-                "normal_hours":  sum(r.normal_hours  or 0.0 for r in rows),
-                "extra_hours":   sum(r.extra_hours   or 0.0 for r in rows),
-                "standby_hours": sum(r.standby_hours or 0.0 for r in rows),
-                "total_hours":   sum(r.total_hours   or 0.0 for r in rows),
-                "normal_cost":   sum(r.normal_cost   or 0.0 for r in rows),
-                "extra_cost":    sum(r.extra_cost    or 0.0 for r in rows),
-                "standby_cost":  sum(r.standby_cost  or 0.0 for r in rows),
-                "total_cost":    sum(r.total_cost    or 0.0 for r in rows),
-                "pep_description": rows[0].pep_description,
-                "refreshed_at":  now,
+    # Aggregate across pep_description variants for the same (pep_wbs, cycle_id)
+    agg_map: dict[tuple, dict] = {}
+    for r in rows:
+        key = (r.pep_wbs, r.cycle_id)
+        if key not in agg_map:
+            agg_map[key] = {
+                "pep_wbs":         r.pep_wbs,
+                "pep_description": r.pep_description,
+                "cycle_id":        r.cycle_id,
+                "normal_hours":    0.0,
+                "extra_hours":     0.0,
+                "standby_hours":   0.0,
+                "total_hours":     0.0,
+                "normal_cost":     0.0,
+                "extra_cost":      0.0,
+                "standby_cost":    0.0,
+                "total_cost":      0.0,
+                "refreshed_at":    now,
             }
+        a = agg_map[key]
+        a["normal_hours"]  += r.normal_hours  or 0.0
+        a["extra_hours"]   += r.extra_hours   or 0.0
+        a["standby_hours"] += r.standby_hours or 0.0
+        a["total_hours"]   += r.total_hours   or 0.0
+        a["normal_cost"]   += r.normal_cost   or 0.0
+        a["extra_cost"]    += r.extra_cost    or 0.0
+        a["standby_cost"]  += r.standby_cost  or 0.0
+        a["total_cost"]     = a["normal_cost"] + a["extra_cost"] + a["standby_cost"]
 
-            existing = (
-                db.query(PepCycleSummary)
-                .filter_by(pep_wbs=pep, cycle_id=cycle_id)
-                .first()
-            )
-            if existing:
-                for k, v in agg.items():
-                    setattr(existing, k, v)
-            else:
-                db.add(PepCycleSummary(pep_wbs=pep, cycle_id=cycle_id, **agg))
+    # Touch pairs that had rows removed — rows not in agg_map but in the DB
+    touched_pairs = {(p, c) for p in peps for c in cycle_ids}
+    found_pairs   = set(agg_map.keys())
+    deleted_pairs = touched_pairs - found_pairs
+
+    for pep, cycle_id in deleted_pairs:
+        db.query(PepCycleSummary).filter_by(
+            pep_wbs=pep, cycle_id=cycle_id
+        ).delete(synchronize_session=False)
+
+    # Upsert remaining
+    existing_rows = (
+        db.query(PepCycleSummary)
+        .filter(
+            PepCycleSummary.pep_wbs.in_(peps),
+            PepCycleSummary.cycle_id.in_(cycle_ids),
+        )
+        .all()
+    )
+    existing_map = {(e.pep_wbs, e.cycle_id): e for e in existing_rows}
+
+    for key, a in agg_map.items():
+        existing = existing_map.get(key)
+        if existing:
+            for k, v in a.items():
+                setattr(existing, k, v)
+        else:
+            db.add(PepCycleSummary(**a))
 
 
 def refresh_collaborator_cycle(
@@ -99,66 +132,85 @@ def refresh_collaborator_cycle(
     cycle_ids: list[int],
 ) -> None:
     """Recompute `collaborator_cycle_summary` for every (collaborator_id, cycle_id)
-    pair that was touched by the current ingestion batch."""
+    pair that was touched by the current ingestion batch.
+
+    Replaces the former O(C×K) nested-loop approach with a single bulk
+    aggregation query, followed by a single-pass upsert.
+    """
+    if not collaborator_ids or not cycle_ids:
+        return
+
     now = datetime.utcnow()
-    for collab_id in collaborator_ids:
-        for cycle_id in cycle_ids:
-            row = (
-                db.query(
-                    func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
-                    func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
-                    func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
-                    func.sum(
-                        TimesheetRecord.normal_hours
-                        + TimesheetRecord.extra_hours
-                        + TimesheetRecord.standby_hours
-                    ).label("total_hours"),
-                    func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
-                    func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
-                    func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
-                    func.sum(
-                        (TimesheetRecord.normal_cost or 0)
-                        + (TimesheetRecord.extra_cost or 0)
-                        + (TimesheetRecord.standby_cost or 0)
-                    ).label("total_cost"),
-                )
-                .filter(
-                    TimesheetRecord.collaborator_id == collab_id,
-                    TimesheetRecord.cycle_id == cycle_id,
-                )
-                .first()
-            )
 
-            if row is None or row.total_hours is None:
-                db.query(CollaboratorCycleSummary).filter_by(
-                    collaborator_id=collab_id, cycle_id=cycle_id
-                ).delete(synchronize_session=False)
-                continue
+    rows = (
+        db.query(
+            TimesheetRecord.collaborator_id,
+            TimesheetRecord.cycle_id,
+            func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
+            func.sum(TimesheetRecord.extra_hours).label("extra_hours"),
+            func.sum(TimesheetRecord.standby_hours).label("standby_hours"),
+            func.sum(
+                TimesheetRecord.normal_hours
+                + TimesheetRecord.extra_hours
+                + TimesheetRecord.standby_hours
+            ).label("total_hours"),
+            func.sum(TimesheetRecord.normal_cost).label("normal_cost"),
+            func.sum(TimesheetRecord.extra_cost).label("extra_cost"),
+            func.sum(TimesheetRecord.standby_cost).label("standby_cost"),
+        )
+        .filter(
+            TimesheetRecord.collaborator_id.in_(collaborator_ids),
+            TimesheetRecord.cycle_id.in_(cycle_ids),
+        )
+        .group_by(TimesheetRecord.collaborator_id, TimesheetRecord.cycle_id)
+        .all()
+    )
 
-            agg = {
-                "normal_hours":  row.normal_hours  or 0.0,
-                "extra_hours":   row.extra_hours   or 0.0,
-                "standby_hours": row.standby_hours or 0.0,
-                "total_hours":   row.total_hours   or 0.0,
-                "normal_cost":   row.normal_cost   or 0.0,
-                "extra_cost":    row.extra_cost    or 0.0,
-                "standby_cost":  row.standby_cost  or 0.0,
-                "total_cost":    row.total_cost    or 0.0,
-                "refreshed_at":  now,
-            }
+    agg_map: dict[tuple, dict] = {}
+    for r in rows:
+        key = (r.collaborator_id, r.cycle_id)
+        nc = r.normal_cost  or 0.0
+        ec = r.extra_cost   or 0.0
+        sc = r.standby_cost or 0.0
+        agg_map[key] = {
+            "collaborator_id": r.collaborator_id,
+            "cycle_id":        r.cycle_id,
+            "normal_hours":    r.normal_hours  or 0.0,
+            "extra_hours":     r.extra_hours   or 0.0,
+            "standby_hours":   r.standby_hours or 0.0,
+            "total_hours":     r.total_hours   or 0.0,
+            "normal_cost":     nc,
+            "extra_cost":      ec,
+            "standby_cost":    sc,
+            "total_cost":      nc + ec + sc,
+            "refreshed_at":    now,
+        }
 
-            existing = (
-                db.query(CollaboratorCycleSummary)
-                .filter_by(collaborator_id=collab_id, cycle_id=cycle_id)
-                .first()
-            )
-            if existing:
-                for k, v in agg.items():
-                    setattr(existing, k, v)
-            else:
-                db.add(CollaboratorCycleSummary(
-                    collaborator_id=collab_id, cycle_id=cycle_id, **agg
-                ))
+    touched_pairs = {(c, k) for c in collaborator_ids for k in cycle_ids}
+    deleted_pairs = touched_pairs - set(agg_map.keys())
+
+    for collab_id, cycle_id in deleted_pairs:
+        db.query(CollaboratorCycleSummary).filter_by(
+            collaborator_id=collab_id, cycle_id=cycle_id
+        ).delete(synchronize_session=False)
+
+    existing_rows = (
+        db.query(CollaboratorCycleSummary)
+        .filter(
+            CollaboratorCycleSummary.collaborator_id.in_(collaborator_ids),
+            CollaboratorCycleSummary.cycle_id.in_(cycle_ids),
+        )
+        .all()
+    )
+    existing_map = {(e.collaborator_id, e.cycle_id): e for e in existing_rows}
+
+    for key, a in agg_map.items():
+        existing = existing_map.get(key)
+        if existing:
+            for k, v in a.items():
+                setattr(existing, k, v)
+        else:
+            db.add(CollaboratorCycleSummary(**a))
 
 
 def backfill_summaries(db: Session) -> None:

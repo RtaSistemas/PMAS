@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PMAS — Help</title>
+  <link rel="stylesheet" href="/frontend/style.css" />
+</head>
+<body class="help-page">
+<main class="help-main">
+  <div class="help-bar">
+    <a class="btn btn-secondary btn-sm" href="/frontend/index.html" data-l="en">← Back to PMAS</a>
+    <a class="btn btn-secondary btn-sm" href="/frontend/index.html" data-l="pt">← Voltar ao PMAS</a>
+    <button type="button" id="helpLangBtn" class="btn btn-secondary btn-sm">PT</button>
+  </div>
+
+  <!-- ===================== English (ASD-STE100 profile) ===================== -->
+  <article data-l="en">
+    <h1>PMAS Help</h1>
+    <p>PMAS shows how project hours and costs compare with the plan. You import timesheet files, and PMAS calculates the results.</p>
+
+    <h2>Quick start</h2>
+    <ol>
+      <li>Open the <b>Cycles</b> tab. Create a cycle. A cycle is a billing period.</li>
+      <li>Open the <b>Projects</b> tab. Register a project with a PEP code and a budget.</li>
+      <li>Open <b>My Area</b>, then <b>Upload</b>. Import a timesheet file.</li>
+      <li>Open the <b>Dashboard</b> tab. Select a cycle or a PEP. Click <b>Load</b>.</li>
+    </ol>
+
+    <h2>The tabs</h2>
+    <dl>
+      <dt>Dashboard</dt><dd>Charts for team effort, portfolio health, and forecast.</dd>
+      <dt>Projects</dt><dd>The list of projects, with budgets and baselines.</dd>
+      <dt>Cycles</dt><dd>The list of billing periods.</dd>
+      <dt>Team</dt><dd>Seniority levels, rate cards, and the team list.</dd>
+      <dt>My Area</dt><dd>Your preferences, your imports, and your alerts.</dd>
+      <dt>Admin</dt><dd>Only an administrator sees this tab. It has users, rules, quarantine, and the audit log.</dd>
+    </dl>
+
+    <h2>The import file</h2>
+    <p>The file must be a CSV or an XLSX file. The maximum size is 20 MB. Keep the column names exactly as shown below.</p>
+    <table class="data-table">
+      <thead><tr><th>Column</th><th>Required</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>Colaborador</code></td><td>Yes</td><td>Name of the collaborator</td></tr>
+        <tr><td><code>Data</code></td><td>Yes</td><td>Date of the work</td></tr>
+        <tr><td><code>Horas totais (decimal)</code></td><td>Yes</td><td>Total hours for the day, in decimal format</td></tr>
+        <tr><td><code>Hora extra</code></td><td>No</td><td>Overtime hours</td></tr>
+        <tr><td><code>Hora sobreaviso</code></td><td>No</td><td>Standby hours</td></tr>
+        <tr><td><code>Código PEP</code></td><td>No</td><td>The PEP code of the project</td></tr>
+        <tr><td><code>PEP</code></td><td>No</td><td>The description of the PEP</td></tr>
+      </tbody>
+    </table>
+    <p>Do not edit imported data in PMAS. To correct an error, correct the source file and import it again.</p>
+
+    <h2>Quarantine</h2>
+    <p>A row goes to quarantine when it fails a validation rule. For example, a row with more than 24 hours in one day goes to quarantine. The system does not count a quarantined row. An administrator approves or rejects the row.</p>
+
+    <h2>Terms</h2>
+    <dl>
+      <dt>Cycle</dt><dd>A billing period with a start date and an end date.</dd>
+      <dt>PEP</dt><dd>The code that identifies a project.</dd>
+      <dt>Baseline</dt><dd>An approved budget. The system locks it, so nobody can change it. PMAS uses the active baseline as the budget.</dd>
+      <dt>CPI</dt><dd>The earned value divided by the actual cost. A value below 1 means that the project costs more than planned.</dd>
+      <dt>SPI</dt><dd>The progress against the schedule. PMAS uses hours as the base. A value below 1 means that the project is late.</dd>
+      <dt>EAC</dt><dd>The estimated total cost when the project ends.</dd>
+    </dl>
+
+    <h2>Automatic import</h2>
+    <p>An administrator can create an API key in the <b>Admin</b> tab. A system uses the key to send timesheet files without a login.</p>
+    <ol>
+      <li>Open the <b>Admin</b> tab. Click <b>New key</b>. Enter a name.</li>
+      <li>Copy the key. The system shows the key only once.</li>
+      <li>Send the file with the key in the <code>X-API-Key</code> header.</li>
+    </ol>
+    <pre class="help-code">curl -X POST https://your-server/api/upload-timesheet \
+  -H "X-API-Key: pmas_..." \
+  -F "file=@timesheet.csv"</pre>
+    <p>The key acts as the user that you select. The role and the PEP access of that user apply. The key is valid only for the import. To stop a system, revoke its key.</p>
+
+    <h2>Get more help</h2>
+    <p>Contact your administrator. Tell the administrator the name of the tab and the steps that you did.</p>
+  </article>
+
+  <!-- ===================== Português (BR) ===================== -->
+  <article data-l="pt" hidden>
+    <h1>Ajuda do PMAS</h1>
+    <p>O PMAS mostra como as horas e os custos dos projetos se comparam com o plano. Você importa arquivos de timesheet e o PMAS calcula os resultados.</p>
+
+    <h2>Início rápido</h2>
+    <ol>
+      <li>Abra a aba <b>Ciclos</b>. Crie um ciclo. Um ciclo é um período de faturamento.</li>
+      <li>Abra a aba <b>Projetos</b>. Cadastre um projeto com um código PEP e um orçamento.</li>
+      <li>Abra <b>Minha Área</b> e depois <b>Upload</b>. Importe um arquivo de timesheet.</li>
+      <li>Abra a aba <b>Dashboard</b>. Selecione um ciclo ou um PEP. Clique em <b>Carregar</b>.</li>
+    </ol>
+
+    <h2>As abas</h2>
+    <dl>
+      <dt>Dashboard</dt><dd>Gráficos de esforço da equipe, saúde do portfólio e previsão.</dd>
+      <dt>Projetos</dt><dd>A lista de projetos, com orçamentos e baselines.</dd>
+      <dt>Ciclos</dt><dd>A lista de períodos de faturamento.</dd>
+      <dt>Equipe</dt><dd>Níveis de senioridade, tabelas de taxa e a lista da equipe.</dd>
+      <dt>Minha Área</dt><dd>Suas preferências, suas importações e seus alertas.</dd>
+      <dt>Admin</dt><dd>Somente um administrador vê esta aba. Ela tem usuários, regras, quarentena e o log de auditoria.</dd>
+    </dl>
+
+    <h2>O arquivo de importação</h2>
+    <p>O arquivo deve ser CSV ou XLSX. O tamanho máximo é 20 MB. Mantenha os nomes das colunas exatamente como mostrado abaixo.</p>
+    <table class="data-table">
+      <thead><tr><th>Coluna</th><th>Obrigatória</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><code>Colaborador</code></td><td>Sim</td><td>Nome do colaborador</td></tr>
+        <tr><td><code>Data</code></td><td>Sim</td><td>Data do trabalho</td></tr>
+        <tr><td><code>Horas totais (decimal)</code></td><td>Sim</td><td>Total de horas do dia, em formato decimal</td></tr>
+        <tr><td><code>Hora extra</code></td><td>Não</td><td>Horas extras</td></tr>
+        <tr><td><code>Hora sobreaviso</code></td><td>Não</td><td>Horas de sobreaviso</td></tr>
+        <tr><td><code>Código PEP</code></td><td>Não</td><td>O código PEP do projeto</td></tr>
+        <tr><td><code>PEP</code></td><td>Não</td><td>A descrição do PEP</td></tr>
+      </tbody>
+    </table>
+    <p>Não edite dados importados no PMAS. Para corrigir um erro, corrija o arquivo de origem e importe-o de novo.</p>
+
+    <h2>Quarentena</h2>
+    <p>Uma linha vai para a quarentena quando falha em uma regra de validação. Por exemplo, uma linha com mais de 24 horas em um dia vai para a quarentena. O sistema não conta uma linha em quarentena. Um administrador aprova ou rejeita a linha.</p>
+
+    <h2>Termos</h2>
+    <dl>
+      <dt>Ciclo</dt><dd>Um período de faturamento com data de início e data de fim.</dd>
+      <dt>PEP</dt><dd>O código que identifica um projeto.</dd>
+      <dt>Baseline</dt><dd>Um orçamento aprovado. O sistema o trava, então ninguém pode alterá-lo. O PMAS usa a baseline ativa como orçamento.</dd>
+      <dt>CPI</dt><dd>O valor agregado dividido pelo custo real. Um valor abaixo de 1 significa que o projeto custa mais que o planejado.</dd>
+      <dt>SPI</dt><dd>O progresso em relação ao cronograma. O PMAS usa horas como base. Um valor abaixo de 1 significa que o projeto está atrasado.</dd>
+      <dt>EAC</dt><dd>O custo total estimado quando o projeto termina.</dd>
+    </dl>
+
+    <h2>Importação automática</h2>
+    <p>Um administrador pode criar uma chave de API na aba <b>Admin</b>. Um sistema usa a chave para enviar arquivos de timesheet sem login.</p>
+    <ol>
+      <li>Abra a aba <b>Admin</b>. Clique em <b>Nova chave</b>. Informe um nome.</li>
+      <li>Copie a chave. O sistema mostra a chave somente uma vez.</li>
+      <li>Envie o arquivo com a chave no cabeçalho <code>X-API-Key</code>.</li>
+    </ol>
+    <pre class="help-code">curl -X POST https://seu-servidor/api/upload-timesheet \
+  -H "X-API-Key: pmas_..." \
+  -F "file=@timesheet.csv"</pre>
+    <p>A chave age como o usuário que você seleciona. O perfil e o acesso a PEPs desse usuário valem para a chave. A chave vale somente para a importação. Para bloquear um sistema, revogue a chave dele.</p>
+
+    <h2>Mais ajuda</h2>
+    <p>Fale com o seu administrador. Informe o nome da aba e os passos que você fez.</p>
+  </article>
+</main>
+<script src="/frontend/help.js"></script>
+</body>
+</html>

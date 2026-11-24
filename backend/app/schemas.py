@@ -455,3 +455,23 @@ class ThemePresetIn(BaseModel):
     config: dict
 
 
+# ── API keys ─────────────────────────────────────────────────────────────────
+
+class ApiKeyCreateIn(BaseModel):
+    name: str = Field(min_length=3, max_length=60)
+    user_id: Optional[int] = None          # the user that the key acts as; default = the caller
+
+
+class ApiKeyOut(BaseModel):
+    id: int
+    name: str
+    key_prefix: str
+    username: str
+    created_by: str
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
+
+
+class ApiKeyCreatedOut(ApiKeyOut):
+    key: str                               # shown once; the server keeps only a hash

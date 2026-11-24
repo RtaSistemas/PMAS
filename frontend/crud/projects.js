@@ -467,7 +467,7 @@ async function _refreshBaselineModal(projectId) {
           <td>${escHtml(b.label || '—')}</td>
           <td><div class="actions" style="gap:.25rem">
             ${!b.is_active ? `<button class="btn btn-secondary btn-sm" onclick="_activateBaseline(${projectId},${b.id})">${_t('baseline.activate')}</button>` : '<span class="badge-baseline active" style="font-size:.75rem">ativo</span>'}
-            ${_isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="_deleteBaseline(${projectId},${b.id})">✕</button>` : ''}
+            ${_isAdmin() ? `<button class="btn btn-danger btn-sm" aria-label="${_t('btn.delete')}" title="${_t('btn.delete')}" onclick="_deleteBaseline(${projectId},${b.id})">✕</button>` : ''}
           </div></td>
         </tr>`;
       });

@@ -393,3 +393,57 @@ class TestPortfolioConcentration:
         item = next((x for x in data if x["pep_wbs"] == "P-TOTAL"), None)
         assert item is not None
         assert item["total_hours"] == pytest.approx(40.0)
+
+
+# ===========================================================================
+# DI-01 Regression: NULL cost columns must not drop the row from aggregates
+# ===========================================================================
+
+class TestNullCostRegression:
+    """Regression tests for DI-01: func.coalesce() in runway and allocation.
+
+    TimesheetRecord rows may have NULL normal_cost / extra_cost / standby_cost
+    when cost_per_hour was 0.0 or not frozen yet.  SQL NULL + anything = NULL,
+    so an unguarded SUM drops such rows entirely.  The fix wraps each cost column
+    in func.coalesce(..., 0.0) so NULL is treated as zero.
+    """
+
+    def _rec_null_cost(self, db, cycle, collab, pep, normal=8.0, day=10):
+        from backend.app.models import TimesheetRecord
+        from datetime import date
+        r = TimesheetRecord(
+            collaborator_id=collab.id, cycle_id=cycle.id,
+            record_date=date(cycle.start_date.year, cycle.start_date.month, day),
+            pep_wbs=pep, pep_description="D",
+            normal_hours=normal, extra_hours=0.0, standby_hours=0.0,
+            cost_per_hour=0.0,
+            normal_cost=None, extra_cost=None, standby_cost=None,
+        )
+        db.add(r); db.commit()
+        return r
+
+    def test_runway_null_cost_row_not_dropped(self, client, db_session):
+        cy = _cycle(db_session, "NULL-RW", 2025, 1)
+        co = _collab(db_session, "NullCostUser")
+        _project(db_session, "P-NULLCOST", budget_h=100.0)
+        self._rec_null_cost(db_session, cy, co, "P-NULLCOST", normal=20.0)
+
+        result = client.get("/api/v2/runway")
+        assert result.status_code == 200
+        data = result.json()
+        item = next((x for x in data if x["pep_wbs"] == "P-NULLCOST"), None)
+        assert item is not None, "Row with NULL cost columns must appear in runway"
+        assert item["consumed_hours"] == pytest.approx(20.0)
+
+    def test_allocation_null_cost_returns_zero_not_none(self, client, db_session):
+        cy = _cycle(db_session, "NULL-AL", 2025, 2)
+        co = _collab(db_session, "NullCostAlloc")
+        self._rec_null_cost(db_session, cy, co, "P-NULLALLOC", normal=16.0)
+
+        result = client.get("/api/v2/allocation")
+        assert result.status_code == 200
+        data = result.json()
+        rows = [r for r in data if r["pep_wbs"] == "P-NULLALLOC"]
+        assert rows, "Row with NULL cost columns must appear in allocation"
+        total_cost = sum(r.get("total_cost", 0) or 0 for r in rows)
+        assert total_cost == pytest.approx(0.0)
