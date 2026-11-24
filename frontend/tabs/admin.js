@@ -289,6 +289,9 @@ function _renderRulesList() {
 }
 
 const _AGGREGATE_RULE_FIELDS = new Set(['soma_diaria', 'soma_semanal']);
+const _RULE_NO_VALUE_OPS = new Set(['vazio', 'nao_vazio']);
+const _RULE_NUMERIC_OPS = new Set(['gt', 'gte', 'lt', 'lte']);
+const _RULE_NUMERIC_FIELDS = new Set(['horas_individuais', 'hora_extra_horas', 'hora_sobreaviso_horas', 'soma_diaria', 'soma_semanal']);
 
 function _updateRuleActionOptions() {
   const field     = document.getElementById('ruleFieldInput')?.value;
@@ -333,10 +336,20 @@ document.getElementById('newRuleBtn')?.addEventListener('click', () => _openRule
 document.getElementById('ruleSaveBtn')?.addEventListener('click', async () => {
   const errEl = document.getElementById('ruleError');
   errEl.textContent = '';
+  const ruleField = document.getElementById('ruleFieldInput').value;
+  const ruleOp    = document.getElementById('ruleOperatorInput').value;
+  const ruleValue = document.getElementById('ruleValueInput').value.trim();
+  if (!_RULE_NO_VALUE_OPS.has(ruleOp)) {
+    if (!ruleValue) { errEl.textContent = _t('vr.err_value_required'); return; }
+    if (_RULE_NUMERIC_OPS.has(ruleOp) && _RULE_NUMERIC_FIELDS.has(ruleField) && !Number.isFinite(Number(ruleValue.replace(',', '.')))) {
+      errEl.textContent = _t('vr.err_value_number');
+      return;
+    }
+  }
   const payload = {
-    field:       document.getElementById('ruleFieldInput').value,
-    operator:    document.getElementById('ruleOperatorInput').value,
-    value:       document.getElementById('ruleValueInput').value || null,
+    field:       ruleField,
+    operator:    ruleOp,
+    value:       ruleValue || null,
     action:      document.getElementById('ruleActionInput').value,
     order:       parseInt(document.getElementById('ruleOrderInput').value) || 10,
     is_active:   document.getElementById('ruleActiveInput').value === 'true',
@@ -834,6 +847,18 @@ function _renderThemeEditor() {
 
 document.getElementById('saveThemeBtn')?.addEventListener('click', async () => {
   const payload = { ..._currentTheme };
+  const _hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+  const badInput = [
+    ..._THEME_FIELDS.map(f => document.getElementById(`themeColorTxt_${f.key}`)),
+    ...Array.from({ length: 8 }, (_, i) => document.getElementById(`themePalTxt_${i}`)),
+  ].find(el => el && el.value.trim() && !_hex.test(el.value.trim()));
+  if (badInput) {
+    badInput.setAttribute('aria-invalid', 'true');
+    badInput.focus();
+    notify(_tf('msg.theme_color_invalid', { value: badInput.value.trim() }), 'error');
+    return;
+  }
+  document.querySelectorAll('#themeModal [aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
   _THEME_FIELDS.forEach(f => {
     const txt = document.getElementById(`themeColorTxt_${f.key}`);
     if (txt !== null) payload[f.key] = txt.value.trim() || null;

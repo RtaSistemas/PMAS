@@ -306,7 +306,20 @@ function closeProjectModal() { closeModal('projectModal'); }
 
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
   const pep = document.getElementById('projectPepInput').value.trim();
-  if (!pep) { document.getElementById('projectError').textContent = _t('msg.pep_required'); return; }
+  const errEl = document.getElementById('projectError');
+  if (!pep) { errEl.textContent = _t('msg.pep_required'); return; }
+  // Same shape as the import accepts: letters or digits, a dash, 3 or more characters, optional extra parts.
+  // An existing project can keep a code that it already has.
+  const keptPep = _projectEditId && _allProjects.find(x => x.id === _projectEditId)?.pep_wbs === pep;
+  if (!keptPep && !/^[A-Z0-9]{2,}-[A-Z0-9]{3,}(-[A-Z0-9]+)*$/i.test(pep)) { errEl.textContent = _t('msg.pep_invalid'); return; }
+  const startValue   = document.getElementById('projectStartInput').value;
+  const plannedValue = document.getElementById('projectPlannedEndInput').value;
+  const doneValue    = document.getElementById('projectCompletionInput').value;
+  if (startValue && plannedValue && plannedValue < startValue) { errEl.textContent = _t('msg.date_order'); return; }
+  if (startValue && doneValue && doneValue < startValue) { errEl.textContent = _t('msg.completion_order'); return; }
+  const budgetValues = ['projectBudgetInput', 'projectBudgetCostInput'].map(i => document.getElementById(i).value);
+  if (budgetValues.some(v => v !== '' && !(parseFloat(v) >= 0))) { errEl.textContent = _t('msg.budget_negative'); return; }
+  errEl.textContent = '';
   const completionDate = document.getElementById('projectCompletionInput').value || null;
   const statusRaw      = document.getElementById('projectStatusInput').value;
 

@@ -618,4 +618,16 @@ window._LANG_EN = {
     'vr.action.descarte':'Discard',
     // allocation
     'allocation.no_pep':'(no PEP)',
+    // D10 validation
+    'msg.pep_invalid':'The PEP code must have letters or digits, a dash, and 3 or more characters after the dash. Example: 60OP-03333.',
+    'msg.date_order':'The planned end date must be the same as or later than the start date.',
+    'msg.completion_order':'The completion date must be the same as or later than the start date.',
+    'msg.budget_negative':'The budget must not be negative.',
+    'msg.threshold_order':'The warning threshold must be lower than the critical threshold.',
+    'vr.err_value_required':'Enter a value for this operator.',
+    'vr.err_value_number':'Enter a number for this operator.',
+    'msg.theme_color_invalid':'The color "{value}" is not valid. Use the format #RRGGBB.',
+    'sim.err_multiplier':'The multiplier must be a number from 0.1 to 5.',
+    'sim.err_extra':'The extra hours must be a number of 0 or more.',
+    'sim.burnup.current':'Current',
 };

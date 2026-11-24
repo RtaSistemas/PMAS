@@ -618,4 +618,16 @@ window._LANG_PT = {
     'vr.action.descarte':'Descarte',
     // allocation
     'allocation.no_pep':'(sem PEP)',
+    // D10 validation
+    'msg.pep_invalid':'O código PEP deve ter letras ou números, um hífen e 3 ou mais caracteres depois dele. Exemplo: 60OP-03333.',
+    'msg.date_order':'A data final planejada deve ser igual ou posterior à data de início.',
+    'msg.completion_order':'A data de conclusão deve ser igual ou posterior à data de início.',
+    'msg.budget_negative':'O orçamento não pode ser negativo.',
+    'msg.threshold_order':'O limiar de atenção deve ser menor que o limiar crítico.',
+    'vr.err_value_required':'Informe um valor para este operador.',
+    'vr.err_value_number':'Informe um número para este operador.',
+    'msg.theme_color_invalid':'A cor "{value}" não é válida. Use o formato #RRGGBB.',
+    'sim.err_multiplier':'O multiplicador deve ser um número de 0,1 a 5.',
+    'sim.err_extra':'As horas extras devem ser um número maior ou igual a 0.',
+    'sim.burnup.current':'Atual',
 };

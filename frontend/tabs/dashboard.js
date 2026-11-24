@@ -1613,8 +1613,14 @@ async function _loadForecastSimulation(projectId) {
 
 async function _runWhatIf() {
   if (!_simProjectId) return;
-  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value)  || 1.0;
-  const extra = parseFloat(document.getElementById('whatIfExtraHours').value)   || 0.0;
+  const mult  = parseFloat(document.getElementById('whatIfMultiplier').value);
+  const extraRaw = document.getElementById('whatIfExtraHours').value.trim();
+  const extra = extraRaw === '' ? 0 : parseFloat(extraRaw);
+  const simErr = document.getElementById('whatIfError');
+  simErr.textContent = '';
+  // The server accepts a multiplier from 0.1 to 5 and extra hours of 0 or more.
+  if (!(mult >= 0.1 && mult <= 5)) { simErr.textContent = _t('sim.err_multiplier'); return; }
+  if (!(extra >= 0)) { simErr.textContent = _t('sim.err_extra'); return; }
   const btn   = document.getElementById('whatIfRunBtn');
   btn.disabled = true;
   const burnEl = document.getElementById('whatIfBurnUpChart');
@@ -1636,7 +1642,7 @@ async function _runWhatIf() {
     // Burn-up projection chart
     if (burnEl && r.burn_up_projected?.length) {
       const projected = [r.consumed_hours, ...r.burn_up_projected];
-      const cats = ['Atual', ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
+      const cats = [_t('sim.burnup.current'), ...r.burn_up_projected.map((_, i) => `C+${i + 1}`)];
       const budget = r.budget_hours;
       burnEl.hidden = false;
       const wc = _getOrCreateChart('whatIfBurnUpChart');
@@ -1683,7 +1689,7 @@ async function _runWhatIf() {
       burnEl.hidden = true;
     }
   } catch (e) {
-    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${_t('msg.err_generic')}</p>`;
+    document.getElementById('whatIfResult').innerHTML = `<p class="hint" style="color:var(--error-text)">${escHtml(_friendlyError(e))}</p>`;
     if (burnEl) burnEl.hidden = true;
   } finally {
     btn.disabled = false;

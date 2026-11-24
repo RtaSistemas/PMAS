@@ -405,6 +405,11 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     msg.textContent = _t('msg.positive_numbers');
     return;
   }
+  if (wt >= ct) {
+    msg.style.color = _cssVar('--red');
+    msg.textContent = _t('msg.threshold_order');
+    return;
+  }
   try {
     await apiFetchJSON('/api/config', 'PUT', {
       extra_hours_multiplier: em,
