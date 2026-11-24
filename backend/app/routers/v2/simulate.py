@@ -108,7 +108,7 @@ def simulate_project(
     if sim_velocity <= 0:
         cycles_to_complete = None
     elif remaining > 0:
-        cycles_to_complete = math.ceil(remaining / sim_velocity)
+        cycles_to_complete = math.ceil(round(remaining / sim_velocity, 6))  # ignore float noise
     else:
         cycles_to_complete = 0
 

@@ -51,15 +51,16 @@ def get_concentration(
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
             func.sum(
-                TimesheetRecord.normal_cost
-                + TimesheetRecord.extra_cost
-                + TimesheetRecord.standby_cost
+                func.coalesce(TimesheetRecord.normal_cost, 0.0)
+                + func.coalesce(TimesheetRecord.extra_cost, 0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(
             TimesheetRecord.pep_wbs.isnot(None),
+            Cycle.is_active.is_(True),  # exclude quarantine/inactive cycles (as trends)
         )
     )
     if cycle_id:
