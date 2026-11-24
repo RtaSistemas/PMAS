@@ -10,6 +10,7 @@ from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Cycle, Project, ProjectCyclePlan
+from backend.app.routers.projects import assert_project_access
 from backend.app.schemas import IdOut, ImportResultOut, PhysicalProgressItem, ProjectCyclePlanIn, ProjectCyclePlanOut
 
 router = APIRouter(
@@ -35,10 +36,11 @@ def _plan_to_dict(p: ProjectCyclePlan) -> dict:
 
 
 @router.get("/{project_id}/plans", response_model=list[ProjectCyclePlanOut])
-def list_plans(project_id: int, db: DbSession):
+def list_plans(project_id: int, db: DbSession, current_user: CurrentUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    assert_project_access(db, current_user, project)
     plans = (
         db.query(ProjectCyclePlan)
         .filter(ProjectCyclePlan.project_id == project_id)
@@ -54,6 +56,7 @@ def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    assert_project_access(db, current_user, project)
     plans = (
         db.query(ProjectCyclePlan)
         .filter(ProjectCyclePlan.project_id == project_id)
