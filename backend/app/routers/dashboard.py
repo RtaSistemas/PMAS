@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, QuarantineRecord, TimesheetRecord
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 from backend.app.schemas import CollaboratorTimelineItem
 from backend.app.services.ingestion import _parse_date_safe as _canonical_parse_date
 
@@ -32,7 +33,15 @@ def get_collaborator_timeline(
     pep_description: List[str] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
+    current_user=Depends(get_current_user),
 ):
+    _check_date_range(date_from, date_to)
+    # ACL: whitelist AND requested PEPs; an empty intersection is an empty result
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_code)
+    if pep_scope is not None and not pep_scope:
+        return []
+    pep_code = pep_scope or []
+
     q = (
         db.query(
             Cycle.name.label("cycle_name"),
@@ -69,15 +78,18 @@ def get_collaborator_timeline(
 @router.get("/collaborator-daily", summary="Horas diárias de um colaborador")
 def get_collaborator_daily(
     collaborator_name: str,
-    year: int,
-    month: int,
     db: DbSession,
-    _user=Depends(get_current_user),
+    year: int = Query(ge=1, le=9999),
+    month: int = Query(ge=1, le=12),
+    current_user=Depends(get_current_user),
 ) -> List[Dict]:
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None and not allowed:
+        return []
     date_from = date(year, month, 1)
     date_to   = date(year, month, calendar.monthrange(year, month)[1])
 
-    rows = (
+    daily_q = (
         db.query(
             TimesheetRecord.record_date,
             func.sum(TimesheetRecord.normal_hours).label("normal_hours"),
@@ -95,9 +107,10 @@ def get_collaborator_daily(
             TimesheetRecord.record_date >= date_from,
             TimesheetRecord.record_date <= date_to,
         )
-        .group_by(TimesheetRecord.record_date)
-        .all()
     )
+    if allowed is not None:
+        daily_q = daily_q.filter(TimesheetRecord.pep_wbs.in_(allowed))
+    rows = daily_q.group_by(TimesheetRecord.record_date).all()
 
     hours_by_date = {
         r.record_date: {
@@ -123,6 +136,8 @@ def get_collaborator_daily(
     quarantine_dates: set = set()
     for qr in qr_rows:
         raw = qr.raw_data or {}
+        if allowed is not None and raw.get("Código PEP") not in allowed:
+            continue  # restricted user: only quarantine rows of visible PEPs
         raw_date = raw.get("Data")
         if raw_date is None:
             continue
@@ -156,7 +171,13 @@ def export_collaborator_timesheets(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
     pep_code: List[str] = Query(default=[]),
+    current_user=Depends(get_current_user),
 ):
+    _check_date_range(date_from, date_to)
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_code)
+    pep_code = pep_scope or []
+    no_access = pep_scope is not None and not pep_scope
+
     rows = (
         db.query(
             TimesheetRecord.record_date,
@@ -181,7 +202,7 @@ def export_collaborator_timesheets(
         rows = rows.filter(TimesheetRecord.record_date <= date_to)
     if pep_code:
         rows = rows.filter(TimesheetRecord.pep_wbs.in_(pep_code))
-    rows = rows.order_by(TimesheetRecord.record_date).all()
+    rows = [] if no_access else rows.order_by(TimesheetRecord.record_date).all()
 
     safe_name = collaborator_name.replace(" ", "_").replace("/", "-")
 

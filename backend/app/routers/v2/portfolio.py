@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date as DateType
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
@@ -46,6 +46,30 @@ def _allowed_peps(db, user) -> list[str] | None:
     return [p.pep_wbs for p in projects]
 
 
+def _check_date_range(date_from: Optional[DateType], date_to: Optional[DateType]) -> None:
+    """Raise 422 when the range is reversed (date_from after date_to)."""
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise HTTPException(
+            status_code=422,
+            detail="Intervalo de datas inválido: date_from é posterior a date_to.",
+        )
+
+
+def _scope_peps(allowed: list[str] | None, requested: list[str] | None) -> list[str] | None:
+    """Effective PEP filter = ACL whitelist AND the requested PEPs.
+
+    Returns None when nothing restricts the query.  Otherwise returns the list
+    of PEPs to query — it may be EMPTY (a restricted user asked only for PEPs
+    outside the whitelist): callers must then return an empty result instead of
+    treating the empty list as "no filter".
+    """
+    if allowed is None:
+        return list(requested) if requested else None
+    if requested:
+        return [p for p in requested if p in allowed]
+    return list(allowed)
+
+
 @router.get("/portfolio", summary="Saúde do portfólio — render-ready com CPI e health por PEP", response_model=list)
 def get_portfolio(
     db: DbSession,
@@ -54,6 +78,7 @@ def get_portfolio(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    _check_date_range(date_from, date_to)
     cfg = db.get(GlobalConfig, 1)
     warning_threshold, critical_threshold = get_thresholds(cfg)
 

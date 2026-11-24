@@ -15,9 +15,9 @@ from sqlalchemy import func
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import (
-    Collaborator, CollaboratorCycleSummary, Cycle,
-    TimesheetRecord, UserProjectAccess, Project,
+    Collaborator, CollaboratorCycleSummary, Cycle, TimesheetRecord,
 )
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -32,33 +32,25 @@ def get_effort(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
-    # ACL: restrict collaborators to those who worked on allowed PEPs
-    allowed_collab_ids: list[int] | None = None
-    if current_user.role != "admin":
-        access = db.query(UserProjectAccess).filter_by(user_id=current_user.id).all()
-        if access:
-            proj_ids = [a.project_id for a in access]
-            allowed_peps = [p.pep_wbs for p in db.query(Project).filter(Project.id.in_(proj_ids)).all()]
-            collab_ids_in_peps = [
-                r[0]
-                for r in db.query(TimesheetRecord.collaborator_id)
-                .filter(TimesheetRecord.pep_wbs.in_(allowed_peps))
-                .distinct()
-                .all()
-            ]
-            allowed_collab_ids = collab_ids_in_peps
+    _check_date_range(date_from, date_to)
+
+    # ACL: hours are restricted to the PEPs the user may see.  The per-collaborator
+    # summary table has no PEP grain, so a restricted user is always served from
+    # the raw records.  An empty whitelist/request intersection is an empty result.
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_wbs)
+    if pep_scope is not None and not pep_scope:
+        return []
+    pep_wbs = pep_scope or []
 
     has_summaries = db.query(CollaboratorCycleSummary).first() is not None
 
     if has_summaries and not pep_wbs:
-        return _effort_from_summary(db, cycle_id, collaborator_id, date_from, date_to,
-                                    allowed_collab_ids)
+        return _effort_from_summary(db, cycle_id, collaborator_id, date_from, date_to)
 
-    return _effort_fallback(db, cycle_id, collaborator_id, pep_wbs, date_from, date_to,
-                            allowed_collab_ids)
+    return _effort_fallback(db, cycle_id, collaborator_id, pep_wbs, date_from, date_to)
 
 
-def _effort_from_summary(db, cycle_ids, collab_ids, date_from, date_to, allowed_collab_ids):
+def _effort_from_summary(db, cycle_ids, collab_ids, date_from, date_to):
     q = (
         db.query(CollaboratorCycleSummary)
         .join(Cycle, CollaboratorCycleSummary.cycle_id == Cycle.id)
@@ -72,8 +64,6 @@ def _effort_from_summary(db, cycle_ids, collab_ids, date_from, date_to, allowed_
         q = q.filter(Cycle.end_date <= date_to)
     if collab_ids:
         q = q.filter(CollaboratorCycleSummary.collaborator_id.in_(collab_ids))
-    if allowed_collab_ids is not None:
-        q = q.filter(CollaboratorCycleSummary.collaborator_id.in_(allowed_collab_ids))
 
     rows = q.all()
 
@@ -104,8 +94,7 @@ def _effort_from_summary(db, cycle_ids, collab_ids, date_from, date_to, allowed_
     return result
 
 
-def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_to,
-                     allowed_collab_ids):
+def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_to):
     q = (
         db.query(
             Collaborator.id.label("collaborator_id"),
@@ -137,8 +126,6 @@ def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_
         q = q.filter(TimesheetRecord.collaborator_id.in_(collab_ids))
     if pep_wbs_filter:
         q = q.filter(TimesheetRecord.pep_wbs.in_(pep_wbs_filter))
-    if allowed_collab_ids is not None:
-        q = q.filter(TimesheetRecord.collaborator_id.in_(allowed_collab_ids))
 
     rows = q.group_by(Collaborator.id).order_by(func.sum(
         TimesheetRecord.normal_hours + TimesheetRecord.extra_hours + TimesheetRecord.standby_hours

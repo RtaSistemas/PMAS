@@ -14,6 +14,7 @@ from datetime import date as DateType
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
@@ -21,12 +22,12 @@ from backend.app.models import (
     Cycle, GlobalConfig, PepCycleSummary, Project, ProjectBaseline, ProjectCyclePlan,
     TimesheetRecord,
 )
-from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range
 from backend.app.services.evm import (
     classify_health,
     compute_cpi,
     compute_cv,
-    compute_eac,
+    compute_eac_from_ev,
     compute_eac_schedule,
     compute_earned_schedule,
     compute_ev_capped,
@@ -52,6 +53,7 @@ from backend.app.services.evm import (
     sv_label,
     tcpi_color,
     tcpi_label,
+    tcpi_status,
     vac_color,
     vac_label,
     get_thresholds,
@@ -68,6 +70,7 @@ def get_forecast(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    _check_date_range(date_from, date_to)
     allowed = _allowed_peps(db, current_user)
     if allowed is not None and pep_wbs not in allowed:
         raise HTTPException(status_code=403, detail="Acesso negado.")
@@ -117,8 +120,50 @@ def get_forecast(
 
     sorted_plans = sorted(plan_by_cycle_start.items()) if plan_by_cycle_start else []
     has_plan = bool(sorted_plans)
-    has_any_planned_cost = has_plan and any(v is not None for v in plan_cost_by_cycle_start.values())
     blended_rate = (budget_cost / budget_hours) if (budget_hours and budget_cost and budget_hours > 0) else None
+
+    # Idle cycles (no hours for this PEP) are part of the timeline: elapsed time,
+    # the 3-cycle velocity window and Earned Schedule all count calendar cycles.
+    cycle_data = _fill_idle_cycles(
+        db, cycle_data, [s for s, _ in sorted_plans], date_from, date_to,
+    )
+
+    def _planned_cost(start: DateType) -> Optional[float]:
+        """Explicit planned cost, else planned hours x blended rate, else None."""
+        if start not in plan_by_cycle_start:
+            return None
+        explicit = plan_cost_by_cycle_start.get(start)
+        if explicit is not None:
+            return explicit
+        if blended_rate is not None:
+            return round(plan_by_cycle_start[start] * blended_rate, 2)
+        return None
+
+    # Full planning timeline: actual cycles plus the plan cycles after the last actual.
+    timeline = [start for _, start, _, _ in cycle_data]
+    if has_plan and sorted_plans[-1][0] > timeline[-1]:
+        last_start, last_plan = timeline[-1], sorted_plans[-1][0]
+        future = {
+            r[0] for r in db.query(Cycle.start_date).filter(
+                Cycle.is_active == True,  # noqa: E712
+                Cycle.start_date > last_start,
+                Cycle.start_date <= last_plan,
+            ).all()
+        } | {s for s, _ in sorted_plans if s > last_start}
+        timeline += sorted(future)
+
+    has_plan_cost = has_plan and any(_planned_cost(s) is not None for s, _ in sorted_plans)
+    # PV curve in R$ when a planned cost is known (explicit or derived) and EV is in R$;
+    # otherwise the hours curve (AgileEVM proxy).
+    pv_mode = "cost" if (has_plan_cost and budget_cost) else ("hours" if has_plan else None)
+    pv_curve: list[float] = []
+    run = 0.0
+    for start in timeline:
+        if pv_mode == "cost":
+            run += _planned_cost(start) or 0.0
+        elif pv_mode == "hours":
+            run += plan_by_cycle_start.get(start, 0.0)
+        pv_curve.append(round(run, 2))
 
     history = []
     cum_h   = 0.0
@@ -127,15 +172,12 @@ def get_forecast(
     prev_period_h: Optional[float] = None
     prev_period_c: Optional[float] = None
 
-    for cyc_name, cyc_start, period_h, period_c in cycle_data:
+    for i, (cyc_name, cyc_start, period_h, period_c) in enumerate(cycle_data):
         cum_h += period_h
         cum_c += period_c
 
         cum_ph = sum(h for s, h in sorted_plans if s <= cyc_start) if sorted_plans else 0.0
-        pc_period = plan_cost_by_cycle_start.get(cyc_start) if has_plan else None
-        # Derive planned cost from blended rate when no explicit cost baseline exists
-        if pc_period is None and blended_rate is not None and cyc_start in plan_by_cycle_start:
-            pc_period = round(plan_by_cycle_start[cyc_start] * blended_rate, 2)
+        pc_period = _planned_cost(cyc_start) if has_plan else None
         if pc_period is not None:
             cum_pc += pc_period
 
@@ -159,6 +201,11 @@ def get_forecast(
         c_delta     = compute_period_delta(period_c, prev_period_c)
         c_delta_pct = compute_period_delta_pct(period_c, prev_period_c)
 
+        # Earned Schedule at this cycle — against the FULL planned curve
+        ev_for_es = ev_cost_cum if pv_mode == "cost" else cum_h
+        es_i = compute_earned_schedule(ev_for_es, pv_curve) if pv_mode else None
+        at_i = float(i + 1)
+
         history.append({
             "cycle_name":                cyc_name,
             "cycle_start":               str(cyc_start),
@@ -173,7 +220,7 @@ def get_forecast(
             "planned_hours":             round(plan_by_cycle_start[cyc_start], 2) if cyc_start in plan_by_cycle_start else None,
             "planned_cost":              round(pc_period, 2) if pc_period is not None else None,
             "cumulative_planned_hours":  round(cum_ph, 2) if has_plan else None,
-            "cumulative_planned_cost":   round(cum_pc, 2) if has_any_planned_cost else None,
+            "cumulative_planned_cost":   round(cum_pc, 2) if has_plan_cost else None,
             "cumulative_ev_cost":        ev_cost_cum,
             "cpi_cumulative":            compute_cpi(ev_cost_cum, cum_c),
             "ev_source":                 ev_source,
@@ -185,44 +232,23 @@ def get_forecast(
             "cv":                        cv_period,
             "cv_label":                  cv_label(cv_period),
             "cv_color":                  cv_color(cv_period),
+            "es":                        es_i,
+            "spi_t":                     compute_spi_t(es_i, at_i),
+            "sv_t":                      compute_sv_t(es_i, at_i),
         })
         prev_period_h = period_h
         prev_period_c = period_c
 
-    # Earned Schedule — requires a PV cost curve
-    pv_cost_curve = [
-        h["cumulative_planned_cost"]
-        for h in history
-        if h.get("cumulative_planned_cost") is not None
-    ]
-    at = len(cycle_data)          # actual time in cycles
-    pd_cycles = len(sorted_plans) # planned duration
+    at = len(cycle_data)          # actual time in cycles (calendar cycles, idle ones included)
+    # planned duration = cycles from the timeline start to the last planned cycle
+    pd_cycles = (
+        len([s for s in timeline if s <= sorted_plans[-1][0]]) if has_plan else 0
+    )
 
-    es = compute_earned_schedule(
-        history[-1]["cumulative_ev_cost"] if history else None,
-        pv_cost_curve,
-    ) if pv_cost_curve else None
+    es     = history[-1]["es"] if history else None
     spi_t  = compute_spi_t(es, at)
     sv_t   = compute_sv_t(es, at)
     ieac_t = compute_ieac_t(pd_cycles or None, spi_t)
-
-    # Annotate each history entry with its incremental ES
-    for i, entry in enumerate(history):
-        partial_pv = [
-            h["cumulative_planned_cost"]
-            for h in history[:i + 1]
-            if h.get("cumulative_planned_cost") is not None
-        ]
-        if partial_pv:
-            es_i    = compute_earned_schedule(entry.get("cumulative_ev_cost"), partial_pv)
-            at_i    = float(i + 1)
-            spi_t_i = compute_spi_t(es_i, at_i)
-            sv_t_i  = compute_sv_t(es_i, at_i)
-        else:
-            es_i = spi_t_i = sv_t_i = None
-        entry["es"]     = es_i
-        entry["spi_t"]  = spi_t_i
-        entry["sv_t"]   = sv_t_i
 
     consumed_hours = cum_h
     actual_cost    = cum_c
@@ -251,6 +277,7 @@ def get_forecast(
     # Final EVM indicators
     ev_val = None
     cpi = spi = eac = eac_schedule = cv = tcpi = vac = sv = None
+    tcpi_state: Optional[str] = None
     if budget_hours and budget_cost and consumed_hours > 0:
         ev_val = (
             round(last_physical_pct * budget_cost, 2)
@@ -265,8 +292,10 @@ def get_forecast(
             cpi  = compute_cpi(ev_val, actual_cost)
             cv   = compute_cv(ev_val, actual_cost)
             tcpi = compute_tcpi(budget_cost, actual_cost, ev_val)
-        # EAC defaults to BAC when no performance data yet (R-14)
-        eac          = compute_eac(budget_cost, cpi, default_to_bac=True)
+            tcpi_state = tcpi_status(budget_cost, actual_cost, ev_val)
+        # EAC defaults to BAC when no performance data yet (R-14).  Computed from
+        # unrounded EV/AC (not from the 4-decimal CPI) so EAC never drifts below AC.
+        eac          = compute_eac_from_ev(budget_cost, ev_val, actual_cost, default_to_bac=True)
         eac_schedule = compute_eac_schedule(budget_cost, actual_cost, ev_val, cpi, spi)
         vac = compute_vac(budget_cost, eac)
 
@@ -288,8 +317,9 @@ def get_forecast(
     if not is_closed and remaining_hours and remaining_hours > 0 and avg_hours > 0:
         # Use observed throughput only; SPI informs cost EAC, not cycle velocity
         effective_velocity = avg_hours
-        est_cycles = round(remaining_hours / effective_velocity, 1)
-        n = math.ceil(est_cycles)
+        raw_cycles = remaining_hours / effective_velocity
+        est_cycles = round(raw_cycles, 1)                 # displayed value
+        n = math.ceil(round(raw_cycles, 6))               # whole cycles from the unrounded value
         last_start = cycle_data[-1][1]
         future = (
             db.query(Cycle)
@@ -322,17 +352,22 @@ def get_forecast(
         remaining_hours = 0.0
         remaining_cost  = 0.0
         tcpi            = None
+        tcpi_state      = "complete"
         eac_schedule           = None
         est_cycles             = None
         est_completion         = None
         eac_low = eac_high     = None
         est_cycles_optimistic  = None
         est_cycles_pessimistic = None
-        # EAC = AC (actual final cost, not a projection)
+        # EAC = AC (actual final cost, not a projection).  A closed project delivered
+        # its whole scope, so EV = BAC: CV (EV - AC) and VAC (BAC - EAC) then agree.
         if actual_cost > 0:
             eac = round(actual_cost, 2)
             vac = compute_vac(budget_cost, eac)
-            cv  = compute_cv(ev_val, actual_cost)
+            if budget_cost:
+                ev_val = round(budget_cost, 2)
+                cv  = compute_cv(ev_val, actual_cost)
+                cpi = compute_cpi(ev_val, actual_cost)
 
     return {
         "pep_wbs":                    pep_wbs,
@@ -362,8 +397,9 @@ def get_forecast(
         "cv_label":                   cv_label(cv),
         "cv_color":                   cv_color(cv),
         "tcpi":                       tcpi,
-        "tcpi_color":                 tcpi_color(tcpi),
-        "tcpi_label":                 tcpi_label(tcpi),
+        "tcpi_color":                 tcpi_color(tcpi, tcpi_state),
+        "tcpi_label":                 tcpi_label(tcpi, tcpi_state),
+        "tcpi_status":                tcpi_state,
         "sv":                         sv,
         "sv_label":                   sv_label(sv),
         "sv_color":                   sv_color(sv),
@@ -392,6 +428,28 @@ def get_forecast(
         "planned_duration_cycles":    pd_cycles if sorted_plans else None,
         "actual_time_cycles":         at,
     }
+
+
+def _fill_idle_cycles(
+    db,
+    cycle_data: list[tuple[str, DateType, float, float]],
+    plan_starts: list[DateType],
+    date_from: Optional[DateType],
+    date_to: Optional[DateType],
+) -> list[tuple[str, DateType, float, float]]:
+    """Add the cycles with no hours for the PEP (zero rows) between the first
+    plan/actual cycle and the last actual cycle, ordered by start."""
+    first, last = cycle_data[0][1], cycle_data[-1][1]
+    anchor = min(first, plan_starts[0]) if plan_starts else first
+    q = db.query(Cycle).filter(Cycle.start_date >= anchor, Cycle.start_date <= last)
+    q = q.filter(or_(Cycle.is_active == True, Cycle.start_date.in_(plan_starts)))  # noqa: E712
+    if date_from:
+        q = q.filter(Cycle.start_date >= date_from)
+    if date_to:
+        q = q.filter(Cycle.end_date <= date_to)
+    have = {start for _, start, _, _ in cycle_data}
+    idle = [(c.name, c.start_date, 0.0, 0.0) for c in q.all() if c.start_date not in have]
+    return sorted(cycle_data + idle, key=lambda x: x[1])
 
 
 def _load_cycle_data(

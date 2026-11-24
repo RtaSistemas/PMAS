@@ -12,12 +12,13 @@ from datetime import date as DateType
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Project, ProjectBaseline
 from backend.app.routers.v2.forecast import _load_cycle_data
+from backend.app.routers.v2.portfolio import _allowed_peps
 from backend.app.services.evm import compute_eac_avg_rate, resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -28,6 +29,12 @@ class SimulateIn(BaseModel):
     extra_hours_per_cycle: float = Field(default=0.0, ge=0)
     date_from: Optional[DateType] = None
     date_to: Optional[DateType] = None
+
+    @model_validator(mode="after")
+    def _check_range(self):
+        if self.date_from and self.date_to and self.date_from > self.date_to:
+            raise ValueError("date_from é posterior a date_to.")
+        return self
 
 
 class SimulateOut(BaseModel):
@@ -57,6 +64,9 @@ def simulate_project(
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None and project.pep_wbs not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
 
     active_baseline = (
         db.query(ProjectBaseline)
@@ -64,12 +74,17 @@ def simulate_project(
         .first()
     )
     budget_hours, budget_cost = resolve_effective_budget(project, active_baseline)
+    if not budget_hours or budget_hours <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail="Projeto sem horas orçadas: defina budget_hours para simular.",
+        )
 
     cycle_data = _load_cycle_data(db, project.pep_wbs, body.date_from, body.date_to)
 
     consumed_hours = sum(h for _, _, h, _ in cycle_data)
     consumed_cost  = sum(c for _, _, _, c in cycle_data)
-    remaining      = max(0.0, (budget_hours or 0.0) - consumed_hours)
+    remaining      = max(0.0, budget_hours - consumed_hours)
 
     # VELOCITY WINDOW — last min(6, N) cycles (Simulate rule).
     # Wider than Forecast/Runway (3 cycles) intentionally: the What-If tool is
@@ -106,8 +121,14 @@ def simulate_project(
                 projected = min(projected, budget_hours)
             burn_up_projected.append(round(projected, 2))
 
-    # Projected EAC cost — delegates to the canonical formula in evm.py (GR-2).
-    projected_eac_cost = compute_eac_avg_rate(consumed_cost, consumed_hours, remaining)
+    # Projected EAC cost — average historical rate applied to the hours the team is
+    # staffed for in the scenario (sim_velocity x projected cycles, last cycle
+    # fully staffed), so it reacts to velocity_multiplier / extra_hours_per_cycle.
+    projected_eac_cost: Optional[float] = None
+    if remaining > 0 and cycles_to_complete:
+        projected_eac_cost = compute_eac_avg_rate(
+            consumed_cost, consumed_hours, sim_velocity * cycles_to_complete,
+        )
 
     return SimulateOut(
         consumed_hours=round(consumed_hours, 2),

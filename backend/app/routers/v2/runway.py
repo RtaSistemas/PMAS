@@ -20,7 +20,7 @@ from backend.app.deps import get_current_user
 from backend.app.models import (
     Cycle, GlobalConfig, Project, ProjectBaseline, ProjectCyclePlan, TimesheetRecord,
 )
-from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 from backend.app.services.evm import (
     classify_health,
     classify_schedule_status,
@@ -47,16 +47,15 @@ def get_runway(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    _check_date_range(date_from, date_to)
     cfg = db.get(GlobalConfig, 1)
     warning_threshold, critical_threshold = get_thresholds(cfg)
 
-    # ACL filtering via _allowed_peps
-    allowed = _allowed_peps(db, current_user)
-    if allowed is not None:
-        if pep_wbs:
-            pep_wbs = [p for p in pep_wbs if p in allowed]
-        else:
-            pep_wbs = allowed
+    # ACL filtering: whitelist AND requested PEPs; an empty intersection is an empty result
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_wbs)
+    if pep_scope is not None and not pep_scope:
+        return []
+    pep_wbs = pep_scope or []
 
     # Query per (pep_wbs, pep_description, cycle_id) to get period hours/cost
     q = (

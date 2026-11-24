@@ -18,6 +18,7 @@ from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Project, ProjectBaseline
 from backend.app.routers.v2.forecast import _load_cycle_data
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range
 from backend.app.services.evm import resolve_effective_budget
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -40,9 +41,13 @@ def monte_carlo(
     date_to: Optional[DateType] = None,
     seed: Optional[int] = None,
 ):
+    _check_date_range(date_from, date_to)
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None and project.pep_wbs not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
 
     active_baseline = (
         db.query(ProjectBaseline)
@@ -76,6 +81,7 @@ def monte_carlo(
         "remaining_hours": round(remaining, 2),
         "budget_hours": budget_hours,
         "iterations": iterations,
+        "histogram": [],
         "error": "insufficient_data",
     }
 
@@ -99,6 +105,7 @@ def monte_carlo(
             "remaining_hours": 0.0,
             "budget_hours": budget_hours,
             "iterations": iterations,
+            "histogram": [],
             "error": None,
         }
 

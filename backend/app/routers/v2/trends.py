@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Query
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Cycle, PepCycleSummary, TimesheetRecord
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 from backend.app.services.evm import compute_period_delta, compute_period_delta_pct
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -22,11 +23,18 @@ router = APIRouter(prefix="/api/v2", tags=["v2"])
 @router.get("/trends", summary="Tendências por ciclo com delta período-a-período", response_model=list)
 def get_trends(
     db: DbSession,
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     pep_wbs: List[str] = Query(default=[]),
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    _check_date_range(date_from, date_to)
+    # ACL: whitelist AND requested PEPs; an empty intersection is an empty result
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_wbs)
+    if pep_scope is not None and not pep_scope:
+        return []
+    pep_wbs = pep_scope or []
+
     has_summaries = db.query(PepCycleSummary).first() is not None
 
     if has_summaries:
@@ -178,12 +186,18 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
     prev_normal_h: float | None = None
     prev_extra_h:  float | None = None
     prev_standby_h: float | None = None
+    prev_normal_c:  float | None = None
+    prev_extra_c:   float | None = None
+    prev_standby_c: float | None = None
     for r in rows:
         th = round(r.total_hours  or 0.0, 2)
         tc = round(r.actual_cost  or 0.0, 2)
         nh = round(r.normal_hours  or 0.0, 2)
         eh = round(r.extra_hours   or 0.0, 2)
         sh = round(r.standby_hours or 0.0, 2)
+        nc = round(r.normal_cost   or 0.0, 2)
+        ec = round(r.extra_cost    or 0.0, 2)
+        sc = round(r.standby_cost  or 0.0, 2)
         result.append({
             "cycle_name":               r.cycle_name,
             "cycle_start":              str(r.cycle_start),
@@ -192,9 +206,9 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
             "standby_hours":            sh,
             "total_hours":              th,
             "actual_cost":              tc,
-            "normal_cost":              round(r.normal_cost  or 0.0, 2),
-            "extra_cost":               round(r.extra_cost   or 0.0, 2),
-            "standby_cost":             round(r.standby_cost or 0.0, 2),
+            "normal_cost":              nc,
+            "extra_cost":               ec,
+            "standby_cost":             sc,
             "hours_delta":              compute_period_delta(th, prev_hours),
             "hours_delta_pct":          compute_period_delta_pct(th, prev_hours),
             "cost_delta":               compute_period_delta(tc, prev_cost),
@@ -205,14 +219,15 @@ def _trends_fallback(db, pep_wbs_filter, date_from, date_to):
             "normal_hours_delta_pct":   compute_period_delta_pct(nh, prev_normal_h),
             "extra_hours_delta_pct":    compute_period_delta_pct(eh, prev_extra_h),
             "standby_hours_delta_pct":  compute_period_delta_pct(sh, prev_standby_h),
-            "normal_cost_delta":        None,
-            "extra_cost_delta":         None,
-            "standby_cost_delta":       None,
-            "normal_cost_delta_pct":    None,
-            "extra_cost_delta_pct":     None,
-            "standby_cost_delta_pct":   None,
+            "normal_cost_delta":        compute_period_delta(nc, prev_normal_c),
+            "extra_cost_delta":         compute_period_delta(ec, prev_extra_c),
+            "standby_cost_delta":       compute_period_delta(sc, prev_standby_c),
+            "normal_cost_delta_pct":    compute_period_delta_pct(nc, prev_normal_c),
+            "extra_cost_delta_pct":     compute_period_delta_pct(ec, prev_extra_c),
+            "standby_cost_delta_pct":   compute_period_delta_pct(sc, prev_standby_c),
         })
         prev_hours = th;    prev_cost = tc
         prev_normal_h = nh; prev_extra_h = eh; prev_standby_h = sh
+        prev_normal_c = nc; prev_extra_c = ec; prev_standby_c = sc
 
     return result

@@ -19,7 +19,7 @@ from backend.app.deps import get_current_user
 from backend.app.models import (
     Collaborator, Cycle, GlobalConfig, TimesheetRecord,
 )
-from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -46,6 +46,8 @@ def get_over_allocation(
     date_to: Optional[DateType] = None,
     threshold: Optional[float] = Query(default=None, gt=0, le=24.0),
 ):
+    _check_date_range(date_from, date_to)
+
     # Resolve effective threshold: param > GlobalConfig > hard default
     cfg = db.get(GlobalConfig, 1)
     if threshold is not None:
@@ -55,8 +57,12 @@ def get_over_allocation(
     else:
         eff_threshold = _DEFAULT_THRESHOLD
 
-    # ACL: restrict to allowed PEPs for non-admin users
+    # ACL: the daily limit is a property of the PERSON, so the day total counts the
+    # hours on ALL PEPs.  A restricted user only sees the days on which the
+    # collaborator booked hours on at least one PEP the user may see, and the
+    # pep_list never discloses PEP codes outside the whitelist.
     allowed = _allowed_peps(db, current_user)
+    allowed_set = set(allowed) if allowed is not None else None
 
     # Step 1: query all (collaborator, date, pep_wbs, sum_hours) rows
     q = (
@@ -79,8 +85,6 @@ def get_over_allocation(
         q = q.filter(TimesheetRecord.record_date >= date_from)
     if date_to:
         q = q.filter(TimesheetRecord.record_date <= date_to)
-    if allowed is not None:
-        q = q.filter(TimesheetRecord.pep_wbs.in_(allowed))
 
     q = q.group_by(
         Collaborator.name,
@@ -91,12 +95,14 @@ def get_over_allocation(
     rows = q.all()
 
     # Step 2: aggregate in Python by (collaborator, date)
-    day_totals: dict = defaultdict(lambda: {"total": 0.0, "peps": set()})
+    day_totals: dict = defaultdict(lambda: {"total": 0.0, "peps": set(), "visible": False})
     for r in rows:
         key = (r.collaborator, r.record_date)
         day_totals[key]["total"] += r.day_pep_hours or 0.0
-        if r.pep_wbs:
-            day_totals[key]["peps"].add(r.pep_wbs)
+        if allowed_set is None or (r.pep_wbs and r.pep_wbs in allowed_set):
+            day_totals[key]["visible"] = True
+            if r.pep_wbs:
+                day_totals[key]["peps"].add(r.pep_wbs)
 
     # Step 3: filter by threshold and build response, sorted by date desc then total_hours desc
     violations = []
@@ -104,7 +110,7 @@ def get_over_allocation(
         day_totals.items(),
         key=lambda x: (-x[1]["total"], x[0][1] if x[0][1] else DateType.min, x[0][0]),
     ):
-        if info["total"] > eff_threshold:
+        if info["total"] > eff_threshold and info["visible"]:
             violations.append(
                 OverAllocationItem(
                     collaborator=collab,

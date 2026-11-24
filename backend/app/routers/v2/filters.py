@@ -12,30 +12,33 @@ from fastapi import APIRouter, Depends
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, TimesheetRecord
+from backend.app.routers.v2.portfolio import _allowed_peps
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
 
 @router.get("/filters", summary="Filtros disponíveis: colaboradores, PEPs e ciclos", response_model=dict)
-def get_filters(db: DbSession, _=Depends(get_current_user)):
-    collaborators = (
+def get_filters(db: DbSession, current_user=Depends(get_current_user)):
+    allowed = _allowed_peps(db, current_user)
+
+    collab_q = (
         db.query(Collaborator.id, Collaborator.name)
         .join(TimesheetRecord, TimesheetRecord.collaborator_id == Collaborator.id)
-        .distinct()
-        .order_by(Collaborator.name)
-        .all()
     )
+    if allowed is not None:
+        collab_q = collab_q.filter(TimesheetRecord.pep_wbs.in_(allowed))
+    collaborators = collab_q.distinct().order_by(Collaborator.name).all()
 
-    pep_rows = (
+    pep_q = (
         db.query(
             TimesheetRecord.pep_wbs,
             TimesheetRecord.pep_description,
         )
         .filter(TimesheetRecord.pep_wbs.isnot(None))
-        .distinct()
-        .order_by(TimesheetRecord.pep_wbs)
-        .all()
     )
+    if allowed is not None:
+        pep_q = pep_q.filter(TimesheetRecord.pep_wbs.in_(allowed))
+    pep_rows = pep_q.distinct().order_by(TimesheetRecord.pep_wbs).all()
     pep_grouped: dict[str, dict] = defaultdict(
         lambda: {"code": "", "descriptions": []}
     )

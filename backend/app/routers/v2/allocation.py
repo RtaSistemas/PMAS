@@ -15,7 +15,7 @@ from sqlalchemy import func
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, TimesheetRecord
-from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -30,6 +30,7 @@ def get_allocation(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
+    _check_date_range(date_from, date_to)
     allowed = _allowed_peps(db, current_user)
 
     q = (

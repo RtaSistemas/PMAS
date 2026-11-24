@@ -16,7 +16,7 @@ from sqlalchemy import func
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user
 from backend.app.models import Collaborator, Cycle, Project, TimesheetRecord
-from backend.app.routers.v2.portfolio import _allowed_peps
+from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 from backend.app.services.evm import classify_concentration_risk
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -33,13 +33,12 @@ def get_concentration(
     date_from: Optional[DateType] = None,
     date_to: Optional[DateType] = None,
 ):
-    # ACL filtering via _allowed_peps
-    allowed = _allowed_peps(db, current_user)
-    if allowed is not None:
-        if pep_wbs:
-            pep_wbs = [p for p in pep_wbs if p in allowed]
-        else:
-            pep_wbs = allowed
+    _check_date_range(date_from, date_to)
+    # ACL filtering: whitelist AND requested PEPs; an empty intersection is an empty result
+    pep_scope = _scope_peps(_allowed_peps(db, current_user), pep_wbs)
+    if pep_scope is not None and not pep_scope:
+        return []
+    pep_wbs = pep_scope or []
 
     q = (
         db.query(

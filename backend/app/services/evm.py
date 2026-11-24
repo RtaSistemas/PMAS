@@ -110,6 +110,27 @@ def compute_eac(
     return round(budget_cost / cpi, 2)
 
 
+def compute_eac_from_ev(
+    budget_cost: Optional[float],
+    ev_cost: Optional[float],
+    actual_cost: float,
+    *,
+    default_to_bac: bool = False,
+) -> Optional[float]:
+    """Estimate at Completion = BAC x AC / EV  (same as BAC / CPI, unrounded).
+
+    compute_eac() receives a CPI already rounded to 4 decimals, so its result
+    can drift by cents (EAC below AC when CPI < 1).  Use this function when
+    EV and AC are at hand.  With no EV or no AC it returns BAC when
+    default_to_bac is True, else None.
+    """
+    if not budget_cost:
+        return None
+    if not ev_cost or not actual_cost:
+        return round(budget_cost, 2) if default_to_bac else None
+    return round(budget_cost * actual_cost / ev_cost, 2)
+
+
 def compute_eac_schedule(
     budget_cost: Optional[float],
     actual_cost: float,
@@ -153,13 +174,36 @@ def compute_tcpi(
     """To-Complete Performance Index = (BAC − EV) / (BAC − AC).
 
     Measures the efficiency needed to finish within the original budget.
+    Returns None when the index has no meaning: the budget is already spent
+    (BAC - AC <= 0) or all the scope is already earned (EV >= BAC).  Use
+    tcpi_status() to tell these states apart.
     """
     if not budget_cost or ev_cost is None:
         return None
     denominator = budget_cost - actual_cost
-    if denominator == 0:
+    if denominator <= 0 or ev_cost >= budget_cost:
         return None
     return round((budget_cost - ev_cost) / denominator, 4)
+
+
+def tcpi_status(
+    budget_cost: Optional[float],
+    actual_cost: float,
+    ev_cost: Optional[float],
+) -> Optional[str]:
+    """State of the TCPI: 'ok' | 'complete' | 'budget_consumed' | None.
+
+    'complete'        — EV >= BAC: all the scope is earned, nothing is left to do.
+    'budget_consumed' — AC >= BAC: the budget is spent and scope remains.
+    None              — no budget or no EV, so TCPI is not defined.
+    """
+    if not budget_cost or ev_cost is None:
+        return None
+    if ev_cost >= budget_cost:
+        return "complete"
+    if actual_cost >= budget_cost:
+        return "budget_consumed"
+    return "ok"
 
 
 def compute_vac(
@@ -374,12 +418,17 @@ def spi_label(spi: Optional[float]) -> Optional[str]:
     return f"Ritmo {pct}% abaixo do planejado"
 
 
-def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
+def tcpi_color(tcpi: Optional[float], status: Optional[str] = None) -> Optional[str]:
     """Return 'success' / 'warning' / 'danger' for TCPI, or None.
 
     TCPI ≤ 1.0 → achievable (success); ≤ 1.1 → tight (warning); > 1.1 → unreachable (danger).
+    With tcpi None, status 'budget_consumed' gives 'danger' and 'complete' gives 'success'.
     """
     if tcpi is None:
+        if status == "budget_consumed":
+            return "danger"
+        if status == "complete":
+            return "success"
         return None
     if tcpi <= 1.0:
         return "success"
@@ -388,9 +437,16 @@ def tcpi_color(tcpi: Optional[float]) -> Optional[str]:
     return "danger"
 
 
-def tcpi_label(tcpi: Optional[float]) -> Optional[str]:
-    """Human-readable TCPI label in pt-BR."""
+def tcpi_label(tcpi: Optional[float], status: Optional[str] = None) -> Optional[str]:
+    """Human-readable TCPI label in pt-BR.
+
+    When tcpi is None, the optional status (see tcpi_status) gives the reason.
+    """
     if tcpi is None:
+        if status == "budget_consumed":
+            return "Orçamento já consumido"
+        if status == "complete":
+            return "Escopo concluído"
         return None
     pct = round((tcpi - 1.0) * 100)
     if tcpi <= 1.0:
@@ -521,6 +577,11 @@ def compute_earned_schedule(
     if not pv_cost_curve or cumulative_ev_cost is None or cumulative_ev_cost <= 0:
         return None
     if cumulative_ev_cost >= pv_cost_curve[-1]:
+        # The plan is fully earned: ES is the first cycle that reaches the final PV
+        # (a flat tail after the plan ended must not count as extra planned time).
+        for i, pv in enumerate(pv_cost_curve):
+            if pv >= pv_cost_curve[-1]:
+                return float(i + 1)
         return float(len(pv_cost_curve))
     for i in range(len(pv_cost_curve)):
         pv_at_t = pv_cost_curve[i]
