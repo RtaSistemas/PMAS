@@ -152,9 +152,9 @@ class MultiSelect {
   _renderPanel() {
     this.panel.innerHTML = '';
     if (this.items.length === 0) {
-      const e = document.createElement('div'); e.className = 'ms-empty'; e.textContent = 'Sem opções'; this.panel.appendChild(e); return;
+      const e = document.createElement('div'); e.className = 'ms-empty'; e.textContent = _t('ms.no_options'); this.panel.appendChild(e); return;
     }
-    const allLbl = this._makeRow('__all__', 'Selecionar todos', true);
+    const allLbl = this._makeRow('__all__', _t('ms.select_all'), true);
     const allChk = allLbl.querySelector('input');
     allChk.checked = this.selected.size === this.items.length && this.items.length > 0;
     allChk.indeterminate = this.selected.size > 0 && this.selected.size < this.items.length;

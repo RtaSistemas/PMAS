@@ -36,7 +36,7 @@ const _projectsPag = _makePaginator(
       <td>${escHtml(p.manager || '—')}</td>
       <td style="text-align:right">${_buildBudgetCell(p)} ${blBadge}</td>
       <td>${_buildDatesCell(p)}</td>
-      <td><span class="badge-status ${p.status}">${p.status}</span></td>
+      <td><span class="badge-status ${escHtml(p.status)}">${escHtml(_statusLabel(p.status))}</span></td>
       <td><div class="actions">
         ${_isAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="openProjectModal(${p.id})">${_t('btn.edit')}</button>` : ''}
         <button class="btn btn-primary btn-sm" onclick="selectProjectPlan(${p.id}, ${escHtml(JSON.stringify(p.pep_wbs))}, ${escHtml(JSON.stringify(p.name || p.pep_wbs))})">${_t('plan.btn.open')}</button>
@@ -160,8 +160,8 @@ function _buildBudgetCell(p) {
   if (!entry) return budgetStr;
   const { hours: consumed, health } = entry;
   const wPct = Math.round(_budgetWarning * 100);
-  if (health === 'overrun' || health === 'critical') return `${budgetStr}<span class="badge-budget critical" title="${consumed.toFixed(1)}h consumidas">${_t('budget.exceeded')}</span>`;
-  if (health === 'warning') return `${budgetStr}<span class="badge-budget warning" title="${consumed.toFixed(1)}h consumidas">${_t('budget.warning')} ≥${wPct}%</span>`;
+  if (health === 'overrun' || health === 'critical') return `${budgetStr}<span class="badge-budget critical" title="${_tf('budget.consumed_h', { h: consumed.toFixed(1) })}">${_t('budget.exceeded')}</span>`;
+  if (health === 'warning') return `${budgetStr}<span class="badge-budget warning" title="${_tf('budget.consumed_h', { h: consumed.toFixed(1) })}">${_t('budget.warning')} ≥${wPct}%</span>`;
   return budgetStr;
 }
 
@@ -171,6 +171,12 @@ function _buildDatesCell(p) {
   if (p.planned_end_date) parts.push(`→ ${fmtDateBR(p.planned_end_date)}`);
   if (p.completion_date)  parts.push(`✓ ${fmtDateBR(p.completion_date)}`);
   return parts.length ? `<span style="font-size:.8rem;color:${_cssVar('--text-3')}">${parts.join(' ')}</span>` : '—';
+}
+
+function _statusLabel(status) {
+  const key = `opt.${status}`;
+  const text = _t(key);
+  return text === key ? String(status) : text;
 }
 
 function _renderProjectsTable(projects) { _projectsPag.render(projects); }
@@ -376,7 +382,7 @@ async function _openBaselineModal(projectId) {
   const proj = _allProjects.find(p => p.id === projectId);
   const title = proj ? `${_t('baseline.title')} — ${proj.pep_wbs}${proj.name ? ' · ' + proj.name : ''}` : _t('baseline.title');
   document.getElementById('baselineModalTitle').textContent = title;
-  document.getElementById('baselineModalBody').innerHTML = `<p style="color:${_cssVar('--text-3')}">Carregando…</p>`;
+  document.getElementById('baselineModalBody').innerHTML = `<p style="color:${_cssVar('--text-3')}">${_t('loading')}</p>`;
   openModal('baselineModal');
   await _refreshBaselineModal(projectId);
 }
@@ -407,12 +413,12 @@ async function _refreshBaselineModal(projectId) {
       <input type="text" id="baselineLabelInput" class="form-control" style="flex:1;min-width:180px"
              placeholder="${_t('baseline.label_ph')}" />
       <button class="btn btn-primary btn-sm" onclick="_createBaseline(${projectId})"
-              ${hasbudget ? '' : 'disabled title="Defina budget_cost no projeto primeiro"'}>
+              ${hasbudget ? '' : `disabled title="${escHtml(_t('baseline.need_budget'))}"`}>
         📍 ${_t('baseline.create')}
       </button>
     </div>`;
     if (!hasbudget) {
-      html += `<p class="hint" style="color:var(--amber);margin-top:-.5rem">Defina o orçamento (budget_cost) do projeto para habilitar baseline.</p>`;
+      html += `<p class="hint" style="color:var(--amber);margin-top:-.5rem">${_t('baseline.need_budget')}</p>`;
     }
 
     // Diff between two most recent baselines
@@ -456,7 +462,7 @@ async function _refreshBaselineModal(projectId) {
       html += `<table class="data-table" style="font-size:.82rem"><thead><tr>
         <th>${_t('baseline.locked_at')}</th><th>${_t('baseline.locked_by')}</th>
         <th>${_t('baseline.budget_h')}</th><th>${_t('baseline.budget_cost')}</th>
-        <th>Rótulo</th><th></th>
+        <th>${_t('baseline.th.label')}</th><th></th>
       </tr></thead><tbody>`;
       baselines.forEach(b => {
         html += `<tr style="${b.is_active ? 'background:rgba(79,142,247,.08)' : ''}">
@@ -466,7 +472,7 @@ async function _refreshBaselineModal(projectId) {
           <td>${b.budget_cost != null ? _fmtCost(b.budget_cost) : '—'}</td>
           <td>${escHtml(b.label || '—')}</td>
           <td><div class="actions" style="gap:.25rem">
-            ${!b.is_active ? `<button class="btn btn-secondary btn-sm" onclick="_activateBaseline(${projectId},${b.id})">${_t('baseline.activate')}</button>` : '<span class="badge-baseline active" style="font-size:.75rem">ativo</span>'}
+            ${!b.is_active ? `<button class="btn btn-secondary btn-sm" onclick="_activateBaseline(${projectId},${b.id})">${_t('baseline.activate')}</button>` : '<span class="badge-baseline active" style="font-size:.75rem">' + _t('opt.ativo') + '</span>'}
             ${_isAdmin() ? `<button class="btn btn-danger btn-sm" aria-label="${_t('btn.delete')}" title="${_t('btn.delete')}" onclick="_deleteBaseline(${projectId},${b.id})">✕</button>` : ''}
           </div></td>
         </tr>`;
@@ -476,7 +482,7 @@ async function _refreshBaselineModal(projectId) {
 
     document.getElementById('baselineModalBody').innerHTML = html;
   } catch(e) {
-    document.getElementById('baselineModalBody').innerHTML = `<p style="color:var(--red)">Erro: ${e.message}</p>`;
+    document.getElementById('baselineModalBody').innerHTML = `<p style="color:var(--red)">${_t('msg.err_generic')}: ${escHtml(e.message)}</p>`;
   }
 }
 

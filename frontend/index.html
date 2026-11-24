@@ -86,7 +86,7 @@
       <input type="number" id="currencyFactor" value="1" min="0.0001" step="any"
         class="currency-input" data-i18n-title="currency.factor_title" title="Fator de conversão" />
     </div>
-    <button id="notifBtn" class="btn btn-ghost icon-btn" aria-label="Notificações" title="Notificações">
+    <button id="notifBtn" class="btn btn-ghost icon-btn" aria-label="Notificações" title="Notificações" data-i18n-aria="notif.title" data-i18n-title="notif.title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
       <span id="notifBadge" class="notif-badge">0</span>
     </button>
@@ -261,7 +261,7 @@
         <div class="detail-panel-header">
           <span id="collabDetailName" class="font-600"></span>
           <div class="flex-center gap-sm">
-            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
+            <button id="collabExportCsvBtn" class="btn btn-secondary btn-sm" data-i18n="btn.export_csv" data-i18n-aria="collab.export_aria" aria-label="Exportar timesheets do colaborador como CSV">↓ CSV</button>
             <button id="collabDetailClose" class="close-icon-btn" data-i18n-aria="btn.close" aria-label="Fechar">✕</button>
           </div>
         </div>
@@ -334,7 +334,7 @@
           <div class="flex-center gap-sm">
             <span class="panel-note" data-i18n="portfolio.note">Blocos cinzas = PEP sem projeto cadastrado</span>
             <button type="button" id="evmToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.view_hours">Vista: Horas</button>
-            <button type="button" id="timelineToggleBtn" class="btn btn-secondary btn-sm">Por Ciclo</button>
+            <button type="button" id="timelineToggleBtn" class="btn btn-secondary btn-sm" data-i18n="btn.timeline_on">Por Ciclo</button>
           </div>
         </div>
         <div id="portfolioEmpty" class="chart-empty" hidden data-i18n="portfolio.empty">
@@ -355,7 +355,7 @@
         <div class="panel-header">
           <span class="panel-title" data-i18n="scatter.title">Quadrante EVM — CPI × SPI</span>
           <button type="button" id="toggleTrajectoryBtn" class="btn btn-ghost btn-sm" aria-pressed="false"
-                  title="Mostrar/ocultar trajetória histórica por PEP">
+                  title="Mostrar/ocultar trajetória histórica por PEP" data-i18n-title="scatter.trajectory_title">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             <span data-i18n="scatter.trajectory">Trajetória</span>
           </button>
@@ -483,11 +483,11 @@
       <!-- Alertas do Projeto -->
       <div class="card" id="forecastAlertsCard" data-panel-id="forecast-alerts" hidden>
         <div class="section-header">
-          <h2 class="card-title">Alertas do Projeto</h2>
-          <select id="forecastAlertFilter" class="form-select input-sel-sm">
-            <option value="">Todos</option>
-            <option value="false">Ativos</option>
-            <option value="true">Resolvidos</option>
+          <h2 class="card-title" data-i18n="alerts.project_title">Alertas do Projeto</h2>
+          <select id="forecastAlertFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+            <option value="" data-i18n="alerts.filter.all">Todos</option>
+            <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+            <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
           </select>
         </div>
         <div id="forecastAlertsList"></div>
@@ -650,19 +650,19 @@
       <div class="form-grid flex-bottom">
         <div class="form-group">
           <label for="extraMultiplierInput" data-i18n="config.extra_lbl">Multiplicador — Hora Extra</label>
-          <input type="number" id="extraMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="Ex: 1.5" />
+          <input type="number" id="extraMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="1.5" />
         </div>
         <div class="form-group">
           <label for="standbyMultiplierInput" data-i18n="config.standby_lbl">Multiplicador — Hora Sobreaviso</label>
-          <input type="number" id="standbyMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="standbyMultiplierInput" data-admin-disable min="0.01" step="0.01" placeholder="1.0" />
         </div>
         <div class="form-group">
           <label for="budgetWarningInput" data-i18n="config.warning_threshold_lbl">Limiar de Atenção (0–1)</label>
-          <input type="number" id="budgetWarningInput" data-admin-disable min="0.01" max="0.99" step="0.01" placeholder="Ex: 0.9" />
+          <input type="number" id="budgetWarningInput" data-admin-disable min="0.01" max="0.99" step="0.01" placeholder="0.9" />
         </div>
         <div class="form-group">
           <label for="budgetCriticalInput" data-i18n="config.critical_threshold_lbl">Limiar Crítico (0–1)</label>
-          <input type="number" id="budgetCriticalInput" data-admin-disable min="0.01" max="2" step="0.01" placeholder="Ex: 1.0" />
+          <input type="number" id="budgetCriticalInput" data-admin-disable min="0.01" max="2" step="0.01" placeholder="1.0" />
         </div>
         <div class="form-group">
           <label for="timezoneSelect" data-i18n="config.timezone_lbl">Fuso horário</label>
@@ -822,7 +822,7 @@
       <button type="button" class="my-tab-btn" data-my-tab="upload" data-i18n="myarea.upload"
               role="tab" aria-selected="false" aria-controls="my-tab-upload" id="my-tab-btn-upload">Upload</button>
       <button type="button" class="my-tab-btn" data-my-tab="alerts"
-              role="tab" aria-selected="false" aria-controls="my-tab-alerts" id="my-tab-btn-alerts">Alertas</button>
+              role="tab" aria-selected="false" aria-controls="my-tab-alerts" id="my-tab-btn-alerts" data-i18n="myarea.alerts">Alertas</button>
     </nav>
 
     <!-- Sub-tab: Perfil -->
@@ -1024,25 +1024,25 @@
     <div id="my-tab-alerts" class="my-tab-section" hidden role="tabpanel" aria-labelledby="my-tab-btn-alerts" tabindex="0">
       <div class="card">
         <div class="section-header">
-          <h2 class="card-title">Alertas de Projeto</h2>
+          <h2 class="card-title" data-i18n="alerts.project_title">Alertas de Projeto</h2>
           <div class="flex-center gap-sm">
-            <select id="myAlertFilter" class="form-select input-sel-sm">
-              <option value="">Todos</option>
-              <option value="false">Ativos</option>
-              <option value="true">Resolvidos</option>
+            <select id="myAlertFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+              <option value="" data-i18n="alerts.filter.all">Todos</option>
+              <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+              <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="myAlertRefreshBtn">↺ Atualizar</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="myAlertRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
           </div>
         </div>
         <div class="table-responsive">
           <table class="data-table" id="myAlertsTable">
             <thead><tr>
-              <th>Nível</th>
-              <th>PEP</th>
-              <th>Tipo</th>
-              <th>Mensagem</th>
-              <th>Criado em</th>
-              <th>Status</th>
+              <th data-i18n="alerts.th.level">Nível</th>
+              <th data-i18n="alerts.th.pep">PEP</th>
+              <th data-i18n="alerts.th.type">Tipo</th>
+              <th data-i18n="alerts.th.message">Mensagem</th>
+              <th data-i18n="alerts.th.created">Criado em</th>
+              <th data-i18n="alerts.th.status">Status</th>
             </tr></thead>
             <tbody id="myAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
           </table>
@@ -1195,34 +1195,34 @@
     <!-- Central de Alertas -->
     <div class="card">
       <div class="section-header">
-        <h2 class="card-title">Central de Alertas</h2>
+        <h2 class="card-title" data-i18n="alerts.central_title">Central de Alertas</h2>
         <div class="flex-center gap-sm">
-          <select id="adminAlertPepFilter" class="form-select input-sel-sm">
-            <option value="">Todos os PEPs</option>
+          <select id="adminAlertPepFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.pep" aria-label="PEP">
+            <option value="" data-i18n="alerts.all_peps">Todos os PEPs</option>
           </select>
-          <select id="adminAlertTypeFilter" class="form-select input-sel-sm">
-            <option value="">Todos os tipos</option>
-            <option value="budget_warning">Orçamento — Atenção</option>
-            <option value="budget_overrun">Orçamento — Estourado</option>
-            <option value="schedule_risk">Risco de Prazo (SPI)</option>
+          <select id="adminAlertTypeFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.type" aria-label="Tipo">
+            <option value="" data-i18n="alerts.all_types">Todos os tipos</option>
+            <option value="budget_warning" data-i18n="alerts.type.budget_warning">Orçamento — Atenção</option>
+            <option value="budget_overrun" data-i18n="alerts.type.budget_overrun">Orçamento — Estourado</option>
+            <option value="schedule_risk" data-i18n="alerts.type.schedule_risk">Risco de Prazo</option>
           </select>
-          <select id="adminAlertResolvedFilter" class="form-select input-sel-sm">
-            <option value="">Todos</option>
-            <option value="false">Ativos</option>
-            <option value="true">Resolvidos</option>
+          <select id="adminAlertResolvedFilter" class="form-select input-sel-sm" data-i18n-aria="alerts.th.status" aria-label="Status">
+            <option value="" data-i18n="alerts.filter.all">Todos</option>
+            <option value="false" data-i18n="alerts.filter.active">Ativos</option>
+            <option value="true" data-i18n="alerts.filter.resolved">Resolvidos</option>
           </select>
-          <button type="button" class="btn btn-secondary btn-sm" id="adminAlertRefreshBtn">↺ Atualizar</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="adminAlertRefreshBtn" data-i18n="btn.refresh">↺ Atualizar</button>
         </div>
       </div>
       <div class="table-responsive">
         <table class="data-table" id="adminAlertsTable">
           <thead><tr>
-            <th>Nível</th>
-            <th>PEP</th>
-            <th>Tipo</th>
-            <th>Mensagem</th>
-            <th>Criado em</th>
-            <th>Status</th>
+            <th data-i18n="alerts.th.level">Nível</th>
+            <th data-i18n="alerts.th.pep">PEP</th>
+            <th data-i18n="alerts.th.type">Tipo</th>
+            <th data-i18n="alerts.th.message">Mensagem</th>
+            <th data-i18n="alerts.th.created">Criado em</th>
+            <th data-i18n="alerts.th.status">Status</th>
           </tr></thead>
           <tbody id="adminAlertsBody"><tr><td colspan="6" class="td-empty" data-i18n="loading">Carregando…</td></tr></tbody>
         </table>
@@ -1379,11 +1379,11 @@
       </div>
       <div class="form-group">
         <label for="projectBudgetInput" data-i18n="pm.bh_lbl">Budget de horas</label>
-        <input type="number" id="projectBudgetInput" placeholder="Ex: 160" min="0" step="0.5" />
+        <input type="number" id="projectBudgetInput" placeholder="160" min="0" step="0.5" />
       </div>
       <div class="form-group">
         <label for="projectBudgetCostInput" data-i18n="pm.bc_lbl">Budget (R$)</label>
-        <input type="number" id="projectBudgetCostInput" placeholder="Ex: 25000.00" min="0" step="0.01" />
+        <input type="number" id="projectBudgetCostInput" placeholder="25000.00" min="0" step="0.01" />
       </div>
       <div class="form-group" id="budgetReasonGroup" hidden>
         <label for="projectBudgetReasonInput" data-i18n="pm.budget_reason_lbl">Motivo da revisão de budget</label>
@@ -1656,10 +1656,10 @@
         <div class="form-group">
           <label data-i18n="vr.th.action">Ação</label>
           <select class="form-select" id="ruleActionInput">
-            <option value="info">info</option>
-            <option value="warning">warning</option>
-            <option value="quarentena">quarentena</option>
-            <option value="descarte">descarte</option>
+            <option value="info" data-i18n="vr.action.info">info</option>
+            <option value="warning" data-i18n="vr.action.warning">warning</option>
+            <option value="quarentena" data-i18n="vr.action.quarentena">quarentena</option>
+            <option value="descarte" data-i18n="vr.action.descarte">descarte</option>
           </select>
           <p id="ruleAggregateHint" hidden data-i18n="vr.hint.aggregate">Regras de agregado permitem apenas info ou warning.</p>
         </div>
@@ -1831,7 +1831,7 @@
       <div class="table-responsive">
         <table class="data-table">
           <thead><tr>
-            <th class="th-checkbox"><input type="checkbox" id="addPlanCheckAll" title="Selecionar todos" /></th>
+            <th class="th-checkbox"><input type="checkbox" id="addPlanCheckAll" title="Selecionar todos" data-i18n-title="ms.select_all" /></th>
             <th data-i18n="plan.th.cycle">Ciclo</th>
             <th class="text-right" data-i18n="plan.th.hours">Horas</th>
             <th class="text-right" data-i18n="plan.th.cost">Custo (R$)</th>
@@ -1866,7 +1866,7 @@
         </label>
         <label class="col-flex-sm">
           <span data-i18n="plan.th.cost">Custo Planejado (R$)</span>
-          <input type="number" id="editPlanCost" min="0" step="0.01" class="form-input" placeholder="opcional" />
+          <input type="number" id="editPlanCost" min="0" step="0.01" class="form-input" placeholder="opcional" data-i18n-ph="lbl.optional" />
         </label>
       </div>
       <div id="editPlanError" class="error-msg"></div>
@@ -1915,7 +1915,7 @@
   <div class="modal-box theme-modal-box" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
     <div class="modal-header">
       <h3 id="themeModalTitle" data-i18n="appearance.modal_title">Personalizar Aparência</h3>
-      <button type="button" class="modal-close" aria-label="Fechar" id="closeThemeModalBtn" data-modal-close="themeModal">×</button>
+      <button type="button" class="modal-close" aria-label="Fechar" data-i18n-aria="btn.close" id="closeThemeModalBtn" data-modal-close="themeModal">×</button>
     </div>
 
     <div class="modal-body">
@@ -1971,7 +1971,7 @@
       <div class="theme-field">
         <label data-i18n="appearance.font_family">Fonte</label>
         <select id="themeFont">
-          <option value="">Padrão (sistema)</option>
+          <option value="" data-i18n="appearance.font_default">Padrão (sistema)</option>
           <option value="'Roboto', sans-serif">Roboto</option>
           <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
           <option value="'Source Sans 3', sans-serif">Source Sans 3</option>

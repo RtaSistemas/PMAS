@@ -241,7 +241,7 @@ function _renderRulesList() {
     return;
   }
   ul.innerHTML = _rules.map((r, ruleIdx) => {
-    const actionBadge = `<span class="rule-badge ${r.action}">${r.action}</span>`;
+    const actionBadge = `<span class="rule-badge ${escHtml(r.action)}">${escHtml(_t('vr.action.' + r.action) === 'vr.action.' + r.action ? r.action : _t('vr.action.' + r.action))}</span>`;
     const systemBadge = r.is_system ? `<span class="rule-badge system">🔒 ${_t('vr.badge.system')}</span>` : '';
     const activeClass = r.is_active ? '' : 'rule-inactive';
     const editBtn  = r.is_system ? '' :
@@ -249,8 +249,8 @@ function _renderRulesList() {
     const delBtn = r.is_system ? '' :
       `<button class="btn btn-danger btn-sm" aria-label="${_t('btn.delete')}" title="${_t('btn.delete')}" onclick="deleteRule(${r.id})">✕</button>`;
     const toggleTitle = _t(r.is_active ? 'vr.btn.deactivate' : 'vr.btn.activate');
-    const moveUpBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_up') || 'Mover acima'}" aria-label="${_t('vr.btn.move_up') || 'Mover acima'}" onclick="moveRule(${r.id}, -1)" ${ruleIdx === 0 ? 'disabled' : ''}>↑</button>`;
-    const moveDnBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_down') || 'Mover abaixo'}" aria-label="${_t('vr.btn.move_down') || 'Mover abaixo'}" onclick="moveRule(${r.id}, 1)" ${ruleIdx === _rules.length - 1 ? 'disabled' : ''}>↓</button>`;
+    const moveUpBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_up')}" aria-label="${_t('vr.btn.move_up')}" onclick="moveRule(${r.id}, -1)" ${ruleIdx === 0 ? 'disabled' : ''}>↑</button>`;
+    const moveDnBtn  = `<button class="btn btn-secondary btn-sm" title="${_t('vr.btn.move_down')}" aria-label="${_t('vr.btn.move_down')}" onclick="moveRule(${r.id}, 1)" ${ruleIdx === _rules.length - 1 ? 'disabled' : ''}>↓</button>`;
     return `<li class="sortable-item ${activeClass}" data-rule-id="${r.id}">
       <span class="sortable-handle">⠿</span>
       <span class="sortable-item-label">
@@ -450,25 +450,25 @@ async function _openSessionDetail(sessionId) {
     const iList  = document.getElementById('sessionDetailInfosList');
 
     const when = _fmtDate(r.uploaded_at);
-    title.textContent = `Importação — ${r.source_file}`;
+    title.textContent = _tf('session.title_file', { file: r.source_file });
     meta.innerHTML = [
-      `<span style="color:${_cssVar('--text-3')}">Data</span><span>${escHtml(when)}</span>`,
-      `<span style="color:${_cssVar('--text-3')}">Usuário</span><span>${escHtml(r.uploaded_by_username)}</span>`,
-      `<span style="color:${_cssVar('--text-3')}">Arquivo</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
-      `<span style="color:${_cssVar('--text-3')}">Status</span><span>${escHtml(r.status)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">${_t('session.date')}</span><span>${escHtml(when)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">${_t('lbl.user')}</span><span>${escHtml(r.uploaded_by_username)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">${_t('history.th.file')}</span><span style="word-break:break-all">${escHtml(r.source_file)}</span>`,
+      `<span style="color:${_cssVar('--text-3')}">${_t('history.th.status')}</span><span>${escHtml(_historyStatusLabel(r.status))}</span>`,
     ].join('');
 
     const chip = (label, val, color) =>
       `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:.3rem;padding:.15rem .6rem;font-size:.78rem">${label}: <strong>${val}</strong></span>`;
     counts.innerHTML =
-      chip('Inseridos',  r.records_inserted,        _cssVar('--green')) +
-      chip('Ignorados',  r.records_skipped,          _cssVar('--text-3')) +
-      chip('Quarentena', r.quarantine_added,         _cssVar('--red')) +
-      chip('Avisos',     r.warning_count,            _cssVar('--amber')) +
-      chip('Infos',      r.info_count,               _cssVar('--primary'));
+      chip(_t('history.th.inserted'),   r.records_inserted,        _cssVar('--green')) +
+      chip(_t('history.th.skipped'),    r.records_skipped,          _cssVar('--text-3')) +
+      chip(_t('history.th.quarantine'), r.quarantine_added,         _cssVar('--red')) +
+      chip(_t('history.th.warnings'),   r.warning_count,            _cssVar('--amber')) +
+      chip(_t('history.th.infos'),      r.info_count,               _cssVar('--primary'));
 
     const _exportDetailCsv = (items, label) => {
-      const header = 'tipo,mensagem\n';
+      const header = _t('session.csv_header') + '\n';
       const body = items.map(m => `"${label}","${String(m).replace(/"/g, '""')}"`).join('\n');
       const blob = new Blob([header + body], { type: 'text/csv' });
       const a = document.createElement('a');
@@ -481,27 +481,27 @@ async function _openSessionDetail(sessionId) {
     if (r.warnings_detail?.length) {
       wList.innerHTML = r.warnings_detail.map(w => `<li>${escHtml(w)}</li>`).join('');
       document.getElementById('sessionDetailWarningsHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">⚠ Avisos</p>
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">${_t('session.warnings')}</p>
          <button type="button" id="sdWarnCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
       setTimeout(() => document.getElementById('sdWarnCsvBtn')?.addEventListener('click', () =>
-        _exportDetailCsv(r.warnings_detail, 'Avisos')), 0);
+        _exportDetailCsv(r.warnings_detail, _t('session.csv_warning'))), 0);
       wDiv.hidden = false;
     } else {
       document.getElementById('sessionDetailWarningsHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">⚠ Avisos</p>`;
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--amber')};margin:0">${_t('session.warnings')}</p>`;
       wDiv.hidden = true;
     }
     if (r.infos_detail?.length) {
       iList.innerHTML = r.infos_detail.map(i => `<li>${escHtml(i)}</li>`).join('');
       document.getElementById('sessionDetailInfosHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">ℹ Informações</p>
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">${_t('session.infos')}</p>
          <button type="button" id="sdInfoCsvBtn" class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.1rem .45rem;margin-left:auto">⬇ CSV</button>`;
       setTimeout(() => document.getElementById('sdInfoCsvBtn')?.addEventListener('click', () =>
-        _exportDetailCsv(r.infos_detail, 'Informações')), 0);
+        _exportDetailCsv(r.infos_detail, _t('session.csv_info'))), 0);
       iDiv.hidden = false;
     } else {
       document.getElementById('sessionDetailInfosHeader').innerHTML =
-        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">ℹ Informações</p>`;
+        `<p style="font-size:.78rem;font-weight:600;color:${_cssVar('--primary')};margin:0">${_t('session.infos')}</p>`;
       iDiv.hidden = true;
     }
 
@@ -917,25 +917,21 @@ _makeSortable('auditTable',  [{key:'timestamp',type:'date'}, {key:'username',typ
 let _adminAlertsCache = [];
 
 const _adminAlertsPag = _makePaginator(
-  { container: 'adminAlertsPagination', prev: 'adminAlertsPrevBtn', next: 'adminAlertsNextBtn', pageSize: 'adminAlertsPageSize', label: 'adminAlertsPageLabel', entity: 'Central de Alertas' },
+  { container: 'adminAlertsPagination', prev: 'adminAlertsPrevBtn', next: 'adminAlertsNextBtn', pageSize: 'adminAlertsPageSize', label: 'adminAlertsPageLabel', entity: 'alerts.central_title' },
   rows => _renderAdminAlerts(rows)
 );
-
-function _alertTypeLabel(t) {
-  return { budget_warning: 'Orçamento Atenção', budget_overrun: 'Orçamento Estourado', schedule_risk: 'Risco de Prazo' }[t] || t;
-}
 
 function _renderAdminAlerts(rows) {
   _renderTable('adminAlertsBody', rows, {
     colspan: 6,
     emptyKey: 'no_alerts',
     rowFn: a => `<tr class="${a.is_resolved ? 'alert-resolved' : ''}">
-      <td><span class="alert-level-tag alert-level-${a.level}">${a.level === 'error' ? 'Crítico' : a.level === 'warning' ? 'Atenção' : 'Info'}</span></td>
+      <td>${_alertLevelTag(a)}</td>
       <td>${escHtml(a.pep_wbs)}</td>
       <td><span class="alert-type-tag">${escHtml(_alertTypeLabel(a.alert_type))}</span></td>
       <td style="max-width:360px;white-space:normal;font-size:.82rem" title="${escHtml(a.message)}">${escHtml(a.message)}</td>
       <td style="white-space:nowrap;font-size:.8rem">${_fmtDate(a.created_at)}</td>
-      <td>${a.is_resolved ? '<span class="alert-status-resolved">Resolvido</span>' : '<span class="alert-status-active">Ativo</span>'}</td>
+      <td>${_alertStatusTag(a)}</td>
     </tr>`,
   });
 }
@@ -961,7 +957,7 @@ function _populateAdminAlertPepFilter(alerts) {
   if (!sel) return;
   const current = sel.value;
   const peps = [...new Set(alerts.map(a => a.pep_wbs))].sort();
-  sel.innerHTML = '<option value="">Todos os PEPs</option>' + peps.map(p => `<option value="${escHtml(p)}"${p === current ? ' selected' : ''}>${escHtml(p)}</option>`).join('');
+  sel.innerHTML = `<option value="">${_t('alerts.all_peps')}</option>` + peps.map(p => `<option value="${escHtml(p)}"${p === current ? ' selected' : ''}>${escHtml(p)}</option>`).join('');
 }
 
 document.getElementById('adminAlertRefreshBtn')?.addEventListener('click', loadAdminAlerts);

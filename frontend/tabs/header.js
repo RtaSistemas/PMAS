@@ -36,7 +36,7 @@ async function loadSemaphore() {
       counts[s]++;
       const pH = p.budget_hours ? (p.total_hours / p.budget_hours * 100).toFixed(0) + '% h' : '— h';
       const pC = p.budget_cost  ? (p.total_cost  / p.budget_cost  * 100).toFixed(0) + '% ' + _currencySymbol: '— ' + _currencySymbol;
-      const tip = `${p.pep_wbs}: ${pH} · ${pC} — clique para detalhar`;
+      const tip = `${p.pep_wbs}: ${pH} · ${pC} — ${_t('sem.click_detail')}`;
       return `<span class="sem-project ${s}" data-pep="${escHtml(p.pep_wbs)}" title="${escHtml(tip)}">${escHtml(p.pep_wbs)}</span>`;
     });
 

@@ -267,6 +267,8 @@ document.getElementById('timelineToggleBtn').addEventListener('click', () => {
   _portfolioTimelineMode = !_portfolioTimelineMode;
   document.getElementById('timelineToggleBtn').textContent =
     _portfolioTimelineMode ? _t('btn.timeline_off') : _t('btn.timeline_on');
+  document.getElementById('timelineToggleBtn').dataset.i18n =
+    _portfolioTimelineMode ? 'btn.timeline_off' : 'btn.timeline_on';
   document.getElementById('timelineToggleBtn').classList.toggle('btn-primary', _portfolioTimelineMode);
   document.getElementById('timelineToggleBtn').classList.toggle('btn-secondary', !_portfolioTimelineMode);
   _renderPortfolioTab();
@@ -379,15 +381,24 @@ function _friendlyError(e) {
   return e.message || _t('msg.err_generic');
 }
 
+// A FastAPI 422 sends a list of {loc, msg}. Turn it into one readable text.
+function _detailText(detail) {
+  if (!Array.isArray(detail)) return detail;
+  return detail.map(d => {
+    const field = Array.isArray(d.loc) ? d.loc.filter(p => p !== 'body').join('.') : '';
+    return field ? `${field}: ${d.msg}` : d.msg;
+  }).join('; ');
+}
+
 function _apiError(status, detail, statusText) {
-  const err = new Error(detail ?? statusText);
+  const err = new Error(_detailText(detail) ?? statusText);
   err.status = status;
   return err;
 }
 
 async function apiFetch(url) {
   const res = await fetch(url, { headers: _authHeaders() });
-  if (res.status === 401) { _handleUnauthorized(); throw _apiError(401, 'Sessão expirada. Faça login novamente.'); }
+  if (res.status === 401) { _handleUnauthorized(); throw _apiError(401, _t('auth.session_expired')); }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw _apiError(res.status, j.detail, res.statusText);
@@ -401,7 +412,7 @@ async function apiFetchJSON(url, method, body) {
     headers: _authHeaders({ 'Content-Type': 'application/json' }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) { _handleUnauthorized(); throw _apiError(401, 'Sessão expirada. Faça login novamente.'); }
+  if (res.status === 401) { _handleUnauthorized(); throw _apiError(401, _t('auth.session_expired')); }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw _apiError(res.status, j.detail, res.statusText);

@@ -131,7 +131,7 @@ async function _loadTable(endpoint, onSuccess) {
   try {
     const data = await apiFetch(endpoint);
     onSuccess(data);
-  } catch (e) { notify(`Erro: ${e.message}`, 'error'); }
+  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
 }
 
 // ---------------------------------------------------------------------------
@@ -218,4 +218,35 @@ function _applyRoleGating() {
   const admin = _isAdmin();
   document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = !admin; });
   document.querySelectorAll('[data-admin-disable]').forEach(el => { el.disabled = !admin; });
+}
+
+// ---------------------------------------------------------------------------
+// Project alerts — shared labels (Forecast card, My Area, Admin alert center)
+// ---------------------------------------------------------------------------
+function _alertLevelTag(a) {
+  const level = ['error', 'warning'].includes(a.level) ? a.level : 'info';
+  return `<span class="alert-level-tag alert-level-${escHtml(a.level)}">${escHtml(_t(`alerts.level.${level}`))}</span>`;
+}
+
+function _alertTypeLabel(type) {
+  const key = `alerts.type.${type}`;
+  const text = _t(key);
+  return text === key ? String(type) : text;
+}
+
+function _alertStatusTag(a) {
+  return a.is_resolved
+    ? `<span class="alert-status-resolved">${_t('alerts.status.resolved')}</span>`
+    : `<span class="alert-status-active">${_t('alerts.status.active')}</span>`;
+}
+
+// Upload session status → label (the API sends ok, warnings, quarantine or rejected)
+function _historyStatusLabel(status) {
+  const known = ['ok', 'warnings', 'quarantine'];
+  return _t(`history.status.${known.includes(status) ? status : 'rejected'}`);
+}
+
+// Replace {name} placeholders in a translated text
+function _tf(key, vars = {}) {
+  return Object.entries(vars).reduce((s, [k, v]) => s.split(`{${k}}`).join(String(v)), _t(key));
 }
