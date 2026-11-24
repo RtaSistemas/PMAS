@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-750 tests across 28 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+966 tests across 32 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -90,7 +90,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
   - `ProjectAlert` — permanent, lifecycle-managed alert per project: `alert_type`, `level`, `message`, `metric_value`, `consecutive_cycles`, `created_at`, `resolved_at`, `is_resolved`. Deduplication by `(project_id, alert_type)`; level changes resolve old and create new; auto-resolves when the triggering metric recovers
 - **`schemas.py`** — All Pydantic input/output models: `CycleIn/Out`, `ProjectIn/Out`, `SeniorityLevelIn/Out`, `RateCardIn/Out`, `CollaboratorSeniorityIn`, `ImportResultOut`, `UserCreateIn`, `UserOut`, `ValidationRuleIn/Out`, `QuarantineRecordOut`, `UploadSessionOut`, `AlertSummaryOut`, `UserPreferenceIn/Out`, `UIThemeIn/Out`, `ProjectCyclePlanIn/Out`, `ForecastOut`, and others.
 - **`database.py`** — SQLite engine, `get_db()` dependency, `init_db()` (runs `create_all` + `_migrate_columns`). `_migrate_columns()` applies `ALTER TABLE` for columns added after the initial schema, upgrading existing `pmas.db` files safely on startup.
-- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_schedule`/`compute_eac_avg_rate`, `compute_tcpi`, `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
+- **`services/evm.py`** — **Single source of truth for every EVM formula.** No router or frontend may re-implement these. Provides `freeze_costs`, `compute_cpi`/`compute_cpi_ev`, `compute_spi`, `compute_ev_capped`, `compute_eac`/`compute_eac_from_ev`/`compute_eac_schedule`/`compute_eac_avg_rate`, `compute_tcpi`/`tcpi_status` (the forecast response has a `tcpi_status` key that tells why TCPI is `None`), `compute_vac`, `compute_cv`, `compute_sv`, Earned Schedule (`compute_earned_schedule`, `compute_spi_t`, `compute_sv_t`, `compute_ieac_t`), `resolve_effective_budget` (active baseline > project fields), `classify_health`, `get_thresholds`, and the label/color helpers consumed render-ready by the frontend. Every function guards against division by zero (returns `None`). SPI/SV use an hours proxy (AgileEVM); EV is capped at BAC.
 - **`services/ingestion.py`** — Parses CSV/XLSX with pandas. Multi-phase pipeline with a configurable validation rule engine. Freezes cost via `freeze_costs` from `evm.py`.
 - **Other services** — `rule_engine.py` (per-row rule evaluation), `summaries.py` (maintains `PepCycleSummary`/`CollaboratorCycleSummary`), `quarantine_svc.py`, `upload_session_svc.py`, `theme_svc.py`.
 
@@ -99,7 +99,7 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 | File | Prefix | Responsibility |
 |---|---|---|
 | `auth.py` | `/api` | `POST /token` — JWT login |
-| `users.py` | `/api/users` | Admin CRUD for user accounts |
+| `users.py` | `/api/users` | `GET /me` (current user, any role); admin CRUD for user accounts; password change |
 | `api_keys.py` | `/api/api-keys` | Admin: list, create (the response shows the key once), revoke. A key is valid only on `POST /api/upload-timesheet` through the `X-API-Key` header (`deps.get_upload_user`) |
 | `auditlog.py` | `/api` | `GET /audit-log` (admin) |
 | `cycles.py` | `/api/cycles` | CRUD + CSV import/export for billing cycles |
@@ -110,9 +110,9 @@ Generates ready-to-import CSVs in `amostras/`: `ciclos.csv` (29 monthly cycles J
 | `ratecard.py` | `/api` | `/seniority-levels`, `/rate-cards`, `/team`, `/team/{id}/seniority` — all with CSV import/export |
 | `acl.py` | `/api/projects` | `/{id}/access` — per-user PEP whitelist management (admin) |
 | `upload.py` | `/api` | `POST /upload-timesheet`, `GET /upload-history[/{id}]` |
-| `quarantine.py` | `/api/quarantine` | List, review, approve, reject, delete quarantine records (admin) |
+| `quarantine.py` | `/api/quarantine` | List and get (admin: all; user: own rows); review, approve, reject, delete (admin) |
 | `validation_rules.py` | `/api/validation-rules` | CRUD + toggle + reorder for the rule engine |
-| `my.py` | `/api/my` | Per-user: preferences, upload history, quarantine view, budget alerts, `GET /alerts` (ACL-filtered project alerts) |
+| `my.py` | `/api/my` | Per-user: preferences, upload history, quarantine view (an admin sees all rows), budget alerts, `GET /alerts` (ACL-filtered project alerts) |
 | `notifications.py` | `/api/notifications` | Bell-tray CRUD: list, mark-read, mark-all-read, delete |
 | `project_alerts.py` | `/api/project-alerts` | `GET /` (admin only) — list `ProjectAlert` rows with filters: `pep_wbs`, `alert_type`, `is_resolved`, `date_from`, `date_to`, `limit`, `offset` |
 | `theme.py` | `/api/theme` | `GET/PUT` global UI theme, logo upload/delete |
@@ -164,7 +164,7 @@ All analytics consumed by the frontend live under `/api/v2`. These responses are
 |---|---|
 | `_phase_load_and_validate(file_bytes, filename)` | Load CSV/XLSX with pandas, validate required columns exist → `DataFrame` |
 | `_phase_authorize_peps(df, db, user_id, user_role)` | Filter rows to ACL-allowed PEPs for non-admin users |
-| `_phase_prescan_dates(df, db)` | Pre-scan unique parseable dates; build cycle cache; auto-create quarantine cycles for dates with no active cycle |
+| `_phase_prescan_dates(df, db)` | Pre-scan unique parseable dates; build cycle cache (a date with no active cycle maps to `None`; the row is quarantined later) |
 | `_phase_validate_rows(df, db, rules, cycle_cache, collab_cache)` | Per-row structural checks (Q1/Q2/Q8) + `ValidationRule` engine; separates valid rows from quarantine buffer |
 | `_phase_aggregate_rules(valid_rows, rules)` | Compute daily/weekly sums across valid rows; emit aggregate-rule warnings/infos |
 | `_phase_upsert_records(db, valid_rows, extra_multiplier, standby_multiplier)` | Surgical `DELETE` by `(pep_wbs, cycle_id)` + bulk `INSERT` + cost freeze via `_lookup_rate` |
@@ -184,7 +184,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 ### Key Behaviors
 
 - **PEP dual representation:** Each record stores `pep_wbs` (machine code) and `pep_description` (human label). Filters apply on either independently.
-- **Quarantine cycles:** Dates outside any registered cycle auto-create a quarantine cycle — no data is silently dropped. Quarantine cycles are excluded from the Trends chart.
+- **Dates outside every cycle:** The ingestion does not create cycles. A row whose date no active cycle covers goes to quarantine with the reason "Nenhum ciclo ativo cobre a data" — no data is silently dropped. Analytics read active cycles only (`Cycle.is_active`), so an inactive cycle is left out of Trends, Runway, Concentration and Over-allocation.
 - **EVM freeze pattern:** `cost_per_hour` is resolved at ingestion time via `_lookup_rate()`. Rate changes after ingestion do NOT retroactively alter stored costs.
 - **Velocity windows (averaging rules):** Three distinct rules govern how the system computes average hours/cost per cycle. They are intentionally different — do not standardize them without understanding the rationale:
 
@@ -197,9 +197,10 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
   | **Sparkline (frontend)** — avg3 reference line | last **3** non-zero cycles | `app.js` | Computed client-side from `fc.history`; aligns with Forecast |
 
   The UI tooltips (hover on "Média/ciclo", "Vel. histórica média", "Vel. média") document these rules in the glossary (`evm-glossary.js` keys `RunwayAvg`, `SimAvgVel`, `MCMeanVel`).
+- **Error format:** An `HTTPException` and an unhandled 500 return RFC 7807 `application/problem+json` (`type`, `title`, `status`, `detail`; a 500 also has `instance`). A 422 validation error returns `{"detail": "<text>", "errors": [...]}` with Portuguese messages. A 404 for an id beyond the SQLite integer range uses `{"detail": ...}`.
 - **ValidationRule engine:** Ordered list of rules evaluated per row. Each rule has a `field`, `operator`, `value`, `action` (`quarantine`/`warn`/`reject`), and `is_active` flag. System rules cannot be deleted, only toggled.
-- **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin) and `/api/my/upload-history` (own uploads only).
-- **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine`.
+- **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin sees all, a user sees own) and `/api/my/upload-history` (a user sees own uploads; an admin sees all).
+- **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine` (an admin sees all rows there). `GET /api/quarantine[/{id}]` also works for a user, limited to own rows; review, approve, reject and delete are admin only.
 - **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all. Enforced across every `/api/v2/*` analytics endpoint via the shared `_allowed_peps` helper (`v2/portfolio.py`), and in `/api/dashboard`.
 - **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for new columns so production databases upgrade non-destructively.
 - **ECharts management:** Charts are initialized only after their container is visible. `dispose()` is called when leaving a sub-tab. A single `ResizeObserver` on `<main>` handles all resize events.
@@ -225,7 +226,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` (velocity window, SPI/CPI, top-1 risk); NULL-cost regression |
 | `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, CPI=EV/AC, `cpi_cumulative` in history, `spi_t_color` in forecast |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_users.py` | 25 | User CRUD, password change, role enforcement |
+| `test_users.py` | 27 | User CRUD, password change, role enforcement |
 | `test_cycles.py` | 20 | CRUD de ciclos |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -241,7 +242,11 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
 | `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
 | `test_packaging.py` | 10 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
-| **Total** | **750** | |
+| `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
+| `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
+| `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
+| `test_audit_ops.py` | 6 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash |
+| **Total** | **966** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
@@ -252,14 +257,14 @@ Audited items deliberately deferred. Do not implement without an explicit decisi
 | # | Item | Where | What to do |
 |---|---|---|---|
 | P1 | `PMAS_SECRET_KEY` mandatory in production | `backend/app/deps.py:17-26` | If `PMAS_ENV=production` and the variable is not set, raise `RuntimeError` at startup instead of silently generating a random key |
-| P2 | `/ready` liveness probe | `backend/app/main.py` | `GET /health` already returns `{"status":"ok","timestamp":...,"version":...}`. Add `GET /ready` that runs `SELECT 1` and returns 503 if the database is unreachable |
+| P2 | `/ready` liveness probe ✅ exists | `backend/app/main.py` | `GET /health` returns `{"status":"ok",...}`; `GET /ready` runs `SELECT 1` and returns 503 if the database is unreachable |
 | P3 | Database backup script | `backup_pmas.sh` ✅ exists | Script implemented: `VACUUM INTO`, configurable paths via env vars, 30-day retention, restore procedure documented. Still needs a cron entry in production |
 | P4 | Dependency lock file | `requirements-lock.txt` ✅ exists | Generated with `pip freeze`; use `pip install -r requirements-lock.txt` for reproducible deployments |
 | P5 | systemd deployment unit | `packaging/` ✅ exists | `pmas.service` (runs the standalone binary as user `pmas`, `Restart=on-failure`, `EnvironmentFile=/etc/pmas/pmas.env`, `PrivateTmp`), `pmas-backup.timer` (daily backup), `install.sh` (install, update, uninstall) and `docs/OPERATIONS.md`. The release workflow builds `pmas-linux-x64-package.tar.gz` and smoke-tests the binary. A single-worker binary is the design; multi-worker `uvicorn` is not packaged |
 
 **Additional known risks** (non-blocking, but on record):
 - HTTPS not enforced — the app must run behind a reverse proxy (nginx/caddy) with TLS; no internal redirect middleware
-- Login brute force — `POST /api/token` is rate-limited at 30/minute but has no per-user lockout and no logging of authentication failures
-- Rate limiting absent on write routes (`/projects`, `/cycles`, `/users`) beyond upload and login
-- `must_change_password` enforced only in the frontend — no hard block in the backend
-- Manual migrations (`_migrate_columns()`) with no versioning or rollback strategy
+- Login brute force — `POST /api/token` is rate-limited at 30/minute and a user is locked for 15 minutes after 5 failed attempts; failed logins are not written to the audit log
+- Rate limiting (30/minute) exists on the write routes of `/projects`, `/cycles`, `/users`, `/api-keys` and `/validation-rules`; other write routes (rate cards, seniority levels, baselines, plans, config) have none
+- `must_change_password` is enforced in the backend: `get_current_user` returns 403 until the password changes
+- Migrations (`_migrate_columns()`, M001 and later) are versioned and tracked, but there is no rollback
