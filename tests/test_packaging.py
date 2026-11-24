@@ -100,6 +100,9 @@ def test_installed_units_are_valid(package, tmp_path):
     service.read(Path(env["PMAS_SYSTEMD_DIR"]) / "pmas.service")
     assert service["Service"]["Restart"] == "on-failure"
     assert service["Install"]["WantedBy"] == "multi-user.target"
+    # systemd reads the start limit keys in [Unit]; in [Service] it ignores them.
+    assert service.has_option("Unit", "StartLimitIntervalSec")
+    assert not service.has_option("Service", "StartLimitIntervalSec")
 
 
 def test_update_replaces_the_binary_and_keeps_the_settings(package, tmp_path):
@@ -181,3 +184,14 @@ def test_backup_script_fails_for_a_missing_database(tmp_path):
     r = _run(["bash", str(ROOT / "backup_pmas.sh"), str(tmp_path / "none.db"), str(tmp_path / "b")], check=False)
     assert r.returncode != 0
     assert "database not found" in r.stderr
+
+
+def test_install_rejects_a_path_with_a_space(package, tmp_path):
+    """A space in a path would split ExecStart and ReadWritePaths in the unit files."""
+    folder, _, _ = package
+    env = _paths(tmp_path)
+    env["PMAS_PREFIX"] = str(tmp_path / "opt dir")
+    r = _run([str(folder / "install.sh")], env=env, cwd=folder, check=False)
+    assert r.returncode != 0
+    assert "space" in r.stderr
+    assert not (tmp_path / "units" / "pmas.service").exists()
