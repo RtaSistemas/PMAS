@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 import math
 import re
+import unicodedata
 from datetime import date, timedelta
-from io import BytesIO
+from io import BytesIO, StringIO
 
+import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -42,6 +44,7 @@ _COL_START_TIME = "Hora Inicial [H]"
 _INVALID_COLLAB_NAMES = {"nan", "none", "unnamed", "0", "", "-", "—"}
 _MAX_ROWS_WARNING = 5_000
 _YEAR_FIRST = re.compile(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}")
+_PLAIN_DECIMAL = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)$")
 _PEP_PATTERN = re.compile(r"^[A-Z0-9]{2,}-[A-Z0-9]{3,}$", re.IGNORECASE)
 
 
@@ -81,6 +84,7 @@ def ingest_file(
 
     # Authorization filter (Phase 0 — read-only, outside transaction)
     df, ingest_warnings = _phase_authorize_peps(df, db, user_id, user_role)
+    acl_discarded = int(df.attrs.get("acl_discarded", 0))
 
     ingest_infos: list[str] = []
 
@@ -114,6 +118,7 @@ def ingest_file(
         ingest_infos.append(
             f"Novo(s) colaborador(es) criado(s): {', '.join(new_collaborators)}."
         )
+        ingest_infos.extend(_similar_collaborator_infos(db, new_collaborators))
 
     # RBAC check on valid rows' cycles
     if user_role != "admin":
@@ -156,17 +161,23 @@ def ingest_file(
 
     try:
         # Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records
+        replaced_collab_ids: set[int] = set()
         inserted, skipped_phase4, phase4_warnings, phase4_infos, pep_cycle_scope = (
-            _phase_upsert_records(db, valid_rows, extra_multiplier, standby_multiplier)
+            _phase_upsert_records(
+                db, valid_rows, extra_multiplier, standby_multiplier,
+                replaced_collab_ids=replaced_collab_ids,
+            )
         )
-        skipped += skipped_phase4
+        skipped += skipped_phase4 + acl_discarded
         ingest_warnings.extend(phase4_warnings)
         ingest_infos.extend(phase4_infos)
 
         # Refresh pre-computed summary tables for the affected (pep, cycle) pairs
         touched_peps    = list({pep for pep, _ in pep_cycle_scope})
         touched_cycles  = list({cid for _, cid in pep_cycle_scope})
-        touched_collabs = list({vr["collab"].id for vr in valid_rows})
+        # Collaborators whose rows the surgical delete removed must be refreshed
+        # too, otherwise their summary keeps stale hours.
+        touched_collabs = list({vr["collab"].id for vr in valid_rows} | replaced_collab_ids)
         db.flush()  # make inserted records visible to summary queries
         refresh_pep_cycle(db, touched_peps, touched_cycles)
         refresh_collaborator_cycle(db, touched_collabs, touched_cycles)
@@ -265,26 +276,50 @@ def _phase_authorize_peps(
     """
     warnings: list[str] = []
 
-    # Non-admin with ACL restrictions must supply a PEP column.
-    if user_role != "admin" and user_id is not None and _COL_PEP_CODE not in df.columns:
+    has_acl = False
+    if user_role != "admin" and user_id is not None:
         has_acl = (
             db.query(UserProjectAccess)
             .filter(UserProjectAccess.user_id == user_id)
             .first()
         ) is not None
-        if has_acl:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Seu perfil possui restrições de acesso por PEP, mas o arquivo "
-                    "não contém a coluna 'Código PEP'. Inclua essa coluna no export "
-                    "ou solicite ao administrador acesso irrestrito."
-                ),
-            )
+
+    # Non-admin with ACL restrictions must supply a PEP column.
+    if has_acl and _COL_PEP_CODE not in df.columns:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Seu perfil possui restrições de acesso por PEP, mas o arquivo "
+                "não contém a coluna 'Código PEP'. Inclua essa coluna no export "
+                "ou solicite ao administrador acesso irrestrito."
+            ),
+        )
 
     pep_codes_raw: set[str] = set()
     if _COL_PEP_CODE in df.columns:
         pep_codes_raw = {_str_or_none(v) for v in df[_COL_PEP_CODE]} - {None}
+
+    n_acl_discarded = 0
+
+    # A user with a PEP whitelist may not import rows without a PEP code.
+    if has_acl and _COL_PEP_CODE in df.columns:
+        blank_mask = df[_COL_PEP_CODE].apply(lambda v: _str_or_none(v) is None)
+        n_blank = int(blank_mask.sum())
+        if n_blank:
+            if n_blank == len(df):
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Acesso negado: seu perfil possui restrições de acesso por PEP "
+                        "e nenhuma linha do arquivo informa o 'Código PEP'."
+                    ),
+                )
+            df = df[~blank_mask].copy()
+            n_acl_discarded += n_blank
+            warnings.append(
+                f"{n_blank} linha(s) descartadas — sem PEP informado (seu perfil "
+                f"só pode importar PEPs autorizados)."
+            )
 
     if pep_codes_raw and user_id is not None:
         authorized = _authorized_peps(db, user_id, user_role, pep_codes_raw)
@@ -304,6 +339,7 @@ def _phase_authorize_peps(
         if unauthorized:
             mask = df[_COL_PEP_CODE].apply(lambda v: _str_or_none(v) not in unauthorized)
             n_discarded = int((~mask).sum())
+            n_acl_discarded += n_discarded
             df = df[mask].copy()
             top = sorted(unauthorized)[:5]
             suffix = f" e {len(unauthorized) - 5} outros." if len(unauthorized) > 5 else "."
@@ -312,6 +348,7 @@ def _phase_authorize_peps(
                 f"{', '.join(top)}{suffix}"
             )
 
+    df.attrs["acl_discarded"] = n_acl_discarded
     return df, warnings
 
 
@@ -362,7 +399,7 @@ def _phase_validate_rows(
     skipped = 0
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
-        name = str(row[_COL_COLLABORATOR]).strip()
+        name = _normalize_name(row[_COL_COLLABORATOR])
 
         # Phase 1a (Q8): collaborator name validation → quarantine
         if len(name) < 2 or name.lower() in _INVALID_COLLAB_NAMES:
@@ -417,9 +454,20 @@ def _phase_validate_rows(
         # Phase 1e: hours parsing
         total_h = _safe_hours(row[_COL_HOURS])
         if total_h is None:
+            if _str_or_none(row[_COL_HOURS]) is None:
+                reason = (
+                    "Horas ausentes: a célula da coluna 'Horas totais (decimal)' está vazia. "
+                    "Preencha o valor no arquivo de origem."
+                )
+            else:
+                reason = (
+                    f"Horas inválidas ou ausentes: '{row[_COL_HOURS]}'. A coluna "
+                    f"'Horas totais (decimal)' deve conter um número (ex.: 8.5). "
+                    f"Corrija no arquivo de origem."
+                )
             quarantine_buffer.append({
                 "raw_data": _row_to_dict(row),
-                "reason": f"Horas inválidas ou ausentes: '{row[_COL_HOURS]}'. A coluna 'Horas totais (decimal)' deve conter um número (ex.: 8.5). Corrija no arquivo de origem.",
+                "reason": reason,
                 "rule_id": None,
             })
             continue
@@ -518,38 +566,63 @@ def _phase_upsert_records(
     valid_rows: list[dict],
     extra_multiplier: float,
     standby_multiplier: float,
+    replaced_collab_ids: set[int] | None = None,
 ) -> tuple[int, int, list[str], list[str], set[tuple]]:
     """Phase 4: Surgical DELETE by (pep_wbs, cycle_id) + INSERT fresh records.
 
     Returns (inserted, skipped, warnings, infos, pep_cycle_scope).
+    When `replaced_collab_ids` is given, it receives the ids of every
+    collaborator that had rows removed by the delete, so the caller can
+    refresh their summaries.
     Does NOT commit — the caller owns the transaction.
     """
     warnings: list[str] = []
     infos: list[str] = []
 
     pep_cycle_scope: set[tuple[str | None, int]] = set()
+    cycle_names: dict[int, str] = {}
     for vr in valid_rows:
         pep = _str_or_none(vr["row"].get(_COL_PEP_CODE))
         pep_cycle_scope.add((pep, vr["cycle"].id))
+        cycle_names[vr["cycle"].id] = vr["cycle"].name
 
-    for scope_pep, cycle_id in pep_cycle_scope:
+    # (label, cycle_id) -> number of previous rows deleted
+    replaced: dict[tuple[str, int], int] = {}
+
+    def _delete(label: str, cycle_id: int, query) -> None:
+        collab_ids = {r[0] for r in query.with_entities(TimesheetRecord.collaborator_id).distinct()}
+        n_deleted = query.delete(synchronize_session=False)
+        if n_deleted:
+            replaced[(label, cycle_id)] = replaced.get((label, cycle_id), 0) + n_deleted
+            if replaced_collab_ids is not None:
+                replaced_collab_ids.update(collab_ids)
+
+    for scope_pep, cycle_id in sorted(pep_cycle_scope, key=lambda s: (s[0] or "", s[1])):
         if scope_pep is not None:
-            db.query(TimesheetRecord).filter(
-                TimesheetRecord.pep_wbs == scope_pep,
-                TimesheetRecord.cycle_id == cycle_id,
-            ).delete(synchronize_session=False)
+            _delete(
+                f"PEP {scope_pep}", cycle_id,
+                db.query(TimesheetRecord).filter(
+                    TimesheetRecord.pep_wbs == scope_pep,
+                    TimesheetRecord.cycle_id == cycle_id,
+                ),
+            )
 
-    null_by_cycle: dict[int, set[int]] = {}
+    null_by_cycle: dict[int, dict[int, str]] = {}
     for vr in valid_rows:
         if _str_or_none(vr["row"].get(_COL_PEP_CODE)) is None:
-            null_by_cycle.setdefault(vr["cycle"].id, set()).add(vr["collab"].id)
-    for cycle_id, collab_ids in null_by_cycle.items():
-        for collab_id in collab_ids:
-            db.query(TimesheetRecord).filter(
-                TimesheetRecord.collaborator_id == collab_id,
-                TimesheetRecord.cycle_id == cycle_id,
-                TimesheetRecord.pep_wbs.is_(None),
-            ).delete(synchronize_session=False)
+            null_by_cycle.setdefault(vr["cycle"].id, {})[vr["collab"].id] = vr["collab"].name
+    for cycle_id, collabs in null_by_cycle.items():
+        for collab_id, collab_name in collabs.items():
+            _delete(
+                f"sem PEP ({collab_name})", cycle_id,
+                db.query(TimesheetRecord).filter(
+                    TimesheetRecord.collaborator_id == collab_id,
+                    TimesheetRecord.cycle_id == cycle_id,
+                    TimesheetRecord.pep_wbs.is_(None),
+                ),
+            )
+
+    inserted_by_scope: dict[tuple[str, int], int] = {}
 
     seen_keys: set[tuple] = set()
     inserted = 0
@@ -627,6 +700,16 @@ def _phase_upsert_records(
             standby_cost=sc,
         ))
         inserted += 1
+        label = f"PEP {pep_code}" if pep_code else f"sem PEP ({collab.name})"
+        inserted_by_scope[(label, cycle.id)] = inserted_by_scope.get((label, cycle.id), 0) + 1
+
+    # A file is a full export of its (PEP, cycle): say how much was replaced.
+    for (label, cycle_id), n_old in sorted(replaced.items(), key=lambda kv: (kv[0][0], kv[0][1])):
+        n_new = inserted_by_scope.get((label, cycle_id), 0)
+        infos.append(
+            f"{label}, ciclo {cycle_names.get(cycle_id, cycle_id)}: "
+            f"{n_old} registro(s) anterior(es) substituído(s) por {n_new}."
+        )
 
     return inserted, skipped, warnings, infos, pep_cycle_scope
 
@@ -669,24 +752,141 @@ def _authorized_peps(
 # ---------------------------------------------------------------------------
 
 
-def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
-    if filename.lower().endswith((".xlsx", ".xls")):
-        df = pd.read_excel(BytesIO(file_bytes))
-    else:
-        df = pd.read_csv(BytesIO(file_bytes))
+_CANONICAL_COLUMNS = (
+    _COL_COLLABORATOR, _COL_DATE, _COL_HOURS, _COL_EXTRA, _COL_STANDBY,
+    _COL_PEP_CODE, _COL_PEP_DESC, _COL_START_TIME,
+)
+_STRING_COLUMNS = (_COL_PEP_CODE, _COL_PEP_DESC)
 
-    df.columns = [c.strip() for c in df.columns]
+
+def _column_key(name) -> str:
+    """Case/whitespace-insensitive key used to match column names."""
+    return " ".join(unicodedata.normalize("NFC", str(name)).split()).casefold()
+
+
+def _canonical_column_map(columns) -> dict:
+    """Map each file column to its canonical name (first match wins)."""
+    by_key = {_column_key(c): c for c in _CANONICAL_COLUMNS}
+    mapping: dict = {}
+    used: set[str] = set()
+    for col in columns:
+        canon = by_key.get(_column_key(col))
+        if canon is not None and canon not in used:
+            mapping[col] = canon
+            used.add(canon)
+    return mapping
+
+
+def _decode_csv(file_bytes: bytes) -> str:
+    try:
+        return file_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+    try:
+        return file_bytes.decode("cp1252")
+    except UnicodeDecodeError:
+        return file_bytes.decode("latin-1")
+
+
+def _detect_delimiter(text: str) -> str:
+    first = next((ln for ln in text.splitlines() if ln.strip()), "")
+    return ";" if first.count(";") > first.count(",") else ","
+
+
+def _clean_excel_code(value):
+    """Remove the float artifact ('1001.0') that Excel numeric cells get as text."""
+    if isinstance(value, str) and re.fullmatch(r"\d+\.0", value):
+        return value[:-2]
+    return value
+
+
+def _load_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
+    if not file_bytes or not file_bytes.strip():
+        raise ValueError("O arquivo está vazio. Exporte novamente o timesheet e tente de novo.")
+
+    is_excel = filename.lower().endswith((".xlsx", ".xls"))
+    try:
+        if is_excel:
+            header = pd.read_excel(BytesIO(file_bytes), nrows=0)
+        else:
+            text = _decode_csv(file_bytes)
+            sep = _detect_delimiter(text)
+            header = pd.read_csv(StringIO(text), sep=sep, nrows=0)
+        # PEP code and description are identifiers: never let pandas infer numbers.
+        str_cols = {
+            col: str for col, canon in _canonical_column_map(header.columns).items()
+            if canon in _STRING_COLUMNS
+        }
+        if is_excel:
+            df = pd.read_excel(BytesIO(file_bytes), dtype=str_cols or None)
+            for col in str_cols:
+                df[col] = df[col].map(_clean_excel_code)
+        else:
+            df = pd.read_csv(StringIO(text), sep=sep, dtype=str_cols or None)
+    except pd.errors.EmptyDataError:
+        raise ValueError("O arquivo está vazio. Exporte novamente o timesheet e tente de novo.") from None
+    except Exception as exc:
+        if is_excel:
+            raise ValueError(
+                "Não foi possível ler o arquivo Excel. Verifique se ele não está "
+                "corrompido e se está no formato .xlsx ou .xls."
+            ) from exc
+        raise ValueError(
+            "Não foi possível ler o arquivo CSV. Verifique o separador (vírgula ou "
+            "ponto e vírgula) e o formato das linhas."
+        ) from exc
+
+    df = df.rename(columns=_canonical_column_map(df.columns))
+    df.columns = [str(c).strip() for c in df.columns]
     required = {_COL_COLLABORATOR, _COL_DATE, _COL_HOURS}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Colunas obrigatórias ausentes: {missing}")
+        raise ValueError(f"Colunas obrigatórias ausentes: {sorted(missing)}")
     if df.empty:
-        raise ValueError("Arquivo vazio ou sem registros.")
+        raise ValueError(
+            "Arquivo vazio: contém apenas o cabeçalho, sem registros de horas. "
+            "Verifique a exportação."
+        )
     return df
 
 
+def _normalize_name(value) -> str:
+    """NFC + trim + collapse inner whitespace. Case and accents are kept."""
+    return " ".join(unicodedata.normalize("NFC", str(value)).split())
+
+
+def _name_key(name: str) -> str:
+    """Casefolded, accent-stripped key used only to flag likely duplicates."""
+    decomposed = unicodedata.normalize("NFD", name)
+    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(stripped.split()).casefold()
+
+
+def _similar_collaborator_infos(db: Session, new_names: list[str]) -> list[str]:
+    """Info messages for new collaborators that look like an existing one."""
+    by_key: dict[str, set[str]] = {}
+    for (existing,) in db.query(Collaborator.name).all():
+        by_key.setdefault(_name_key(existing), set()).add(existing)
+    infos: list[str] = []
+    for new in new_names:
+        others = sorted(by_key.get(_name_key(new), set()) - {new})
+        if others:
+            quoted = ", ".join(f"'{o}'" for o in others)
+            infos.append(
+                f"Possível duplicidade: o colaborador novo '{new}' é semelhante a {quoted} "
+                f"(difere só em maiúsculas/acentos). Verifique se são a mesma pessoa."
+            )
+    return infos
+
+
 def _get_or_create_collaborator(db: Session, name: str) -> tuple[Collaborator, bool]:
+    name = _normalize_name(name)
     collab = db.query(Collaborator).filter(Collaborator.name == name).first()
+    if collab is None:
+        # Legacy rows may be stored un-normalized (NFD, double spaces).
+        for existing in db.query(Collaborator).all():
+            if _normalize_name(existing.name) == name:
+                return existing, False
     if collab is None:
         collab = Collaborator(name=name)
         db.add(collab)
@@ -746,15 +946,18 @@ def _safe_hours(value) -> float | None:
     if value is None:
         return None
 
-    raw = str(value).strip().replace(",", ".")
-
-    if raw == "" or raw.lower() in {"nan", "none", "-", "—", "n/a"}:
-        return None
-
-    try:
-        v = float(raw)
-    except (ValueError, TypeError):
-        return None
+    if isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool):
+        # Real numeric cell (e.g. Excel): no text parsing, so 1e-05 stays valid.
+        v = float(value)
+    else:
+        raw = str(value).strip().replace(",", ".")
+        # Plain decimal only: no scientific notation, underscores, inf/nan words.
+        if not _PLAIN_DECIMAL.match(raw):
+            return None
+        try:
+            v = float(raw)
+        except (ValueError, TypeError):
+            return None
 
     if math.isnan(v) or math.isinf(v):
         return None

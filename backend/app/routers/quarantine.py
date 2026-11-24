@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
-from backend.app.models import Collaborator, GlobalConfig, QuarantineRecord, TimesheetRecord, UploadSession
+from backend.app.models import Collaborator, GlobalConfig, Project, QuarantineRecord, TimesheetRecord, UploadSession
 from backend.app.schemas import QuarantineRecordOut, QuarantineReviewIn
 from backend.app.services.evm import freeze_costs
 from backend.app.services.summaries import refresh_collaborator_cycle, refresh_pep_cycle
@@ -35,6 +36,10 @@ router = APIRouter(
     tags=["quarantine"],
     dependencies=[Depends(get_current_user)],
 )
+
+
+class DuplicateRecordError(Exception):
+    """Approving would create an exact copy of an existing TimesheetRecord."""
 
 
 def _load_qr(db: Session, record_id: int) -> QuarantineRecord:
@@ -64,6 +69,20 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
     total_h = _safe_hours(raw.get(_COL_HOURS))
     if total_h is None or total_h == 0.0:
         raise ValueError(f"Horas inválidas nos dados brutos: {raw.get(_COL_HOURS)!r}")
+    if total_h < 0.0 or not math.isfinite(total_h):
+        raise ValueError(
+            f"Horas negativas ({raw.get(_COL_HOURS)!r}) não podem ser aprovadas: "
+            "reduziriam os totais. Corrija no sistema de origem e reimporte, ou rejeite o registro."
+        )
+
+    pep_code = _str_or_none(raw.get(_COL_PEP_CODE))
+    if pep_code:
+        project = db.query(Project).filter(Project.pep_wbs == pep_code).first()
+        if project is not None and project.status in ("encerrado", "suspenso"):
+            raise ValueError(
+                f"O projeto '{project.name or pep_code}' ({pep_code}) está {project.status}. "
+                "Não é possível aprovar registros em projetos encerrados ou suspensos."
+            )
 
     try:
         cycle = _resolve_cycle(db, record_date)
@@ -74,7 +93,6 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
         )
 
     collab, _ = _get_or_create_collaborator(db, name)
-    pep_code = _str_or_none(raw.get(_COL_PEP_CODE))
     pep_desc = _str_or_none(raw.get(_COL_PEP_DESC))
     is_extra   = _is_yes(raw.get(_COL_EXTRA, ""))
     is_standby = _is_yes(raw.get(_COL_STANDBY, ""))
@@ -85,6 +103,26 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
         normal_h, extra_h, standby_h = 0.0, 0.0, total_h
     else:
         normal_h, extra_h, standby_h = total_h, 0.0, 0.0
+
+    dup = (
+        db.query(TimesheetRecord.id)
+        .filter(
+            TimesheetRecord.collaborator_id == collab.id,
+            TimesheetRecord.cycle_id == cycle.id,
+            TimesheetRecord.record_date == record_date,
+            TimesheetRecord.pep_wbs.is_(None) if pep_code is None else TimesheetRecord.pep_wbs == pep_code,
+            TimesheetRecord.pep_description.is_(None) if pep_desc is None else TimesheetRecord.pep_description == pep_desc,
+            TimesheetRecord.normal_hours == normal_h,
+            TimesheetRecord.extra_hours == extra_h,
+            TimesheetRecord.standby_hours == standby_h,
+        )
+        .first()
+    )
+    if dup is not None:
+        raise DuplicateRecordError(
+            f"Já existe um registro idêntico ({name}, {record_date}, "
+            f"PEP {pep_code or 'sem PEP'}, {total_h:g}h). Nada foi inserido."
+        )
 
     rate = _lookup_rate(db, collab, record_date)
 
@@ -182,7 +220,11 @@ def approve_quarantine(record_id: int, db: DbSession, current_user: AdminUser):
 
     try:
         _ingest_from_raw(db, rec)
+    except DuplicateRecordError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     rec.review_status = "approved"

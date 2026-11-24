@@ -143,13 +143,15 @@ def notify_threshold_crossings(db: Session, pep_wbs_list: list[str]) -> None:
                 .filter(PepCycleSummary.pep_wbs == pep)
                 .one_or_none()
             )
-            if not row or not row[0]:
-                continue
-            consumed_hours = row[0]
-
             project = db.query(Project).filter(Project.pep_wbs == pep).first()
             if not project:
                 continue
+
+            if not row or not row[0]:
+                # No consumption left (data replaced/wiped): budget alerts are stale.
+                _resolve_project_alerts(db, project.id, "budget_warning", "budget_overrun")
+                continue
+            consumed_hours = row[0]
 
             baseline = (
                 db.query(ProjectBaseline)
@@ -234,6 +236,8 @@ def notify_schedule_risk(db: Session, pep_wbs_list: list[str]) -> None:
             )
 
             if len(rows) < consecutive_n:
+                # Not enough cycles with data any more: an active risk alert is stale.
+                _resolve_project_alerts(db, project.id, "schedule_risk")
                 continue
 
             spi_values: list[float] = []
