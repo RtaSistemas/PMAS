@@ -397,6 +397,7 @@ def _phase_validate_rows(
     infos: list[str] = []
     new_collaborators: list[str] = []
     skipped = 0
+    legacy_names: dict[str, Collaborator] | None = None  # built once, on first new name
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
         name = _normalize_name(row[_COL_COLLABORATOR])
@@ -411,7 +412,9 @@ def _phase_validate_rows(
             continue
 
         if name not in collab_cache:
-            collab, created = _get_or_create_collaborator(db, name)
+            if legacy_names is None:
+                legacy_names = _legacy_name_index(db)
+            collab, created = _get_or_create_collaborator(db, name, legacy_names)
             collab_cache[name] = collab
             if created:
                 new_collaborators.append(name)
@@ -879,14 +882,24 @@ def _similar_collaborator_infos(db: Session, new_names: list[str]) -> list[str]:
     return infos
 
 
-def _get_or_create_collaborator(db: Session, name: str) -> tuple[Collaborator, bool]:
+def _legacy_name_index(db: Session) -> dict[str, Collaborator]:
+    """Normalized name -> collaborator, for rows stored un-normalized (NFD, double spaces)."""
+    index: dict[str, Collaborator] = {}
+    for existing in db.query(Collaborator).order_by(Collaborator.id).all():
+        index.setdefault(_normalize_name(existing.name), existing)
+    return index
+
+
+def _get_or_create_collaborator(
+    db: Session, name: str, legacy_names: dict[str, Collaborator] | None = None,
+) -> tuple[Collaborator, bool]:
     name = _normalize_name(name)
     collab = db.query(Collaborator).filter(Collaborator.name == name).first()
     if collab is None:
-        # Legacy rows may be stored un-normalized (NFD, double spaces).
-        for existing in db.query(Collaborator).all():
-            if _normalize_name(existing.name) == name:
-                return existing, False
+        if legacy_names is None:
+            legacy_names = _legacy_name_index(db)
+        if name in legacy_names:
+            return legacy_names[name], False
     if collab is None:
         collab = Collaborator(name=name)
         db.add(collab)

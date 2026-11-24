@@ -342,7 +342,8 @@ def get_forecast(
         rates  = [c / h for _, _, h, c in recent_data if h > 0]
         if len(h_vals) >= 2:
             est_cycles_optimistic  = round(remaining_hours / max(h_vals), 1)
-            est_cycles_pessimistic = round(remaining_hours / min(h_vals), 1)
+            # avg_hours counts idle cycles, so the slowest rate must not exceed it
+            est_cycles_pessimistic = round(remaining_hours / min(min(h_vals), avg_hours), 1)
         if len(rates) >= 2 and actual_cost > 0:
             eac_low  = round(actual_cost + remaining_hours * min(rates), 2)
             eac_high = round(actual_cost + remaining_hours * max(rates), 2)
