@@ -343,6 +343,8 @@ window._LANG_EN = {
     'login.user_lbl':'Username','login.user_ph':'username',
     'login.pwd_lbl':'Password','login.pwd_ph':'password',
     'login.btn':'Sign In',
+    'login.force_msg':'Choose a new password before you continue.','login.new_pwd_lbl':'New password','login.confirm_pwd_lbl':'Confirm password',
+    'login.force_btn':'Save password','login.pwd_mismatch':'The passwords do not match.','login.pwd_done':'The system changed the password. Sign in with the new password.',
     'btn.close':'Close',
     'session.title':'Import Details',
     'session.warnings':'⚠ Warnings','session.infos':'ℹ Info',

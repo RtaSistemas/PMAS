@@ -343,6 +343,8 @@ window._LANG_PT = {
     'login.user_lbl':'Usuário','login.user_ph':'usuário',
     'login.pwd_lbl':'Senha','login.pwd_ph':'senha',
     'login.btn':'Entrar',
+    'login.force_msg':'Escolha uma nova senha antes de continuar.','login.new_pwd_lbl':'Nova senha','login.confirm_pwd_lbl':'Confirmar senha',
+    'login.force_btn':'Salvar senha','login.pwd_mismatch':'As senhas não coincidem.','login.pwd_done':'A senha foi alterada. Entre com a nova senha.',
     'btn.close':'Fechar',
     'session.title':'Detalhes da Importação',
     'session.warnings':'⚠ Avisos','session.infos':'ℹ Informações',

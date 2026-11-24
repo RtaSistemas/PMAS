@@ -70,8 +70,13 @@ def _pep_history_counts(db: Session, pep_wbs: str) -> tuple[int, int]:
 
 
 @router.get("", summary="Listar projetos", response_model=list[ProjectOut])
-def list_projects(db: DbSession):
-    projects = db.query(Project).order_by(Project.pep_wbs).all()
+def list_projects(db: DbSession, current_user: CurrentUser):
+    from backend.app.routers.v2.portfolio import _allowed_peps
+    allowed = _allowed_peps(db, current_user)
+    query = db.query(Project)
+    if allowed is not None:
+        query = query.filter(Project.pep_wbs.in_(allowed))
+    projects = query.order_by(Project.pep_wbs).all()
     return [_project_to_dict(p) for p in projects]
 
 
