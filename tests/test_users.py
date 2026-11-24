@@ -200,3 +200,19 @@ class TestDeleteUser:
         with _acting_as(regular) as c:
             r = c.delete(f"/api/users/{victim.id}")
         assert r.status_code == 403
+
+
+class TestMe:
+    def test_regular_user_reads_own_record(self, db_session):
+        regular = _make_user(db_session, "me_user", "pass123")
+        with _acting_as(regular) as c:
+            r = c.get("/api/users/me")
+        assert r.status_code == 200
+        assert r.json()["id"] == regular.id
+        assert r.json()["username"] == "me_user"
+        assert "hashed_password" not in r.json()
+
+    def test_regular_user_still_cannot_list_users(self, db_session):
+        regular = _make_user(db_session, "me_user2", "pass123")
+        with _acting_as(regular) as c:
+            assert c.get("/api/users").status_code == 403

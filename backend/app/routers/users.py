@@ -17,6 +17,12 @@ router = APIRouter(
 )
 
 
+@router.get("/me", summary="Usuário autenticado", response_model=UserOut)
+def read_me(current_user: CurrentUserFlex):
+    """The signed-in user. Any role can call it (the password-change form needs the own id)."""
+    return current_user
+
+
 @router.get("", summary="Listar usuários", response_model=list[UserOut])
 def list_users(db: DbSession, _admin: AdminUser):
     return db.query(User).order_by(User.username).all()
