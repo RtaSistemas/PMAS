@@ -42,6 +42,15 @@ from backend.app.routers.v2 import (
 _LOG_LEVEL = os.getenv("PMAS_LOG_LEVEL", "INFO").upper()
 _LOG_FILE  = os.getenv("PMAS_LOG_FILE", "")   # empty = console only
 
+_log_file_error = ""
+if _LOG_FILE:
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(_LOG_FILE)), exist_ok=True)
+        open(_LOG_FILE, "a", encoding="utf-8").close()
+    except OSError as _exc:
+        _log_file_error = f"{_LOG_FILE}: {_exc}"
+        _LOG_FILE = ""   # fall back to console only
+
 _handlers: list[str] = ["console"]
 _handler_cfg: dict = {
     "console": {
@@ -80,6 +89,8 @@ logging.config.dictConfig({
 })
 
 log = logging.getLogger(__name__)
+if _log_file_error:
+    log.warning("Cannot write the log file (%s). Logging to the console only.", _log_file_error)
 
 
 # ── App ───────────────────────────────────────────────────────────────────────

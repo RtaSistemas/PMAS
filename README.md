@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-966%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-973%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -1042,7 +1042,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-966 tests across 32 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+973 tests across 32 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1060,7 +1060,7 @@ pytest tests/ -v
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
 | `test_users.py` | 27 | User CRUD, password change, role enforcement |
 | `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
-| `test_packaging.py` | 10 | Linux install package, installer, backup script |
+| `test_packaging.py` | 11 | Linux install package, installer, backup script |
 | `test_cycles.py` | 20 | Cycle CRUD |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -1077,7 +1077,7 @@ pytest tests/ -v
 | `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
 | `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
 | `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
-| `test_audit_ops.py` | 6 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash |
+| `test_audit_ops.py` | 12 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash, `/ready`, startup with a bad log or database path |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup, not teardown) so every test starts from a known empty state.
 
@@ -1169,7 +1169,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 32 files, 966 tests
+├── tests/                       # 32 files, 973 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable

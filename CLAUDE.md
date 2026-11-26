@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-966 tests across 32 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+973 tests across 32 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -241,12 +241,12 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
 | `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
-| `test_packaging.py` | 10 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
+| `test_packaging.py` | 11 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
 | `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
 | `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
 | `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
-| `test_audit_ops.py` | 6 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash |
-| **Total** | **966** | |
+| `test_audit_ops.py` | 12 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash, `/ready`, startup with a bad log or database path |
+| **Total** | **973** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

@@ -70,7 +70,23 @@ def get_db():
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def _check_db_folder() -> None:
+    """Create the database folder; stop with a short message when it cannot be used."""
+    path = _db_path()
+    folder = os.path.dirname(os.path.abspath(path))
+    try:
+        os.makedirs(folder, exist_ok=True)
+        if not os.access(folder, os.W_OK):
+            raise PermissionError(f"no write access to {folder}")
+    except OSError as exc:
+        raise SystemExit(
+            f"PMAS cannot use the database path '{path}': {exc}. "
+            "Check PMAS_DB_PATH, and that the PMAS user can write to that folder."
+        )
+
+
 def init_db() -> None:
+    _check_db_folder()
     from backend.app import models  # noqa: F401 — ensures tables are registered
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:

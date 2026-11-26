@@ -75,8 +75,89 @@ def test_list_routes_accept_both_slash_forms(client, clean_db):
         assert r.status_code == 200, (url, r.status_code)
 
 
+def test_health_and_ready(client):
+    assert client.get("/health").json()["status"] == "ok"
+    assert client.get("/ready").json() == {"status": "ready"}
+
+
+def test_ready_returns_503_when_the_database_fails(client):
+    from backend.app.database import get_db
+    from backend.app.main import app
+
+    class _Broken:
+        def execute(self, *a, **k):
+            raise RuntimeError("down")
+
+    def _broken():
+        yield _Broken()
+
+    previous = app.dependency_overrides[get_db]
+    app.dependency_overrides[get_db] = _broken
+    try:
+        assert client.get("/ready").status_code == 503
+    finally:
+        app.dependency_overrides[get_db] = previous
+
+
 def test_alias_routes_hidden_from_schema(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert "/api/my/notifications" not in paths
     assert "/api/project-alerts" not in paths
     assert "/api/my/notifications/" in paths
+
+
+# ---------------------------------------------------------------------------
+# Startup errors (run in a child process: the settings are read at import)
+# ---------------------------------------------------------------------------
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _child(code, env):
+    return subprocess.run(
+        [sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True,
+        env={**os.environ, **env}, timeout=60,
+    )
+
+
+def test_unwritable_log_file_falls_back_to_console(tmp_path):
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x")          # a file where a folder is needed
+    r = _child("import backend.app.main as m; print('IMPORTED')", {
+        "PMAS_LOG_FILE": str(blocker / "pmas.log"),
+        "PMAS_DB_PATH": str(tmp_path / "t.db"),
+    })
+    assert "IMPORTED" in r.stdout, r.stderr[-400:]
+    assert "Traceback" not in r.stderr
+
+
+def test_log_file_folder_is_created(tmp_path):
+    log_file = tmp_path / "new" / "dir" / "pmas.log"
+    r = _child("import backend.app.main as m; print('IMPORTED')", {
+        "PMAS_LOG_FILE": str(log_file), "PMAS_DB_PATH": str(tmp_path / "t.db"),
+    })
+    assert "IMPORTED" in r.stdout, r.stderr[-400:]
+    assert log_file.parent.is_dir()
+
+
+def test_unusable_db_path_gives_a_clear_error(tmp_path):
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x")
+    r = _child("from backend.app.database import init_db; init_db()",
+               {"PMAS_DB_PATH": str(blocker / "pmas.db")})
+    assert r.returncode != 0
+    assert "PMAS_DB_PATH" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+def test_missing_db_folder_is_created(tmp_path):
+    db = tmp_path / "a" / "b" / "pmas.db"
+    r = _child("from backend.app.database import init_db; init_db(); print('OK')",
+               {"PMAS_DB_PATH": str(db)})
+    assert "OK" in r.stdout, r.stderr[-400:]
+    assert db.exists()
