@@ -37,7 +37,8 @@ def get_trends(
 
     has_summaries = db.query(PepCycleSummary).first() is not None
 
-    if has_summaries:
+    # A date range is read by the record date: the summary has no date grain.
+    if has_summaries and not (date_from or date_to):
         return _trends_from_summary(db, pep_wbs, date_from, date_to)
     return _trends_fallback(db, pep_wbs, date_from, date_to)
 

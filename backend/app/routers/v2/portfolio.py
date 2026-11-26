@@ -84,11 +84,13 @@ def get_portfolio(
 
     allowed = _allowed_peps(db, current_user)
 
+    # A date range is read by the record date. The summary tables have no date
+    # grain, so a filtered request is served from the raw records.
+    if date_from or date_to:
+        return _portfolio_fallback(db, current_user, allowed, pep_wbs, date_from, date_to,
+                                   warning_threshold, critical_threshold)
+
     q = db.query(PepCycleSummary).join(Cycle, PepCycleSummary.cycle_id == Cycle.id)
-    if date_from:
-        q = q.filter(Cycle.start_date >= date_from)
-    if date_to:
-        q = q.filter(Cycle.end_date <= date_to)
     if pep_wbs:
         q = q.filter(PepCycleSummary.pep_wbs.in_(pep_wbs))
     if allowed is not None:

@@ -44,7 +44,8 @@ def get_effort(
 
     has_summaries = db.query(CollaboratorCycleSummary).first() is not None
 
-    if has_summaries and not pep_wbs:
+    # A date range is read by the record date: the summary has no date grain.
+    if has_summaries and not pep_wbs and not (date_from or date_to):
         return _effort_from_summary(db, cycle_id, collaborator_id, date_from, date_to)
 
     return _effort_fallback(db, cycle_id, collaborator_id, pep_wbs, date_from, date_to)
@@ -108,9 +109,9 @@ def _effort_fallback(db, cycle_ids, collab_ids, pep_wbs_filter, date_from, date_
                 + TimesheetRecord.standby_hours
             ).label("total_hours"),
             func.sum(
-                TimesheetRecord.normal_cost
-                + TimesheetRecord.extra_cost
-                + TimesheetRecord.standby_cost
+                func.coalesce(TimesheetRecord.normal_cost, 0.0)
+                + func.coalesce(TimesheetRecord.extra_cost, 0.0)
+                + func.coalesce(TimesheetRecord.standby_cost, 0.0)
             ).label("total_cost"),
         )
         .join(Collaborator, TimesheetRecord.collaborator_id == Collaborator.id)

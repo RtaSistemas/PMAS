@@ -27,8 +27,8 @@ router = APIRouter(prefix="/api/v2", tags=["v2"])
 class SimulateIn(BaseModel):
     velocity_multiplier: float = Field(default=1.0, ge=0.1, le=5.0)
     extra_hours_per_cycle: float = Field(default=0.0, ge=0)
-    date_from: Optional[DateType] = None
-    date_to: Optional[DateType] = None
+    date_from: Optional[DateType] = Field(default=None, description="Ignored: the EVM covers the whole project.")
+    date_to: Optional[DateType] = Field(default=None, description="Ignored: the EVM covers the whole project.")
 
     @model_validator(mode="after")
     def _check_range(self):
@@ -80,7 +80,7 @@ def simulate_project(
             detail="Projeto sem horas orçadas: defina budget_hours para simular.",
         )
 
-    cycle_data = _load_cycle_data(db, project.pep_wbs, body.date_from, body.date_to)
+    cycle_data = _load_cycle_data(db, project.pep_wbs, None, None)  # date range ignored: whole project
 
     consumed_hours = sum(h for _, _, h, _ in cycle_data)
     consumed_cost  = sum(c for _, _, _, c in cycle_data)

@@ -70,7 +70,8 @@ router = APIRouter(prefix="/api/v2", tags=["v2"])
         "`planned_duration_cycles`: number of cycles from the first cycle of the timeline "
         "up to and including the last cycle that has a plan row (null without a plan). "
         "It is the PD input of `ieac_t`. "
-        "`actual_time_cycles`: number of cycles in the history, idle cycles included (AT)."
+        "`actual_time_cycles`: number of cycles in the history, idle cycles included (AT). "
+        "`date_from` and `date_to`: ignored, the EVM covers the whole project."
     ),
 )
 def get_forecast(
@@ -81,6 +82,7 @@ def get_forecast(
     date_to: Optional[DateType] = None,
 ):
     _check_date_range(date_from, date_to)
+    date_from = date_to = None  # the EVM covers the whole project
     allowed = _allowed_peps(db, current_user)
     if allowed is not None and pep_wbs not in allowed:
         raise HTTPException(status_code=403, detail="Acesso negado.")

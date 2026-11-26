@@ -37,11 +37,12 @@ def monte_carlo(
     db: DbSession,
     current_user=Depends(get_current_user),
     iterations: int = Query(default=1000, ge=100, le=10000),
-    date_from: Optional[DateType] = None,
-    date_to: Optional[DateType] = None,
+    date_from: Optional[DateType] = Query(default=None, description="Ignored: the EVM covers the whole project."),
+    date_to: Optional[DateType] = Query(default=None, description="Ignored: the EVM covers the whole project."),
     seed: Optional[int] = None,
 ):
     _check_date_range(date_from, date_to)
+    date_from = date_to = None  # ignored: the EVM covers the whole project
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
