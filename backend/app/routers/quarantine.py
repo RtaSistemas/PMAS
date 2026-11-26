@@ -104,25 +104,44 @@ def _ingest_from_raw(db: Session, rec: QuarantineRecord) -> None:
     else:
         normal_h, extra_h, standby_h = total_h, 0.0, 0.0
 
-    dup = (
-        db.query(TimesheetRecord.id)
+    same_day = (
+        db.query(TimesheetRecord)
         .filter(
             TimesheetRecord.collaborator_id == collab.id,
             TimesheetRecord.cycle_id == cycle.id,
             TimesheetRecord.record_date == record_date,
             TimesheetRecord.pep_wbs.is_(None) if pep_code is None else TimesheetRecord.pep_wbs == pep_code,
             TimesheetRecord.pep_description.is_(None) if pep_desc is None else TimesheetRecord.pep_description == pep_desc,
-            TimesheetRecord.normal_hours == normal_h,
-            TimesheetRecord.extra_hours == extra_h,
-            TimesheetRecord.standby_hours == standby_h,
+            # same hour type: the matching column holds the hours of that type
+            (TimesheetRecord.extra_hours > 0) if extra_h else
+            (TimesheetRecord.standby_hours > 0) if standby_h else
+            (TimesheetRecord.normal_hours > 0),
         )
         .first()
     )
-    if dup is not None:
-        raise DuplicateRecordError(
-            f"Já existe um registro idêntico ({name}, {record_date}, "
-            f"PEP {pep_code or 'sem PEP'}, {total_h:g}h). Nada foi inserido."
+    if same_day is not None:
+        old_h = same_day.extra_hours if extra_h else same_day.standby_hours if standby_h else same_day.normal_hours
+        if abs(old_h - total_h) < 1e-6:
+            raise DuplicateRecordError(
+                f"Já existe um registro idêntico ({name}, {record_date}, "
+                f"PEP {pep_code or 'sem PEP'}, {total_h:g}h). Nada foi inserido."
+            )
+        # Same day, same key, different hours: the hours are summed into the
+        # stored record (same rule as the file import). Frozen rate is kept.
+        cfg = db.get(GlobalConfig, 1)
+        em = cfg.extra_hours_multiplier   if cfg else 1.5
+        sm = cfg.standby_hours_multiplier if cfg else 0.33
+        same_day.normal_hours += normal_h
+        same_day.extra_hours += extra_h
+        same_day.standby_hours += standby_h
+        same_day.normal_cost, same_day.extra_cost, same_day.standby_cost = freeze_costs(
+            same_day.normal_hours, same_day.extra_hours, same_day.standby_hours,
+            same_day.cost_per_hour or 0.0, em, sm,
         )
+        db.flush()
+        refresh_pep_cycle(db, [pep_code] if pep_code else [], [cycle.id])
+        refresh_collaborator_cycle(db, [collab.id], [cycle.id])
+        return
 
     rate = _lookup_rate(db, collab, record_date)
 

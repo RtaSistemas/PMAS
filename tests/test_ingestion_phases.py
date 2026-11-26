@@ -188,6 +188,8 @@ class TestPhaseAuthorizePeps:
         from fastapi import HTTPException
         user = self._make_user(db_session, "no_access_user")
         self._make_project(db_session, "60OP-001")
+        other = self._make_project(db_session, "60OP-999")  # whitelist holds another PEP only
+        db_session.add(UserProjectAccess(user_id=user.id, project_id=other.id))
         db_session.commit()
         df = _df_from_rows(BASE_ROW)
         with pytest.raises(HTTPException) as exc_info:
@@ -497,7 +499,7 @@ class TestPhaseAggregateRules:
     def test_daily_sum_over_24_emits_warning(self, db_session, sample_cycle):
         # Two rows same collaborator same day totalling 25h triggers the system rule
         row1 = self._make_valid_row(db_session, sample_cycle, total_h=13.0)
-        row2 = self._make_valid_row(db_session, sample_cycle, total_h=13.0)
+        row2 = self._make_valid_row(db_session, sample_cycle, total_h=12.0)  # same hours would be a duplicate
         rules = _rules(db_session)
         warnings, infos = _phase_aggregate_rules([row1, row2], rules)
         assert any("Daily total" in w or "24" in w for w in warnings)
@@ -557,7 +559,7 @@ class TestPhaseAggregateRules:
     def test_warning_includes_collaborator_and_date(self, db_session, sample_cycle):
         # Exceed daily threshold to ensure a warning is produced
         row1 = self._make_valid_row(db_session, sample_cycle, total_h=13.0)
-        row2 = self._make_valid_row(db_session, sample_cycle, total_h=13.0)
+        row2 = self._make_valid_row(db_session, sample_cycle, total_h=12.0)  # same hours would be a duplicate
         rules = _rules(db_session)
         warnings, infos = _phase_aggregate_rules([row1, row2], rules)
         # At least one warning must mention the collaborator name

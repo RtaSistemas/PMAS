@@ -292,6 +292,7 @@ class UploadOut(BaseModel):
     status: str
     records_inserted: int
     records_skipped: int
+    records_summed: int = 0
     quarantine_records_added: int = 0
     warning_count: int = 0
     info_count: int = 0

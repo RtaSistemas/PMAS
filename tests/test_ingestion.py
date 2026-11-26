@@ -229,7 +229,10 @@ class TestAuthorizationFilter:
         """Non-admin with no access to any PEP in the file gets a 403 rejection."""
         from fastapi import HTTPException
         user = self._make_user(db_session, "no_access_user")
-        self._make_project(db_session, "60OP-001")  # project exists, user NOT manager
+        self._make_project(db_session, "60OP-001")  # project exists, user NOT delegated
+        other = self._make_project(db_session, "60OP-999")
+        from backend.app.models import UserProjectAccess
+        db_session.add(UserProjectAccess(user_id=user.id, project_id=other.id))  # whitelist holds another PEP
         db_session.commit()
         with pytest.raises(HTTPException) as exc_info:
             ingest_file(_csv(BASE_ROW), "t.csv", db_session,
