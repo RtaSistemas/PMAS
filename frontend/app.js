@@ -426,6 +426,31 @@ function _apiError(status, detail, statusText) {
   return err;
 }
 
+// A double click on a save button must not send the request twice (two rows, or a 500 on a unique key).
+// The guard ignores a click on the button until every request that the first click started has ended.
+let _pendingFetches = 0;
+let _fetchStarts = 0;
+const _nativeFetch = window.fetch.bind(window);
+window.fetch = (...args) => {
+  _pendingFetches++; _fetchStarts++;
+  return _nativeFetch(...args).finally(() => { _pendingFetches--; });
+};
+const _ONCE_BUTTONS = /^(\w*SaveBtn|confirmModalOk|qrApproveBtn|qrRejectBtn)$/;
+document.addEventListener('click', ev => {
+  const btn = ev.target.closest?.('button');
+  if (!btn || !(_ONCE_BUTTONS.test(btn.id) || (btn.classList.contains('btn-primary') && btn.closest('.modal-backdrop')))) return;
+  if (btn.dataset.busy) { ev.stopPropagation(); ev.preventDefault(); return; }
+  btn.dataset.busy = '1';
+  const started = Date.now();
+  const startCount = _fetchStarts;
+  const release = () => {
+    if (_pendingFetches === 0 || Date.now() - started > 20000) delete btn.dataset.busy;
+    else setTimeout(release, 50);
+  };
+  // The handler starts its request in the same turn. Without a request (a failed check), release at once.
+  setTimeout(() => { if (_fetchStarts > startCount) release(); else delete btn.dataset.busy; }, 0);
+}, true);
+
 async function apiFetch(url) {
   const res = await fetch(url, { headers: _authHeaders() });
   if (res.status === 401) { _handleUnauthorized(); throw _apiError(401, _t('auth.session_expired')); }
@@ -454,6 +479,14 @@ const _notifQueue = [];
 let _notifShowing = false;
 
 function notify(msg, type = 'info') {
+  // A list whose request failed must not stay on "Loading...". Show the error in its place.
+  if (type === 'error') {
+    document.querySelectorAll('[data-i18n="loading"]').forEach(el => {
+      if (!el.offsetParent) return;
+      el.removeAttribute('data-i18n');
+      el.textContent = msg;
+    });
+  }
   _notifQueue.push({ msg, type });
   if (!_notifShowing) _processNotifQueue();
 }
@@ -514,6 +547,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       return;
     }
     const { access_token } = await res.json();
+    if (_tokenNeedsPasswordChange(access_token)) { _showForcedPasswordChange(access_token, username, password); return; }
     sessionStorage.setItem('access_token', access_token);
     sessionStorage.setItem('username', username);
     document.getElementById('loginOverlay').setAttribute('hidden', '');
@@ -523,6 +557,45 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     errEl.textContent = _t('msg.connection_error');
   }
 });
+
+// A temporary password blocks every API route except the password change. Show only that step.
+function _tokenNeedsPasswordChange(token) {
+  try { return !!JSON.parse(atob(token.split('.')[1])).must_change; } catch (_) { return false; }
+}
+
+function _showForcedPasswordChange(token, username, currentPassword) {
+  const form = document.getElementById('forcePwdForm');
+  const errEl = document.getElementById('forcePwdError');
+  document.getElementById('loginForm').hidden = true;
+  form.hidden = false;
+  errEl.textContent = '';
+  document.getElementById('forcePwdNew').focus();
+  form.onsubmit = async ev => {
+    ev.preventDefault();
+    const next = document.getElementById('forcePwdNew').value;
+    if (next !== document.getElementById('forcePwdConfirm').value) { errEl.textContent = _t('login.pwd_mismatch'); return; }
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    try {
+      const me = await fetch('/api/users/me', { headers });
+      if (!me.ok) throw new Error(_t('msg.err_generic'));
+      const { id } = await me.json();
+      const res = await fetch(`/api/users/${id}/password`, {
+        method: 'PATCH', headers, body: JSON.stringify({ new_password: next, current_password: currentPassword }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        errEl.textContent = _detailText(j.detail) || _t('msg.err_generic');
+        return;
+      }
+      form.hidden = true;
+      form.reset();
+      document.getElementById('loginForm').hidden = false;
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginError').textContent = _t('login.pwd_done');
+      document.getElementById('loginPassword').focus();
+    } catch (e) { errEl.textContent = e.message || _t('msg.connection_error'); }
+  };
+}
 
 function _logout() {
   sessionStorage.removeItem('access_token');
@@ -723,6 +796,9 @@ document.addEventListener('visibilitychange', () => {
   if (tab === 'projects') loadProjectsTable();
 });
 
+if (_getTokenPayload()?.must_change) {
+  sessionStorage.removeItem('access_token');
+}
 if (sessionStorage.getItem('access_token')) {
   document.getElementById('loginOverlay').setAttribute('hidden', '');
   document.getElementById('appShell').removeAttribute('hidden');

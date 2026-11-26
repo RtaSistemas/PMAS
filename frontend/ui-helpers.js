@@ -131,7 +131,7 @@ async function _loadTable(endpoint, onSuccess) {
   try {
     const data = await apiFetch(endpoint);
     onSuccess(data);
-  } catch (e) { notify(`${_t('msg.err_generic')}: ${e.message}`, 'error'); }
+  } catch (e) { notify(_friendlyError(e), 'error'); }
 }
 
 // ---------------------------------------------------------------------------

@@ -356,8 +356,16 @@ def delete_rate_card(card_id: int, db: DbSession, current_user: AdminUser):
 # ---------------------------------------------------------------------------
 
 @router.get("/team", response_model=list[TeamMemberOut])
-def list_team(db: DbSession):
-    collabs = db.query(Collaborator).order_by(Collaborator.name).all()
+def list_team(db: DbSession, current_user: CurrentUser):
+    from backend.app.models import TimesheetRecord
+    from backend.app.routers.v2.portfolio import _allowed_peps
+    allowed = _allowed_peps(db, current_user)
+    query = db.query(Collaborator)
+    if allowed is not None:
+        # A restricted user sees only the people who worked on the allowed PEPs.
+        ids = db.query(TimesheetRecord.collaborator_id).filter(TimesheetRecord.pep_wbs.in_(allowed))
+        query = query.filter(Collaborator.id.in_(ids))
+    collabs = query.order_by(Collaborator.name).all()
     today = date.today()
 
     valid_cards = (
@@ -394,7 +402,7 @@ def bulk_assign_seniority(body: CollaboratorSeniorityIn, db: DbSession, _admin: 
     log_audit(db, _admin, "bulk_assign_seniority", "collaborator", None,
               {"seniority_level_id": body.seniority_level_id})
     db.commit()
-    return list_team(db)
+    return list_team(db, _admin)
 
 
 @router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)

@@ -52,6 +52,19 @@
       <button type="submit" class="btn btn-primary login-btn" data-i18n="login.btn">Entrar</button>
       <p id="loginError" class="login-error"></p>
     </form>
+    <form id="forcePwdForm" autocomplete="off" hidden>
+      <p class="login-sub" data-i18n="login.force_msg">Choose a new password before you continue.</p>
+      <div class="login-field">
+        <label for="forcePwdNew" data-i18n="login.new_pwd_lbl">New password</label>
+        <input id="forcePwdNew" type="password" autocomplete="new-password" required />
+      </div>
+      <div class="login-field">
+        <label for="forcePwdConfirm" data-i18n="login.confirm_pwd_lbl">Confirm password</label>
+        <input id="forcePwdConfirm" type="password" autocomplete="new-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary login-btn" data-i18n="login.force_btn">Save password</button>
+      <p id="forcePwdError" class="login-error" role="alert"></p>
+    </form>
   </div>
 </div>
 
