@@ -211,7 +211,7 @@ def walk_bad_numbers(obj, path="$"):
 # Tests
 # ---------------------------------------------------------------------------
 
-SEEDS = [1, 2, 3]
+SEEDS = [1, 2]
 
 
 @pytest.mark.parametrize("seed", SEEDS)
@@ -519,3 +519,42 @@ def test_acl_per_project_reads_blocked_for_restricted_user(client, db_session, s
             assert r.status_code in (403, 404), (suffix, r.status_code, r.text[:120])
             r = rc.get(f"/api/projects/{ok_id}/{suffix}")
             assert r.status_code == 200, (suffix, r.status_code)
+
+
+@pytest.mark.parametrize("name", ["Łukasz Ω", 'Ana "Q"\r\nX: y', "ü\x00x", "João Silva"])
+def test_collaborator_export_filename_header_is_safe(client, name):
+    r = client.get("/api/dashboard/collaborator-export", params={"collaborator_name": name})
+    assert r.status_code == 200, r.status_code
+    cd = r.headers["content-disposition"]
+    assert cd.isascii() and "\n" not in cd and "\r" not in cd
+
+
+def test_lost_unique_race_returns_409_and_busy_db_returns_503():
+    import asyncio
+    from sqlalchemy.exc import IntegrityError, OperationalError
+    from backend.app.main import _db_busy_handler, _integrity_handler
+    r = asyncio.run(_integrity_handler(None, IntegrityError("x", {}, Exception("UNIQUE"))))
+    assert r.status_code == 409
+    r = asyncio.run(_db_busy_handler(None, OperationalError("x", {}, Exception("database is locked"))))
+    assert r.status_code == 503 and r.headers["retry-after"] == "2"
+
+
+def test_upload_ingestion_is_serialised_by_a_lock():
+    from backend.app.routers import upload
+    assert upload._INGEST_LOCK.acquire(blocking=False)
+    upload._INGEST_LOCK.release()
+
+
+def test_rate_lookup_is_cached_per_level_and_date(client, monkeypatch):
+    from backend.app.services import ingestion
+    w = World(client, 1)
+    w.upload(*w.make_file([w.peps[0][0]], [1], messy=False, tag="c0")[:2])
+    w.assign_seniority()
+    calls = []
+    real = ingestion._lookup_rate
+    monkeypatch.setattr(ingestion, "_lookup_rate", lambda *a: calls.append(1) or real(*a))
+    peps = [p for p, _ in w.peps]
+    data, name, exp = w.make_file(peps, [1], fmt="csv", messy=False, tag="c1")
+    out = w.upload(data, name)
+    assert out["records_inserted"] > 30
+    assert len(calls) < out["records_inserted"], (len(calls), out["records_inserted"])

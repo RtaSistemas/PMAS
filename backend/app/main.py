@@ -191,6 +191,9 @@ def _safe_error(err: dict) -> dict:
     return out
 
 
+from sqlalchemy import exc as _sa_exc  # noqa: E402
+
+
 async def _validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
     parts: list[str] = []
@@ -225,7 +228,21 @@ async def _overflow_handler(request: Request, exc: OverflowError):
     return JSONResponse(status_code=404, content={"detail": "Registro não encontrado."})
 
 
+async def _integrity_handler(request: Request, exc):
+    # A unique key lost a race between two requests: the second one conflicts.
+    return JSONResponse(status_code=409, content={"detail": "Registro já existe (conflito de dados)."})
+
+
+async def _db_busy_handler(request: Request, exc):
+    if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+        return JSONResponse(status_code=503, headers={"Retry-After": "2"},
+                            content={"detail": "Banco de dados ocupado. Tente novamente."})
+    return await _unhandled_exception_handler(request, exc)
+
+
 app.add_exception_handler(OverflowError, _overflow_handler)
+app.add_exception_handler(_sa_exc.IntegrityError, _integrity_handler)
+app.add_exception_handler(_sa_exc.OperationalError, _db_busy_handler)
 app.add_exception_handler(RequestValidationError, _validation_exception_handler)
 app.add_exception_handler(Exception, _unhandled_exception_handler)
 

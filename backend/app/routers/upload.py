@@ -27,6 +27,10 @@ from backend.app.services.upload_session_svc import create_upload_session
 
 log = logging.getLogger(__name__)
 
+import threading
+
+_INGEST_LOCK = threading.Lock()
+
 router = APIRouter(prefix="/api", tags=["upload"])
 
 _MAX_UPLOAD_MB = int(os.getenv("PMAS_MAX_UPLOAD_MB", "20"))
@@ -59,13 +63,14 @@ def upload_timesheet(request: Request, file: UploadFile, db: DbSession, current_
             detail=f"Arquivo excede o limite de {_MAX_UPLOAD_MB} MB.",
         )
     try:
-        summary = ingest_file(
-            contents, fname, db,
-            user_role=current_user.role,
-            user_id=current_user.id,
-            username=current_user.username,
-            current_user=current_user,
-        )
+        with _INGEST_LOCK:  # one import at a time: no create races, serial-order results
+            summary = ingest_file(
+                contents, fname, db,
+                user_role=current_user.role,
+                user_id=current_user.id,
+                username=current_user.username,
+                current_user=current_user,
+            )
     except HTTPException:
         raise
     except (ClosedCycleError, ArchivedCycleError) as exc:
