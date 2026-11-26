@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-996 tests across 35 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 75 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+1026 tests across 37 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -185,12 +185,15 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 
 - **PEP dual representation:** Each record stores `pep_wbs` (machine code) and `pep_description` (human label). Filters apply on either independently.
 - **Dates outside every cycle:** The ingestion does not create cycles. A row whose date no active cycle covers goes to quarantine with the reason "Nenhum ciclo ativo cobre a data" — no data is silently dropped. Analytics read active cycles only (`Cycle.is_active`), so an inactive cycle is left out of Trends, Runway, Concentration and Over-allocation.
+- **Date filters (decision, November 2026):** a date range always means the record date, with both ends included. Every chart and table except the forecast uses only the records inside the range. With a range, the endpoints read the raw `TimesheetRecord` rows (the summary tables have no date grain); without a range they use the fast summary path. `/forecast`, `/simulate` and `/monte-carlo` always use the whole project and ignore `date_from` and `date_to`; the Forecast tab shows a note when a date filter is set.
+- **Same-day rows:** rows with the same collaborator, date, PEP, description, hour type and start time are **summed** when their hours differ (3 h + 5 h = 8 h). A row with the same hours as one already seen in the file is discarded as an exact duplicate. The response has `records_summed`; `inserted + skipped + quarantined` still equals the rows in the file, and stored records = `inserted - summed`. Approving a quarantined row adds its hours to an existing record with the same key and returns 409 for an exact duplicate.
+- **Baselines:** only an administrator can create, activate or delete a baseline; each action is in the audit log. The active baseline cannot be deleted until another is active (409).
 - **EVM freeze pattern:** `cost_per_hour` is resolved at ingestion time via `_lookup_rate()`. Rate changes after ingestion do NOT retroactively alter stored costs.
 - **Velocity windows (averaging rules):** Three distinct rules govern how the system computes average hours/cost per cycle. They are intentionally different — do not standardize them without understanding the rationale:
 
   | Context | Window | File | Notes |
   |---------|--------|------|-------|
-  | **Forecast** — projected completion + uncertainty band | last **3** cycles | `v2/forecast.py` | Reactive to recent rhythm; all cycles included in window |
+  | **Forecast** — projected completion + uncertainty band | last **3** cycles | `v2/forecast.py` | Reactive to recent rhythm; idle (zero-hour) cycles are part of the history, so the window is 3 calendar cycles |
   | **Runway** — avg/cycle column + cycles-to-complete | last **3** non-zero cycles | `v2/runway.py` | Zero-hour cycles excluded from denominator, kept in window |
   | **Simulate (What-If)** — `avg_velocity` baseline | last **min(6, N)** cycles | `v2/simulate.py` | Smoother base for scenario planning; zeros included |
   | **Monte Carlo** — Gaussian μ and σ | **all** cycles with h > 0 | `v2/monte_carlo.py` | Full history needed to model variance; windowing underestimates σ |
@@ -201,7 +204,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 - **ValidationRule engine:** Ordered list of rules evaluated per row. Each rule has a `field`, `operator`, `value`, `action` (`quarantine`/`warn`/`reject`), and `is_active` flag. System rules cannot be deleted, only toggled.
 - **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin sees all, a user sees own) and `/api/my/upload-history` (a user sees own uploads; an admin sees all).
 - **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine` (an admin sees all rows there). `GET /api/quarantine[/{id}]` also works for a user, limited to own rows; review, approve, reject and delete are admin only.
-- **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all. Enforced across every `/api/v2/*` analytics endpoint via the shared `_allowed_peps` helper (`v2/portfolio.py`), and in `/api/dashboard`.
+- **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all, on the analytics screens **and** on the import. A user with whitelist rows can import only those PEPs; rows with no PEP are discarded for that user. Enforced across every `/api/v2/*` analytics endpoint via the shared `_allowed_peps` helper (`v2/portfolio.py`), in `/api/dashboard`, in `/api/projects`, `/api/team`, plans and baselines.
 - **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for new columns so production databases upgrade non-destructively.
 - **ECharts management:** Charts are initialized only after their container is visible. `dispose()` is called when leaving a sub-tab. A single `ResizeObserver` on `<main>` handles all resize events.
 - **Client-side CSV export:** "Exportar CSV" in Effort tab uses `_lastEffortData` cache, builds a CSV string, creates a `Blob` URL, and triggers download — no server round-trip. Seniority and rate card exports also use client-side cached arrays.
@@ -249,7 +252,9 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_audit_cycle3_review.py` | 3 | Review of the cycle 2 changes: collaborator-name index per upload, forecast band with idle cycles |
 | `test_audit_invariants.py` | 18 | Generated-data invariants: summary equals raw totals, cross-endpoint totals, ACL leakage, no NaN, upload lock, rate cache |
 | `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
-| **Total** | **996** | |
+| `test_decisions_ingestion_acl.py` | 23 | Product decisions: same-day rows with different hours are summed, empty whitelist imports any PEP, baselines are admin only with audit |
+| `test_decisions_date_filters.py` | 7 | Product decision: a date range is the record date; forecast, What-If and Monte Carlo ignore it; cross-endpoint totals agree |
+| **Total** | **1026** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
