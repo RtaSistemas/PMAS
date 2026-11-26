@@ -49,6 +49,8 @@ PMAS asks for a new password at the first login.
 
 | Setting | Meaning | Default |
 |---------|---------|---------|
+| `PMAS_ENV` | `production` makes PMAS refuse to start without a JWT signing key. The installer sets it. | `production` in the package |
+| `PMAS_SECRET_KEY` | The JWT signing key. 32 characters or more. The installer makes a random key. | made by the installer |
 | `PMAS_HOST` | Address that PMAS listens on. Use `0.0.0.0` only when no reverse proxy is in front. | `127.0.0.1` |
 | `PMAS_PORT` | Port | `8765` |
 | `PMAS_DB_PATH` | Database file | `/var/lib/pmas/pmas.db` |
@@ -85,6 +87,24 @@ To restore a backup:
 6. Check the health: `curl -s http://127.0.0.1:8765/health`
 
 Copy the backup folder to a second server or storage. A backup on the same disk does not protect you from a disk failure.
+
+## Change the JWT signing key
+
+The installer makes a random key and writes it in `/etc/pmas/pmas.env`. The key signs the login tokens.
+A restart does not change the key, so users stay logged in after a restart or an update.
+
+To change the key:
+
+1. Make a new key: `openssl rand -base64 48`
+2. Replace the value of `PMAS_SECRET_KEY` in `/etc/pmas/pmas.env`. Use 32 characters or more.
+3. Restart the service: `sudo systemctl restart pmas`
+
+The effect: every token that PMAS issued before the change stops working, and every user must log in again.
+Change the key when you think that someone else knows it.
+In production, PMAS does not start without a key of 32 characters or more. The log then shows a clear message.
+
+An update with `./install.sh` adds a key to an old settings file that has none, and then every user must log in again once.
+The installer never replaces a key that exists. It stops the update when the key in the file has fewer than 32 characters.
 
 ## Reverse proxy
 

@@ -195,3 +195,150 @@ def test_install_rejects_a_path_with_a_space(package, tmp_path):
     assert r.returncode != 0
     assert "space" in r.stderr
     assert not (tmp_path / "units" / "pmas.service").exists()
+
+
+# ---------------------------------------------------------------------------
+# JWT signing key and PMAS_ENV in the installed settings file (WO-001 T2)
+# ---------------------------------------------------------------------------
+
+KEY_VAR = "PMAS_SECRET_KEY"
+
+
+def _env_values(env_file: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in env_file.read_text().splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            values[k] = v
+    return values
+
+
+def _install(folder, tmp_path, *args, extra_env=None, check=True):
+    env = {**_paths(tmp_path), **(extra_env or {})}
+    return _run([str(folder / "install.sh"), *args], env=env, cwd=folder, check=check)
+
+
+def _env_file(tmp_path) -> Path:
+    return tmp_path / "etc" / "pmas.env"
+
+
+class TestInstallerWritesTheJwtKey:
+    def test_fresh_install_creates_a_key_and_production_mode(self, package, tmp_path):
+        folder, _, _ = package
+        r = _install(folder, tmp_path)
+        values = _env_values(_env_file(tmp_path))
+        assert len(values[KEY_VAR]) >= 32
+        assert values["PMAS_ENV"] == "production"
+        assert oct(_env_file(tmp_path).stat().st_mode & 0o777) == "0o640"
+        assert values[KEY_VAR] not in r.stdout + r.stderr           # the installer never prints the key
+
+    def test_two_installs_make_two_different_keys(self, package, tmp_path):
+        folder, _, _ = package
+        _install(folder, tmp_path)
+        first = _env_values(_env_file(tmp_path))[KEY_VAR]
+        other = tmp_path / "second"
+        other.mkdir()
+        _install(folder, other)
+        assert _env_values(other / "etc" / "pmas.env")[KEY_VAR] != first
+
+    def test_update_twice_keeps_the_same_key(self, package, tmp_path):
+        folder, _, _ = package
+        _install(folder, tmp_path)
+        key = _env_values(_env_file(tmp_path))[KEY_VAR]
+        _install(folder, tmp_path)
+        _install(folder, tmp_path)
+        text = _env_file(tmp_path).read_text()
+        assert _env_values(_env_file(tmp_path))[KEY_VAR] == key
+        assert len([line for line in text.splitlines() if line.startswith(f"{KEY_VAR}=")]) == 1
+        assert len([line for line in text.splitlines() if line.startswith("PMAS_ENV=")]) == 1
+
+    def test_update_on_an_old_settings_file_adds_the_key_and_keeps_the_rest(self, package, tmp_path):
+        folder, _, _ = package
+        env_file = _env_file(tmp_path)
+        env_file.parent.mkdir(parents=True)
+        env_file.write_text("PMAS_PORT=9999\nPMAS_LOG_LEVEL=DEBUG\n")
+        env_file.chmod(0o640)
+        r = _install(folder, tmp_path)
+        values = _env_values(env_file)
+        assert len(values[KEY_VAR]) >= 32
+        assert values["PMAS_ENV"] == "production"
+        assert values["PMAS_PORT"] == "9999" and values["PMAS_LOG_LEVEL"] == "DEBUG"
+        assert oct(env_file.stat().st_mode & 0o777) == "0o640"
+        assert "log in again" in (r.stdout + r.stderr).lower()       # one line about the effect
+
+    def test_update_never_replaces_an_existing_key(self, package, tmp_path):
+        folder, _, _ = package
+        env_file = _env_file(tmp_path)
+        env_file.parent.mkdir(parents=True)
+        env_file.write_text(f"{KEY_VAR}={'k' * 40}\nPMAS_PORT=9999\n")
+        _install(folder, tmp_path)
+        values = _env_values(env_file)
+        assert values[KEY_VAR] == "k" * 40
+        assert values["PMAS_ENV"] == "production"
+
+    def test_an_explicit_development_setting_is_kept(self, package, tmp_path):
+        folder, _, _ = package
+        env_file = _env_file(tmp_path)
+        env_file.parent.mkdir(parents=True)
+        env_file.write_text("PMAS_ENV=development\n")
+        _install(folder, tmp_path)
+        assert _env_values(env_file)["PMAS_ENV"] == "development"
+        assert len(_env_values(env_file)[KEY_VAR]) >= 32
+
+    def test_a_short_existing_key_stops_the_update_before_any_change(self, package, tmp_path):
+        folder, _, _ = package
+        env_file = _env_file(tmp_path)
+        env_file.parent.mkdir(parents=True)
+        env_file.write_text(f"{KEY_VAR}=short\nPMAS_PORT=9999\n")
+        before = env_file.read_text()
+        r = _install(folder, tmp_path, check=False)
+        assert r.returncode != 0
+        assert "32" in r.stderr
+        assert env_file.read_text() == before                        # settings untouched
+        assert not (tmp_path / "opt" / "pmas").exists()              # the program was not replaced
+
+    def test_an_empty_key_line_counts_as_missing(self, package, tmp_path):
+        folder, _, _ = package
+        env_file = _env_file(tmp_path)
+        env_file.parent.mkdir(parents=True)
+        env_file.write_text(f"{KEY_VAR}=\n")
+        _install(folder, tmp_path)
+        assert len(_env_values(env_file)[KEY_VAR]) >= 32
+
+    def test_the_installed_settings_satisfy_the_app_check(self, package, tmp_path):
+        """The file that the installer writes must let the app start in production mode."""
+        folder, _, _ = package
+        _install(folder, tmp_path)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PMAS_")}
+        env.update(_env_values(_env_file(tmp_path)))
+        env["PMAS_DB_PATH"] = str(tmp_path / "check.db")
+        r = subprocess.run([os.sys.executable, "-c", "import backend.app.deps"],
+                           cwd=ROOT, env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+
+    @pytest.mark.parametrize("hide", [("openssl",), ("openssl", "python3")])
+    def test_key_generation_has_fallbacks(self, package, tmp_path, hide):
+        """A server with only the binary may have no openssl, and no python3 either."""
+        folder, _, _ = package
+        tools = tmp_path / "tools"
+        tools.mkdir()
+        for name in ("bash", "env", "dirname", "sed", "grep", "cut", "install", "mkdir", "chmod", "cat",
+                     "rm", "mktemp", "tr", "head", "base64", "id", "date", "python3", "openssl", "tail", "wc"):
+            # Use the real program from /usr/bin or /bin: a sandbox can put a wrapper first in PATH.
+            found = next((str(Path(d) / name) for d in ("/usr/bin", "/bin") if (Path(d) / name).exists()), None) \
+                or shutil.which(name)
+            if found and name not in hide:
+                (tools / name).symlink_to(found)
+        r = subprocess.run(["bash", str(folder / "install.sh")], env={**_paths(tmp_path), "PATH": str(tools)},
+                           cwd=folder, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        assert len(_env_values(_env_file(tmp_path))[KEY_VAR]) >= 32
+
+
+class TestEnvExample:
+    def test_example_documents_both_variables_without_a_real_key(self):
+        text = (ROOT / "packaging" / "pmas.env.example").read_text()
+        values = _env_values(ROOT / "packaging" / "pmas.env.example")
+        assert values["PMAS_ENV"] == "production"
+        assert KEY_VAR in text
+        assert values.get(KEY_VAR, "") == ""                         # no real key in the repository

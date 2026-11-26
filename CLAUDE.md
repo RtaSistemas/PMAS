@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1026 tests across 37 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+1051 tests across 38 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -244,7 +244,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
 | `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
-| `test_packaging.py` | 11 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
+| `test_packaging.py` | 23 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
 | `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
 | `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
 | `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
@@ -254,7 +254,8 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
 | `test_decisions_ingestion_acl.py` | 23 | Product decisions: same-day rows with different hours are summed, empty whitelist imports any PEP, baselines are admin only with audit |
 | `test_decisions_date_filters.py` | 7 | Product decision: a date range is the record date; forecast, What-If and Monte Carlo ignore it; cross-endpoint totals agree |
-| **Total** | **1026** | |
+| `test_jwt_key.py` | 13 | The JWT signing key in production: refuses to start without 32 or more characters; development keeps the warning |
+| **Total** | **1051** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
@@ -264,11 +265,10 @@ Audited items deliberately deferred. Do not implement without an explicit decisi
 
 | # | Item | Where | What to do |
 |---|---|---|---|
-| P1 | `PMAS_SECRET_KEY` mandatory in production | `backend/app/deps.py:17-26` | If `PMAS_ENV=production` and the variable is not set, raise `RuntimeError` at startup instead of silently generating a random key |
 | P2 | `/ready` liveness probe ✅ exists | `backend/app/main.py` | `GET /health` returns `{"status":"ok",...}`; `GET /ready` runs `SELECT 1` and returns 503 if the database is unreachable |
 | P3 | Database backup script | `backup_pmas.sh` ✅ exists | Script implemented: `VACUUM INTO`, configurable paths via env vars, 30-day retention, restore procedure documented. Still needs a cron entry in production |
 | P4 | Dependency lock file | `requirements-lock.txt` ✅ exists | Generated with `pip freeze`; use `pip install -r requirements-lock.txt` for reproducible deployments |
-| P5 | systemd deployment unit | `packaging/` ✅ exists | `pmas.service` (runs the standalone binary as user `pmas`, `Restart=on-failure`, `EnvironmentFile=/etc/pmas/pmas.env`, `PrivateTmp`), `pmas-backup.timer` (daily backup), `install.sh` (install, update, uninstall) and `docs/OPERATIONS.md`. The release workflow builds `pmas-linux-x64-package.tar.gz` and smoke-tests the binary. A single-worker binary is the design; multi-worker `uvicorn` is not packaged |
+| P5 | systemd deployment unit | `packaging/` ✅ exists | `pmas.service` (runs the standalone binary as user `pmas`, `Restart=on-failure`, `EnvironmentFile=/etc/pmas/pmas.env`, `PrivateTmp`), `pmas-backup.timer` (daily backup), `install.sh` (install, update, uninstall) and `docs/OPERATIONS.md`. The release workflow builds `pmas-linux-x64-package.tar.gz` and smoke-tests the binary. A single-worker binary is the design; multi-worker `uvicorn` is not packaged. The installer also writes a random JWT signing key and `PMAS_ENV=production` into the settings file; in production the app refuses to start without a key of 32 characters or more (closed gap P1; see `docs/OPERATIONS.md`) |
 
 **Additional known risks** (non-blocking, but on record):
 - HTTPS not enforced — the app must run behind a reverse proxy (nginx/caddy) with TLS; no internal redirect middleware

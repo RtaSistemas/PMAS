@@ -20,6 +20,8 @@ LOGDIR="${PMAS_LOGDIR:-/var/log/pmas}"
 UNITS="${PMAS_SYSTEMD_DIR:-/etc/systemd/system}"
 SKIP="${PMAS_SKIP_SYSTEM:-0}"
 
+MIN_KEY_LENGTH=32
+
 log()  { echo "[pmas-install] $*"; }
 fail() { echo "[pmas-install] ERROR: $*" >&2; exit 1; }
 
@@ -48,6 +50,66 @@ install_unit() {
   chmod 0644 "$UNITS/$name"
 }
 
+# --- settings file helpers (the JWT signing key and the mode) -------------------------------------
+# Value of KEY in the settings file, or an empty text when the line is missing or empty.
+get_env() {
+  [[ -f "$ETC/pmas.env" ]] || return 0
+  { grep -E "^$1=" "$ETC/pmas.env" || true; } | tail -n 1 | cut -d= -f2-
+}
+
+# Set KEY=VALUE. A changed value replaces the old line. The file keeps its owner and mode.
+set_env() {
+  local file="$ETC/pmas.env" tmp
+  tmp="$(mktemp)"
+  { grep -v -E "^$1=" "$file" || true; } > "$tmp"
+  printf '%s=%s\n' "$1" "$2" >> "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
+# A random key of at least MIN_KEY_LENGTH characters. A server with only the binary can lack
+# openssl and python3, so the last choice is /dev/urandom.
+generate_key() {
+  local key=""
+  if command -v openssl >/dev/null 2>&1; then
+    key="$(openssl rand -base64 48 | tr -d '\n')"
+  elif command -v python3 >/dev/null 2>&1; then
+    key="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+  else
+    key="$(head -c 48 /dev/urandom | base64 | tr -d '\n')"
+  fi
+  [[ ${#key} -ge $MIN_KEY_LENGTH ]] || fail "Could not make a random key."
+  printf '%s' "$key"
+}
+
+# An existing key that is too short stops the update before PMAS changes anything,
+# because production mode would refuse to start with it.
+check_existing_key() {
+  local key mode
+  key="$(get_env PMAS_SECRET_KEY)"; mode="$(get_env PMAS_ENV)"
+  if [[ -n "$key" && ${#key} -lt $MIN_KEY_LENGTH && "${mode:-production}" == "production" ]]; then
+    fail "The key in $ETC/pmas.env has ${#key} characters. Production needs $MIN_KEY_LENGTH or more. Replace the key, then run this script again."
+  fi
+}
+
+# Make sure the settings file has a key and a mode. Never replace an existing key.
+ensure_jwt_key() {
+  local fresh="${1:-}" added=0
+  if [[ -z "$(get_env PMAS_SECRET_KEY)" ]]; then
+    set_env PMAS_SECRET_KEY "$(generate_key)"
+    added=1
+  fi
+  [[ -n "$(get_env PMAS_ENV)" ]] || set_env PMAS_ENV production
+  chmod 0640 "$ETC/pmas.env"
+  if [[ $added -eq 1 && "$fresh" == "new" ]]; then
+    log "Created a JWT signing key in $ETC/pmas.env."
+  elif [[ $added -eq 1 ]]; then
+    log "Added a JWT signing key to $ETC/pmas.env. Every user must log in again once."
+  else
+    log "Kept the JWT signing key in $ETC/pmas.env."
+  fi
+}
+
 cmd_install() {
   as_root
   local binary; binary="$(find_binary "${1:-}")"
@@ -65,6 +127,8 @@ cmd_install() {
     id pmas &>/dev/null || { useradd --system --home-dir "$DATA" --shell /usr/sbin/nologin pmas; log "Created the user pmas."; }
   fi
 
+  check_existing_key
+
   mkdir -p "$PREFIX" "$ETC" "$DATA/backups" "$LOGDIR" "$UNITS"
   local was_running=0
   if [[ "$SKIP" != "1" ]] && systemctl is-active --quiet pmas 2>/dev/null; then
@@ -75,7 +139,9 @@ cmd_install() {
   install -m 0755 "$HERE/backup_pmas.sh" "$PREFIX/backup_pmas.sh"
   log "Installed the binary in $PREFIX."
 
+  local env_is_new=""
   if [[ ! -f "$ETC/pmas.env" ]]; then
+    env_is_new="new"
     sed -e "s#/var/lib/pmas#$DATA#g" -e "s#/var/log/pmas#$LOGDIR#g" \
         "$HERE/pmas.env.example" > "$ETC/pmas.env"
     chmod 0640 "$ETC/pmas.env"
@@ -83,6 +149,7 @@ cmd_install() {
   else
     log "Kept the settings in $ETC/pmas.env."
   fi
+  ensure_jwt_key "$env_is_new"
 
   if [[ "$SKIP" != "1" ]]; then
     chown -R pmas:pmas "$DATA" "$LOGDIR"

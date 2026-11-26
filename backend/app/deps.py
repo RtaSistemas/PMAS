@@ -16,8 +16,20 @@ from backend.app.utils import now_br
 
 log = logging.getLogger(__name__)
 
+# PMAS_ENV=production needs a fixed signing key. Without one, every restart would log out all
+# users. Any other value of PMAS_ENV (or none) is development, the same rule as run.py.
+_MIN_KEY_LENGTH = 32
+_IS_PRODUCTION = os.getenv("PMAS_ENV", "development").strip().lower() == "production"
 _env_secret = os.getenv("PMAS_SECRET_KEY")
-if _env_secret:
+if _IS_PRODUCTION:
+    if not _env_secret or len(_env_secret.strip()) < _MIN_KEY_LENGTH:
+        raise RuntimeError(
+            "PMAS_ENV=production needs the PMAS_SECRET_KEY variable with at least "
+            f"{_MIN_KEY_LENGTH} characters. Set it in the settings file "
+            "(see docs/OPERATIONS.md) and start PMAS again."
+        )
+    SECRET_KEY = _env_secret
+elif _env_secret:
     SECRET_KEY = _env_secret
 else:
     SECRET_KEY = secrets.token_hex(32)
