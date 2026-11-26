@@ -591,7 +591,7 @@ function _revokeAccess(userId) {
 document.getElementById('exportProjectsBtn').addEventListener('click', () => {
   if (!_allProjects.length) { notify(_t('msg.no_projects_export'), 'info'); return; }
   const header = 'pep_wbs,name,client,manager,budget_hours,budget_cost,status,start_date,planned_end_date,completion_date';
-  const esc = v => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+  const esc = csvCell;
   const rows = _allProjects.map(p =>
     `${esc(p.pep_wbs)},${esc(p.name)},${esc(p.client)},${esc(p.manager)},${p.budget_hours ?? ''},${p.budget_cost ?? ''},${p.status},${p.start_date ?? ''},${p.planned_end_date ?? ''},${p.completion_date ?? ''}`
   );

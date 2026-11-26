@@ -77,11 +77,11 @@ function _exportOverAllocCsv() {
   ].join(',');
   const rows = _overAllocData.map(it =>
     [
-      `"${it.collaborator}"`,
+      csvCell(it.collaborator),
       it.date,
       it.total_hours.toFixed(2),
       it.threshold,
-      `"${it.pep_list.join('; ')}"`,
+      csvCell(it.pep_list.join('; ')),
     ].join(',')
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -210,7 +210,7 @@ document.getElementById('newSeniorityBtn').addEventListener('click', () => openS
 
 document.getElementById('exportSeniorityBtn').addEventListener('click', () => {
   if (!_allSeniorityLevels.length) { notify(_t('msg.no_levels_export'), 'info'); return; }
-  const rows = _allSeniorityLevels.map(l => `"${l.name.replace(/"/g, '""')}"`);
+  const rows = _allSeniorityLevels.map(l => csvCell(l.name));
   const blob = new Blob(['﻿' + ['name', ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   Object.assign(document.createElement('a'), { href: url, download: 'senioridade.csv' }).click();
@@ -288,7 +288,7 @@ document.getElementById('newRateCardBtn').addEventListener('click', () => openRa
 
 document.getElementById('exportRateCardBtn').addEventListener('click', () => {
   if (!_allRateCards.length) { notify(_t('msg.no_rates_export'), 'info'); return; }
-  const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const esc = csvCell;
   const rows = _allRateCards.map(r =>
     `${esc(r.seniority_level_name)},${r.valid_from},${r.valid_to ?? ''},${r.hourly_rate}`
   );

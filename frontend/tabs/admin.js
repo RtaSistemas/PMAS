@@ -482,7 +482,7 @@ async function _openSessionDetail(sessionId) {
 
     const _exportDetailCsv = (items, label) => {
       const header = _t('session.csv_header') + '\n';
-      const body = items.map(m => `"${label}","${String(m).replace(/"/g, '""')}"`).join('\n');
+      const body = items.map(m => `${csvCell(label)},${csvCell(String(m))}`).join('\n');
       const blob = new Blob([header + body], { type: 'text/csv' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

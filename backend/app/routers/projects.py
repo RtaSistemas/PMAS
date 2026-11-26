@@ -14,7 +14,7 @@ from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.limiter import limiter
 from backend.app.models import BudgetRevision, PepCycleSummary, Project, ProjectAlert, TimesheetRecord, UserProjectAccess
 from backend.app.schemas import BudgetRevisionOut, ImportResultOut, ProjectIn, ProjectOut, ProjectUpdateIn
-from backend.app.utils import _str_or_none, now_br
+from backend.app.utils import _str_or_none, csv_unsafe, now_br
 
 router = APIRouter(prefix="/api/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
@@ -184,13 +184,13 @@ def import_projects(request: Request, file: UploadFile, db: DbSession, current_u
     created, updated, errors = 0, 0, []
     for i, row in df.iterrows():
         try:
-            pep = _str_or_none(row.get("pep_wbs"))
+            pep = csv_unsafe(_str_or_none(row.get("pep_wbs")))
             if not pep:
                 errors.append(f"Linha {i + 2}: pep_wbs vazio")
                 continue
-            name    = _str_or_none(row.get("name"))
-            client  = _str_or_none(row.get("client"))
-            manager = _str_or_none(row.get("manager"))
+            name    = csv_unsafe(_str_or_none(row.get("name")))
+            client  = csv_unsafe(_str_or_none(row.get("client")))
+            manager = csv_unsafe(_str_or_none(row.get("manager")))
             raw_status = str(row.get("status", "ativo")).strip()
             status = raw_status if raw_status in ("ativo", "suspenso", "encerrado") else "ativo"
             budget_hours     = _float_or_none(row.get("budget_hours"))

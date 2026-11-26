@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1026 tests across 37 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+1056 tests across 38 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 60 Vitest tests and 79 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -200,6 +200,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
   | **Sparkline (frontend)** — avg3 reference line | last **3** non-zero cycles | `app.js` | Computed client-side from `fc.history`; aligns with Forecast |
 
   The UI tooltips (hover on "Média/ciclo", "Vel. histórica média", "Vel. média") document these rules in the glossary (`evm-glossary.js` keys `RunwayAvg`, `SimAvgVel`, `MCMeanVel`).
+- **CSV safety (WO-001 T4):** a text cell that starts with `=`, `+`, `-`, `@`, tab or CR runs as a formula in Excel. Every server export passes its data rows through `safe_row()` (`utils.py`) and every browser export uses `csvCell()` (`utils.js`): the cell gets a leading single quote. Every CSV import removes that quote with `csv_unsafe()` only when a trigger character follows it, so export then import keeps the text. Numbers stay numeric. A new CSV route must call `safe_row`/`csv_safe` (`tests/test_csv_safe.py` fails otherwise), and a new browser builder must call `csvCell` (`csv.test.js` fails otherwise).
 - **Error format:** An `HTTPException` and an unhandled 500 return RFC 7807 `application/problem+json` (`type`, `title`, `status`, `detail`; a 500 also has `instance`). A 422 validation error returns `{"detail": "<text>", "errors": [...]}` with Portuguese messages. A 404 for an id beyond the SQLite integer range uses `{"detail": ...}`.
 - **ValidationRule engine:** Ordered list of rules evaluated per row. Each rule has a `field`, `operator`, `value`, `action` (`quarantine`/`warn`/`reject`), and `is_active` flag. System rules cannot be deleted, only toggled.
 - **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin sees all, a user sees own) and `/api/my/upload-history` (a user sees own uploads; an admin sees all).
@@ -254,7 +255,8 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
 | `test_decisions_ingestion_acl.py` | 23 | Product decisions: same-day rows with different hours are summed, empty whitelist imports any PEP, baselines are admin only with audit |
 | `test_decisions_date_filters.py` | 7 | Product decision: a date range is the record date; forecast, What-If and Monte Carlo ignore it; cross-endpoint totals agree |
-| **Total** | **1026** | |
+| `test_csv_safe.py` | 30 | CSV formula injection: `csv_safe`/`csv_unsafe`, every CSV route uses the helper, export then import keeps the text |
+| **Total** | **1056** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

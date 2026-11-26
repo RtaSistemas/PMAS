@@ -11,6 +11,7 @@ from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import GlobalConfig, ThemePreset
 from backend.app.schemas import ThemePresetIn, ThemePresetOut, UIThemeIn, UIThemeOut, validate_preset_config
 from backend.app.services.theme_svc import delete_logo, get_theme_out, save_logo
+from backend.app.utils import csv_unsafe, safe_row
 
 router = APIRouter(prefix="/api/theme", tags=["theme"])
 
@@ -125,7 +126,7 @@ def export_presets(db: DbSession, _user: CurrentUser):
     for p in presets:
         cfg = p.config or {}
         pal = cfg.get("chart_palette") or []
-        writer.writerow([
+        writer.writerow(safe_row([
             p.name,
             str(p.is_builtin).lower(),
             cfg.get("color_primary", ""),
@@ -151,7 +152,7 @@ def export_presets(db: DbSession, _user: CurrentUser):
             cfg.get("color_text_hint", "") or "",
             cfg.get("color_violet", "") or "",
             cfg.get("border_radius", "") or "",
-        ])
+        ]))
     return Response(
         content=buf.getvalue(),
         media_type="text/csv",
@@ -180,7 +181,7 @@ def import_presets(file: UploadFile, db: DbSession, current_user: AdminUser):
         "color_success", "color_warning", "color_danger", "color_text", "color_text_muted",
     ]
     for line, row in enumerate(rows, start=2):
-        name = (row.get("name") or "").strip()
+        name = csv_unsafe(row.get("name") or "").strip()
         if not name:
             skipped += 1
             errors.append(f"Linha {line}: nome vazio")

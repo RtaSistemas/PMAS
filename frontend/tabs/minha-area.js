@@ -300,7 +300,7 @@ document.getElementById('myHistoryFilter')?.addEventListener('change', () => {
 document.getElementById('myHistoryExportBtn')?.addEventListener('click', () => {
   const rows = _historyPag.getRows();
   if (!rows.length) { notify(_t('msg.no_import_sessions'), 'info'); return; }
-  const esc = v => (v == null || v === '') ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const esc = csvCell;
   const header = ['history.th.when', 'history.th.file', 'history.th.sent_by', 'history.th.inserted', 'history.th.skipped',
     'history.th.quarantine', 'history.th.warnings', 'history.th.infos', 'history.th.status'].map(_t);
   const lines = rows.map(r => {

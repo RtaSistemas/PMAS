@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from backend.app.database import DbSession
 from backend.app.deps import CurrentUser, get_current_user
 from backend.app.models import ProjectAlert, QuarantineRecord, UploadSession, UserPreference
+from backend.app.utils import safe_row
 from backend.app.schemas import (
     ProjectAlertOut,
     QuarantineRecordOut,
@@ -139,14 +140,14 @@ def export_quarantine_csv(db: DbSession, current_user: CurrentUser):
             buf = io.StringIO()
             writer = csv.writer(buf)
             rd = rec.raw_data or {}
-            writer.writerow([
+            writer.writerow(safe_row([
                 rec.id, rec.ingested_at, rec.upload_session_id, rec.uploaded_by_username,
                 rd.get("Colaborador"), rd.get("Data"), rd.get("Horas totais (decimal)"),
                 rd.get("Código PEP"), rd.get("PEP"),
                 rd.get("Hora extra"), rd.get("Hora sobreaviso"),
                 rec.quarantine_reason, rec.rule_id,
                 rec.reviewed, rec.reviewed_by, rec.reviewed_at,
-            ])
+            ]))
             yield buf.getvalue()
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")

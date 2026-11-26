@@ -138,7 +138,7 @@ document.getElementById('exportCyclesBtn').addEventListener('click', () => {
   if (!_allCycles.length) { notify(_t('msg.no_cycles_export'), 'info'); return; }
   const header = 'name,start_date,end_date,is_closed,record_count';
   const rows = _allCycles.map(c =>
-    `"${c.name}",${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
+    `${csvCell(c.name)},${c.start_date},${c.end_date},${c.is_closed},${c.record_count}`
   );
   const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

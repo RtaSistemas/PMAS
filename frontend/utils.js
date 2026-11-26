@@ -4,6 +4,24 @@
  * Vitest unit tests.
  */
 
+// CSV formula injection (WO-001 T4): Excel runs a cell as a formula when it starts with one of
+// these characters. An export writes a single quote before such a text cell. The server import
+// removes that quote again, so export followed by import keeps the original text.
+const CSV_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'];
+
+/** Prefix a text value that starts with a formula trigger. Numbers, booleans and null stay as they are. */
+export function csvSafe(value) {
+  if (typeof value === 'string' && value !== '' && CSV_TRIGGERS.includes(value[0])) return "'" + value;
+  return value;
+}
+
+/** One CSV cell: empty for null or '', numbers as they are, text quoted with doubled quotes and made safe. */
+export function csvCell(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '"' + String(csvSafe(String(value))).replace(/"/g, '""') + '"';
+}
+
 export function escHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -82,6 +100,8 @@ export function parseISODate(iso) {
 // Expose as browser globals when running outside a module context (Vitest runs via import)
 if (typeof window !== 'undefined') {
   window.escHtml = escHtml;
+  window.csvSafe = csvSafe;
+  window.csvCell = csvCell;
   window.fmtDateBR = fmtDateBR;
   window.formatHours = formatHours;
   window.formatCost = formatCost;

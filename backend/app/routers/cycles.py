@@ -15,6 +15,7 @@ from backend.app.deps import AdminUser, get_current_user
 from backend.app.limiter import limiter
 from backend.app.models import Cycle, ProjectCyclePlan, TimesheetRecord
 from backend.app.schemas import CycleIn, CycleOut, ImportResultOut
+from backend.app.utils import csv_unsafe
 
 router = APIRouter(prefix="/api/cycles", tags=["cycles"], dependencies=[Depends(get_current_user)])
 
@@ -198,7 +199,7 @@ def import_cycles(request: Request, file: UploadFile, db: DbSession, current_use
     }
     for i, row in df.iterrows():
         try:
-            name = str(row["name"]).strip()
+            name = csv_unsafe(str(row["name"])).strip()
             if not name or name.lower() in {"nan", "none"}:
                 errors.append(f"Linha {i + 2}: nome vazio")
                 continue

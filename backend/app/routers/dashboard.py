@@ -18,6 +18,7 @@ from backend.app.models import Collaborator, Cycle, QuarantineRecord, TimesheetR
 from backend.app.routers.v2.portfolio import _allowed_peps, _check_date_range, _scope_peps
 from backend.app.schemas import CollaboratorTimelineItem
 from backend.app.services.ingestion import _parse_date_safe as _canonical_parse_date
+from backend.app.utils import safe_row
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
@@ -220,7 +221,7 @@ def export_collaborator_timesheets(
         for r in rows:
             total = round((r.normal_hours or 0.0) + (r.extra_hours or 0.0) + (r.standby_hours or 0.0), 2)
             buf = io.StringIO()
-            csv.writer(buf).writerow([
+            csv.writer(buf).writerow(safe_row([
                 collaborator_name,
                 str(r.record_date),
                 r.pep_wbs or "",
@@ -230,7 +231,7 @@ def export_collaborator_timesheets(
                 round(r.standby_hours or 0.0, 2),
                 total,
                 round(r.cost_per_hour or 0.0, 2),
-            ])
+            ]))
             yield buf.getvalue()
 
     return StreamingResponse(

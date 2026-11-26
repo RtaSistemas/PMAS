@@ -12,6 +12,7 @@ from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Cycle, Project, ProjectCyclePlan
 from backend.app.routers.projects import assert_project_access
 from backend.app.schemas import IdOut, ImportResultOut, PhysicalProgressItem, ProjectCyclePlanIn, ProjectCyclePlanOut
+from backend.app.utils import csv_unsafe, safe_row
 
 router = APIRouter(
     prefix="/api/projects",
@@ -68,8 +69,8 @@ def export_plans(project_id: int, db: DbSession, current_user: CurrentUser):
     writer = csv.writer(buf)
     writer.writerow(["pep_wbs", "cycle_name", "planned_hours", "planned_cost"])
     for p in plans:
-        writer.writerow([project.pep_wbs, p.cycle.name, p.planned_hours,
-                         "" if p.planned_cost is None else p.planned_cost])
+        writer.writerow(safe_row([project.pep_wbs, p.cycle.name, p.planned_hours,
+                                  "" if p.planned_cost is None else p.planned_cost]))
     filename = f"baseline_{project.pep_wbs.replace('/', '-')}.csv"
     return Response(
         content=buf.getvalue(),
@@ -128,8 +129,8 @@ def import_plans(file: UploadFile, db: DbSession, current_user: AdminUser):
     seen: set[tuple[int, int]] = set()
 
     for i, row in enumerate(rows, start=2):
-        pep = (row.get("pep_wbs") or "").strip()
-        cname = (row.get("cycle_name") or "").strip()
+        pep = csv_unsafe(row.get("pep_wbs") or "").strip()
+        cname = csv_unsafe(row.get("cycle_name") or "").strip()
         raw_h = (row.get("planned_hours") or "").strip()
 
         if not pep:

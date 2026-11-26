@@ -325,7 +325,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const header = `${_t('allocation.collaborator')},${_t('ch.normal_h')},${_t('ch.extra_h')},${_t('ch.standby_h')},${_t('allocation.total')}`;
   const rows = _lastEffortData.map(d => {
     const total = (d.normal_hours + d.extra_hours + d.standby_hours).toFixed(1);
-    return `"${d.collaborator.replace(/"/g, '""')}",${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
+    return `${csvCell(d.collaborator)},${d.normal_hours.toFixed(1)},${d.extra_hours.toFixed(1)},${d.standby_hours.toFixed(1)},${total}`;
   });
   const csv  = [header, ...rows].join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -341,15 +341,15 @@ document.getElementById('runwayExportBtn').addEventListener('click', () => {
   const rows = _lastRunwayData.map(d => {
     const risk = { ok: 'OK', warning: _t('risk.warning'), critical: _t('risk.critical'), overrun: _t('runway.overrun'), no_budget: _t('runway.no_budget') }[d.risk] || d.risk;
     return [
-      `"${d.pep_wbs}"`, `"${d.name || ''}"`,
+      csvCell(d.pep_wbs), csvCell(d.name),
       d.budget_hours != null ? d.budget_hours.toFixed(1) : '',
       d.consumed_hours.toFixed(1),
       d.pct_consumed  != null ? d.pct_consumed.toFixed(1)  : '',
       d.avg_hours_per_cycle != null ? d.avg_hours_per_cycle.toFixed(1) : '',
       d.cycles_to_complete != null ? d.cycles_to_complete.toFixed(1) : '',
-      `"${d.estimated_completion_cycle || ''}"`,
+      csvCell(d.estimated_completion_cycle),
       d.cpi != null ? d.cpi.toFixed(2) : '',
-      `"${risk}"`,
+      csvCell(risk),
     ].join(',');
   });
   const csv  = [header, ...rows].join('\n');

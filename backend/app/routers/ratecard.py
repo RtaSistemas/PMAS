@@ -16,6 +16,7 @@ from backend.app.audit import log_audit
 from backend.app.database import DbSession
 from backend.app.deps import AdminUser, CurrentUser, get_current_user
 from backend.app.models import Collaborator, GlobalConfig, RateCard, SeniorityLevel
+from backend.app.utils import csv_unsafe, safe_row
 from backend.app.schemas import (
     CollaboratorSeniorityIn, GlobalConfigIn, GlobalConfigOut,
     IdOut, ImportResultOut, RateCardIn, RateCardOut,
@@ -85,7 +86,7 @@ def export_seniority_levels(db: DbSession, _admin: AdminUser):
         yield buf.getvalue()
         for lv in levels:
             buf = io.StringIO()
-            csv.writer(buf).writerow([lv.name])
+            csv.writer(buf).writerow(safe_row([lv.name]))
             yield buf.getvalue()
 
     return StreamingResponse(
@@ -107,7 +108,7 @@ def import_seniority_levels(file: UploadFile, db: DbSession, _admin: AdminUser):
     created, errors = 0, []
     for i, row in df.iterrows():
         try:
-            name = str(row["name"]).strip()
+            name = csv_unsafe(str(row["name"])).strip()
             if not name or name.lower() in {"nan", "none"}:
                 errors.append(f"Linha {i + 2}: nome vazio")
                 continue
@@ -217,12 +218,12 @@ def export_rate_cards(db: DbSession, _admin: AdminUser):
         yield buf.getvalue()
         for c in cards:
             buf = io.StringIO()
-            csv.writer(buf).writerow([
+            csv.writer(buf).writerow(safe_row([
                 c.seniority_level.name,
                 c.valid_from.isoformat(),
                 c.valid_to.isoformat() if c.valid_to else "",
                 c.hourly_rate,
-            ])
+            ]))
             yield buf.getvalue()
 
     return StreamingResponse(
@@ -247,7 +248,7 @@ def import_rate_cards(file: UploadFile, db: DbSession, _admin: AdminUser):
     for i, row in df.iterrows():
         line = i + 2
         try:
-            level_name = str(row["seniority_level"]).strip()
+            level_name = csv_unsafe(str(row["seniority_level"])).strip()
             if not level_name or level_name.lower() in {"nan", "none"}:
                 errors.append(f"Linha {line}: seniority_level vazio")
                 continue
