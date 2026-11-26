@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { adminToken, auth, createProject, uniquePep, openApp } from './helpers.js';
+import {
+  adminToken, auth, createProject, uniquePep, openApp, ensureCycle, uploadViaApi, timesheetCsv,
+  createUser, loginViaForm,
+} from './helpers.js';
 
 // End-to-end journeys found by the cycle 3 audit.
 test.describe('Journeys: first login', () => {
@@ -42,6 +45,40 @@ test.describe('Journeys: first login', () => {
     await page.waitForLoadState('networkidle');
     expect(bad).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('Journeys: team and restricted user', () => {
+  test('assign one seniority level to all collaborators from the Team tab', async ({ page, request }) => {
+    const token = await adminToken(request);
+    const pep = uniquePep();
+    await createProject(request, token, pep);
+    await ensureCycle(request, token);
+    await uploadViaApi(request, token, `team-${pep}.csv`, timesheetCsv(pep, [['Team Person', '2026-01-05', 8]]));
+    const level = `Lvl${Math.random().toString(36).slice(2, 6)}`;
+    await request.post('/api/seniority-levels', { headers: auth(token), data: { name: level } });
+    const errors = await openApp(page, token);
+    await page.locator('.tab-btn[data-tab="team"]').click();
+    await expect(page.locator('#teamBody tr').first()).toBeVisible();
+    await page.locator('#bulkSenioritySelect').selectOption({ label: level });
+    await page.locator('#bulkSeniorityBtn').click();
+    await page.locator('#confirmModalOk').click();
+    await expect(page.locator('#teamBody')).toContainText(level);
+    expect(errors).toEqual([]);
+  });
+
+  test('a restricted user sees only the allowed projects in the Projects tab', async ({ page, request }) => {
+    const token = await adminToken(request);
+    await ensureCycle(request, token);
+    const allowed = await createProject(request, token, uniquePep());
+    const hidden = await createProject(request, token, uniquePep());
+    const user = await createUser(request, token);
+    const acl = await request.post(`/api/projects/${allowed.id}/access`, { headers: auth(token), data: { user_id: user.id } });
+    expect(acl.ok()).toBeTruthy();
+    await loginViaForm(page, user.username, user.password);
+    await page.locator('.tab-btn[data-tab="projects"]').click();
+    await expect(page.locator('#projectsBody')).toContainText(allowed.pep_wbs);
+    await expect(page.locator('#projectsBody')).not.toContainText(hidden.pep_wbs);
   });
 });
 

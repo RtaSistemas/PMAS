@@ -402,7 +402,7 @@ def bulk_assign_seniority(body: CollaboratorSeniorityIn, db: DbSession, _admin: 
     log_audit(db, _admin, "bulk_assign_seniority", "collaborator", None,
               {"seniority_level_id": body.seniority_level_id})
     db.commit()
-    return list_team(db)
+    return list_team(db, _admin)
 
 
 @router.put("/team/{collab_id}/seniority", response_model=SeniorityAssignOut)

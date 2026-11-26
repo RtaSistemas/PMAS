@@ -18,3 +18,14 @@ def test_restricted_user_sees_only_allowed_projects_and_team(client, db_session)
         assert [m["name"] for m in c.get("/api/team").json()] == ["Ana"]
     assert len(client.get("/api/projects").json()) == 2
     assert len(client.get("/api/team").json()) == 2
+
+
+def test_bulk_seniority_assign_returns_the_team(client, db_session):
+    from backend.app.models import SeniorityLevel
+    _collab(db_session, "Ana")
+    level = SeniorityLevel(name="Pleno")
+    db_session.add(level)
+    db_session.commit()
+    r = client.put("/api/team/bulk-seniority", json={"seniority_level_id": level.id})
+    assert r.status_code == 200, r.text
+    assert r.json()[0]["seniority_level_name"] == "Pleno"
