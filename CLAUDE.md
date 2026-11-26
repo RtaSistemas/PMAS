@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-973 tests across 32 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 37 Vitest tests and 48 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+996 tests across 35 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 75 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -246,7 +246,10 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
 | `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
 | `test_audit_ops.py` | 12 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash, `/ready`, startup with a bad log or database path |
-| **Total** | **973** | |
+| `test_audit_cycle3_review.py` | 3 | Review of the cycle 2 changes: collaborator-name index per upload, forecast band with idle cycles |
+| `test_audit_invariants.py` | 18 | Generated-data invariants: summary equals raw totals, cross-endpoint totals, ACL leakage, no NaN, upload lock, rate cache |
+| `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
+| **Total** | **996** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
