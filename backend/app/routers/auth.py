@@ -7,7 +7,7 @@ from typing import Annotated
 import bcrypt as _bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt
+import jwt
 from sqlalchemy import func
 
 from backend.app.database import DbSession

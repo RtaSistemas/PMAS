@@ -82,7 +82,7 @@ The system addresses three core PMO needs:
 |---|---|
 | Backend | Python 3.11+ · FastAPI 0.111 · SQLAlchemy 2.0 |
 | Database | Embedded SQLite (`pmas.db`, WAL mode) |
-| Authentication | JWT (python-jose) · bcrypt |
+| Authentication | JWT (PyJWT) · bcrypt |
 | Frontend | HTML5 · CSS3 · Vanilla JavaScript |
 | Charts | Apache ECharts 5 |
 | Parsing | pandas · openpyxl |

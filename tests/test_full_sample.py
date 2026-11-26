@@ -171,7 +171,7 @@ class TestAuth:
         assert client.post("/api/token", data={"username": "nobody", "password": "x"}).status_code == 401
 
     def test_admin_role_encoded_in_token(self, client, db_session):
-        from jose import jwt as pyjwt
+        import jwt as pyjwt
         from backend.app.deps import SECRET_KEY, ALGORITHM
         _mk_user(db_session, "jwt_admin", "pass1234", role="admin")
         r = client.post("/api/token", data={"username": "jwt_admin", "password": "pass1234"})

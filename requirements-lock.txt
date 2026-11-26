@@ -22,10 +22,10 @@ pandas==3.0.2
 pluggy==1.6.0
 pydantic==2.13.3
 pydantic_core==2.46.3
+pyjwt==2.15.1
 pytest==9.0.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
-python-jose==3.5.0
 python-multipart==0.0.26
 six==1.16.0
 slowapi==0.1.9

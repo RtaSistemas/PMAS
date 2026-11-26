@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
 
 from backend.app.database import DbSession
 from backend.app.models import ApiKey, User
@@ -44,7 +44,7 @@ def _resolve_user(token: str, db) -> User:
         username: str | None = payload.get("sub")
         if username is None:
             raise exc
-    except JWTError:
+    except jwt.InvalidTokenError:
         raise exc
     user = db.query(User).filter(User.username == username).first()
     if user is None:
