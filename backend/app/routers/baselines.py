@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.app.database import DbSession
 from backend.app.deps import get_current_user, require_admin
 from backend.app.models import Project, ProjectBaseline
+from backend.app.routers.projects import assert_project_access
 from backend.app.schemas import ProjectBaselineIn, ProjectBaselineOut
 
 router = APIRouter(prefix="/api/projects", tags=["baselines"])
@@ -38,10 +39,11 @@ def create_baseline(project_id: int, data: ProjectBaselineIn, db: DbSession, cur
 
 
 @router.get("/{project_id}/baselines", response_model=List[ProjectBaselineOut], dependencies=[Depends(get_current_user)])
-def list_baselines(project_id: int, db: DbSession):
+def list_baselines(project_id: int, db: DbSession, current_user=Depends(get_current_user)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    assert_project_access(db, current_user, project)
     return (
         db.query(ProjectBaseline)
         .filter_by(project_id=project_id)

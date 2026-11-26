@@ -3,6 +3,7 @@ from __future__ import annotations
 import calendar
 import csv
 import io
+import re
 from datetime import date as DateType, date
 from typing import Dict, List, Optional
 
@@ -204,7 +205,8 @@ def export_collaborator_timesheets(
         rows = rows.filter(TimesheetRecord.pep_wbs.in_(pep_code))
     rows = [] if no_access else rows.order_by(TimesheetRecord.record_date).all()
 
-    safe_name = collaborator_name.replace(" ", "_").replace("/", "-")
+    # header-safe: ASCII letters, digits, dot, dash, underscore only
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", collaborator_name.replace("/", "-")).strip("_") or "colaborador"
 
     def _gen():
         buf = io.StringIO()

@@ -69,9 +69,22 @@ def _pep_history_counts(db: Session, pep_wbs: str) -> tuple[int, int]:
     return records, summaries
 
 
+def assert_project_access(db: Session, user, project: Project) -> None:
+    """403 when a restricted user reads a project outside the whitelist."""
+    from backend.app.routers.v2.portfolio import _allowed_peps
+    allowed = _allowed_peps(db, user)
+    if allowed is not None and project.pep_wbs not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+
+
 @router.get("", summary="Listar projetos", response_model=list[ProjectOut])
-def list_projects(db: DbSession):
-    projects = db.query(Project).order_by(Project.pep_wbs).all()
+def list_projects(db: DbSession, current_user: CurrentUser):
+    from backend.app.routers.v2.portfolio import _allowed_peps
+    q = db.query(Project)
+    allowed = _allowed_peps(db, current_user)
+    if allowed is not None:  # restricted user: only whitelisted PEPs
+        q = q.filter(Project.pep_wbs.in_(allowed))
+    projects = q.order_by(Project.pep_wbs).all()
     return [_project_to_dict(p) for p in projects]
 
 
@@ -143,14 +156,7 @@ def get_budget_history(project_id: int, db: DbSession, current_user: CurrentUser
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
-    if current_user.role != "admin":
-        accesses = (
-            db.query(UserProjectAccess)
-            .filter(UserProjectAccess.user_id == current_user.id)
-            .all()
-        )
-        if accesses and not any(a.pep_wbs == project.pep_wbs for a in accesses):
-            raise HTTPException(status_code=403, detail="Acesso negado.")
+    assert_project_access(db, current_user, project)
     return (
         db.query(BudgetRevision)
         .filter(BudgetRevision.project_id == project_id)

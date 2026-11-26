@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 import math
 import re
 import unicodedata
@@ -630,6 +631,7 @@ def _phase_upsert_records(
     inserted = 0
     skipped = 0
     warned_zero_rate: set[str] = set()
+    rate_cache: dict[tuple, float] = {}
 
     for vr in valid_rows:
         collab = vr["collab"]
@@ -674,7 +676,10 @@ def _phase_upsert_records(
             continue
         seen_keys.add(key)
 
-        rate = _lookup_rate(db, collab, record_date)
+        rkey = (collab.seniority_level_id, record_date)
+        if rkey not in rate_cache:
+            rate_cache[rkey] = _lookup_rate(db, collab, record_date)
+        rate = rate_cache[rkey]
         if rate == 0.0 and collab.name not in warned_zero_rate:
             warnings.append(
                 f"Colaborador '{collab.name}' sem taxa cadastrada para {record_date} "
@@ -929,9 +934,14 @@ def _parse_date(value) -> date:
         return value if type(value) is date else value.date()
     if isinstance(value, (int, float)):
         return date(1899, 12, 30) + timedelta(days=int(value))
-    text = str(value).strip()
+    return _parse_date_text(str(value).strip())
+
+
+@lru_cache(maxsize=8192)
+def _parse_date_text(text: str) -> date:
     # A date that starts with a 4-digit year is year-first (ISO). Forcing day-first
     # on it swaps the day and the month (2026-01-05 would become 1 May 2026).
+    # Cached: a file repeats a few dozen dates over thousands of rows.
     return pd.to_datetime(text, dayfirst=not _YEAR_FIRST.match(text)).date()
 
 
