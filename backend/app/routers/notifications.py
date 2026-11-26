@@ -26,6 +26,7 @@ class NotificationOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+@router.get("", response_model=list[NotificationOut], include_in_schema=False)
 @router.get("/", response_model=list[NotificationOut])
 def list_notifications(db: DbSession, current_user: CurrentUser):
     """Return up to 50 notifications for the authenticated user, newest first."""

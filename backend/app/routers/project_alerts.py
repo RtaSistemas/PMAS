@@ -17,6 +17,7 @@ router = APIRouter(
 )
 
 
+@router.get("", response_model=list[ProjectAlertOut], include_in_schema=False)
 @router.get("/", response_model=list[ProjectAlertOut])
 def list_project_alerts(
     db: DbSession,

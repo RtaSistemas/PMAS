@@ -45,7 +45,6 @@ _INVALID_COLLAB_NAMES = {"nan", "none", "unnamed", "0", "", "-", "—"}
 _MAX_ROWS_WARNING = 5_000
 _YEAR_FIRST = re.compile(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}")
 _PLAIN_DECIMAL = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)$")
-_PEP_PATTERN = re.compile(r"^[A-Z0-9]{2,}-[A-Z0-9]{3,}$", re.IGNORECASE)
 
 
 class ClosedCycleError(Exception):

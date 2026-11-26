@@ -41,6 +41,17 @@ Scalability, error handling, and Linux release build.
 - **Mixed light and dark UI**: the `prefers-color-scheme: light` block (UX-05) changed only some variables, because the saved admin theme sets the background, surface and text colors. A light OS setting gave a half-light screen. The block is removed. A real light theme needs `_loadTheme` to set all derived variables. It stays in the backlog.
 - **Header buttons**: `.btn-ghost` and `.icon-btn` had no CSS rules, so the bell and the print button used the white native style. Rules added.
 
+### Audit cycle 2 and 3 (November 2026)
+
+Details and finding IDs are in `docs/AUDIT-2026-11.md`.
+
+- **Import**: names with accents or extra spaces map to one person. Semicolon CSV, Latin-1 files and lowercase headers load. Stale summaries refresh after an import. Approving a quarantine row checks the project lock and negative hours.
+- **Analytics**: an idle cycle now counts in the history. Earned Schedule uses the full plan. The completion cycle, TCPI, EAC and VAC are now correct. The PEP whitelist now applies to Trends, Effort, Simulate and Monte Carlo. Runway and Concentration skip inactive cycles, as Trends does. A float error no longer adds one extra cycle to a completion forecast.
+- **Admin and CRUD**: some input caused a 500 error. Examples are a long password, an unknown rate card level, a plan CSV with NaN and a cycle with plans. It now returns a clear 4xx message. A 500 error returns `application/problem+json`.
+- **Interface**: a user who is not an administrator no longer sees the Admin tab or write buttons, and can change their own password. The alerts and many other texts have an English version. The mobile layout, the filter panel and the Escape key on stacked modals work correctly.
+- **API**: `GET /api/my/notifications` and `GET /api/project-alerts` work with or without a trailing slash and no longer redirect. The `planned_duration_cycles` field of the forecast now counts the cycles up to the last planned cycle.
+- **Documentation**: a date outside every cycle sends the row to quarantine. No cycle is created. An administrator sees all rows in the `/api/my/*` lists. Test counts are updated.
+
 ### Changed
 
 - **Version** bumped from `2.0.2` → `2.1.0`.

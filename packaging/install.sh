@@ -53,6 +53,14 @@ cmd_install() {
   local binary; binary="$(find_binary "${1:-}")"
   [[ -f "$binary" ]] || fail "Binary not found: $binary"
 
+  # A space or one of # & in a path breaks the unit files (ExecStart splits at a space).
+  local p
+  for p in "$PREFIX" "$ETC" "$DATA" "$LOGDIR"; do
+    case "$p" in
+      *[[:space:]\#\&]*) fail "The path \"$p\" has a space, # or &. Use a path without them." ;;
+    esac
+  done
+
   if [[ "$SKIP" != "1" ]]; then
     id pmas &>/dev/null || { useradd --system --home-dir "$DATA" --shell /usr/sbin/nologin pmas; log "Created the user pmas."; }
   fi

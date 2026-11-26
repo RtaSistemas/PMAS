@@ -77,6 +77,7 @@ def get_runway(
         .join(Cycle, TimesheetRecord.cycle_id == Cycle.id)
         .filter(
             TimesheetRecord.pep_wbs.isnot(None),
+            Cycle.is_active.is_(True),  # exclude quarantine/inactive cycles (as trends)
         )
     )
     if cycle_id:
@@ -147,6 +148,7 @@ def get_runway(
     # All active cycles ordered by start_date for estimated completion
     all_cycles = (
         db.query(Cycle)
+        .filter(Cycle.is_active.is_(True))
         .order_by(Cycle.start_date)
         .all()
     )
@@ -221,7 +223,7 @@ def get_runway(
                         default=None,
                     )
                     if last_cycle_idx is not None:
-                        n = math.ceil(cycles_to_complete)
+                        n = math.ceil(round(cycles_to_complete, 6))  # ignore float noise
                         target_idx = last_cycle_idx + n
                         if target_idx < len(all_cycles):
                             estimated_completion_cycle = all_cycles[target_idx].name

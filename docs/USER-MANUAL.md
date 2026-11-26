@@ -479,7 +479,7 @@ flowchart TD
         E[Collect all unique parseable past dates]
         F{Date covered by an active Cycle?}
         E --> F
-        F -- no --> G[Auto-create quarantine Cycle\nis_active=False]
+        F -- no --> G[Map date to None\nrow is quarantined in Phase 1d]
         F -- yes --> H[Add to cycle_cache]
     end
 
@@ -848,7 +848,7 @@ sequenceDiagram
     API->>ING: ingest_file(bytes, filename, db, user_role, user_id)
     ING->>DB: Read GlobalConfig, ValidationRules, Cycles, RateCards
     ING->>ING: Phase 0 - validate columns, filter ACL
-    ING->>ING: Phase 0b - pre-scan dates, create quarantine cycles
+    ING->>ING: Phase 0b - pre-scan dates, build the cycle cache
     ING->>ING: Phase 1 - per-row Q8/Q1/Q2/no-cycle/hours checks
     ING->>ING: Phase 2 - ValidationRule engine per row
     ING->>ING: Phase 3 - aggregate daily/weekly rules
@@ -888,11 +888,10 @@ Billing cycles define the time periods to which timesheet records are assigned.
 | Active (normal) | `is_active=True`, `is_closed=False` | Accepts timesheet uploads |
 | Closed | `is_active=True`, `is_closed=True` | Admin uploads still accepted; non-admin upload blocked with `ClosedCycleError` |
 | Archived | `is_active=False` | Hidden from default list; not used for new records; excluded from analytics |
-| Quarantine cycle | `is_active=False`, auto-created | Holds dates outside all registered cycles; excluded from Trends chart |
 
 **Closing a cycle:** use the lock icon in the Ciclos table. Closed cycles prevent non-admin users from re-uploading data for that period, protecting month-end figures.
 
-**Quarantine cycles:** when the ingestion pipeline encounters a date that does not fall within any active cycle, it auto-creates a quarantine cycle for that date (name: `quarentena-YYYY-MM-DD`). Records in these cycles are excluded from Trends and Portfolio charts. Create the proper cycle and re-upload the file to migrate those records.
+**Dates outside every cycle:** when a row has a date that no active cycle covers, the ingestion does not create a cycle. It sends the row to quarantine with the reason "Nenhum ciclo ativo cobre a data". Create the proper cycle and upload the file again (or approve the quarantine record) to bring the row in.
 
 **Overlap validation:** cycle date ranges cannot overlap. The API returns HTTP 422 if a new or updated cycle would overlap with an existing one.
 
@@ -1355,7 +1354,7 @@ Different analytics contexts use different velocity windows, by design:
 
 **BR-006** — **Q2**: Any row where the parsed date is strictly greater than `date.today()` is quarantined with reason "Data futura". *(Enforced: `ingestion.py:_phase_validate_rows()` Phase 1c)*
 
-**BR-007** — **No active cycle**: Any row whose date does not fall within any active cycle is quarantined with reason "Nenhum ciclo ativo cobre a data". Before quarantining, the system creates a quarantine cycle (`is_active=False`) to group these records. *(Enforced: `ingestion.py:_phase_validate_rows()` Phase 1d)*
+**BR-007** — **No active cycle**: Any row whose date does not fall within any active cycle is quarantined with reason "Nenhum ciclo ativo cobre a data". The ingestion does not create a cycle for the row. *(Enforced: `ingestion.py:_phase_validate_rows()` Phase 1d)*
 
 **BR-008** — **Invalid hours**: Any row where `Horas totais (decimal)` is missing, NaN, Inf, or non-numeric is quarantined with reason "Horas inválidas ou ausentes". *(Enforced: `ingestion.py:_phase_validate_rows()` Phase 1e)*
 
@@ -1379,7 +1378,7 @@ Different analytics contexts use different velocity windows, by design:
 
 **BR-017** — A cycle cannot be deleted if it has any associated `TimesheetRecord` rows. The API returns HTTP 409. *(Enforced: `cycles.py:delete_cycle()`)*
 
-**BR-018** — Quarantine cycles (auto-created, `is_active=False`) are excluded from all v2 analytics endpoints. Analytics queries filter `Cycle.is_active = True`. *(Enforced: analytics queries in `v2/` routers)*
+**BR-018** — Inactive cycles (`is_active=False`) are excluded from the v2 analytics endpoints. Analytics queries filter `Cycle.is_active = True`. *(Enforced: analytics queries in `v2/` routers)*
 
 **BR-019** — Closing a cycle (`is_closed=True`) prevents non-admin users from uploading to it. It does not affect existing `TimesheetRecord` rows. *(Enforced: `ingestion.py:ingest_file()`)*
 
@@ -1471,7 +1470,7 @@ Different analytics contexts use different velocity windows, by design:
 
 **CC-002** — **No rate card match.** When `_lookup_rate()` finds no matching `RateCard`, `cost_per_hour = 0.0`. The upload completes with a warning. All cost metrics for that collaborator will be R$0.00, but hour metrics remain correct. *(References: BR-028)*
 
-**CC-003** — **Date outside all cycles.** The ingestion pre-scan auto-creates a quarantine cycle for that date (`is_active=False`). The row is quarantined. Trends and Portfolio charts exclude quarantine cycles. To fix: create a proper cycle, then approve the quarantine record. *(References: BR-007, BR-018)*
+**CC-003** — **Date outside all cycles.** The ingestion does not create a cycle. The row is quarantined with the reason "Nenhum ciclo ativo cobre a data". To fix: create a proper cycle, then approve the quarantine record. *(References: BR-007, BR-018)*
 
 **CC-004** — **Future date in CSV.** Q2 quarantine fires regardless of whether a cycle exists for that date. Re-import after the date has passed. *(References: BR-006)*
 
@@ -1503,7 +1502,7 @@ Different analytics contexts use different velocity windows, by design:
 
 **CC-018** — **Per-user ACL empty.** A user with no `UserProjectAccess` rows sees ALL PEPs in analytics, same as an admin. Adding even one ACL entry restricts the user to only that PEP. *(References: BR-047)*
 
-**CC-019** — **Closed/archived cycle data excluded.** Trends chart queries filter `Cycle.is_active = True`. Records in quarantine cycles are excluded from all v2 analytics. *(References: BR-018)*
+**CC-019** — **Closed/archived cycle data excluded.** Trends chart queries filter `Cycle.is_active = True`. Records in inactive cycles are excluded from the v2 analytics. *(References: BR-018)*
 
 **CC-020** — **Consecutive low-SPI cycles trigger schedule_risk alert.** After the configured number of consecutive cycles with SPI below the threshold, a `ProjectAlert` of type `schedule_risk` is created. The alert auto-resolves on the next upload if SPI recovers. *(References: BR-041, BR-043)*
 
@@ -1677,7 +1676,8 @@ All endpoints under `/api/v2/` enforce per-user PEP ACL.
 |---|---|---|---|
 | `POST` | `/api/token` | — | Login; returns JWT |
 | `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | Admin | User CRUD |
-| `PUT` | `/api/users/{id}/password` | Admin or self | Change password |
+| `GET` | `/api/users/me` | Any | Current user (id, username, role) |
+| `PATCH` | `/api/users/{id}/password` | Admin or self | Change password |
 | `GET` | `/api/audit-log` | Admin | List audit log entries |
 | `GET/PUT` | `/api/theme` | Admin | Read/update global theme |
 | `POST/DELETE` | `/api/theme/logo` | Admin | Upload / remove logo |
@@ -1813,7 +1813,7 @@ See Section 11.10.
 
 **Deleting a user:** click the delete icon. Audit log entries referencing the user are preserved (`user_id` set to NULL via `SET NULL` FK).
 
-**Password change:** Admin can change any user's password via `PUT /api/users/{id}/password`. Users can change their own password when authenticated.
+**Password change:** Admin can change any user's password via `PATCH /api/users/{id}/password`. Users can change their own password when authenticated.
 
 **Default credentials:** `admin` / `admin`. **Change immediately after installation.**
 

@@ -1,6 +1,8 @@
 [Unit]
 Description=PMAS - Project Management Assistant System
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -11,8 +13,6 @@ EnvironmentFile=-/etc/pmas/pmas.env
 ExecStart=/opt/pmas/pmas
 Restart=on-failure
 RestartSec=5
-StartLimitIntervalSec=60
-StartLimitBurst=5
 
 # The binary unpacks itself in a private temporary directory.
 PrivateTmp=true

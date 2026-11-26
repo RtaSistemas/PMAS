@@ -104,6 +104,8 @@ It does not remove the data in `/var/lib/pmas` or the settings in `/etc/pmas`.
 | The service does not start | The settings file has an error, or the port is in use | Read the logs. Change `PMAS_PORT` if another program uses the port. |
 | The service stops at start and the log shows a permission error | The data folder has the wrong owner | Run `sudo chown -R pmas:pmas /var/lib/pmas /var/log/pmas` |
 | The binary does not run (`Permission denied` for a temporary file) | The `/tmp` folder does not allow programs to run | Mount `/tmp` without `noexec`, or set `TMPDIR` for the service to another folder |
+| The service stops at start with "PMAS cannot use the database path" | The folder of `PMAS_DB_PATH` cannot be created or written | Fix the path or the owner of the folder. PMAS creates a missing folder when it can. |
+| The log shows "Cannot write the log file" | The folder of `PMAS_LOG_FILE` cannot be written | Fix the path or the owner. PMAS writes to the console (journal) until then. |
 | `/ready` returns 503 | The database file is not available | Check `PMAS_DB_PATH` and the owner of the file |
 | An import returns 413 | The file is larger than the limit | Increase `PMAS_MAX_UPLOAD_MB` and the limit of the reverse proxy |
 | A user cannot log in after 5 errors | The account is locked for 15 minutes | Wait, or ask an administrator to set a new password |

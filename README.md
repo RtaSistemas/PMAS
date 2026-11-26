@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-750%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-973%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -538,7 +538,7 @@ flowchart TD
         E[Collect all parseable dates]
         F{Date with no active cycle?}
         E --> F
-        F -- yes --> G[Auto-create quarantine cycle\nis_active=False]
+        F -- yes --> G[Map date to None\nrow is quarantined in Phase 1d]
         F -- no --> H[OK]
     end
 
@@ -867,8 +867,8 @@ stateDiagram-v2
 
 | Role | Route | Visible data |
 |---|---|---|
-| `admin` | `GET /api/quarantine` | All records |
-| `user` | `GET /api/my/quarantine` | Own uploads only |
+| `admin` | `GET /api/quarantine` or `GET /api/my/quarantine` | All records |
+| `user` | `GET /api/quarantine` or `GET /api/my/quarantine` | Own uploads only |
 
 ---
 
@@ -937,7 +937,7 @@ PMAS
 | Method | Route | Description |
 |---|---|---|
 | `POST` | `/api/upload-timesheet` | CSV/XLSX ingestion (6-phase pipeline) |
-| `GET` | `/api/upload-history` | Upload history (admin) |
+| `GET` | `/api/upload-history` | Upload history (admin: all; user: own) |
 | `GET` | `/api/upload-history/{id}` | Details of a specific upload |
 
 ### Dashboard and Analytics (v2)
@@ -997,7 +997,7 @@ PMAS
 
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/quarantine` | List records (admin) |
+| `GET` | `/api/quarantine` | List records (admin: all; user: own) |
 | `POST` | `/api/quarantine/{id}/approve` | Approve and re-ingest |
 | `POST` | `/api/quarantine/{id}/reject` | Reject |
 | `DELETE` | `/api/quarantine/{id}` | Delete |
@@ -1012,13 +1012,14 @@ PMAS
 |---|---|---|
 | `POST` | `/api/token` | Login — returns JWT (exp: 8h) |
 | `GET/POST/PUT/DELETE` | `/api/users[/{id}]` | User CRUD (admin) |
+| `GET` | `/api/users/me` | Current user (any role) |
 | `PATCH` | `/api/users/{id}/password` | Change password |
 | `GET` | `/api/audit-log` | Audit log (admin) |
 | `GET/PUT` | `/api/theme` | Global theme |
 | `POST/DELETE` | `/api/theme/logo` | Logo upload / removal |
 | `GET/PUT` | `/api/my/preferences` | Logged-in user preferences |
-| `GET` | `/api/my/upload-history` | User's own upload history |
-| `GET` | `/api/my/quarantine` | User's own quarantine |
+| `GET` | `/api/my/upload-history` | Own upload history (an admin sees all) |
+| `GET` | `/api/my/quarantine` | Own quarantine (an admin sees all) |
 | `GET` | `/api/my/budget-alerts` | Budget alerts accessible to the user |
 | `GET` | `/api/my/alerts` | ProjectAlert list for the current user (ACL-filtered) |
 
@@ -1041,7 +1042,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-750 tests across 28 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+973 tests across 32 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1057,9 +1058,9 @@ pytest tests/ -v
 | `test_runway_concentration.py` | 25 | `/api/v2/runway` + `/api/v2/concentration` + DI-01 NULL-cost regression |
 | `test_evm_integrity.py` | 24 | EVM HTTP integration — render-ready responses, EV capped at BAC, `cpi_cumulative`, `spi_t_color` |
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
-| `test_users.py` | 25 | User CRUD, password change, role enforcement |
+| `test_users.py` | 27 | User CRUD, password change, role enforcement |
 | `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
-| `test_packaging.py` | 10 | Linux install package, installer, backup script |
+| `test_packaging.py` | 11 | Linux install package, installer, backup script |
 | `test_cycles.py` | 20 | Cycle CRUD |
 | `test_project_alerts.py` | 19 | `ProjectAlert` deduplication, auto-resolution, threshold triggers, admin endpoint filters, `GET /api/my/alerts` ACL |
 | `test_notifications.py` | 15 | Bell-tray `Notification` CRUD, mark-read, mark-all-read, per-user visibility |
@@ -1073,6 +1074,10 @@ pytest tests/ -v
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_my.py` | 5 | `/api/my/*` per-user endpoints |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
+| `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
+| `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
+| `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
+| `test_audit_ops.py` | 12 | Runway and concentration skip inactive cycles, `ceil` float noise, list routes with and without a trailing slash, `/ready`, startup with a bad log or database path |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup, not teardown) so every test starts from a known empty state.
 
@@ -1164,7 +1169,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 28 files, 750 tests
+├── tests/                       # 32 files, 973 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable
