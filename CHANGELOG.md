@@ -32,6 +32,13 @@ Scalability, error handling, and Linux release build.
 - **Backup without the `sqlite3` program**: `backup_pmas.sh` uses the Python module when the program is missing.
 - **API keys for automatic import** (`routers/api_keys.py`, `ApiKey` model, `tabs/api-keys.js`): an administrator creates a key in the Admin tab and a system sends files with `POST /api/upload-timesheet` and the `X-API-Key` header. The key acts as an existing user, so the role and the PEP ACL apply. The key is valid only on the upload route. The server shows the key once and keeps only a SHA-256 hash. Revoked keys are refused. Create, revoke and each upload are in the audit log. 17 backend tests and 2 flow tests. The help page documents the use.
 
+### Product decisions (November 2026)
+
+- **Same-day rows are summed.** Rows with the same collaborator, date, PEP, description, hour type and start time but different hours are stored as one record with the summed hours. An exact duplicate is still discarded. The import response has a new `records_summed` field and a capped list of examples.
+- **Empty whitelist imports any PEP.** A user with no PEP whitelist can import any PEP, like the analytics screens. A user with a whitelist can import only the PEPs on it.
+- **Date filters.** A date range means the record date on every screen. The forecast, What-If and Monte Carlo use the whole project and ignore the range; the Forecast tab says so.
+- **Baselines are admin only.** Create, activate and delete need an administrator and are in the audit log. The active baseline cannot be deleted.
+
 ### Fixed
 
 - **ISO dates were read with day and month swapped.** `_parse_date` forced day-first parsing, so `2026-01-05` became 1 May 2026. A file with ISO dates and days of 12 or less put hours in the wrong month, or sent the rows to quarantine. Dates with a 4-digit year first are now read year-first. Dates in `dd/mm/yyyy` format are unchanged. The fix also applies to quarantine approval and to the collaborator timeline. 8 new tests.
