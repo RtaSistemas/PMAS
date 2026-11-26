@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { adminPassword } from './admin-password.js';
 
 // The checklist reads three list endpoints. The tests mock them, so the shared
 // database and the admin password stay unchanged.
@@ -11,7 +12,7 @@ function mockCounts(page, { cycles = [], projects = [], uploads = [] }) {
 async function login(page) {
   await page.goto('/');
   await page.fill('#loginUsername', 'admin');
-  await page.fill('#loginPassword', 'admin');
+  await page.fill('#loginPassword', await adminPassword(page));
   await page.click('button[type="submit"]');
   await expect(page.locator('#appShell')).toBeVisible({ timeout: 10000 });
 }

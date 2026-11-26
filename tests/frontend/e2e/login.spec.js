@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { adminPassword } from './admin-password.js';
 
 test.describe('Login page', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,7 +29,7 @@ test.describe('Login page', () => {
 
   test('logs in successfully with admin credentials', async ({ page }) => {
     await page.fill('#loginUsername', 'admin');
-    await page.fill('#loginPassword', 'admin');
+    await page.fill('#loginPassword', await adminPassword(page));
     await page.click('button[type="submit"]');
     await expect(page.locator('#appShell')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#loginOverlay')).toBeHidden();
@@ -39,7 +40,7 @@ test.describe('App shell after login', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.fill('#loginUsername', 'admin');
-    await page.fill('#loginPassword', 'admin');
+    await page.fill('#loginPassword', await adminPassword(page));
     await page.click('button[type="submit"]');
     await expect(page.locator('#appShell')).toBeVisible({ timeout: 10000 });
   });

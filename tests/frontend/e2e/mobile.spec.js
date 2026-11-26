@@ -1,4 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
+import { adminPassword } from './admin-password.js';
 
 const mobile = devices['Pixel 5'];
 
@@ -9,7 +10,7 @@ test.describe('Mobile responsiveness', () => {
     await page.goto('/');
     // Login
     await page.fill('#loginUsername', 'admin');
-    await page.fill('#loginPassword', 'admin');
+    await page.fill('#loginPassword', await adminPassword(page));
     await page.click('button[type="submit"]');
     await expect(page.locator('#appShell')).toBeVisible({ timeout: 10000 });
   });

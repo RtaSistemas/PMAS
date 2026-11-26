@@ -82,6 +82,27 @@ test.describe('Journeys: team and restricted user', () => {
   });
 });
 
+test.describe('Journeys: phone', () => {
+  test.use({ viewport: { width: 390, height: 800 } });
+
+  test('the Forecast tab with a PEP selected does not scroll the page sideways', async ({ page, request }) => {
+    const token = await adminToken(request);
+    await ensureCycle(request, token);
+    const pep = uniquePep();
+    await createProject(request, token, pep);
+    await uploadViaApi(request, token, `ph-${pep}.csv`, timesheetCsv(pep, [
+      ['Phone Person One', '2026-01-05', 8], ['Phone Person Two', '2026-01-06', 8], ['Phone Person Three', '2026-01-07', 8],
+    ]));
+    await openApp(page, token);
+    await page.locator('.atab-btn[data-atab="forecast"]').click();
+    await page.locator('#forecastPepSelect').selectOption({ value: pep });
+    await expect(page.locator('#forecastAllocTableHours table')).toBeVisible();
+    await page.waitForTimeout(800);
+    const o = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, view: window.innerWidth }));
+    expect(o.scroll).toBeLessThanOrEqual(o.view + 20);
+  });
+});
+
 test.describe('Journeys: failures and double clicks', () => {
   test('a failed list request shows the error and does not stay on Loading', async ({ page, request }) => {
     const token = await adminToken(request);

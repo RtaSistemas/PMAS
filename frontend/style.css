@@ -786,6 +786,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
 /* Allocation matrix */
+#forecastAllocTableHours, #forecastAllocTableCost { overflow-x: auto; }
 .alloc-matrix {
   width: 100%;
   border-collapse: collapse;

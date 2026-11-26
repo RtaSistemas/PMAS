@@ -429,9 +429,10 @@ function _apiError(status, detail, statusText) {
 // A double click on a save button must not send the request twice (two rows, or a 500 on a unique key).
 // The guard ignores a click on the button until every request that the first click started has ended.
 let _pendingFetches = 0;
+let _fetchStarts = 0;
 const _nativeFetch = window.fetch.bind(window);
 window.fetch = (...args) => {
-  _pendingFetches++;
+  _pendingFetches++; _fetchStarts++;
   return _nativeFetch(...args).finally(() => { _pendingFetches--; });
 };
 const _ONCE_BUTTONS = /^(\w*SaveBtn|confirmModalOk|qrApproveBtn|qrRejectBtn)$/;
@@ -441,12 +442,13 @@ document.addEventListener('click', ev => {
   if (btn.dataset.busy) { ev.stopPropagation(); ev.preventDefault(); return; }
   btn.dataset.busy = '1';
   const started = Date.now();
+  const startCount = _fetchStarts;
   const release = () => {
-    // Wait until the handler has started its request and the request has ended.
-    if (_pendingFetches === 0 && Date.now() - started > 250 || Date.now() - started > 20000) delete btn.dataset.busy;
+    if (_pendingFetches === 0 || Date.now() - started > 20000) delete btn.dataset.busy;
     else setTimeout(release, 50);
   };
-  setTimeout(release, 50);
+  // The handler starts its request in the same turn. Without a request (a failed check), release at once.
+  setTimeout(() => { if (_fetchStarts > startCount) release(); else delete btn.dataset.busy; }, 0);
 }, true);
 
 async function apiFetch(url) {
