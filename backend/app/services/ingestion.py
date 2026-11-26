@@ -239,6 +239,7 @@ def ingest_file(
         "status": _status,
         "records_inserted": inserted,
         "records_skipped": skipped,
+        "records_summed": _merge_valid_rows(valid_rows)["n_summed"],
         "quarantine_records_added": len(quarantine_buffer),
         "warning_count": len(ingest_warnings),
         "info_count": len(ingest_infos),
@@ -518,6 +519,108 @@ def _phase_validate_rows(
     return valid_rows, quarantine_buffer, warnings, infos, new_collaborators, skipped
 
 
+_MAX_LISTED = 10  # cap on example lines in infos so a big file stays small
+
+
+def _hour_type_of(row) -> str:
+    is_extra = _is_yes(row.get(_COL_EXTRA, ""))
+    is_standby = _is_yes(row.get(_COL_STANDBY, ""))
+    return "extra" if is_extra else "standby" if is_standby else "normal"
+
+
+def _fmt_h(h: float) -> str:
+    return f"{h:.2f}".replace(".", ",") + " h"
+
+
+def _merge_valid_rows(valid_rows: list[dict]) -> dict:
+    """Collapse valid rows into the records that will be stored.
+
+    Rows with the same key (collaborator, cycle, date, PEP, description, hour
+    type, start time) are SUMMED when their hours differ. A row whose hours
+    equal a row already seen under the same key is an exact duplicate and is
+    discarded. Zero-hour rows are discarded.
+
+    Returns {"merged", "n_summed", "n_dups", "n_zero", "sum_infos",
+    "dup_infos", "warnings"}. Each merged item is the first row's dict with
+    `total_h` summed, plus `hour_type` and `parts`.
+    """
+    groups: dict[tuple, dict] = {}
+    order: list[dict] = []
+    dup_lines: list[str] = []
+    warnings: list[str] = []
+    n_zero = 0
+    n_dups = 0
+
+    for vr in valid_rows:
+        total_h = vr["total_h"]
+        if total_h == 0.0:
+            n_zero += 1
+            continue
+        row = vr["row"]
+        collab = vr["collab"]
+        record_date = vr["record_date"]
+        if _is_yes(row.get(_COL_EXTRA, "")) and _is_yes(row.get(_COL_STANDBY, "")):
+            warnings.append(
+                f"Linha {vr['row_idx']}: colaborador '{collab.name}' em {record_date} "
+                f"marcado como Extra E Sobreaviso simultaneamente → classificado como Extra."
+            )
+        hour_type = _hour_type_of(row)
+        pep_code = _str_or_none(row.get(_COL_PEP_CODE))
+        key = (
+            collab.id, vr["cycle"].id, record_date, pep_code,
+            _str_or_none(row.get(_COL_PEP_DESC)), hour_type,
+            _str_or_none(row.get(_COL_START_TIME)),
+        )
+        g = groups.get(key)
+        if g is None:
+            g = {**vr, "hour_type": hour_type, "parts": [total_h],
+                 "_seen": {round(total_h, 6)}, "_pep": pep_code}
+            groups[key] = g
+            order.append(g)
+            continue
+        if round(total_h, 6) in g["_seen"]:
+            n_dups += 1
+            if len(dup_lines) < _MAX_LISTED:
+                pep_label = f" | PEP {pep_code}" if pep_code else ""
+                dup_lines.append(
+                    f"Linha {vr['row_idx']}: duplicata ignorada — {collab.name} em "
+                    f"{record_date}{pep_label} ({hour_type}, {total_h:.2f}h)"
+                )
+            continue
+        g["_seen"].add(round(total_h, 6))
+        g["parts"].append(total_h)
+        g["total_h"] = g["total_h"] + total_h
+
+    sum_examples: list[str] = []
+    n_summed = 0
+    for g in order:
+        if len(g["parts"]) > 1:
+            n_summed += len(g["parts"]) - 1
+            label = f" | PEP {g['_pep']}" if g["_pep"] else ""
+            sum_examples.append(
+                f"{g['collab'].name} em {g['record_date'].strftime('%d/%m/%Y')}{label} "
+                f"({' + '.join(_fmt_h(h) for h in g['parts'])} = {_fmt_h(g['total_h'])})"
+            )
+    sum_infos: list[str] = []
+    if sum_examples:
+        shown = sum_examples[:_MAX_LISTED]
+        tail = (
+            f"; +{len(sum_examples) - _MAX_LISTED} outras"
+            if len(sum_examples) > _MAX_LISTED else ""
+        )
+        sum_infos.append(
+            f"{n_summed} linha(s) do mesmo dia somada(s): {'; '.join(shown)}{tail}"
+        )
+    dup_infos = list(dup_lines)
+    if n_dups > len(dup_lines):
+        dup_infos.append(f"+{n_dups - len(dup_lines)} outras duplicatas ignoradas.")
+
+    return {
+        "merged": order, "n_summed": n_summed, "n_dups": n_dups, "n_zero": n_zero,
+        "sum_infos": sum_infos, "dup_infos": dup_infos, "warnings": warnings,
+    }
+
+
 def _phase_aggregate_rules(
     valid_rows: list[dict],
     rules: list,
@@ -533,7 +636,7 @@ def _phase_aggregate_rules(
     weekly_sums: dict[tuple, float] = {}
     week_first_day: dict[tuple, object] = {}  # (collab_name, (year, week)) → earliest date with data
 
-    for vr in valid_rows:
+    for vr in _merge_valid_rows(valid_rows)["merged"]:  # the hours that are stored
         collab_name = vr["collab"].name
         d = vr["record_date"]
         key_d = (collab_name, d)
@@ -627,54 +730,31 @@ def _phase_upsert_records(
 
     inserted_by_scope: dict[tuple[str, int], int] = {}
 
-    seen_keys: set[tuple] = set()
-    inserted = 0
-    skipped = 0
+    mr = _merge_valid_rows(valid_rows)
+    warnings.extend(mr["warnings"])
+    infos.extend(mr["sum_infos"])
+    infos.extend(mr["dup_infos"])
+    # Rows folded into another record still count as inserted rows (their
+    # hours are stored), so inserted + skipped + quarantined == rows in file.
+    inserted = mr["n_summed"]
+    skipped = mr["n_zero"] + mr["n_dups"]
     warned_zero_rate: set[str] = set()
     rate_cache: dict[tuple, float] = {}
 
-    for vr in valid_rows:
+    for vr in mr["merged"]:
         collab = vr["collab"]
         record_date = vr["record_date"]
         cycle = vr["cycle"]
         total_h = vr["total_h"]
-        row = vr["row"]
-        row_idx = vr["row_idx"]
-
-        if total_h == 0.0:
-            skipped += 1
-            continue
-
-        is_extra = _is_yes(row.get(_COL_EXTRA, ""))
-        is_standby = _is_yes(row.get(_COL_STANDBY, ""))
-
-        if is_extra and is_standby:
-            warnings.append(
-                f"Linha {row_idx}: colaborador '{collab.name}' em {record_date} "
-                f"marcado como Extra E Sobreaviso simultaneamente → classificado como Extra."
-            )
-
-        if is_extra:
-            extra_h = total_h; normal_h = standby_h = 0.0; hour_type = "extra"
-        elif is_standby:
-            standby_h = total_h; normal_h = extra_h = 0.0; hour_type = "standby"
+        hour_type = vr["hour_type"]
+        if hour_type == "extra":
+            extra_h = total_h; normal_h = standby_h = 0.0
+        elif hour_type == "standby":
+            standby_h = total_h; normal_h = extra_h = 0.0
         else:
-            normal_h = total_h; extra_h = standby_h = 0.0; hour_type = "normal"
-
-        pep_code = _str_or_none(row.get(_COL_PEP_CODE))
-        pep_desc = _str_or_none(row.get(_COL_PEP_DESC))
-        start_time = _str_or_none(row.get(_COL_START_TIME))
-
-        key = (collab.id, cycle.id, record_date, pep_code, pep_desc, hour_type, start_time)
-        if key in seen_keys:
-            pep_label = f" | PEP {pep_code}" if pep_code else ""
-            infos.append(
-                f"Linha {row_idx}: duplicata ignorada — {collab.name} em {record_date}{pep_label} "
-                f"({hour_type}, {total_h:.2f}h)"
-            )
-            skipped += 1
-            continue
-        seen_keys.add(key)
+            normal_h = total_h; extra_h = standby_h = 0.0
+        pep_code = vr["_pep"]
+        pep_desc = _str_or_none(vr["row"].get(_COL_PEP_DESC))
 
         rkey = (collab.seniority_level_id, record_date)
         if rkey not in rate_cache:
@@ -739,6 +819,10 @@ def _authorized_peps(
         return set(pep_codes)
     if user_id is None:
         return set()
+    # Empty whitelist = access to all (same rule as the v2 analytics routes).
+    has_rows = db.query(UserProjectAccess.id).filter(UserProjectAccess.user_id == user_id).first()
+    if has_rows is None:
+        return set(pep_codes)
 
     delegated: set[str] = {
         p.pep_wbs
