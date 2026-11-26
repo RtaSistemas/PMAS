@@ -28,6 +28,7 @@ window._LANG_EN = {
     'allocation.btn_h':'Hours','allocation.btn_r':'R$',
     'forecast.title':'Completion Forecast (EVM)',
     'forecast.select_pep':'— select a PEP —',
+    'forecast.date_note':'The forecast covers the whole project. The date filter does not apply here.',
     'forecast.empty':'Select a PEP to show the completion forecast.',
     'forecast.baseline.empty':'Select a PEP and configure the baseline in the Projects tab to view here.',
     'forecast.consumed':'Consumed Hours','forecast.remaining':'Remaining Hours',

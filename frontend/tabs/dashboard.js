@@ -70,8 +70,15 @@ const pepMs          = _createMS(document.getElementById('pepMs'),           _t(
 const pepDescMs      = _createMS(document.getElementById('pepDescMs'),       _t('ms.pep_desc_ph'), onPepDescChange);
 const collaboratorMs = _createMS(document.getElementById('collaboratorMs'),  _t('ms.collab_ph'),   onCollabChange);
 
-document.getElementById('dateFromInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
-document.getElementById('dateToInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); });
+// The forecast covers the whole project: tell the user when a date filter is set.
+function _updateForecastDateNote() {
+  const note = document.getElementById('forecastDateNote');
+  if (!note) return;
+  note.hidden = !(document.getElementById('dateFromInput').value || document.getElementById('dateToInput').value);
+}
+
+document.getElementById('dateFromInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); _updateForecastDateNote(); });
+document.getElementById('dateToInput').addEventListener('change', () => { _markFiltersDirty(); _updateFilterBadge(); _updateForecastDateNote(); });
 
 let pepDataCache = {};
 
@@ -201,6 +208,7 @@ clearBtn.addEventListener('click', () => {
   document.getElementById('dateFromInput').value = '';
   document.getElementById('dateToInput').value   = '';
   _updateFilterBadge();
+  _updateForecastDateNote();
   try { localStorage.removeItem('pmas_filters_v1'); } catch (_) {}
   pepDataCache = {};
   _evmMode = false;
@@ -277,6 +285,7 @@ clearBtn.addEventListener('click', () => {
 // Analytics — render dispatcher
 // ---------------------------------------------------------------------------
 async function _renderActiveTab() {
+  _updateForecastDateNote();
   const btn = document.getElementById('loadBtn');
   if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
   try {

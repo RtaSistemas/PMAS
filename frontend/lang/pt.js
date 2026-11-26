@@ -28,6 +28,7 @@ window._LANG_PT = {
     'allocation.btn_h':'Horas','allocation.btn_r':'R$',
     'forecast.title':'Previsão de Conclusão (EVM)',
     'forecast.select_pep':'— selecione um PEP —',
+    'forecast.date_note':'A previsão cobre o projeto inteiro. O filtro de datas não vale aqui.',
     'forecast.empty':'Selecione um PEP para visualizar a previsão de conclusão.',
     'forecast.baseline.empty':'Selecione um PEP e configure o baseline na aba Projetos para visualizar aqui.',
     'forecast.consumed':'Horas Consumidas','forecast.remaining':'Horas Restantes',
