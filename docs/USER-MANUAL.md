@@ -672,11 +672,13 @@ python -m uvicorn backend.app.main:app --reload
 # Default credentials: admin / admin
 ```
 
-**Production start (no auto-reload, multiple workers):**
+**Production start (no auto-reload, one worker):**
 
 ```bash
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 2
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
+
+Use one worker only. SQLite has a single writer, so more workers cause `database is locked` errors. The login rate limit is also kept in the memory of each process, so each extra worker multiplies the limit.
 
 **Environment variables** (copy `.env.example` to `.env`):
 
@@ -1893,10 +1895,10 @@ systemctl start pmas
 | Ref | Item | Action required |
 |---|---|---|
 | P1 | `PMAS_SECRET_KEY` not enforced at startup | Set the key in `.env`. Without it, all sessions invalidate on restart. |
-| P2 | No `/ready` liveness probe | `GET /health` exists. `GET /ready` (runs `SELECT 1`, returns 503 on DB failure) does not yet exist. |
-| P3 | Backup script without cron | `backup_pmas.sh` is implemented. Add the cron entry. |
+| P2 | `/ready` liveness probe | Done. `GET /health` and `GET /ready` (runs `SELECT 1`, returns 503 on DB failure) exist. |
+| P3 | Backup script without a schedule | Done for the Linux package: `pmas-backup.timer` runs `backup_pmas.sh` every day at 02:00. For another installation, add a cron entry. |
 | P4 | Dependency lock file | `requirements-lock.txt` exists. Use it in production: `pip install -r requirements-lock.txt`. |
-| P5 | No systemd unit | Create `pmas.service` with `uvicorn --workers 2`, `Restart=on-failure`, `EnvironmentFile`. |
+| P5 | systemd unit | Done. The Linux package (`packaging/`) installs `pmas.service` with one worker, `Restart=on-failure` and `EnvironmentFile`. See `docs/OPERATIONS.md`. |
 
 **Additional risks on record:**
 - HTTPS not enforced internally — deploy behind nginx or Caddy with TLS termination.
