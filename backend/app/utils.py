@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -14,3 +15,9 @@ def _str_or_none(value) -> str | None:
         return None
     s = str(value).strip()
     return None if s.lower() in {"nan", "none", ""} else s
+
+
+def is_production() -> bool:
+    """True only when PMAS_ENV is exactly 'production' (case and spaces ignored).
+    Any other value, or none, is development. run.py uses the same rule."""
+    return os.getenv("PMAS_ENV", "development").strip().lower() == "production"

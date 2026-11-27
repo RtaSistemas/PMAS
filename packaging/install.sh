@@ -21,6 +21,7 @@ UNITS="${PMAS_SYSTEMD_DIR:-/etc/systemd/system}"
 SKIP="${PMAS_SKIP_SYSTEM:-0}"
 
 MIN_KEY_LENGTH=32
+READY_TIMEOUT="${PMAS_READY_TIMEOUT:-60}"
 
 log()  { echo "[pmas-install] $*"; }
 fail() { echo "[pmas-install] ERROR: $*" >&2; exit 1; }
@@ -80,6 +81,55 @@ generate_key() {
   fi
   [[ ${#key} -ge $MIN_KEY_LENGTH ]] || fail "Could not make a random key."
   printf '%s' "$key"
+}
+
+# Remove KEY from the settings file. The file keeps its owner and mode.
+unset_env() {
+  local file="$ETC/pmas.env" tmp
+  tmp="$(mktemp)"
+  { grep -v -E "^$1=" "$file" || true; } > "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
+# A random password of 20 letters and digits for the first administrator.
+generate_password() {
+  local raw=""
+  if command -v openssl >/dev/null 2>&1; then
+    raw="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9')"
+  elif command -v python3 >/dev/null 2>&1; then
+    raw="$(python3 -c 'import secrets, string; a = string.ascii_letters + string.digits; print("".join(secrets.choice(a) for _ in range(40)))')"
+  else
+    raw="$(head -c 96 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+  fi
+  [[ ${#raw} -ge 20 ]] || fail "Could not make a random password."
+  printf '%s' "${raw:0:20}"
+}
+
+# One check of GET /ready. curl, then wget, then a plain TCP request from bash itself.
+ready_once() {
+  local url="http://127.0.0.1:$1/ready"
+  if command -v curl >/dev/null 2>&1; then
+    curl -sf -o /dev/null "$url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O /dev/null "$url"
+  else
+    ( exec 3<>"/dev/tcp/127.0.0.1/$1" \
+      && printf 'GET /ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 \
+      && head -n 1 <&3 | grep -q ' 200' ) 2>/dev/null
+  fi
+}
+
+# Wait until PMAS answers. With PMAS_SKIP_SYSTEM=1 no service starts, so there is nothing to wait for.
+wait_ready() {
+  local i=0
+  [[ "$SKIP" == "1" ]] && return 0
+  while (( i < READY_TIMEOUT )); do
+    ready_once "$1" && return 0
+    sleep 1
+    i=$((i + 1))
+  done
+  return 1
 }
 
 # An existing key that is too short stops the update before PMAS changes anything,
@@ -151,6 +201,16 @@ cmd_install() {
   fi
   ensure_jwt_key "$env_is_new"
 
+  # First administrator (new installation with an empty database only). Production never seeds a
+  # known default password. The variable lives in the settings file only until PMAS answers.
+  local initial_password="" db_file
+  db_file="$(get_env PMAS_DB_PATH)"; db_file="${db_file:-$DATA/pmas.db}"
+  if [[ "$env_is_new" == "new" && ! -e "$db_file" ]]; then
+    initial_password="$(generate_password)"
+    set_env PMAS_ADMIN_INITIAL_PASSWORD "$initial_password"
+    chmod 0640 "$ETC/pmas.env"
+  fi
+
   if [[ "$SKIP" != "1" ]]; then
     chown -R pmas:pmas "$DATA" "$LOGDIR"
     chown root:pmas "$ETC/pmas.env"
@@ -164,9 +224,26 @@ cmd_install() {
   systemctl_do start pmas-backup.timer
   [[ $was_running -eq 1 ]] && log "Updated and restarted the service." || log "Started the service."
 
-  local port; port="$(grep -E '^PMAS_PORT=' "$ETC/pmas.env" | cut -d= -f2 || true)"
-  log "Check it with: curl -s http://127.0.0.1:${port:-8765}/health"
-  log "First login: user admin, password admin. PMAS asks for a new password."
+  local port; port="$(get_env PMAS_PORT)"; port="${port:-8765}"
+  log "Check it with: curl -s http://127.0.0.1:${port}/health"
+
+  if [[ -n "$initial_password" ]]; then
+    if wait_ready "$port"; then
+      unset_env PMAS_ADMIN_INITIAL_PASSWORD
+    else
+      log "PMAS did not answer on /ready within ${READY_TIMEOUT} seconds. Read the log, and after the first good start remove the line PMAS_ADMIN_INITIAL_PASSWORD from $ETC/pmas.env."
+    fi
+    # The only place that shows the password. It is not written to a log or to the journal.
+    echo ""
+    echo "  Initial administrator account"
+    echo "    user:     admin"
+    echo "    password: $initial_password"
+    echo "  Write the password down now. PMAS does not save it and does not show it again."
+    echo "  PMAS asks for a new password at the first login."
+    echo ""
+  else
+    log "The administrator account did not change."
+  fi
 }
 
 cmd_uninstall() {

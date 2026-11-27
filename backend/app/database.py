@@ -124,24 +124,70 @@ def _seed_config() -> None:
         db.close()
 
 
+_INITIAL_PASSWORD_VAR = "PMAS_ADMIN_INITIAL_PASSWORD"
+_DEFAULT_ADMIN_PASSWORD = "admin"
+
+
+def _initial_admin_password() -> str:
+    """Password for the first administrator.
+
+    Development and tests keep the old default. Production never seeds a known default: the
+    password must come from PMAS_ADMIN_INITIAL_PASSWORD. The message never repeats the value.
+    """
+    from backend.app.utils import is_production
+
+    if not is_production():
+        return _DEFAULT_ADMIN_PASSWORD
+    value = os.getenv(_INITIAL_PASSWORD_VAR, "")
+    if not value.strip():
+        raise RuntimeError(
+            f"PMAS_ENV=production and the database has no user: set {_INITIAL_PASSWORD_VAR} "
+            "for the first start (see docs/OPERATIONS.md). PMAS did not create the administrator."
+        )
+    if len(value) < 6 or len(value.encode()) > 72:
+        raise RuntimeError(
+            f"{_INITIAL_PASSWORD_VAR} must have 6 characters or more and at most 72 bytes. "
+            "PMAS did not create the administrator."
+        )
+    if value == _DEFAULT_ADMIN_PASSWORD:
+        raise RuntimeError(
+            f"{_INITIAL_PASSWORD_VAR} cannot be the default password. PMAS did not create the administrator."
+        )
+    return value
+
+
 def _seed_admin() -> None:
     import bcrypt as _bcrypt
     from backend.app.models import User
+    from backend.app.utils import is_production
 
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:
+            password = _initial_admin_password()
             db.add(User(
                 username="admin",
-                hashed_password=_bcrypt.hashpw(b"admin", _bcrypt.gensalt()).decode(),
+                hashed_password=_bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode(),
                 role="admin",
                 must_change_password=True,
             ))
             db.commit()
-            log.warning(
-                "Utilizador 'admin' criado com password padrão. "
-                "Altere imediatamente em produção."
-            )
+            if password == _DEFAULT_ADMIN_PASSWORD:
+                log.warning(
+                    "Utilizador 'admin' criado com password padrão. "
+                    "Altere imediatamente em produção."
+                )
+            else:
+                log.info("Administrador inicial criado. A senha deve ser trocada no primeiro acesso.")
+        elif is_production():
+            # An installation from before this change can still have admin/admin.
+            admin = db.query(User).filter(User.username == "admin").first()
+            if (admin is not None and admin.must_change_password
+                    and _bcrypt.checkpw(_DEFAULT_ADMIN_PASSWORD.encode(), admin.hashed_password.encode())):
+                log.warning(
+                    "A conta 'admin' ainda usa a senha padrão. Altere a senha agora: "
+                    "qualquer pessoa que alcance a porta pode entrar."
+                )
     finally:
         db.close()
 

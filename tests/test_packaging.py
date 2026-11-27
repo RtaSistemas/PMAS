@@ -342,3 +342,162 @@ class TestEnvExample:
         assert values["PMAS_ENV"] == "production"
         assert KEY_VAR in text
         assert values.get(KEY_VAR, "") == ""                         # no real key in the repository
+
+
+# ---------------------------------------------------------------------------
+# First administrator password in a new installation (WO-001 T3)
+# ---------------------------------------------------------------------------
+
+import re
+
+PASSWORD_VAR = "PMAS_ADMIN_INITIAL_PASSWORD"
+_PASSWORD_LINE = re.compile(r"password:\s+(\S+)")
+
+
+def _shown_password(output: str) -> str | None:
+    found = _PASSWORD_LINE.findall(output)
+    return found[0] if len(found) == 1 else None
+
+
+def _files_containing(root: Path, needle: str) -> list[str]:
+    hits = []
+    for p in root.rglob("*"):
+        if p.is_file() and not p.is_symlink():
+            try:
+                if needle in p.read_text(errors="ignore"):
+                    hits.append(str(p.relative_to(root)))
+            except OSError:
+                pass
+    return hits
+
+
+class TestInstallerInitialPassword:
+    def test_fresh_install_shows_a_random_password_once(self, package, tmp_path):
+        folder, _, _ = package
+        r = _install(folder, tmp_path)
+        out = r.stdout + r.stderr
+        password = _shown_password(out)
+        assert password and len(password) == 20 and password.isalnum()
+        assert out.count(password) == 1                           # once, on the terminal
+        assert "admin" in out.lower()
+
+    def test_the_password_is_not_left_in_any_file(self, package, tmp_path):
+        folder, _, _ = package
+        r = _install(folder, tmp_path)
+        password = _shown_password(r.stdout + r.stderr)
+        assert PASSWORD_VAR not in _env_values(_env_file(tmp_path))      # no active line
+        assert _files_containing(tmp_path, password) == []
+
+    def test_two_installs_show_two_different_passwords(self, package, tmp_path):
+        folder, _, _ = package
+        first = _shown_password((r := _install(folder, tmp_path)).stdout + r.stderr)
+        other = tmp_path / "second"
+        other.mkdir()
+        second = _shown_password((r := _install(folder, other)).stdout + r.stderr)
+        assert first != second
+
+    def test_the_shown_password_is_the_one_the_app_seeds(self, package, tmp_path):
+        """The installer password must satisfy the app seed rules and open the account."""
+        folder, _, _ = package
+        r = _install(folder, tmp_path)
+        password = _shown_password(r.stdout + r.stderr)
+        db = tmp_path / "seed-check.db"
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PMAS_")}
+        env.update({"PMAS_ENV": "production", "PMAS_DB_PATH": str(db), PASSWORD_VAR: password})
+        done = subprocess.run([os.sys.executable, "-c", "from backend.app.database import init_db; init_db()"],
+                              cwd=ROOT, env=env, capture_output=True, text=True)
+        assert done.returncode == 0, done.stderr
+        assert password not in done.stdout + done.stderr          # the app never logs it
+        import bcrypt
+        con = sqlite3.connect(db)
+        hashed, = con.execute('SELECT hashed_password FROM "user" WHERE username = ?', ("admin",)).fetchone()
+        assert bcrypt.checkpw(password.encode(), hashed.encode())
+
+    def test_an_update_does_not_make_or_show_a_password(self, package, tmp_path):
+        folder, _, _ = package
+        _install(folder, tmp_path)
+        r = _install(folder, tmp_path)                            # the settings file now exists
+        assert _shown_password(r.stdout + r.stderr) is None
+        assert PASSWORD_VAR not in _env_values(_env_file(tmp_path))      # no active line
+
+    def test_an_existing_database_gets_no_password(self, package, tmp_path):
+        """With users already in the database the seed does not run, so a password would mislead."""
+        folder, _, _ = package
+        data = tmp_path / "var-lib"
+        data.mkdir(parents=True)
+        (data / "pmas.db").write_text("existing")
+        r = _install(folder, tmp_path)
+        assert _shown_password(r.stdout + r.stderr) is None
+        assert PASSWORD_VAR not in _env_values(_env_file(tmp_path))      # no active line
+
+    def test_the_installer_no_longer_tells_the_operator_to_use_admin_admin(self, package, tmp_path):
+        folder, _, _ = package
+        r = _install(folder, tmp_path)
+        assert "password admin" not in (r.stdout + r.stderr).lower()
+        assert "password admin" not in (ROOT / "packaging" / "install.sh").read_text().lower()
+
+
+@pytest.mark.skipif(os.geteuid() != 0, reason="the real flow (user, service, chown) needs root")
+class TestInstallerInitialPasswordWithAFakeService:
+    """Run the installer in its real mode with fake systemctl, useradd, chown and curl."""
+
+    @staticmethod
+    def _fake_bin(tmp_path: Path, ready_after: int | None) -> Path:
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        log = tmp_path / "calls.log"
+        snapshot = tmp_path / "env-at-restart.txt"
+        counter = tmp_path / "curl-count"
+        (bin_dir / "systemctl").write_text(
+            "#!/bin/bash\n"
+            f'echo "systemctl $*" >> "{log}"\n'
+            'if [[ "$1" == "restart" ]]; then\n'
+            f'  cat "$PMAS_ETC/pmas.env" > "{snapshot}"\n'
+            "fi\n"
+            'if [[ "$1" == "is-active" ]]; then exit 3; fi\n'
+            "exit 0\n")
+        for name in ("useradd", "chown"):
+            (bin_dir / name).write_text(f'#!/bin/bash\necho "{name} $*" >> "{log}"\nexit 0\n')
+        if ready_after is None:
+            (bin_dir / "curl").write_text("#!/bin/bash\nexit 7\n")                 # never ready
+        else:
+            (bin_dir / "curl").write_text(
+                "#!/bin/bash\n"
+                f'n=$(cat "{counter}" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "{counter}"\n'
+                f"[[ $n -gt {ready_after} ]] && exit 0 || exit 22\n")
+        for f in bin_dir.iterdir():
+            f.chmod(0o755)
+        return bin_dir
+
+    def _run(self, folder, tmp_path, ready_after, timeout="5"):
+        env = {k: v for k, v in _paths(tmp_path).items() if k != "PMAS_SKIP_SYSTEM"}
+        env["PATH"] = f"{self._fake_bin(tmp_path, ready_after)}:{os.environ['PATH']}"
+        env["PMAS_READY_TIMEOUT"] = timeout
+        return subprocess.run(["bash", str(folder / "install.sh")], env={**os.environ, **env},
+                              cwd=folder, capture_output=True, text=True)
+
+    def test_the_variable_exists_at_the_first_start_and_is_removed_when_ready(self, package, tmp_path):
+        folder, _, _ = package
+        r = self._run(folder, tmp_path, ready_after=2)
+        assert r.returncode == 0, r.stderr
+        password = _shown_password(r.stdout + r.stderr)
+        assert password
+        at_restart = (tmp_path / "env-at-restart.txt").read_text()
+        assert f"{PASSWORD_VAR}={password}" in at_restart         # the service could read it
+        assert PASSWORD_VAR not in _env_values(_env_file(tmp_path))      # no active line    # removed after /ready answered
+        assert _files_containing(tmp_path / "etc", password) == []
+
+    def test_when_the_service_never_answers_the_line_stays_and_the_operator_is_told(self, package, tmp_path):
+        folder, _, _ = package
+        r = self._run(folder, tmp_path, ready_after=None, timeout="2")
+        out = r.stdout + r.stderr
+        password = _shown_password(out)
+        assert password                                            # the operator still gets it
+        assert _env_values(_env_file(tmp_path)).get(PASSWORD_VAR) == password
+        assert "did not answer" in out and PASSWORD_VAR in out    # and is told what to remove later
+
+    def test_the_password_does_not_reach_the_systemctl_calls(self, package, tmp_path):
+        folder, _, _ = package
+        r = self._run(folder, tmp_path, ready_after=0)
+        password = _shown_password(r.stdout + r.stderr)
+        assert password not in (tmp_path / "calls.log").read_text()   # nothing for a journal to carry

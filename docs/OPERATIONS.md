@@ -27,8 +27,22 @@ The installer does these steps:
 | Install the service | `pmas.service` starts at boot and restarts after an error |
 | Install the backup timer | `pmas-backup.timer` makes a backup every day at 02:00 |
 
-After the installation, open `http://127.0.0.1:8765`. The first login is user `admin` and password `admin`.
-PMAS asks for a new password at the first login.
+After the installation, open `http://127.0.0.1:8765`.
+
+The installer makes a random password of 20 characters for the user `admin` and shows it **once** on the terminal.
+Write the password down. PMAS does not save it and does not show it again. PMAS asks for a new password at the first login.
+
+How the password reaches PMAS:
+
+1. The installer writes `PMAS_ADMIN_INITIAL_PASSWORD` in `/etc/pmas/pmas.env` for the first start.
+2. PMAS creates the `admin` account with that password when the database has no user.
+3. The installer waits until `GET /ready` answers, and then removes the line from the settings file.
+
+PMAS does not write the password in a log or in the journal. In production PMAS refuses to create the `admin` account without this variable, and it never creates a known default password.
+If the service does not answer in 60 seconds, the installer tells you. The line stays in the file until the first good start. Remove it then.
+
+For a manual first start in production, set `PMAS_ADMIN_INITIAL_PASSWORD` (6 characters or more, 72 bytes or less), start PMAS once, and remove the variable.
+An update with `./install.sh` never creates or changes this password. An old installation can still have the password `admin`: PMAS writes a warning in the log at each start until the password changes. Change it in the Admin tab.
 
 ## Daily commands
 

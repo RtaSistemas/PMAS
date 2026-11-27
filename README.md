@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-1051%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-1073%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -108,7 +108,7 @@ pip install -r requirements.txt
 python -m uvicorn backend.app.main:app --reload
 ```
 
-Open **http://127.0.0.1:8000** — default login: `admin` / `admin`.
+Open **http://127.0.0.1:8000** — development login: `admin` / `admin` (PMAS asks for a new password). Production has no default password: see [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 > **Change the default password immediately.** The admin account is created on first startup with a warning logged to the console.
 
@@ -1042,7 +1042,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1051 tests across 38 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+1073 tests across 39 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1060,7 +1060,8 @@ pytest tests/ -v
 | `test_quarantine.py` | 23 | QuarantineRecord workflow (approve/reject/delete) |
 | `test_users.py` | 27 | User CRUD, password change, role enforcement |
 | `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
-| `test_packaging.py` | 23 | Linux install package, installer, backup script |
+| `test_packaging.py` | 33 | Linux install package, installer, backup script |
+| `test_admin_seed.py` | 12 | First administrator: production seeds only from the initial password variable, refuses a missing or default password, restart without the variable works, warning for an old default |
 | `test_jwt_key.py` | 13 | The JWT signing key in production: refuses to start without 32 or more characters; development keeps the warning |
 | `test_audit_cycle3_review.py` | 3 | Review of the cycle 2 changes: collaborator-name index per upload, forecast band with idle cycles |
 | `test_audit_invariants.py` | 18 | Generated-data invariants: summary equals raw totals, cross-endpoint totals, ACL leakage, no NaN, upload lock, rate cache |
@@ -1175,7 +1176,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 38 files, 1051 tests
+├── tests/                       # 39 files, 1073 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable

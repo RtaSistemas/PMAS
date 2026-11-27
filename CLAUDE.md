@@ -45,11 +45,13 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1051 tests across 38 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+1073 tests across 39 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
 `packaging/build_package.sh <binary>` builds `pmas-linux-x64-package.tar.gz` (binary, `install.sh`, `backup_pmas.sh`, systemd units, `pmas.env.example`, `OPERATIONS.md`). `install.sh` takes `PMAS_PREFIX`, `PMAS_ETC`, `PMAS_DATA`, `PMAS_LOGDIR`, `PMAS_SYSTEMD_DIR` and `PMAS_SKIP_SYSTEM=1` (copy files only); `tests/test_packaging.py` uses them. See `docs/OPERATIONS.md`.
+
+A new installation also generates a random 20-character password for `admin`, passes it to the first start through `PMAS_ADMIN_INITIAL_PASSWORD`, removes the line when `GET /ready` answers, and shows the password once on the terminal (never in a file or the journal). In production the admin seed (`database._seed_admin`) refuses a missing, short or default password and runs only when the database has no user; development and tests keep `admin`/`admin`. In production an old `admin`/`admin` account that still must change its password gets a warning in the log at each start.
 
 ## Sample Data
 
@@ -244,7 +246,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_auth.py` | 5 | JWT login, token validation |
 | `test_simulation.py` | 1 | End-to-end portfolio simulation smoke test on full sample data |
 | `test_api_keys.py` | 17 | API key management (admin only), hash-only storage, use on upload, revoke, ACL of the key user, no access to other routes |
-| `test_packaging.py` | 23 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
+| `test_packaging.py` | 33 | Linux install package: build, install, update (keeps settings and data), uninstall, unit files, backup script with and without the `sqlite3` program |
 | `test_audit_analytics.py` | 47 | Audit regressions for analytics and EVM (date ranges, ACL, Earned Schedule, TCPI, history gaps) |
 | `test_audit_crud.py` | 118 | Audit regressions for CRUD and admin routes (validation, 500 to 4xx, duplicates, limits, error format) |
 | `test_audit_ingestion.py` | 43 | Audit regressions for the import (encodings, delimiters, names, quarantine, summaries) |
@@ -255,7 +257,8 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_decisions_ingestion_acl.py` | 23 | Product decisions: same-day rows with different hours are summed, empty whitelist imports any PEP, baselines are admin only with audit |
 | `test_decisions_date_filters.py` | 7 | Product decision: a date range is the record date; forecast, What-If and Monte Carlo ignore it; cross-endpoint totals agree |
 | `test_jwt_key.py` | 13 | The JWT signing key in production: refuses to start without 32 or more characters; development keeps the warning |
-| **Total** | **1051** | |
+| `test_admin_seed.py` | 12 | First administrator: production seeds only from the initial password variable, refuses a missing or default password, restart without the variable works, warning for an old default |
+| **Total** | **1073** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 

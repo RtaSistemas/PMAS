@@ -12,14 +12,14 @@ from jose import JWTError, jwt
 
 from backend.app.database import DbSession
 from backend.app.models import ApiKey, User
-from backend.app.utils import now_br
+from backend.app.utils import is_production, now_br
 
 log = logging.getLogger(__name__)
 
 # PMAS_ENV=production needs a fixed signing key. Without one, every restart would log out all
 # users. Any other value of PMAS_ENV (or none) is development, the same rule as run.py.
 _MIN_KEY_LENGTH = 32
-_IS_PRODUCTION = os.getenv("PMAS_ENV", "development").strip().lower() == "production"
+_IS_PRODUCTION = is_production()
 _env_secret = os.getenv("PMAS_SECRET_KEY")
 if _IS_PRODUCTION:
     if not _env_secret or len(_env_secret.strip()) < _MIN_KEY_LENGTH:

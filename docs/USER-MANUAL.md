@@ -669,7 +669,7 @@ pip install -r requirements.txt
 python -m uvicorn backend.app.main:app --reload
 
 # Open the browser at http://127.0.0.1:8000
-# Default credentials: admin / admin
+# Development only: the default login is admin / admin (production has no default password)
 ```
 
 **Production start (no auto-reload, multiple workers):**
@@ -1792,7 +1792,7 @@ See Section 11.10.
 
 ### 14.1 Initial Setup Checklist
 
-- [ ] Change default admin password (Admin — Usuários — admin — edit)
+- [ ] Change the admin password at the first login (in an old installation that still has `admin`, change it now in Admin — Usuários — admin — edit)
 - [ ] Set `PMAS_SECRET_KEY` in `.env` (required for persistent sessions)
 - [ ] Configure `GlobalConfig`: multipliers, thresholds, timezone
 - [ ] Create seniority levels (Equipe — Senioridade)
@@ -1815,7 +1815,7 @@ See Section 11.10.
 
 **Password change:** Admin can change any user's password via `PATCH /api/users/{id}/password`. Users can change their own password when authenticated.
 
-**Default credentials:** `admin` / `admin`. **Change immediately after installation.**
+**Credentials:** in development the default login is `admin` / `admin`. In production (`PMAS_ENV=production`) there is no default password: the installer shows a random password once, and PMAS asks for a new one at the first login. See `docs/OPERATIONS.md`.
 
 ### 14.3 Global Configuration
 
