@@ -59,6 +59,7 @@ PMAS asks for a new password at the first login.
 | `PMAS_ALLOWED_ORIGINS` | Addresses that browsers use to open PMAS | none |
 | `PMAS_BACKUP_DIR` | Backup folder | `/var/lib/pmas/backups` |
 | `PMAS_BACKUP_RETENTION` | Days to keep a backup | `30` |
+| `PMAS_MIGRATION_BACKUPS_KEEP` | Copies made before a migration (`*.pre-*.bak`) to keep | `5` |
 
 ## Update to a new version
 
@@ -68,6 +69,8 @@ PMAS asks for a new password at the first login.
 
 The installer stops the service, replaces the program, and starts the service again.
 It keeps `/etc/pmas/pmas.env` and the database. PMAS updates the database structure at start.
+
+Before PMAS changes the structure of an existing database, it copies the database to `pmas.db.pre-<migration>.bak` in the same folder. PMAS keeps the 5 newest copies. If the copy fails, PMAS does not start and does not change the database; free disk space or fix the folder permissions, then start again. To go back, stop the service, copy the `.bak` file over `pmas.db`, and start the old version.
 
 ## Backup and restore
 

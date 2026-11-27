@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi"/>
   <img src="https://img.shields.io/badge/SQLite-embedded-003B57?style=flat-square&logo=sqlite"/>
   <img src="https://img.shields.io/badge/ECharts-5-AA344D?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-1026%20passing-22c55e?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-1038%20passing-22c55e?style=flat-square"/>
 </p>
 
 ---
@@ -1042,7 +1042,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1026 tests across 37 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
+1038 tests across 38 files. All use an in-memory SQLite database (`StaticPool`) — no `pmas.db` is touched.
 
 | File | Tests | Coverage |
 |---|---:|---|
@@ -1061,6 +1061,7 @@ pytest tests/ -v
 | `test_users.py` | 27 | User CRUD, password change, role enforcement |
 | `test_api_keys.py` | 17 | API key management, hash-only storage, use on upload, revoke |
 | `test_packaging.py` | 11 | Linux install package, installer, backup script |
+| `test_migration_backup.py` | 12 | Backup before pending migrations: named after the first pending id, none for a new or up-to-date database, failure stops startup, retention, id list matches the code |
 | `test_audit_cycle3_review.py` | 3 | Review of the cycle 2 changes: collaborator-name index per upload, forecast band with idle cycles |
 | `test_audit_invariants.py` | 18 | Generated-data invariants: summary equals raw totals, cross-endpoint totals, ACL leakage, no NaN, upload lock, rate cache |
 | `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
@@ -1174,7 +1175,7 @@ PMAS/
 ├── frontend/lang/
 │   ├── pt.js                    # pt-BR translations
 │   └── en.js                    # en translations
-├── tests/                       # 37 files, 1026 tests
+├── tests/                       # 38 files, 1038 tests
 │   └── frontend/e2e/            # Playwright E2E tests
 ├── amostras/                    # Portfolio generator + ready-to-import CSVs
 ├── assets/                      # Icons for Windows executable

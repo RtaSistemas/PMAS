@@ -45,7 +45,7 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
-1026 tests across 37 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
+1038 tests across 38 test files (1 test skips when the `sqlite3` program is missing). The CI also runs 46 Vitest tests and 78 Playwright tests. The Playwright "flows" project (`tests/frontend/e2e/flows/`) runs the upload, quarantine, baseline and forecast flows against a second server with an empty database. All use an in-memory SQLite database (StaticPool) — no `pmas.db` is touched.
 
 ## Linux Package
 
@@ -205,7 +205,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 - **UploadSession transparency:** Every upload creates an `UploadSession` (filename, uploader, timestamp, row counts by outcome). Accessible via `/api/upload-history` (admin sees all, a user sees own) and `/api/my/upload-history` (a user sees own uploads; an admin sees all).
 - **QuarantineRecord workflow:** Rows that fail validation land in quarantine with `status=pending`. Admin can approve (re-ingest) or reject. Users see their own quarantine rows via `/api/my/quarantine` (an admin sees all rows there). `GET /api/quarantine[/{id}]` also works for a user, limited to own rows; review, approve, reject and delete are admin only.
 - **Per-user ACL:** `UserProjectAccess` rows whitelist specific PEPs per user. Empty whitelist = access all, on the analytics screens **and** on the import. A user with whitelist rows can import only those PEPs; rows with no PEP are discarded for that user. Enforced across every `/api/v2/*` analytics endpoint via the shared `_allowed_peps` helper (`v2/portfolio.py`), in `/api/dashboard`, in `/api/projects`, `/api/team`, plans and baselines.
-- **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for new columns so production databases upgrade non-destructively.
+- **Schema migration:** `_migrate_columns()` in `database.py` checks `PRAGMA table_info` and runs `ALTER TABLE` for new columns so production databases upgrade non-destructively. Each step has an id (`M001`...) tracked in the `schema_migration` table, and the ids are listed in `_MIGRATION_IDS`. **Backup first (WO-001 T5):** before the first pending migration on an existing, non-empty database, `init_db` copies the file with `VACUUM INTO '<db>.pre-<first pending id>.bak'` (no copy for a new or empty database, or when nothing is pending; an existing copy of the same id is kept). A failed copy stops startup. The newest 5 copies stay (`PMAS_MIGRATION_BACKUPS_KEEP`). **Rules for a new migration:** (a) give it a new `M0xx` id, add it to `_MIGRATION_IDS` (`tests/test_migration_backup.py` fails when the list and the code differ), and never edit it after a release; (b) in SQLite do not recreate a table that another table references with a foreign key: use native `ALTER TABLE ... ADD/DROP COLUMN`.
 - **ECharts management:** Charts are initialized only after their container is visible. `dispose()` is called when leaving a sub-tab. A single `ResizeObserver` on `<main>` handles all resize events.
 - **Client-side CSV export:** "Exportar CSV" in Effort tab uses `_lastEffortData` cache, builds a CSV string, creates a `Blob` URL, and triggers download — no server round-trip. Seniority and rate card exports also use client-side cached arrays.
 - **Budget alerts:** `_buildBudgetCell(p)` renders "Estourado" (≥100%) or "Atenção ≥90%" badges in the Projects table using `_consumedByPep` fetched in parallel with `/api/projects`.
@@ -254,7 +254,7 @@ After the phases, `ingest_file()` persists `QuarantineRecord` rows, creates `Upl
 | `test_journeys_acl.py` | 2 | PEP ACL on the project and team lists, bulk seniority |
 | `test_decisions_ingestion_acl.py` | 23 | Product decisions: same-day rows with different hours are summed, empty whitelist imports any PEP, baselines are admin only with audit |
 | `test_decisions_date_filters.py` | 7 | Product decision: a date range is the record date; forecast, What-If and Monte Carlo ignore it; cross-endpoint totals agree |
-| **Total** | **1026** | |
+| **Total** | **1038** | |
 
 The `conftest.py` `clean_db` fixture wipes all rows **before** each test (setup phase, not teardown) so every test starts from a known empty state.
 
@@ -275,4 +275,4 @@ Audited items deliberately deferred. Do not implement without an explicit decisi
 - Login brute force — `POST /api/token` is rate-limited at 30/minute and a user is locked for 15 minutes after 5 failed attempts; failed logins are not written to the audit log
 - Rate limiting (30/minute) exists on the write routes of `/projects`, `/cycles`, `/users`, `/api-keys` and `/validation-rules`; other write routes (rate cards, seniority levels, baselines, plans, config) have none
 - `must_change_password` is enforced in the backend: `get_current_user` returns 403 until the password changes
-- Migrations (`_migrate_columns()`, M001 and later) are versioned and tracked, but there is no rollback
+- Migrations (`_migrate_columns()`, M001 and later) are versioned and tracked. There is no automatic rollback; the copy made before the migration (`<db>.pre-<id>.bak`) is the way back

@@ -85,8 +85,86 @@ def _check_db_folder() -> None:
         )
 
 
+# Every migration that _migrate_columns applies, in order. A new migration gets a new id,
+# is added here, and is never edited after it ships. tests/test_migration_backup.py checks
+# that this list matches the ids used in _migrate_columns.
+_MIGRATION_IDS = (
+    "M001_tr_cost_per_hour",
+    "M002_collab_seniority",
+    "M003_project_v1",
+    "M004_cycle_v1",
+    "M005_gc_v1",
+    "M006_gc_spi_thresholds",
+    "M007_pcp_v1",
+    "M008_qr_review_status",
+    "M009_tr_frozen_costs",
+    "M010_user_must_change_password",
+    "M011_budget_revision_table",
+    "M012_user_lockout",
+    "M013_timesheet_record_date_idx",
+)
+
+
+def _pending_migrations(con) -> list[str]:
+    """Migration ids that the database file has not applied yet. An empty file has none pending."""
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if not tables - {"sqlite_sequence"}:
+        return []
+    done: set[str] = set()
+    if "schema_migration" in tables:
+        done = {r[0] for r in con.execute("SELECT version FROM schema_migration")}
+    return [m for m in _MIGRATION_IDS if m not in done]
+
+
+def _prune_migration_backups(db_file: str, keep: int) -> None:
+    """Keep the newest `keep` pre-migration backups of this database."""
+    folder, name = os.path.split(os.path.abspath(db_file))
+    found = [os.path.join(folder, f) for f in os.listdir(folder) if f.startswith(f"{name}.pre-") and f.endswith(".bak")
+             and os.path.isfile(os.path.join(folder, f))]
+    found.sort(key=os.path.getmtime, reverse=True)
+    for old in found[max(keep, 1):]:
+        try:
+            os.remove(old)
+        except OSError:
+            log.warning("Não foi possível apagar o backup antigo %s", old)
+
+
+def _backup_before_migrations() -> None:
+    """Copy an existing database with VACUUM INTO before the first pending migration.
+
+    No copy for a new or empty database, or when nothing is pending. A failed copy stops startup:
+    PMAS must not change the schema without a way back.
+    """
+    import sqlite3
+
+    db_file = engine.url.database
+    if not db_file or db_file == ":memory:" or not os.path.isfile(db_file) or os.path.getsize(db_file) == 0:
+        return
+    try:
+        con = sqlite3.connect(db_file)
+        try:
+            pending = _pending_migrations(con)
+            if not pending:
+                return
+            target = f"{db_file}.pre-{pending[0]}.bak"
+            if os.path.isfile(target):      # a failed start already made it: it is the older, better copy
+                log.info("Backup anterior à migração já existe: %s", target)
+            else:
+                con.execute("VACUUM INTO ?", (target,))
+                log.warning("Backup antes da migração %s: %s", pending[0], target)
+        finally:
+            con.close()
+    except Exception as exc:
+        raise SystemExit(
+            f"PMAS could not make the backup of '{db_file}' before the migration: {exc}. "
+            "PMAS did not change the database. Free disk space or fix the folder permissions, then start again."
+        )
+    _prune_migration_backups(db_file, int(os.getenv("PMAS_MIGRATION_BACKUPS_KEEP", "5") or "5"))
+
+
 def init_db() -> None:
     _check_db_folder()
+    _backup_before_migrations()
     from backend.app import models  # noqa: F401 — ensures tables are registered
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:
